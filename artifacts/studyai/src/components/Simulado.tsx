@@ -32,6 +32,49 @@ interface SimuladoData {
   perguntas: Pergunta[];
 }
 
+// Normalizes raw API data to ensure it's always safe to render
+function sanitizeSimulado(raw: any): SimuladoData | null {
+  try {
+    if (!raw || typeof raw !== "object") return null;
+    const perguntas: Pergunta[] = (Array.isArray(raw.perguntas) ? raw.perguntas : [])
+      .map((p: any, idx: number) => {
+        if (!p || typeof p !== "object") return null;
+
+        // Normalize the correct answer letter — strip trailing dots, parens, lowercase, etc.
+        const correctaRaw = String(p.correta ?? "").toUpperCase().trim().replace(/[^ABCD]/g, "");
+        const correta = (["A", "B", "C", "D"].includes(correctaRaw) ? correctaRaw : "A") as "A" | "B" | "C" | "D";
+
+        // Ensure opcoes has all four keys as strings
+        const opcoes = p.opcoes && typeof p.opcoes === "object" ? p.opcoes : {};
+        const safeOpcoes = {
+          A: String(opcoes.A ?? opcoes.a ?? "—"),
+          B: String(opcoes.B ?? opcoes.b ?? "—"),
+          C: String(opcoes.C ?? opcoes.c ?? "—"),
+          D: String(opcoes.D ?? opcoes.d ?? "—"),
+        };
+
+        return {
+          id: typeof p.id === "number" ? p.id : idx + 1,
+          enunciado: String(p.enunciado ?? p.pergunta ?? "Questão sem enunciado"),
+          opcoes: safeOpcoes,
+          correta,
+          explicacao: String(p.explicacao ?? p.gabarito ?? "Sem explicação disponível."),
+        } as Pergunta;
+      })
+      .filter(Boolean) as Pergunta[];
+
+    if (perguntas.length === 0) return null;
+
+    return {
+      titulo: String(raw.titulo ?? "Simulado de Prova"),
+      tempoMinutos: typeof raw.tempoMinutos === "number" && raw.tempoMinutos > 0 ? raw.tempoMinutos : 20,
+      perguntas,
+    };
+  } catch {
+    return null;
+  }
+}
+
 interface SimuladoProps {
   plan: StudyPlan;
   serie: string;
@@ -124,33 +167,45 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
   }, []);
 
   useEffect(() => {
-    if (phase === "exam" && simulado && !submitted) {
-      setTimeLeft(simulado.tempoMinutos * 60);
-      timerRef.current = setInterval(() => {
-        setTimeLeft((t) => {
-          if (t <= 1) {
-            clearInterval(timerRef.current);
-            handleSubmit();
-            return 0;
-          }
-          return t - 1;
-        });
-        setTimeTaken((t) => t + 1);
-      }, 1000);
-    }
+    if (phase !== "exam" || !simulado || submitted) return;
+    setTimeLeft(simulado.tempoMinutos * 60);
+    timerRef.current = setInterval(() => {
+      setTimeLeft((t) => {
+        if (t <= 1) {
+          clearInterval(timerRef.current);
+          return 0;
+        }
+        return t - 1;
+      });
+      setTimeTaken((t) => t + 1);
+    }, 1000);
     return () => clearInterval(timerRef.current);
-  }, [phase, simulado]);
+  }, [phase, simulado, submitted]);
+
+  // Auto-submit when time runs out
+  useEffect(() => {
+    if (phase === "exam" && timeLeft === 0 && simulado && !submitted) {
+      handleSubmit();
+    }
+  }, [timeLeft, phase, simulado, submitted, handleSubmit]);
 
   const generateSimulado = async () => {
     try {
       const diasConteudo = plan.dias
         .map((d) => {
-          const topicNames = d.topicos.map((t) =>
-            typeof t === "object" ? (t as any).nome : t
-          );
-          return `Dia ${d.numero} - ${d.titulo}: ${topicNames.join(", ")}`;
+          const topicDetails = d.topicos.map((t) => {
+            if (typeof t === "object" && t !== null) {
+              const to = t as any;
+              let detail = `  - ${to.nome}`;
+              if (to.explicacao) detail += `\n    Explicação: ${to.explicacao}`;
+              if (to.gatilho) detail += `\n    Conceito-chave: ${to.gatilho}`;
+              return detail;
+            }
+            return `  - ${t}`;
+          });
+          return `Dia ${d.numero} - ${d.titulo}:\n${topicDetails.join("\n")}`;
         })
-        .join("\n");
+        .join("\n\n");
 
       const res = await fetch("/api/simulado", {
         method: "POST",
@@ -165,7 +220,9 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
 
       const data = await res.json();
       if (!res.ok || data.erro) throw new Error(data.erro || "Erro ao gerar simulado");
-      setSimulado(data.simulado);
+      const safe = sanitizeSimulado(data.simulado);
+      if (!safe) throw new Error("O simulado gerado veio em formato inválido. Tente novamente.");
+      setSimulado(safe);
       setPhase("exam");
     } catch (err: any) {
       setError(err.message);

@@ -7,17 +7,19 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const SIMULADO_PROMPT = `Você é um professor especialista em criar simulados originais e variados. Gere um simulado COMPLETAMENTE DIFERENTE de qualquer simulado anterior sobre o mesmo conteúdo.
+const SIMULADO_PROMPT = `Você é um professor especialista em criar simulados originais e variados com base EXCLUSIVAMENTE no conteúdo fornecido pelo aluno.
+
+⚠️ REGRA ABSOLUTA: Todas as questões devem ser derivadas APENAS do conteúdo fornecido no campo "Conteúdo detalhado por dia" e "Resumo". NÃO invente tópicos, NÃO acrescente informações externas, NÃO use conhecimento geral que não esteja no conteúdo enviado. Se o conteúdo fala de um capítulo específico, as questões devem ser sobre aquele capítulo. Se fala de um assunto específico, as questões devem ser sobre aquele assunto.
 
 RESPONDA APENAS com um JSON válido, sem markdown. Use EXATAMENTE esta estrutura:
 
 {
-  "titulo": "Simulado - [Nome da Matéria/Conteúdo]",
+  "titulo": "Simulado - [Nome exato da matéria/conteúdo conforme fornecido]",
   "tempoMinutos": 20,
   "perguntas": [
     {
       "id": 1,
-      "enunciado": "Enunciado completo da questão, claro e sem ambiguidade. Use dados, contextos e exemplos reais.",
+      "enunciado": "Enunciado completo da questão baseado no conteúdo fornecido. Use conceitos, definições e exemplos que aparecem no material do aluno.",
       "opcoes": {
         "A": "Primeira opção",
         "B": "Segunda opção",
@@ -25,31 +27,27 @@ RESPONDA APENAS com um JSON válido, sem markdown. Use EXATAMENTE esta estrutura
         "D": "Quarta opção"
       },
       "correta": "B",
-      "explicacao": "Explicação completa de por que a alternativa correta é a certa. Mencione também por que as erradas estão erradas (especialmente as mais tentadoras). Inclua dica para não errar este tipo de questão na prova."
+      "explicacao": "Explicação completa citando especificamente o que foi estudado no conteúdo fornecido. Por que a correta é certa? Por que as erradas estão erradas? Inclua dica para não errar."
     }
   ]
 }
 
 REGRAS OBRIGATÓRIAS:
-- Gere EXATAMENTE 10 questões de múltipla escolha (A, B, C, D)
-- VARIEDADE DE FORMATOS obrigatória: inclua questões de tipos diferentes:
-  • Aplicação prática ("Um aluno quer... qual é a resposta?")
-  • Comparação ("Qual a diferença entre X e Y?")
-  • Causa e efeito ("O que acontece quando...?")
-  • Identificação de erro ("Qual afirmação está INCORRETA?")
-  • Situação-problema ("Em uma prova que pede..., a fórmula correta é...")
-  • Completar lacuna ("_____ é definido como...")
-  • Interpretação de dados ou texto
-- Escalone a dificuldade: questões 1-3 fáceis, 4-6 médias, 7-9 difíceis, questão 10 desafio
-- Use o estilo de questões que realmente cai em provas para a série informada
-- As alternativas erradas devem ser plausíveis (erros comuns dos alunos), não óbvias
-- A questão 10 deve ser a mais desafiadora — o tipo que separa nota 8 de nota 10
-- Adapte linguagem e complexidade ao nível escolar informado
-- A explicação deve ser detalhada (3-5 frases), incluindo a "pegadinha" se houver
-- Distribua as respostas corretas ALEATORIAMENTE entre A, B, C e D — não repita a mesma letra mais de 3 vezes
-- Cada questão deve testar um aspecto e ângulo DIFERENTE do conteúdo
-- Use contextos e cenários DIFERENTES em cada questão (não repita personagens ou situações)
-- NUNCA repita o mesmo tipo de enunciado duas vezes`;
+- Gere EXATAMENTE 10 questões de múltipla escolha com alternativas A, B, C e D
+- O campo "correta" DEVE ser exatamente uma das letras: A, B, C ou D (sem ponto, sem parêntese)
+- TODAS as questões devem ser baseadas no conteúdo fornecido — nenhuma questão de conhecimento geral fora do material
+- VARIEDADE DE FORMATOS (distribua entre as 10 questões):
+  • Definição: "O que é X conforme o conteúdo estudado?"
+  • Aplicação: "Dado o conceito de X, o que acontece quando...?"
+  • Comparação: "Qual a diferença entre X e Y apresentados no conteúdo?"
+  • Identificação de erro: "Qual afirmação sobre X está INCORRETA segundo o conteúdo?"
+  • Situação-problema baseada em exemplo do material
+  • Completar lacuna usando termos do conteúdo
+- Escalone a dificuldade: questões 1-3 fáceis, 4-6 médias, 7-9 difíceis, questão 10 desafio final
+- As alternativas erradas devem ser plausíveis mas claramente erradas para quem estudou o conteúdo
+- Distribua as respostas corretas: não repita a mesma letra mais de 3 vezes
+- A explicação deve mencionar onde no conteúdo está a resposta
+- Adapte linguagem e complexidade ao nível escolar informado`;
 
 const QUESTION_ANGLES = [
   "definição e conceito fundamental",
@@ -92,22 +90,22 @@ router.post("/simulado", async (req, res) => {
     const userContent = `Matéria/Conteúdo: ${materia}
 Série do aluno: ${serie}
 Resumo do que foi estudado: ${resumo}
-Conteúdo detalhado por dia:
+
+Conteúdo detalhado por dia (USE APENAS ESTE CONTEÚDO para criar as questões):
 ${diasConteudo}
 
-SEMENTE DE VARIAÇÃO: #${seed} — use este número para garantir uma combinação única de questões, contextos e ângulos. Cada simulado com semente diferente DEVE produzir questões completamente diferentes.
+⚠️ ATENÇÃO CRÍTICA: As 10 questões devem ser baseadas EXCLUSIVAMENTE no conteúdo acima. Não use nenhum conhecimento externo. Se um conceito não aparece no conteúdo acima, não faça questão sobre ele.
 
-ÂNGULOS OBRIGATÓRIOS para este simulado (distribua entre as 10 questões):
+SEMENTE DE VARIAÇÃO: #${seed} — use para garantir ângulos e contextos únicos, mas SEMPRE dentro do conteúdo fornecido.
+
+FORMATOS para distribuir entre as questões (escolha os mais adequados ao conteúdo):
 ${shuffledAngles.map((a, i) => `Q${i + 1}: ${a}`).join("\n")}
 
-RESTRIÇÕES DESTA VERSÃO:
-- Evite exemplos com nomes genéricos (João, Maria) — invente situações mais criativas
-- A letra correta da questão 3 deve ser "${randomLetter}"
-- Pelo menos 2 questões devem apresentar gráficos, tabelas ou dados em formato texto
-- Pelo menos 1 questão deve pedir ao aluno para identificar a afirmação INCORRETA
-- Os distradores (alternativas erradas) devem explorar os erros mais comuns que alunos da ${serie} cometem
-
-Gere um simulado de 10 questões COMPLETAMENTE ORIGINAL, com contextos e enunciados que eu nunca vi antes sobre este conteúdo.`;
+INSTRUÇÕES ADICIONAIS:
+- A letra correta da questão 3 deve ser "${randomLetter}" (se possível sem forçar)
+- Pelo menos 1 questão deve pedir para identificar a afirmação INCORRETA sobre o conteúdo
+- Os distradores devem ser erros comuns de alunos da ${serie} sobre ESTE conteúdo específico
+- Gere questões com enunciados variados — nunca repita o mesmo padrão de enunciado`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",

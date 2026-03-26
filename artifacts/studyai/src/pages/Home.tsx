@@ -24,6 +24,8 @@ import {
 import { ImageUpload } from "@/components/ImageUpload";
 import { TutorChat } from "@/components/TutorChat";
 import { SimuladoButton } from "@/components/Simulado";
+import { FlashcardsButton } from "@/components/Flashcards";
+import { PomodoroWidget } from "@/components/Pomodoro";
 import { useGenerateStudyPlan, StudyPlan, StudyPlanTopic } from "@/hooks/use-study-plan";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
@@ -737,6 +739,18 @@ export default function Home() {
                             >
                               <div className="p-6 sm:p-8 space-y-8">
 
+                                {/* Day Tools Row */}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider mr-1">Ferramentas:</span>
+                                  <FlashcardsButton
+                                    materia={planResult.materia || planResult.conteudo || "Conteúdo"}
+                                    serie={formData.serie || "Não informado"}
+                                    resumo={planResult.resumoDoConteudo || ""}
+                                    diaNumero={dia.numero}
+                                    diaTopicos={dia.topicos.map((t) => typeof t === "object" ? (t as any).nome : t).join(", ")}
+                                  />
+                                </div>
+
                                 {/* Mission */}
                                 <div className="p-5 rounded-2xl border-l-4" style={{ backgroundColor: `${diaColor}10`, borderColor: diaColor }}>
                                   <h4 className="font-black uppercase text-sm mb-2 flex items-center gap-2" style={{ color: diaColor }}>
@@ -924,6 +938,9 @@ export default function Home() {
 
         </AnimatePresence>
       </div>
+
+      {/* Floating Pomodoro Timer — appears when plan is ready */}
+      {planResult && <PomodoroWidget />}
 
       {/* Floating AI Tutor — appears when plan is ready */}
       {planResult && (

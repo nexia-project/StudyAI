@@ -22,6 +22,7 @@ import {
   Dumbbell
 } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
+import { TutorChat } from "@/components/TutorChat";
 import { useGenerateStudyPlan, StudyPlan, StudyPlanTopic } from "@/hooks/use-study-plan";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
@@ -907,6 +908,28 @@ export default function Home() {
 
         </AnimatePresence>
       </div>
+
+      {/* Floating AI Tutor — appears when plan is ready */}
+      {planResult && (
+        <TutorChat
+          plan={planResult}
+          serie={formData.serie || "Não informado"}
+          diaAtual={expandedDay ?? undefined}
+          topicosCompletos={completedCount}
+          totalTopicos={totalTopics}
+          topicosAtual={
+            expandedDay
+              ? (() => {
+                  const dia = planResult.dias.find((d) => d.numero === expandedDay);
+                  if (!dia) return [];
+                  return dia.topicos.map((t) =>
+                    typeof t === "object" ? (t as any).nome : (t as string)
+                  );
+                })()
+              : []
+          }
+        />
+      )}
     </div>
   );
 }

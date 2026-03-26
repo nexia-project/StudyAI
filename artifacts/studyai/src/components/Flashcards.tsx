@@ -1,4 +1,5 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useAuth } from "@workspace/replit-auth-web";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -64,6 +65,7 @@ export function FlashcardsModal({
   diaTopicos,
   onClose,
 }: FlashcardsProps) {
+  const { isAuthenticated } = useAuth();
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +75,23 @@ export function FlashcardsModal({
   const [unknown, setUnknown] = useState<Set<number>>(new Set());
   const [finished, setFinished] = useState(false);
   const [started, setStarted] = useState(false);
+
+  // Save flashcard session when finished
+  useEffect(() => {
+    if (!finished || !isAuthenticated || cards.length === 0) return;
+    fetch("/api/history/flashcard", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        materia,
+        diaNumero: diaNumero ?? null,
+        totalCards: cards.length,
+        known: known.size,
+        unknown: unknown.size,
+      }),
+    }).catch(() => {});
+  }, [finished]);
 
   const generate = useCallback(async () => {
     setLoading(true);

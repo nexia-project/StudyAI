@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Sparkles, 
@@ -19,14 +19,17 @@ import {
   Eye,
   EyeOff,
   Brain,
-  Dumbbell
+  Dumbbell,
+  Save
 } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { TutorChat } from "@/components/TutorChat";
 import { SimuladoButton } from "@/components/Simulado";
 import { FlashcardsButton } from "@/components/Flashcards";
 import { PomodoroWidget } from "@/components/Pomodoro";
+import { UserMenu } from "@/components/UserMenu";
 import { useGenerateStudyPlan, StudyPlan, StudyPlanTopic } from "@/hooks/use-study-plan";
+import { useAuth } from "@workspace/replit-auth-web";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 
@@ -176,6 +179,7 @@ function ChallengeCard({ desafio, color }: { desafio: { enunciado: string; gabar
 }
 
 export default function Home() {
+  const { isAuthenticated, login } = useAuth();
   const [step, setStep] = useState<"form" | "loading" | "result">("form");
   const [formData, setFormData] = useState({
     nome: "",
@@ -186,6 +190,7 @@ export default function Home() {
   });
   const [files, setFiles] = useState<File[]>([]);
   const [planResult, setPlanResult] = useState<StudyPlan | null>(null);
+  const [savedPlanId, setSavedPlanId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -197,6 +202,30 @@ export default function Home() {
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
 
   const mutation = useGenerateStudyPlan();
+
+  // Save plan to DB for authenticated users
+  const savePlanToDB = async (plan: StudyPlan) => {
+    if (!isAuthenticated) return;
+    try {
+      const res = await fetch("/api/history/plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          materia: plan.materia || formData.texto?.slice(0, 80) || "Matéria",
+          serie: formData.serie || null,
+          diasProva: plan.dias?.length || null,
+          plan,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSavedPlanId(data.id);
+      }
+    } catch {
+      // silent fail — saving history is non-critical
+    }
+  };
 
   useEffect(() => {
     let interval: any;
@@ -266,6 +295,7 @@ export default function Home() {
           setPlanResult(data.plano);
           setStep("result");
           setExpandedDay(data.plano.dias?.[0]?.numero || 1);
+          savePlanToDB(data.plano);
         } else {
           setErrorMsg("Não foi possível gerar o plano. Tente novamente.");
           setStep("form");
@@ -282,6 +312,7 @@ export default function Home() {
     setFiles([]);
     setFormData(prev => ({ ...prev, texto: "" }));
     setPlanResult(null);
+    setSavedPlanId(null);
     setErrorMsg(null);
     setStep("form");
     setCompletedTopics({});
@@ -330,6 +361,49 @@ export default function Home() {
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[100px] animate-pulse"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/20 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
+
+      {/* Floating top-right user menu */}
+      <div className="fixed top-4 right-4 z-40">
+        <UserMenu />
+      </div>
+
+      {/* Login banner after plan is generated (unauthenticated) */}
+      <AnimatePresence>
+        {step === "result" && !isAuthenticated && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-30 bg-white border border-primary/20 shadow-lg shadow-primary/10 rounded-2xl px-5 py-3 flex items-center gap-3 max-w-sm"
+          >
+            <Save className="w-4 h-4 text-primary flex-shrink-0" />
+            <p className="text-sm font-semibold text-foreground">
+              Entre para salvar seu histórico de estudos
+            </p>
+            <button
+              onClick={login}
+              className="flex-shrink-0 px-3 py-1.5 rounded-xl bg-primary text-white text-xs font-bold hover:opacity-90 transition-opacity"
+            >
+              Entrar
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Saved indicator */}
+      <AnimatePresence>
+        {savedPlanId && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-30 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-2.5 flex items-center gap-2 text-emerald-700"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            <p className="text-sm font-bold">Plano salvo no seu histórico!</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Header */}
       {step === "form" && (

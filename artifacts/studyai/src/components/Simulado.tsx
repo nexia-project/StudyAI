@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@workspace/replit-auth-web";
 import {
   X,
   Clock,
@@ -151,6 +152,7 @@ export function SimuladoButton({ plan, serie }: { plan: StudyPlan; serie: string
 }
 
 function Simulado({ plan, serie, onClose }: SimuladoProps) {
+  const { isAuthenticated } = useAuth();
   const [phase, setPhase] = useState<"loading" | "exam" | "results">("loading");
   const [simulado, setSimulado] = useState<SimuladoData | null>(null);
   const [current, setCurrent] = useState(0);
@@ -188,6 +190,27 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
       handleSubmit();
     }
   }, [timeLeft, phase, simulado, submitted, handleSubmit]);
+
+  // Save result to history when results are shown
+  useEffect(() => {
+    if (phase !== "results" || !simulado || !isAuthenticated) return;
+    const scoreVal = simulado.perguntas.filter((p) => answers[p.id] === p.correta).length;
+    const totalVal = simulado.perguntas.length;
+    const gradeVal = getGrade(scoreVal, totalVal);
+    fetch("/api/history/simulado", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        materia: (plan as any).materia || "Simulado",
+        titulo: simulado.titulo,
+        score: scoreVal,
+        total: totalVal,
+        timeTaken,
+        nota: gradeVal.nota,
+      }),
+    }).catch(() => {});
+  }, [phase]);
 
   const generateSimulado = async () => {
     try {

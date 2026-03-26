@@ -1,5 +1,27 @@
 import { useMutation } from "@tanstack/react-query";
 
+export interface StudyPlanTopicExercise {
+  pergunta: string;
+  resposta: string;
+}
+
+export interface StudyPlanTopic {
+  nome: string;
+  explicacao: string;
+  exercicio: StudyPlanTopicExercise;
+}
+
+export interface StudyPlanExercise {
+  numero: number;
+  pergunta: string;
+  gabarito: string;
+}
+
+export interface StudyPlanChallenge {
+  enunciado: string;
+  gabarito: string;
+}
+
 export interface StudyPlanDay {
   numero: number;
   titulo: string;
@@ -7,10 +29,11 @@ export interface StudyPlanDay {
   xp: number;
   cor: string;
   missao: string;
-  topicos: string[];
+  topicos: StudyPlanTopic[] | string[];
+  exerciciosDoDia?: StudyPlanExercise[];
   atividade: string;
   dica: string;
-  desafio: string;
+  desafio: StudyPlanChallenge | string;
   tempoEstimado: string;
 }
 
@@ -47,26 +70,25 @@ export function useGenerateStudyPlan() {
         method: "POST",
         body: formData,
       });
-      
+
       const data = await res.json();
-      
+
       if (!res.ok) {
         throw new Error(data.erro || "Ocorreu um erro ao processar sua solicitação.");
       }
-      
+
       if (data.erro) {
         throw new Error(data.erro);
       }
-      
-      // If plano is a string (legacy), parse it, else it should be the object already
-      if (typeof data.plano === 'string') {
+
+      if (typeof data.plano === "string") {
         try {
-           data.plano = JSON.parse(data.plano);
+          data.plano = JSON.parse(data.plano);
         } catch (e) {
-           console.error("Failed to parse plano string to JSON", e);
+          console.error("Failed to parse plano string to JSON", e);
         }
       }
-      
+
       return data;
     },
   });

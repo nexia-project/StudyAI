@@ -15,10 +15,14 @@ import {
   Star,
   Target,
   Zap,
-  Rocket
+  Rocket,
+  Eye,
+  EyeOff,
+  Brain,
+  Dumbbell
 } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
-import { useGenerateStudyPlan, StudyPlan } from "@/hooks/use-study-plan";
+import { useGenerateStudyPlan, StudyPlan, StudyPlanTopic } from "@/hooks/use-study-plan";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 
@@ -54,6 +58,117 @@ function triggerConfetti() {
     origin: { y: 0.6 },
     colors: ['#8B5CF6', '#D946EF', '#F59E0B', '#10B981']
   });
+}
+
+function TopicAnswerReveal({ answer, color }: { answer: string; color: string }) {
+  const [revealed, setRevealed] = useState(false);
+  return (
+    <div className="border-t border-primary/10">
+      {revealed ? (
+        <div className="px-4 py-3 space-y-2">
+          <p className="text-sm text-foreground leading-relaxed">{answer}</p>
+          <button
+            onClick={() => setRevealed(false)}
+            className="text-xs text-muted-foreground flex items-center gap-1 hover:text-foreground transition-colors"
+          >
+            <EyeOff className="w-3 h-3" /> Ocultar resposta
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setRevealed(true)}
+          className="w-full px-4 py-2.5 flex items-center gap-2 text-sm font-semibold transition-colors hover:bg-primary/5"
+          style={{ color }}
+        >
+          <Eye className="w-4 h-4" /> Ver resposta
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ExerciseCard({ exercise, color, index }: { exercise: { numero: number; pergunta: string; gabarito: string }; color: string; index: number }) {
+  const [revealed, setRevealed] = useState(false);
+  return (
+    <div className="rounded-2xl border-2 border-border bg-white overflow-hidden">
+      <div className="p-4 flex items-start gap-3">
+        <div
+          className="w-8 h-8 rounded-full flex items-center justify-center font-black text-white text-sm flex-shrink-0"
+          style={{ backgroundColor: color }}
+        >
+          {index + 1}
+        </div>
+        <p className="text-base font-medium text-foreground pt-0.5">{exercise.pergunta}</p>
+      </div>
+      <div className="border-t border-border">
+        {revealed ? (
+          <div className="p-4 bg-emerald-50 space-y-2">
+            <p className="text-sm font-semibold text-emerald-700 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4" /> Gabarito
+            </p>
+            <p className="text-sm text-emerald-900 leading-relaxed">{exercise.gabarito}</p>
+            <button
+              onClick={() => setRevealed(false)}
+              className="text-xs text-emerald-600 flex items-center gap-1 hover:text-emerald-800 transition-colors"
+            >
+              <EyeOff className="w-3 h-3" /> Ocultar gabarito
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setRevealed(true)}
+            className="w-full px-4 py-3 flex items-center gap-2 text-sm font-semibold text-emerald-600 hover:bg-emerald-50 transition-colors"
+          >
+            <Eye className="w-4 h-4" /> Ver gabarito
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ChallengeCard({ desafio, color }: { desafio: { enunciado: string; gabarito: string } | string; color: string }) {
+  const [revealed, setRevealed] = useState(false);
+  const isObj = typeof desafio === "object" && desafio !== null;
+  const enunciado = isObj ? (desafio as { enunciado: string; gabarito: string }).enunciado : (desafio as string);
+  const gabarito = isObj ? (desafio as { enunciado: string; gabarito: string }).gabarito : null;
+
+  return (
+    <div className="bg-gray-900 text-white rounded-2xl overflow-hidden relative">
+      <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/20 blur-[50px] rounded-full pointer-events-none"></div>
+      <div className="p-6 relative z-10">
+        <h4 className="font-black text-red-400 mb-3 uppercase tracking-widest text-sm flex items-center gap-2">
+          <Zap className="w-4 h-4" /> Desafio Bônus
+        </h4>
+        <p className="font-bold text-lg mb-4">{enunciado}</p>
+        {gabarito && (
+          <>
+            {revealed ? (
+              <div className="bg-white/10 rounded-xl p-4 space-y-2">
+                <p className="text-sm font-semibold text-yellow-300 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" /> Solução
+                </p>
+                <p className="text-sm text-gray-200 leading-relaxed">{gabarito}</p>
+                <button
+                  onClick={() => setRevealed(false)}
+                  className="text-xs text-gray-400 flex items-center gap-1 hover:text-white transition-colors"
+                >
+                  <EyeOff className="w-3 h-3" /> Ocultar solução
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setRevealed(true)}
+                className="flex items-center gap-2 text-sm font-semibold text-yellow-300 hover:text-yellow-100 transition-colors"
+              >
+                <Eye className="w-4 h-4" /> Ver solução do desafio
+              </button>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function Home() {
@@ -160,7 +275,7 @@ export default function Home() {
   };
 
   const handleReset = () => {
-    setFile(null);
+    setFiles([]);
     setFormData(prev => ({ ...prev, texto: "" }));
     setPlanResult(null);
     setErrorMsg(null);
@@ -619,7 +734,7 @@ export default function Home() {
                               className="border-t border-border bg-[#fafafa]"
                             >
                               <div className="p-6 sm:p-8 space-y-8">
-                                
+
                                 {/* Mission */}
                                 <div className="p-5 rounded-2xl border-l-4" style={{ backgroundColor: `${diaColor}10`, borderColor: diaColor }}>
                                   <h4 className="font-black uppercase text-sm mb-2 flex items-center gap-2" style={{ color: diaColor }}>
@@ -628,45 +743,88 @@ export default function Home() {
                                   <p className="text-lg font-medium">{dia.missao}</p>
                                 </div>
 
-                                {/* Topics Checkboxes */}
+                                {/* Topics with explanations */}
                                 <div>
-                                  <h4 className="font-black text-xl mb-4 text-foreground">Tópicos para Dominar</h4>
-                                  <div className="space-y-3">
+                                  <h4 className="font-black text-xl mb-4 text-foreground flex items-center gap-2">
+                                    <Brain className="w-6 h-6" style={{ color: diaColor }} /> Tópicos para Dominar
+                                  </h4>
+                                  <div className="space-y-4">
                                     {dia.topicos.map((topico, idx) => {
+                                      const isObj = typeof topico === "object" && topico !== null;
+                                      const topicoObj = isObj ? (topico as StudyPlanTopic) : null;
+                                      const nome = isObj ? topicoObj!.nome : (topico as string);
                                       const isChecked = !!completedTopics[`${dia.numero}-${idx}`];
+
                                       return (
-                                        <label 
+                                        <div
                                           key={idx}
                                           className={cn(
-                                            "flex items-start gap-4 p-4 rounded-xl cursor-pointer transition-all border-2",
-                                            isChecked ? "bg-white border-emerald-500/30 shadow-sm" : "bg-white border-transparent hover:border-border hover:shadow-sm"
+                                            "rounded-2xl border-2 overflow-hidden transition-all",
+                                            isChecked ? "border-emerald-300 bg-emerald-50/50" : "border-border bg-white"
                                           )}
                                         >
-                                          <div className="relative flex items-center justify-center pt-0.5">
-                                            <input 
-                                              type="checkbox"
-                                              className="peer sr-only"
-                                              checked={isChecked}
-                                              onChange={() => toggleTopic(dia.numero, idx)}
-                                            />
-                                            <div className={cn(
-                                              "w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors",
-                                              isChecked ? "bg-emerald-500 border-emerald-500" : "bg-white border-muted-foreground/30 peer-hover:border-primary"
-                                            )}>
-                                              <CheckCircle2 className={cn("w-4 h-4 text-white transition-transform scale-0", isChecked && "scale-100")} strokeWidth={4} />
+                                          {/* Topic header - checkbox */}
+                                          <label className="flex items-start gap-4 p-4 cursor-pointer">
+                                            <div className="relative flex items-center justify-center pt-0.5 flex-shrink-0">
+                                              <input
+                                                type="checkbox"
+                                                className="peer sr-only"
+                                                checked={isChecked}
+                                                onChange={() => toggleTopic(dia.numero, idx)}
+                                              />
+                                              <div className={cn(
+                                                "w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors",
+                                                isChecked ? "bg-emerald-500 border-emerald-500" : "bg-white border-muted-foreground/30"
+                                              )}>
+                                                <CheckCircle2 className={cn("w-4 h-4 text-white transition-transform scale-0", isChecked && "scale-100")} strokeWidth={4} />
+                                              </div>
                                             </div>
-                                          </div>
-                                          <span className={cn(
-                                            "text-lg font-medium transition-colors pt-0.5",
-                                            isChecked ? "text-muted-foreground line-through decoration-2 decoration-emerald-500/50" : "text-foreground"
-                                          )}>
-                                            {topico}
-                                          </span>
-                                        </label>
+                                            <span className={cn(
+                                              "text-lg font-bold transition-colors pt-0.5 flex-1",
+                                              isChecked ? "text-muted-foreground line-through" : "text-foreground"
+                                            )}>
+                                              {nome}
+                                            </span>
+                                          </label>
+
+                                          {/* Explanation */}
+                                          {topicoObj?.explicacao && (
+                                            <div className="px-4 pb-4 space-y-3">
+                                              <p className="text-sm text-muted-foreground leading-relaxed bg-secondary/50 rounded-xl p-3">
+                                                {topicoObj.explicacao}
+                                              </p>
+
+                                              {/* Mini exercise */}
+                                              {topicoObj.exercicio && (
+                                                <div className="rounded-xl border border-primary/20 bg-primary/5 overflow-hidden">
+                                                  <div className="px-4 py-3 flex items-start gap-3">
+                                                    <Dumbbell className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: diaColor }} />
+                                                    <p className="text-sm font-semibold text-foreground">{topicoObj.exercicio.pergunta}</p>
+                                                  </div>
+                                                  <TopicAnswerReveal answer={topicoObj.exercicio.resposta} color={diaColor} />
+                                                </div>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
                                       );
                                     })}
                                   </div>
                                 </div>
+
+                                {/* Exercises of the day */}
+                                {dia.exerciciosDoDia && dia.exerciciosDoDia.length > 0 && (
+                                  <div>
+                                    <h4 className="font-black text-xl mb-4 text-foreground flex items-center gap-2">
+                                      <Dumbbell className="w-6 h-6" style={{ color: diaColor }} /> Exercícios do Dia
+                                    </h4>
+                                    <div className="space-y-4">
+                                      {dia.exerciciosDoDia.map((ex, idx) => (
+                                        <ExerciseCard key={idx} exercise={ex} color={diaColor} index={idx} />
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                   {/* Action / Practical */}
@@ -688,13 +846,7 @@ export default function Home() {
 
                                 {/* Bonus Challenge */}
                                 {dia.desafio && (
-                                  <div className="bg-gray-900 text-white p-6 rounded-2xl relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/20 blur-[50px] rounded-full"></div>
-                                    <h4 className="font-black text-red-400 mb-2 uppercase tracking-widest text-sm flex items-center gap-2">
-                                      <Zap className="w-4 h-4" /> Desafio Bônus
-                                    </h4>
-                                    <p className="font-bold text-lg relative z-10">{dia.desafio}</p>
-                                  </div>
+                                  <ChallengeCard desafio={dia.desafio} color={diaColor} />
                                 )}
 
                               </div>

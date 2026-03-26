@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "StudyAI"
+version = "1.0.0"
+id = "artifacts/studyai"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18459
+
+[services.development]
+run = "pnpm --filter @workspace/studyai run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/studyai", "run", "build" ]
+publicDir = "artifacts/studyai/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18459"
+BASE_PATH = "/"

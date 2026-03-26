@@ -1,0 +1,337 @@
+const express = require("express");
+const multer = require("multer");
+const cors = require("cors");
+const OpenAI = require("openai");
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const upload = multer({ storage: multer.memoryStorage() });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// =============================================
+//  ROTA PRINCIPAL — Analisa imagem ou texto
+// =============================================
+app.post("/analisar", upload.single("file"), async (req, res) => {
+  try {
+    const { nome, serie, tempo, dificuldades, texto } = req.body;
+
+    const perfil = `
+      - Nome: ${nome || "Aluno"}
+      - Série: ${serie || "Não informado"}
+      - Tempo disponível por dia: ${tempo || "1 hora"}
+      - Dificuldades: ${dificuldades || "Nenhuma informada"}
+    `;
+
+    let messages;
+
+    if (req.file) {
+      // Converte imagem para base64
+      const base64 = req.file.buffer.toString("base64");
+      const mimeType = req.file.mimetype;
+
+      messages = [
+        {
+          role: "system",
+          content:
+            "Você é uma IA tutora educacional. Analise o conteúdo e crie um plano de estudos personalizado em português, formatado em Markdown de forma clara e organizada.",
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:${mimeType};base64,${base64}`,
+              },
+            },
+            {
+              type: "text",
+              text: `Analise esta imagem de conteúdo escolar.\n\nPerfil do aluno:\n${perfil}\n\nCrie um plano de estudos personalizado com:\n- Matéria e tópicos identificados\n- Plano dia a dia (use os dias disponíveis)\n- Atividades práticas para cada dia\n- Dicas de memorização\n- Mensagem motivacional personalizada para ${nome || "o aluno"}`,
+            },
+          ],
+        },
+      ];
+    } else if (texto) {
+      messages = [
+        {
+          role: "system",
+          content:
+            "Você é uma IA tutora educacional. Analise o conteúdo e crie um plano de estudos personalizado em português, formatado em Markdown.",
+        },
+        {
+          role: "user",
+          content: `Conteúdo enviado pelo aluno:\n${texto}\n\nPerfil do aluno:\n${perfil}\n\nCrie um plano de estudos personalizado com:\n- Matéria e tópicos identificados\n- Plano dia a dia\n- Atividades práticas\n- Dicas de memorização\n- Mensagem motivacional personalizada para ${nome || "o aluno"}`,
+        },
+      ];
+    } else {
+      return res
+        .status(400)
+        .json({ erro: "Envie uma imagem ou texto para análise." });
+    }
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages,
+      max_tokens: 2000,
+    });
+
+    res.json({ plano: response.choices[0].message.content });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ erro: "Erro ao processar: " + error.message });
+  }
+});
+
+// =============================================
+//  FRONTEND — Interface HTML completa
+// =============================================
+app.get("/", (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StudyAI 🎓</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh; padding: 20px;
+    }
+    .container {
+      max-width: 800px; margin: 0 auto;
+      background: white; border-radius: 24px;
+      padding: 40px; box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+    }
+    h1 { text-align: center; color: #5b21b6; font-size: 2rem; margin-bottom: 8px; }
+    .subtitle { text-align: center; color: #7c3aed; margin-bottom: 30px; font-size: 0.95rem; }
+    .section { margin-bottom: 20px; }
+    label { display: block; font-weight: 600; color: #374151; margin-bottom: 6px; }
+    input, select, textarea {
+      width: 100%; padding: 12px 16px; border: 2px solid #e5e7eb;
+      border-radius: 12px; font-size: 0.95rem; transition: border 0.2s;
+      font-family: inherit;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: #7c3aed;
+    }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .upload-area {
+      border: 2px dashed #7c3aed; border-radius: 16px;
+      padding: 30px; text-align: center; cursor: pointer;
+      transition: all 0.2s; background: #faf5ff;
+      position: relative;
+    }
+    .upload-area:hover { background: #ede9fe; }
+    .upload-area input[type="file"] {
+      position: absolute; inset: 0; opacity: 0;
+      cursor: pointer; width: 100%; height: 100%;
+    }
+    .upload-icon { font-size: 2.5rem; margin-bottom: 8px; }
+    .preview-img {
+      max-width: 100%; border-radius: 12px;
+      margin-top: 16px; display: none;
+    }
+    .divider {
+      text-align: center; margin: 20px 0;
+      color: #9ca3af; font-weight: 600; font-size: 0.9rem;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; border-top: 1px solid #e5e7eb;
+    }
+    button {
+      width: 100%; padding: 16px; background: linear-gradient(135deg, #7c3aed, #5b21b6);
+      color: white; border: none; border-radius: 14px;
+      font-size: 1.1rem; font-weight: 700; cursor: pointer;
+      transition: all 0.2s; margin-top: 10px;
+    }
+    button:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(124,58,237,0.4); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .loading {
+      display: none; text-align: center;
+      padding: 30px; color: #7c3aed;
+    }
+    .spinner {
+      width: 50px; height: 50px; border: 4px solid #ede9fe;
+      border-top-color: #7c3aed; border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .result {
+      display: none; margin-top: 30px; padding: 24px;
+      background: #faf5ff; border-radius: 16px;
+      border-left: 4px solid #7c3aed;
+    }
+    .result h2 { color: #5b21b6; margin-bottom: 16px; }
+    .result-content { line-height: 1.7; color: #374151; }
+    .result-content h1,.result-content h2,.result-content h3 {
+      color: #5b21b6; margin: 16px 0 8px;
+    }
+    .result-content ul,.result-content ol {
+      padding-left: 20px; margin: 8px 0;
+    }
+    .result-content li { margin-bottom: 4px; }
+    .result-content strong { color: #7c3aed; }
+    .result-content hr { border-color: #ddd6fe; margin: 16px 0; }
+    .tag {
+      display: inline-block; background: #ede9fe;
+      color: #7c3aed; padding: 4px 12px; border-radius: 20px;
+      font-size: 0.8rem; font-weight: 600; margin-bottom: 16px;
+    }
+    .new-btn {
+      background: #10b981; margin-top: 16px;
+    }
+    .new-btn:hover { box-shadow: 0 8px 25px rgba(16,185,129,0.4); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎓 StudyAI</h1>
+    <p class="subtitle">Envie seu conteúdo e receba um plano de estudos personalizado com IA</p>
+
+    <div id="form-area">
+      <!-- Perfil do Aluno -->
+      <div class="section">
+        <label>👤 Dados do Aluno</label>
+        <div class="grid">
+          <input type="text" id="nome" placeholder="Seu nome" />
+          <select id="serie">
+            <option value="">Selecione a série</option>
+            <option>1º Ano - Fundamental</option>
+            <option>2º Ano - Fundamental</option>
+            <option>3º Ano - Fundamental</option>
+            <option>4º Ano - Fundamental</option>
+            <option>5º Ano - Fundamental</option>
+            <option>6º Ano - Fundamental</option>
+            <option>7º Ano - Fundamental</option>
+            <option>8º Ano - Fundamental</option>
+            <option>9º Ano - Fundamental</option>
+            <option>1º Ano - Médio</option>
+            <option>2º Ano - Médio</option>
+            <option>3º Ano - Médio</option>
+            <option>Faculdade / Outro</option>
+          </select>
+        </div>
+        <div class="grid" style="margin-top:12px">
+          <input type="text" id="tempo" placeholder="⏱️ Tempo por dia (ex: 2 horas)" />
+          <input type="text" id="dificuldades" placeholder="⚠️ Dificuldades (ex: frações)" />
+        </div>
+      </div>
+
+      <!-- Upload de Imagem -->
+      <div class="section">
+        <label>📷 Enviar Foto do Conteúdo</label>
+        <div class="upload-area" id="uploadArea">
+          <input type="file" id="fileInput" accept="image/*" onchange="previewImage(this)" />
+          <div class="upload-icon">📸</div>
+          <p style="color:#7c3aed;font-weight:600">Clique ou arraste uma imagem aqui</p>
+          <p style="color:#9ca3af;font-size:0.85rem;margin-top:4px">Foto do caderno, livro, apostila ou exercício</p>
+        </div>
+        <img id="preview" class="preview-img" alt="Preview" />
+      </div>
+
+      <div class="divider">ou escreva o conteúdo</div>
+
+      <!-- Texto -->
+      <div class="section">
+        <label>✍️ Conteúdo por Escrito</label>
+        <textarea id="texto" rows="5" placeholder="Cole ou escreva aqui o conteúdo que deseja estudar...
+Ex: Equações do 2º grau, fórmula de Bhaskara..."></textarea>
+      </div>
+
+      <button onclick="analisar()" id="btn">✨ Gerar Meu Plano de Estudos</button>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p style="font-weight:600;font-size:1.1rem">A IA está criando seu plano...</p>
+      <p style="color:#9ca3af;margin-top:8px">Analisando conteúdo e personalizando para você 🧠</p>
+    </div>
+
+    <!-- Resultado -->
+    <div class="result" id="result">
+      <span class="tag">✅ Plano Gerado com Sucesso</span>
+      <h2>📚 Seu Plano de Estudos Personalizado</h2>
+      <div class="result-content" id="result-content"></div>
+      <button class="new-btn" onclick="novaAnalise()">🔄 Enviar Novo Conteúdo</button>
+    </div>
+  </div>
+
+  <script>
+    function previewImage(input) {
+      const preview = document.getElementById('preview');
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          preview.src = e.target.result;
+          preview.style.display = 'block';
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    async function analisar() {
+      const nome = document.getElementById('nome').value;
+      const serie = document.getElementById('serie').value;
+      const tempo = document.getElementById('tempo').value;
+      const dificuldades = document.getElementById('dificuldades').value;
+      const texto = document.getElementById('texto').value;
+      const file = document.getElementById('fileInput').files[0];
+
+      if (!texto && !file) {
+        alert('⚠️ Envie uma imagem ou escreva o conteúdo!');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('nome', nome);
+      formData.append('serie', serie);
+      formData.append('tempo', tempo);
+      formData.append('dificuldades', dificuldades);
+      if (file) formData.append('file', file);
+      if (texto) formData.append('texto', texto);
+
+      document.getElementById('form-area').style.display = 'none';
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('result').style.display = 'none';
+
+      try {
+        const res = await fetch('/analisar', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        document.getElementById('loading').style.display = 'none';
+
+        if (data.plano) {
+          document.getElementById('result-content').innerHTML = marked.parse(data.plano);
+          document.getElementById('result').style.display = 'block';
+        } else {
+          alert('Erro: ' + (data.erro || 'Tente novamente'));
+          document.getElementById('form-area').style.display = 'block';
+        }
+      } catch (e) {
+        alert('Erro de conexão. Tente novamente.');
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('form-area').style.display = 'block';
+      }
+    }
+
+    function novaAnalise() {
+      document.getElementById('result').style.display = 'none';
+      document.getElementById('form-area').style.display = 'block';
+      document.getElementById('fileInput').value = '';
+      document.getElementById('preview').style.display = 'none';
+      document.getElementById('texto').value = '';
+    }
+  </script>
+</body>
+</html>`);
+});
+
+app.listen(3000, () => console.log("🎓 StudyAI rodando na porta 3000"));

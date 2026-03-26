@@ -1,0 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Outfit:wght@100..900&display=swap');
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme inline {
+  --font-sans: 'DM Sans', sans-serif;
+  --font-display: 'Outfit', sans-serif;
+
+  --color-background: hsl(270 50% 98%);
+  --color-foreground: hsl(270 50% 10%);
+  
+  --color-primary: hsl(262 83% 58%); /* Vibrant Purple */
+  --color-primary-foreground: hsl(210 40% 98%);
+  
+  --color-secondary: hsl(270 50% 95%);
+  --color-secondary-foreground: hsl(262 83% 40%);
+  
+  --color-muted: hsl(270 20% 92%);
+  --color-muted-foreground: hsl(270 10% 45%);
+  
+  --color-accent: hsl(280 80% 65%);
+  --color-accent-foreground: hsl(210 40% 98%);
+  
+  --color-destructive: hsl(0 84% 60%);
+  --color-destructive-foreground: hsl(210 40% 98%);
+  
+  --color-border: hsl(270 30% 88%);
+  --color-ring: hsl(262 83% 58%);
+  
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(270 50% 10%);
+}
+
+:root {
+  --background: 270 50% 98%;
+  --foreground: 270 50% 10%;
+  --primary: 262 83% 58%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 270 50% 95%;
+  --secondary-foreground: 262 83% 40%;
+  --muted: 270 20% 92%;
+  --muted-foreground: 270 10% 45%;
+  --accent: 280 80% 65%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 270 30% 88%;
+  --ring: 262 83% 58%;
+  --card: 0 0% 100%;
+  --card-foreground: 270 50% 10%;
+  --radius: 1rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased text-foreground bg-[#faf5ff];
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(262, 83%, 58%, 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, hsla(280, 80%, 65%, 0.15) 0px, transparent 50%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    @apply font-bold tracking-tight;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-xl border border-white/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)];
+  }
+  
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
+  }
+}

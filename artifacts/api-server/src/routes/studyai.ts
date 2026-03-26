@@ -58,7 +58,7 @@ type ContentPart =
   | { type: "text"; text: string }
   | { type: "image_url"; image_url: { url: string } };
 
-router.post("/analisar", upload.single("file"), async (req, res) => {
+router.post("/analisar", upload.array("files", 10), async (req, res) => {
   try {
     const { nome, serie, tempo, dificuldades, texto } = req.body as {
       nome?: string;
@@ -75,22 +75,21 @@ router.post("/analisar", upload.single("file"), async (req, res) => {
       - Dificuldades: ${dificuldades || "Nenhuma informada"}
     `;
 
+    const files = req.files as Express.Multer.File[] | undefined;
     let aiResponse: string | null = null;
 
-    if (req.file) {
-      const base64 = req.file.buffer.toString("base64");
-      const mimeType = req.file.mimetype;
+    if (files && files.length > 0) {
+      const content: ContentPart[] = files.map((file) => ({
+        type: "image_url",
+        image_url: {
+          url: `data:${file.mimetype};base64,${file.buffer.toString("base64")}`,
+        },
+      }));
 
-      const content: ContentPart[] = [
-        {
-          type: "image_url",
-          image_url: { url: `data:${mimeType};base64,${base64}` },
-        },
-        {
-          type: "text",
-          text: `Analise esta imagem de conteúdo escolar e crie um plano de estudos gamificado.\n\nPerfil do aluno:\n${perfil}`,
-        },
-      ];
+      content.push({
+        type: "text",
+        text: `Analise ${files.length > 1 ? "estas imagens" : "esta imagem"} de conteúdo escolar e crie um plano de estudos gamificado.\n\nPerfil do aluno:\n${perfil}`,
+      });
 
       const response = await openai.chat.completions.create({
         model: "gpt-4o",

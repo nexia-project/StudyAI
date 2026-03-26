@@ -65,7 +65,7 @@ export default function Home() {
     dificuldades: "",
     texto: "",
   });
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [planResult, setPlanResult] = useState<StudyPlan | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
@@ -125,7 +125,7 @@ export default function Home() {
   };
 
   const handleSubmit = async () => {
-    if (!file && !formData.texto.trim()) {
+    if (files.length === 0 && !formData.texto.trim()) {
       setErrorMsg("Por favor, envie uma imagem do material ou digite o conteúdo.");
       return;
     }
@@ -139,7 +139,7 @@ export default function Home() {
     if (formData.tempo) submitData.append("tempo", formData.tempo);
     if (formData.dificuldades) submitData.append("dificuldades", formData.dificuldades);
     if (formData.texto) submitData.append("texto", formData.texto);
-    if (file) submitData.append("file", file);
+    files.forEach((f) => submitData.append("files", f));
 
     mutation.mutate(submitData, {
       onSuccess: (data) => {
@@ -331,8 +331,8 @@ export default function Home() {
 
                   <div className="space-y-8">
                     <ImageUpload 
-                      selectedFile={file} 
-                      onFileSelect={setFile} 
+                      selectedFiles={files} 
+                      onFilesSelect={setFiles} 
                     />
 
                     <div className="flex items-center gap-4">

@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { TutorChat } from "@/components/TutorChat";
+import { SimuladoButton } from "@/components/Simulado";
 import { useGenerateStudyPlan, StudyPlan, StudyPlanTopic } from "@/hooks/use-study-plan";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
@@ -902,6 +903,21 @@ export default function Home() {
                   </div>
                 </div>
               )}
+
+              {/* SIMULADO CTA */}
+              <div className="mt-10 rounded-[2.5rem] bg-gradient-to-br from-gray-900 to-gray-800 p-8 sm:p-10 flex flex-col sm:flex-row items-center gap-6 text-white overflow-hidden relative">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-red-500/20 blur-[80px] rounded-full pointer-events-none" />
+                <div className="relative z-10 flex-1 text-center sm:text-left">
+                  <p className="text-sm font-black uppercase tracking-widest text-red-400 mb-2">🎯 Hora da Verdade</p>
+                  <h3 className="text-2xl sm:text-3xl font-black mb-2">Teste seu conhecimento</h3>
+                  <p className="text-gray-400 text-sm max-w-md">
+                    10 questões cronometradas no estilo da sua prova. Com gabarito comentado e nota estimada no final.
+                  </p>
+                </div>
+                <div className="relative z-10 flex-shrink-0">
+                  <SimuladoButton plan={planResult} serie={formData.serie || "Não informado"} />
+                </div>
+              </div>
 
             </motion.div>
           )}

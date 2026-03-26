@@ -6,7 +6,12 @@ import pdfParse from "pdf-parse/lib/pdf-parse.js";
 import mammoth from "mammoth";
 
 const router: IRouter = Router();
-const upload = multer({ storage: multer.memoryStorage() });
+// Use .any() to avoid "Unexpected field" errors with strict field-name matching;
+// we filter uploaded files ourselves in the handler.
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB per file
+});
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -139,7 +144,16 @@ async function extractTextFromFile(file: Express.Multer.File): Promise<string | 
   return null;
 }
 
-router.post("/analisar", upload.array("files", 10), async (req, res) => {
+router.post("/analisar", (req, res, next) => {
+  upload.any()(req, res, (err) => {
+    if (err) {
+      req.log?.error({ err }, "Multer error");
+      res.status(400).json({ erro: `Erro no upload: ${(err as Error).message}` });
+      return;
+    }
+    next();
+  });
+}, async (req, res) => {
   try {
     const { nome, serie, tempo, dificuldades, texto } = req.body as {
       nome?: string;

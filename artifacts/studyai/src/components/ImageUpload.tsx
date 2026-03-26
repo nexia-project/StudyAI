@@ -1,5 +1,5 @@
 import { useState, useRef, ChangeEvent } from "react";
-import { UploadCloud, Image as ImageIcon, X, Plus } from "lucide-react";
+import { UploadCloud, Image as ImageIcon, X, Plus, FileText, FileType2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ImageUploadProps {
@@ -7,27 +7,85 @@ interface ImageUploadProps {
   selectedFiles: File[];
 }
 
+type FileKind = "image" | "pdf" | "word" | "unknown";
+
+function getFileKind(file: File): FileKind {
+  if (file.type.startsWith("image/")) return "image";
+  if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) return "pdf";
+  if (
+    file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    file.type === "application/msword" ||
+    file.name.toLowerCase().endsWith(".docx") ||
+    file.name.toLowerCase().endsWith(".doc")
+  )
+    return "word";
+  return "unknown";
+}
+
+function FileIcon({ kind, className }: { kind: FileKind; className?: string }) {
+  if (kind === "pdf") return <FileType2 className={cn("text-red-500", className)} />;
+  if (kind === "word") return <FileText className={cn("text-blue-500", className)} />;
+  return <ImageIcon className={cn("text-muted-foreground", className)} />;
+}
+
+function fileSizeLabel(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+const ACCEPTED_TYPES = [
+  "image/*",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".pdf",
+  ".doc",
+  ".docx",
+].join(",");
+
+const KIND_LABELS: Record<FileKind, string> = {
+  image: "Imagem",
+  pdf: "PDF",
+  word: "Word",
+  unknown: "Arquivo",
+};
+
+const KIND_BADGE: Record<FileKind, string> = {
+  image: "bg-purple-100 text-purple-700",
+  pdf: "bg-red-100 text-red-700",
+  word: "bg-blue-100 text-blue-700",
+  unknown: "bg-gray-100 text-gray-600",
+};
+
 export function ImageUpload({ onFilesSelect, selectedFiles }: ImageUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
-  const [previews, setPreviews] = useState<string[]>([]);
+  const [previews, setPreviews] = useState<(string | null)[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const processFiles = (incoming: File[]) => {
-    const images = incoming.filter((f) => f.type.startsWith("image/"));
-    if (images.length === 0) {
-      alert("Por favor, envie apenas imagens.");
-      return;
-    }
+    const valid = incoming.filter((f) => getFileKind(f) !== "unknown");
+    const invalid = incoming.filter((f) => getFileKind(f) === "unknown");
 
-    const merged = [...selectedFiles, ...images];
+    if (invalid.length > 0) {
+      alert(`Formato não suportado: ${invalid.map((f) => f.name).join(", ")}\n\nUse: imagens, PDF ou Word (.docx/.doc)`);
+    }
+    if (valid.length === 0) return;
+
+    const merged = [...selectedFiles, ...valid];
     onFilesSelect(merged);
 
-    images.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setPreviews((prev) => [...prev, e.target?.result as string]);
-      };
-      reader.readAsDataURL(file);
+    valid.forEach((file) => {
+      const kind = getFileKind(file);
+      if (kind === "image") {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setPreviews((prev) => [...prev, e.target?.result as string]);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setPreviews((prev) => [...prev, null]);
+      }
     });
   };
 
@@ -87,53 +145,65 @@ export function ImageUpload({ onFilesSelect, selectedFiles }: ImageUploadProps) 
         type="file"
         ref={inputRef}
         onChange={handleChange}
-        accept="image/*"
+        accept={ACCEPTED_TYPES}
         multiple
         className="hidden"
       />
 
       {hasFiles ? (
         <div className="p-4 space-y-3">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {selectedFiles.map((file, index) => (
-              <div
-                key={index}
-                className="relative rounded-xl overflow-hidden aspect-square bg-secondary"
-              >
-                {previews[index] ? (
-                  <img
-                    src={previews[index]}
-                    alt={file.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <ImageIcon className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                )}
-                <div className="absolute inset-x-0 bottom-0 bg-black/60 px-2 py-1">
-                  <p className="text-white text-xs truncate">{file.name}</p>
-                </div>
-                <button
-                  onClick={(e) => removeFile(index, e)}
-                  className="absolute top-1.5 right-1.5 p-1 bg-black/60 hover:bg-destructive text-white rounded-full transition-colors"
+          <div className="space-y-2">
+            {selectedFiles.map((file, index) => {
+              const kind = getFileKind(file);
+              const preview = previews[index];
+              return (
+                <div
+                  key={index}
+                  className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 p-3 shadow-sm"
                 >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
+                  {/* Thumbnail or icon */}
+                  <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-gray-50 flex items-center justify-center">
+                    {preview ? (
+                      <img src={preview} alt={file.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <FileIcon kind={kind} className="w-7 h-7" />
+                    )}
+                  </div>
 
-            <button
-              onClick={() => inputRef.current?.click()}
-              className="aspect-square rounded-xl border-2 border-dashed border-primary/40 hover:border-primary hover:bg-primary/5 flex flex-col items-center justify-center gap-1 text-primary transition-all duration-200 cursor-pointer"
-            >
-              <Plus className="w-6 h-6" />
-              <span className="text-xs font-medium">Adicionar</span>
-            </button>
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-800 truncate">{file.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className={cn("text-xs font-bold px-2 py-0.5 rounded-full", KIND_BADGE[kind])}>
+                        {KIND_LABELS[kind]}
+                      </span>
+                      <span className="text-xs text-gray-400">{fileSizeLabel(file.size)}</span>
+                    </div>
+                  </div>
+
+                  {/* Remove */}
+                  <button
+                    onClick={(e) => removeFile(index, e)}
+                    className="flex-shrink-0 p-1.5 bg-gray-100 hover:bg-red-100 hover:text-red-600 text-gray-500 rounded-full transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
 
+          {/* Add more */}
+          <button
+            onClick={() => inputRef.current?.click()}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-primary/30 hover:border-primary hover:bg-primary/5 text-primary font-semibold text-sm transition-all duration-200"
+          >
+            <Plus className="w-4 h-4" />
+            Adicionar mais arquivos
+          </button>
+
           <p className="text-center text-xs text-muted-foreground">
-            {selectedFiles.length} imagem{selectedFiles.length !== 1 ? "ns" : ""} selecionada{selectedFiles.length !== 1 ? "s" : ""}
+            {selectedFiles.length} arquivo{selectedFiles.length !== 1 ? "s" : ""} selecionado{selectedFiles.length !== 1 ? "s" : ""}
           </p>
         </div>
       ) : (
@@ -145,11 +215,23 @@ export function ImageUpload({ onFilesSelect, selectedFiles }: ImageUploadProps) 
             <UploadCloud className="w-8 h-8" />
           </div>
           <h3 className="text-lg font-semibold text-foreground mb-1">
-            Envie fotos do seu material
+            Envie seu material de estudo
           </h3>
-          <p className="text-sm text-muted-foreground max-w-xs">
-            Clique ou arraste uma ou mais imagens do seu caderno, livro ou quadro negro.
+          <p className="text-sm text-muted-foreground max-w-xs mb-4">
+            Clique ou arraste arquivos aqui
           </p>
+          {/* Supported formats badges */}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <span className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-purple-100 text-purple-700">
+              <ImageIcon className="w-3.5 h-3.5" /> Imagens
+            </span>
+            <span className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-red-100 text-red-700">
+              <FileType2 className="w-3.5 h-3.5" /> PDF
+            </span>
+            <span className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-blue-100 text-blue-700">
+              <FileText className="w-3.5 h-3.5" /> Word (.doc/.docx)
+            </span>
+          </div>
         </div>
       )}
     </div>

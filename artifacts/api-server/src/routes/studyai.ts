@@ -1,6 +1,9 @@
 import { Router, type IRouter } from "express";
 import multer from "multer";
 import OpenAI from "openai";
+// Import from lib directly to avoid pdf-parse's startup self-test (reads a file at load time)
+import pdfParse from "pdf-parse/lib/pdf-parse.js";
+import mammoth from "mammoth";
 
 const router: IRouter = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -99,6 +102,43 @@ type ContentPart =
   | { type: "text"; text: string }
   | { type: "image_url"; image_url: { url: string } };
 
+function isImage(mimetype: string) {
+  return mimetype.startsWith("image/");
+}
+
+function isPdf(mimetype: string, originalname: string) {
+  return mimetype === "application/pdf" || originalname.toLowerCase().endsWith(".pdf");
+}
+
+function isWord(mimetype: string, originalname: string) {
+  return (
+    mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    mimetype === "application/msword" ||
+    originalname.toLowerCase().endsWith(".docx") ||
+    originalname.toLowerCase().endsWith(".doc")
+  );
+}
+
+async function extractTextFromFile(file: Express.Multer.File): Promise<string | null> {
+  if (isPdf(file.mimetype, file.originalname)) {
+    try {
+      const data = await pdfParse(file.buffer);
+      return data.text?.trim() || null;
+    } catch {
+      return null;
+    }
+  }
+  if (isWord(file.mimetype, file.originalname)) {
+    try {
+      const result = await mammoth.extractRawText({ buffer: file.buffer });
+      return result.value?.trim() || null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 router.post("/analisar", upload.array("files", 10), async (req, res) => {
   try {
     const { nome, serie, tempo, dificuldades, texto } = req.body as {
@@ -120,23 +160,52 @@ router.post("/analisar", upload.array("files", 10), async (req, res) => {
     let aiResponse: string | null = null;
 
     if (files && files.length > 0) {
-      const content: ContentPart[] = files.map((file) => ({
-        type: "image_url",
-        image_url: {
-          url: `data:${file.mimetype};base64,${file.buffer.toString("base64")}`,
-        },
-      }));
+      const imageParts: ContentPart[] = [];
+      const textParts: string[] = [];
 
-      content.push({
-        type: "text",
-        text: `Analise ${files.length > 1 ? "estas imagens" : "esta imagem"} de conteúdo escolar e crie um plano de estudos gamificado COMPLETO com explicações, exercícios e gabaritos.\n\nPerfil do aluno:\n${perfil}`,
-      });
+      for (const file of files) {
+        if (isImage(file.mimetype)) {
+          imageParts.push({
+            type: "image_url",
+            image_url: {
+              url: `data:${file.mimetype};base64,${file.buffer.toString("base64")}`,
+            },
+          });
+        } else {
+          const extracted = await extractTextFromFile(file);
+          if (extracted && extracted.length > 0) {
+            textParts.push(`--- Conteúdo de "${file.originalname}" ---\n${extracted}`);
+          }
+        }
+      }
+
+      const hasImages = imageParts.length > 0;
+      const hasText = textParts.length > 0;
+
+      if (!hasImages && !hasText) {
+        res.status(400).json({ erro: "Não foi possível extrair conteúdo dos arquivos enviados." });
+        return;
+      }
+
+      const content: ContentPart[] = [...imageParts];
+
+      let userText = `Perfil do aluno:\n${perfil}\n\nCrie um plano de estudos gamificado COMPLETO com explicações, exercícios e gabaritos.`;
+
+      if (hasImages) {
+        userText = `Analise ${imageParts.length > 1 ? "estas imagens" : "esta imagem"} de conteúdo escolar e ${hasText ? "o texto extraído dos outros arquivos " : ""}crie um plano de estudos gamificado COMPLETO.\n\n${userText}`;
+      }
+
+      if (hasText) {
+        userText += `\n\nConteúdo extraído dos documentos:\n${textParts.join("\n\n")}`;
+      }
+
+      content.push({ type: "text", text: userText });
 
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content },
+          { role: "user", content: hasImages ? content : content.filter((p) => p.type === "text") },
         ],
         max_tokens: 6000,
         response_format: { type: "json_object" },
@@ -159,7 +228,7 @@ router.post("/analisar", upload.array("files", 10), async (req, res) => {
 
       aiResponse = response.choices[0].message.content;
     } else {
-      res.status(400).json({ erro: "Envie uma imagem ou texto para análise." });
+      res.status(400).json({ erro: "Envie uma imagem, PDF, Word ou texto para análise." });
       return;
     }
 

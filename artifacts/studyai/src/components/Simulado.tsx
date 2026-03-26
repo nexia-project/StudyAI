@@ -164,6 +164,13 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
   const [error, setError] = useState<string | null>(null);
   const timerRef = useRef<any>(null);
 
+  const handleSubmit = useCallback(() => {
+    clearInterval(timerRef.current);
+    setSubmitted(true);
+    setPhase("results");
+    setReviewIdx(0);
+  }, []);
+
   useEffect(() => {
     generateSimulado();
   }, []);
@@ -251,13 +258,6 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
       setError(err.message);
     }
   };
-
-  const handleSubmit = useCallback(() => {
-    clearInterval(timerRef.current);
-    setSubmitted(true);
-    setPhase("results");
-    setReviewIdx(0);
-  }, []);
 
   if (!simulado && error) {
     return (

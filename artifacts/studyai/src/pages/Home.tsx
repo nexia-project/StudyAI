@@ -817,7 +817,7 @@ export default function Home() {
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider mr-1">Ferramentas:</span>
                                   <FlashcardsButton
-                                    materia={planResult.materia || planResult.conteudo || "Conteúdo"}
+                                    materia={planResult.materia || "Conteúdo"}
                                     serie={formData.serie || "Não informado"}
                                     resumo={planResult.resumoDoConteudo || ""}
                                     diaNumero={dia.numero}

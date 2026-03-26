@@ -1,9 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Outfit:wght@100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
 @theme inline {
-  --font-sans: 'DM Sans', sans-serif;
+  --font-sans: 'Nunito', sans-serif;
   --font-display: 'Outfit', sans-serif;
 
   --color-background: hsl(270 50% 98%);
@@ -18,10 +18,10 @@
   --color-muted: hsl(270 20% 92%);
   --color-muted-foreground: hsl(270 10% 45%);
   
-  --color-accent: hsl(280 80% 65%);
+  --color-accent: hsl(290 85% 60%); /* Bright Magenta/Pink */
   --color-accent-foreground: hsl(210 40% 98%);
   
-  --color-destructive: hsl(0 84% 60%);
+  --color-destructive: hsl(348 83% 58%); /* Red */
   --color-destructive-foreground: hsl(210 40% 98%);
   
   --color-border: hsl(270 30% 88%);
@@ -40,9 +40,9 @@
   --secondary-foreground: 262 83% 40%;
   --muted: 270 20% 92%;
   --muted-foreground: 270 10% 45%;
-  --accent: 280 80% 65%;
+  --accent: 290 85% 60%;
   --accent-foreground: 210 40% 98%;
-  --destructive: 0 84% 60%;
+  --destructive: 348 83% 58%;
   --destructive-foreground: 210 40% 98%;
   --border: 270 30% 88%;
   --ring: 262 83% 58%;
@@ -57,10 +57,10 @@
   }
 
   body {
-    @apply font-sans antialiased text-foreground bg-[#faf5ff];
+    @apply font-sans antialiased text-foreground bg-[#f3e8ff];
     background-image: 
       radial-gradient(at 0% 0%, hsla(262, 83%, 58%, 0.15) 0px, transparent 50%),
-      radial-gradient(at 100% 100%, hsla(280, 80%, 65%, 0.15) 0px, transparent 50%);
+      radial-gradient(at 100% 100%, hsla(290, 85%, 60%, 0.15) 0px, transparent 50%);
     background-attachment: fixed;
     min-height: 100vh;
   }
@@ -79,4 +79,40 @@
   .text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
   }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes gradient-x {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}
+
+.animate-gradient-x {
+  background-size: 200% 200%;
+  animation: gradient-x 4s ease infinite;
 }

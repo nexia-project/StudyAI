@@ -1,9 +1,13 @@
 import { Router, type IRouter } from "express";
 import multer from "multer";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import OpenAI from "openai";
 
 const router: IRouter = Router();
 const upload = multer({ storage: multer.memoryStorage() });
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 type ContentPart =
   | { type: "text"; text: string }

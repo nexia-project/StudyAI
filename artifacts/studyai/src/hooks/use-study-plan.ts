@@ -8,6 +8,7 @@ export interface StudyPlanTopicExercise {
 export interface StudyPlanTopic {
   nome: string;
   explicacao: string;
+  gatilho?: string;
   exercicio: StudyPlanTopicExercise;
 }
 

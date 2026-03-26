@@ -794,12 +794,26 @@ export default function Home() {
                                                 {topicoObj.explicacao}
                                               </p>
 
+                                              {/* Memory trigger */}
+                                              {topicoObj.gatilho && (
+                                                <div className="rounded-xl bg-gradient-to-r from-yellow-400/15 to-orange-400/15 border border-yellow-400/30 px-4 py-3 flex items-start gap-3">
+                                                  <span className="text-xl flex-shrink-0">⚡</span>
+                                                  <div>
+                                                    <p className="text-xs font-black uppercase tracking-wider text-yellow-600 mb-0.5">Gatilho de Memória</p>
+                                                    <p className="text-sm font-semibold text-yellow-900">{topicoObj.gatilho}</p>
+                                                  </div>
+                                                </div>
+                                              )}
+
                                               {/* Mini exercise */}
                                               {topicoObj.exercicio && (
                                                 <div className="rounded-xl border border-primary/20 bg-primary/5 overflow-hidden">
                                                   <div className="px-4 py-3 flex items-start gap-3">
                                                     <Dumbbell className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: diaColor }} />
-                                                    <p className="text-sm font-semibold text-foreground">{topicoObj.exercicio.pergunta}</p>
+                                                    <div>
+                                                      <p className="text-xs font-black uppercase tracking-wider mb-1" style={{ color: diaColor }}>Questão Estratégica</p>
+                                                      <p className="text-sm font-semibold text-foreground">{topicoObj.exercicio.pergunta}</p>
+                                                    </div>
                                                   </div>
                                                   <TopicAnswerReveal answer={topicoObj.exercicio.resposta} color={diaColor} />
                                                 </div>

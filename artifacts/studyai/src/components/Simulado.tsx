@@ -182,6 +182,7 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
   const [timeLeft, setTimeLeft] = useState(0);
   const [timeTaken, setTimeTaken] = useState(0);
   const [reviewOpen, setReviewOpen] = useState<number | null>(null);
+  const [reviewAnswers, setReviewAnswers] = useState<Record<number, "A" | "B" | "C" | "D">>({});
   const [error, setError] = useState<string | null>(null);
   const timerRef = useRef<any>(null);
   const timerStarted = useRef(false);
@@ -248,6 +249,7 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
     setPhase("loading");
     setSimulado(null);
     setAnswers({});
+    setReviewAnswers({});
     setCurrent(0);
     setSubmitted(false);
     setTimeTaken(0);
@@ -581,49 +583,68 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
 
               {/* Review section */}
               <div>
-                <h3 className="font-black text-slate-800 text-base mb-3 flex items-center gap-2">
+                <h3 className="font-black text-slate-800 text-base mb-1 flex items-center gap-2">
                   <div className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center">
                     <BookOpen className="w-4 h-4 text-violet-600" />
                   </div>
-                  Revisão Comentada
+                  Revisão Interativa
                 </h3>
+                <p className="text-xs text-slate-400 font-semibold mb-3 ml-9">
+                  Clique em uma questão, escolha uma alternativa e veja o gabarito
+                </p>
                 <div className="space-y-2.5">
                   {simulado.perguntas.map((p, i) => {
-                    const userAnswer = answers[p.id];
-                    const correct = userAnswer === p.correta;
+                    const examAnswer = answers[p.id];
+                    const examCorrect = examAnswer === p.correta;
                     const isOpen = reviewOpen === i;
+                    const reviewPick = reviewAnswers[p.id];
+                    const revealed = reviewPick !== undefined;
+                    const reviewCorrect = reviewPick === p.correta;
                     return (
                       <div
                         key={p.id}
                         className={cn(
-                          "rounded-2xl border overflow-hidden transition-shadow",
-                          correct ? "border-emerald-200 bg-emerald-50/50" : "border-red-200 bg-red-50/50",
-                          isOpen && "shadow-md"
+                          "rounded-2xl border overflow-hidden transition-all duration-200",
+                          isOpen ? "border-violet-300 shadow-md shadow-violet-100" : "border-slate-200",
+                          !isOpen && (examCorrect ? "bg-emerald-50/40" : "bg-red-50/30")
                         )}
                       >
+                        {/* Accordion header */}
                         <button
                           className="w-full p-4 flex items-center gap-3 text-left hover:bg-black/[0.02] transition-colors"
                           onClick={() => setReviewOpen(isOpen ? null : i)}
                         >
                           <div className={cn(
                             "w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0",
-                            correct ? "bg-emerald-500" : "bg-red-500"
+                            examCorrect ? "bg-emerald-500" : "bg-red-500"
                           )}>
-                            {correct
+                            {examCorrect
                               ? <CheckCircle2 className="w-5 h-5 text-white" />
                               : <XCircle className="w-5 h-5 text-white" />}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">Q{i + 1}</span>
-                              {!correct && userAnswer && (
+                              {examCorrect ? (
+                                <span className="text-[11px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">
+                                  Acertou no simulado ✓
+                                </span>
+                              ) : (
                                 <span className="text-[11px] font-bold text-red-500 bg-red-100 px-2 py-0.5 rounded-full">
-                                  Sua: {userAnswer} · Correta: {p.correta}
+                                  Errou no simulado
                                 </span>
                               )}
-                              {correct && (
-                                <span className="text-[11px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">
-                                  Correto ✓
+                              {isOpen && !revealed && (
+                                <span className="text-[11px] font-bold text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full animate-pulse">
+                                  Escolha uma alternativa →
+                                </span>
+                              )}
+                              {revealed && (
+                                <span className={cn(
+                                  "text-[11px] font-bold px-2 py-0.5 rounded-full",
+                                  reviewCorrect ? "text-emerald-600 bg-emerald-100" : "text-orange-600 bg-orange-100"
+                                )}>
+                                  {reviewCorrect ? "Acertou agora ✓" : "Errou de novo"}
                                 </span>
                               )}
                             </div>
@@ -638,6 +659,7 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
                           )} />
                         </button>
 
+                        {/* Expanded content */}
                         <AnimatePresence>
                           {isOpen && (
                             <motion.div
@@ -648,50 +670,97 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
                               className="overflow-hidden"
                             >
                               <div className="px-4 pb-4 pt-3 space-y-3 border-t border-slate-200/60">
-                                {/* Full question text */}
-                                <p className="text-sm font-semibold text-slate-700 leading-relaxed bg-white/70 rounded-xl px-3 py-2.5 border border-slate-200">
+                                {/* Full question */}
+                                <p className="text-sm font-semibold text-slate-700 leading-relaxed bg-white rounded-xl px-3 py-3 border border-slate-200">
                                   {p.enunciado}
                                 </p>
+
+                                {/* Options — neutral until user picks */}
                                 <div className="grid grid-cols-1 gap-2">
-                                  {(["A", "B", "C", "D"] as const).map((letra) => (
-                                    <div
-                                      key={letra}
-                                      className={cn(
-                                        "flex items-start gap-2.5 p-3 rounded-xl text-sm border",
-                                        letra === p.correta
-                                          ? "bg-emerald-50 border-emerald-300"
-                                          : letra === userAnswer && !correct
-                                          ? "bg-red-50 border-red-200"
-                                          : "bg-white border-slate-100 text-slate-400"
-                                      )}
-                                    >
-                                      <span className={cn(
-                                        "w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black flex-shrink-0",
-                                        letra === p.correta
-                                          ? "bg-emerald-500 text-white"
-                                          : letra === userAnswer && !correct
-                                          ? "bg-red-400 text-white"
-                                          : "bg-slate-100 text-slate-400"
-                                      )}>
-                                        {letra}
-                                      </span>
-                                      <span className={cn(
-                                        "leading-relaxed",
-                                        letra === p.correta ? "font-semibold text-emerald-800" : ""
-                                      )}>
-                                        {p.opcoes[letra]}
-                                        {letra === p.correta && <span className="ml-1.5 text-emerald-500 font-black">✓</span>}
-                                      </span>
-                                    </div>
-                                  ))}
+                                  {(["A", "B", "C", "D"] as const).map((letra) => {
+                                    const isPick = reviewPick === letra;
+                                    const isCorrect = letra === p.correta;
+                                    let style = "bg-white border-slate-200 text-slate-700 hover:border-violet-300 hover:bg-violet-50 cursor-pointer";
+                                    let badgeStyle = "bg-slate-100 text-slate-500";
+                                    if (revealed) {
+                                      if (isCorrect) {
+                                        style = "bg-emerald-50 border-emerald-300 text-emerald-800 cursor-default";
+                                        badgeStyle = "bg-emerald-500 text-white";
+                                      } else if (isPick && !isCorrect) {
+                                        style = "bg-red-50 border-red-200 text-red-700 cursor-default";
+                                        badgeStyle = "bg-red-400 text-white";
+                                      } else {
+                                        style = "bg-white border-slate-100 text-slate-400 cursor-default";
+                                        badgeStyle = "bg-slate-100 text-slate-400";
+                                      }
+                                    }
+                                    return (
+                                      <button
+                                        key={letra}
+                                        disabled={revealed}
+                                        onClick={() =>
+                                          setReviewAnswers((prev) => ({ ...prev, [p.id]: letra }))
+                                        }
+                                        className={cn(
+                                          "w-full flex items-start gap-2.5 p-3 rounded-xl text-sm border-2 text-left transition-all duration-150",
+                                          style
+                                        )}
+                                      >
+                                        <span className={cn(
+                                          "w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black flex-shrink-0 transition-colors",
+                                          badgeStyle
+                                        )}>
+                                          {letra}
+                                        </span>
+                                        <span className="leading-relaxed break-words min-w-0 flex-1 text-left">
+                                          {p.opcoes[letra]}
+                                          {revealed && isCorrect && (
+                                            <span className="ml-1.5 text-emerald-500 font-black">✓</span>
+                                          )}
+                                          {revealed && isPick && !isCorrect && (
+                                            <span className="ml-1.5 text-red-400 font-black">✗</span>
+                                          )}
+                                        </span>
+                                      </button>
+                                    );
+                                  })}
                                 </div>
 
-                                <div className="bg-violet-50 border border-violet-200 rounded-xl p-3.5">
-                                  <p className="text-[11px] font-black uppercase tracking-wider text-violet-500 mb-1.5 flex items-center gap-1">
-                                    <Star className="w-3 h-3" /> Explicação do Professor
-                                  </p>
-                                  <p className="text-sm text-slate-700 leading-relaxed">{p.explicacao}</p>
-                                </div>
+                                {/* Prompt before selection */}
+                                {!revealed && (
+                                  <div className="flex items-center justify-center gap-2 py-2 text-xs text-violet-500 font-bold">
+                                    <Zap className="w-3.5 h-3.5" />
+                                    Selecione uma alternativa para ver o gabarito
+                                  </div>
+                                )}
+
+                                {/* Explanation — only shown after pick */}
+                                <AnimatePresence>
+                                  {revealed && (
+                                    <motion.div
+                                      initial={{ opacity: 0, y: 8 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      className="bg-violet-50 border border-violet-200 rounded-xl p-3.5"
+                                    >
+                                      <p className="text-[11px] font-black uppercase tracking-wider text-violet-500 mb-1.5 flex items-center gap-1">
+                                        <Star className="w-3 h-3" /> Explicação do Professor
+                                      </p>
+                                      <p className="text-sm text-slate-700 leading-relaxed">{p.explicacao}</p>
+                                      <button
+                                        onClick={() =>
+                                          setReviewAnswers((prev) => {
+                                            const next = { ...prev };
+                                            delete next[p.id];
+                                            return next;
+                                          })
+                                        }
+                                        className="mt-3 text-xs text-violet-500 hover:text-violet-700 font-bold flex items-center gap-1 transition-colors"
+                                      >
+                                        <RotateCcw className="w-3 h-3" /> Tentar de novo
+                                      </button>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
                               </div>
                             </motion.div>
                           )}

@@ -6,6 +6,7 @@ import chatRouter from "./chat";
 import simuladoRouter from "./simulado";
 import flashcardsRouter from "./flashcards";
 import historyRouter from "./history";
+import rankingRouter from "./ranking";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(chatRouter);
 router.use(simuladoRouter);
 router.use(flashcardsRouter);
 router.use(historyRouter);
+router.use(rankingRouter);
 
 export default router;

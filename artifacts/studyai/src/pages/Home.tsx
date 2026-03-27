@@ -30,6 +30,7 @@ import { PomodoroWidget } from "@/components/Pomodoro";
 import { UserMenu } from "@/components/UserMenu";
 import { useGenerateStudyPlan, StudyPlan, StudyPlanTopic } from "@/hooks/use-study-plan";
 import { useAuth } from "@workspace/replit-auth-web";
+import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 
@@ -180,6 +181,7 @@ function ChallengeCard({ desafio, color }: { desafio: { enunciado: string; gabar
 
 export default function Home() {
   const { isAuthenticated, login } = useAuth();
+  const [, navigate] = useLocation();
   const [step, setStep] = useState<"form" | "loading" | "result">("form");
   const [formData, setFormData] = useState({
     nome: "",
@@ -363,7 +365,14 @@ export default function Home() {
       </div>
 
       {/* Floating top-right user menu */}
-      <div className="fixed top-4 right-4 z-40">
+      <div className="fixed top-4 right-4 z-40 flex items-center gap-2">
+        <button
+          onClick={() => navigate("/ranking")}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-white border-2 border-amber-200 hover:border-amber-400 text-amber-600 font-bold text-sm shadow-sm hover:shadow-md transition-all"
+        >
+          <Trophy className="w-4 h-4 text-amber-500" />
+          Ranking
+        </button>
         <UserMenu />
       </div>
 

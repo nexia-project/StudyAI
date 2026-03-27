@@ -446,12 +446,17 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
                   {/* Question text */}
                   <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
                     <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-violet-600 text-white text-sm font-black flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <div className="w-8 h-8 rounded-xl bg-violet-600 text-white text-sm font-black flex items-center justify-center flex-shrink-0 mt-0.5 shrink-0">
                         {current + 1}
                       </div>
-                      <p className="text-slate-800 font-semibold leading-relaxed text-[15px]">{currentQ.enunciado}</p>
+                      <p className="text-slate-800 font-semibold leading-relaxed text-[15px] whitespace-pre-wrap break-words">{currentQ.enunciado}</p>
                     </div>
                   </div>
+
+                  {/* Instruction hint */}
+                  <p className="text-xs text-slate-400 font-semibold text-center pb-0.5">
+                    Selecione uma alternativa · clique novamente para desmarcar
+                  </p>
 
                   {/* Answer options */}
                   <div className="space-y-2.5">
@@ -462,7 +467,17 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
                         <motion.button
                           key={letra}
                           whileTap={{ scale: 0.98 }}
-                          onClick={() => setAnswers((prev) => ({ ...prev, [currentQ.id]: letra }))}
+                          onClick={() =>
+                            setAnswers((prev) => {
+                              const next = { ...prev };
+                              if (next[currentQ.id] === letra) {
+                                delete next[currentQ.id];
+                              } else {
+                                next[currentQ.id] = letra;
+                              }
+                              return next;
+                            })
+                          }
                           className={cn(
                             "w-full flex items-start gap-3 p-4 rounded-2xl border-2 text-left transition-all duration-150",
                             selected ? colors.selected : colors.idle,
@@ -470,13 +485,13 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
                           )}
                         >
                           <span className={cn(
-                            "w-8 h-8 rounded-xl text-sm font-black flex items-center justify-center flex-shrink-0 transition-colors",
+                            "w-8 h-8 rounded-xl text-sm font-black flex items-center justify-center flex-shrink-0 transition-colors shrink-0",
                             selected ? `${colors.badge} ring-2 ring-offset-1` : colors.badge
                           )}>
                             {letra}
                           </span>
                           <span className={cn(
-                            "pt-0.5 text-sm leading-relaxed",
+                            "pt-0.5 text-sm leading-relaxed break-words min-w-0",
                             selected ? "font-semibold text-slate-800" : "text-slate-600"
                           )}>
                             {currentQ.opcoes[letra]}
@@ -599,7 +614,7 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
                               : <XCircle className="w-5 h-5 text-white" />}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5">
+                            <div className="flex items-center gap-2 mb-1">
                               <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">Q{i + 1}</span>
                               {!correct && userAnswer && (
                                 <span className="text-[11px] font-bold text-red-500 bg-red-100 px-2 py-0.5 rounded-full">
@@ -612,7 +627,10 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
                                 </span>
                               )}
                             </div>
-                            <p className="text-sm font-semibold text-slate-700 line-clamp-1">{p.enunciado}</p>
+                            <p className={cn(
+                              "text-sm font-semibold text-slate-700 break-words",
+                              isOpen ? "" : "line-clamp-2"
+                            )}>{p.enunciado}</p>
                           </div>
                           <ChevronDown className={cn(
                             "w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200",
@@ -629,8 +647,12 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
                               transition={{ duration: 0.22 }}
                               className="overflow-hidden"
                             >
-                              <div className="px-4 pb-4 pt-1 space-y-3 border-t border-slate-200/60">
-                                <div className="grid grid-cols-1 gap-2 mt-2">
+                              <div className="px-4 pb-4 pt-3 space-y-3 border-t border-slate-200/60">
+                                {/* Full question text */}
+                                <p className="text-sm font-semibold text-slate-700 leading-relaxed bg-white/70 rounded-xl px-3 py-2.5 border border-slate-200">
+                                  {p.enunciado}
+                                </p>
+                                <div className="grid grid-cols-1 gap-2">
                                   {(["A", "B", "C", "D"] as const).map((letra) => (
                                     <div
                                       key={letra}

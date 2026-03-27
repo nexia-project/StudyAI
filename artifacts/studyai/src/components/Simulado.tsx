@@ -15,6 +15,10 @@ import {
   AlertCircle,
   BookOpen,
   Loader2,
+  ChevronDown,
+  Star,
+  TrendingUp,
+  Award,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StudyPlan } from "@/hooks/use-study-plan";
@@ -33,19 +37,14 @@ interface SimuladoData {
   perguntas: Pergunta[];
 }
 
-// Normalizes raw API data to ensure it's always safe to render
 function sanitizeSimulado(raw: any): SimuladoData | null {
   try {
     if (!raw || typeof raw !== "object") return null;
     const perguntas: Pergunta[] = (Array.isArray(raw.perguntas) ? raw.perguntas : [])
       .map((p: any, idx: number) => {
         if (!p || typeof p !== "object") return null;
-
-        // Normalize the correct answer letter — strip trailing dots, parens, lowercase, etc.
         const correctaRaw = String(p.correta ?? "").toUpperCase().trim().replace(/[^ABCD]/g, "");
         const correta = (["A", "B", "C", "D"].includes(correctaRaw) ? correctaRaw : "A") as "A" | "B" | "C" | "D";
-
-        // Ensure opcoes has all four keys as strings
         const opcoes = p.opcoes && typeof p.opcoes === "object" ? p.opcoes : {};
         const safeOpcoes = {
           A: String(opcoes.A ?? opcoes.a ?? "—"),
@@ -53,7 +52,6 @@ function sanitizeSimulado(raw: any): SimuladoData | null {
           C: String(opcoes.C ?? opcoes.c ?? "—"),
           D: String(opcoes.D ?? opcoes.d ?? "—"),
         };
-
         return {
           id: typeof p.id === "number" ? p.id : idx + 1,
           enunciado: String(p.enunciado ?? p.pergunta ?? "Questão sem enunciado"),
@@ -63,9 +61,7 @@ function sanitizeSimulado(raw: any): SimuladoData | null {
         } as Pergunta;
       })
       .filter(Boolean) as Pergunta[];
-
     if (perguntas.length === 0) return null;
-
     return {
       titulo: String(raw.titulo ?? "Simulado de Prova"),
       tempoMinutos: typeof raw.tempoMinutos === "number" && raw.tempoMinutos > 0 ? raw.tempoMinutos : 20,
@@ -89,45 +85,70 @@ function formatTime(seconds: number) {
 }
 
 function getGrade(score: number, total: number) {
-  const pct = score / total;
-  if (pct >= 0.9) return { nota: "10", label: "Excelente! 🏆", color: "text-emerald-600", bg: "bg-emerald-50" };
-  if (pct >= 0.8) return { nota: "9", label: "Ótimo! 🌟", color: "text-emerald-500", bg: "bg-emerald-50" };
-  if (pct >= 0.7) return { nota: "8", label: "Muito Bom! 👏", color: "text-blue-600", bg: "bg-blue-50" };
-  if (pct >= 0.6) return { nota: "7", label: "Bom! 👍", color: "text-blue-500", bg: "bg-blue-50" };
-  if (pct >= 0.5) return { nota: "6", label: "Passou! 😅", color: "text-yellow-600", bg: "bg-yellow-50" };
-  if (pct >= 0.4) return { nota: "5", label: "Quase lá! 💪", color: "text-orange-500", bg: "bg-orange-50" };
-  return { nota: "< 5", label: "Precisa estudar mais! 📚", color: "text-red-500", bg: "bg-red-50" };
+  const pct = total > 0 ? score / total : 0;
+  if (pct >= 0.9) return { nota: "10", label: "Excelente!", emoji: "🏆", color: "#10b981", bg: "from-emerald-400 to-teal-500", ring: "#10b981", tier: "S" };
+  if (pct >= 0.8) return { nota: "9", label: "Ótimo!", emoji: "🌟", color: "#059669", bg: "from-emerald-500 to-green-600", ring: "#059669", tier: "A" };
+  if (pct >= 0.7) return { nota: "8", label: "Muito Bom!", emoji: "👏", color: "#3b82f6", bg: "from-blue-400 to-indigo-500", ring: "#3b82f6", tier: "B" };
+  if (pct >= 0.6) return { nota: "7", label: "Bom!", emoji: "👍", color: "#6366f1", bg: "from-indigo-400 to-violet-500", ring: "#6366f1", tier: "C" };
+  if (pct >= 0.5) return { nota: "6", label: "Passou!", emoji: "😅", color: "#f59e0b", bg: "from-yellow-400 to-orange-400", ring: "#f59e0b", tier: "D" };
+  if (pct >= 0.4) return { nota: "5", label: "Quase lá!", emoji: "💪", color: "#f97316", bg: "from-orange-400 to-red-400", ring: "#f97316", tier: "E" };
+  return { nota: "< 5", label: "Precisa revisar!", emoji: "📚", color: "#ef4444", bg: "from-red-400 to-rose-500", ring: "#ef4444", tier: "F" };
 }
 
+const OPTION_COLORS: Record<string, { idle: string; selected: string; badge: string }> = {
+  A: { idle: "border-slate-200 hover:border-violet-300 hover:bg-violet-50", selected: "border-violet-500 bg-violet-50 shadow-md shadow-violet-100", badge: "bg-violet-100 text-violet-700" },
+  B: { idle: "border-slate-200 hover:border-blue-300 hover:bg-blue-50", selected: "border-blue-500 bg-blue-50 shadow-md shadow-blue-100", badge: "bg-blue-100 text-blue-700" },
+  C: { idle: "border-slate-200 hover:border-emerald-300 hover:bg-emerald-50", selected: "border-emerald-500 bg-emerald-50 shadow-md shadow-emerald-100", badge: "bg-emerald-100 text-emerald-700" },
+  D: { idle: "border-slate-200 hover:border-orange-300 hover:bg-orange-50", selected: "border-orange-500 bg-orange-50 shadow-md shadow-orange-100", badge: "bg-orange-100 text-orange-700" },
+};
+
 function LoadingSimulado() {
-  const [msg, setMsg] = useState(0);
-  const msgs = [
-    "Analisando o conteúdo estudado...",
-    "Criando questões estratégicas...",
-    "Calibrando a dificuldade...",
-    "Preparando o simulado...",
+  const [step, setStep] = useState(0);
+  const steps = [
+    { icon: "📖", text: "Analisando o conteúdo estudado..." },
+    { icon: "🧠", text: "Criando questões estratégicas..." },
+    { icon: "⚖️", text: "Calibrando a dificuldade..." },
+    { icon: "✅", text: "Finalizando o simulado..." },
   ];
   useEffect(() => {
-    const id = setInterval(() => setMsg((m) => (m + 1) % msgs.length), 1800);
+    const id = setInterval(() => setStep((s) => (s + 1) % steps.length), 2000);
     return () => clearInterval(id);
   }, []);
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-6 p-8">
+    <div className="flex flex-col items-center justify-center h-full gap-8 p-10">
       <div className="relative">
-        <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
-          <Loader2 className="w-10 h-10 text-primary animate-spin" />
+        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-2xl shadow-violet-200">
+          <Loader2 className="w-12 h-12 text-white animate-spin" />
+        </div>
+        <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-white rounded-full border-2 border-violet-200 flex items-center justify-center text-lg">
+          {steps[step].icon}
         </div>
       </div>
-      <div className="text-center space-y-2">
-        <h3 className="text-xl font-black text-foreground">Gerando seu Simulado</h3>
-        <motion.p
-          key={msg}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-muted-foreground text-sm"
-        >
-          {msgs[msg]}
-        </motion.p>
+      <div className="text-center space-y-3">
+        <h3 className="text-2xl font-black text-slate-800">Gerando seu Simulado</h3>
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={step}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.3 }}
+            className="text-slate-500 text-sm font-medium"
+          >
+            {steps[step].text}
+          </motion.p>
+        </AnimatePresence>
+      </div>
+      <div className="flex gap-2">
+        {steps.map((_, i) => (
+          <div
+            key={i}
+            className={cn(
+              "h-1.5 rounded-full transition-all duration-500",
+              i === step ? "w-8 bg-violet-500" : i < step ? "w-3 bg-violet-300" : "w-3 bg-slate-200"
+            )}
+          />
+        ))}
       </div>
     </div>
   );
@@ -139,10 +160,10 @@ export function SimuladoButton({ plan, serie }: { plan: StudyPlan; serie: string
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-white bg-gradient-to-r from-red-500 to-orange-500 hover:opacity-90 shadow-lg hover:shadow-xl transition-all duration-200 hover:-translate-y-0.5"
+        className="flex items-center gap-2 px-5 py-2.5 rounded-2xl font-black text-white bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 shadow-lg shadow-red-200 hover:shadow-xl hover:shadow-red-300 transition-all duration-200 hover:-translate-y-0.5 text-sm"
       >
-        <Target className="w-5 h-5" />
-        Fazer Simulado de Prova
+        <Target className="w-4 h-4" />
+        Fazer Simulado
       </button>
       <AnimatePresence>
         {open && <Simulado plan={plan} serie={serie} onClose={() => setOpen(false)} />}
@@ -160,15 +181,16 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
   const [submitted, setSubmitted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
   const [timeTaken, setTimeTaken] = useState(0);
-  const [reviewIdx, setReviewIdx] = useState<number | null>(null);
+  const [reviewOpen, setReviewOpen] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const timerRef = useRef<any>(null);
+  const timerStarted = useRef(false);
 
   const handleSubmit = useCallback(() => {
     clearInterval(timerRef.current);
+    timerStarted.current = false;
     setSubmitted(true);
     setPhase("results");
-    setReviewIdx(0);
   }, []);
 
   useEffect(() => {
@@ -177,6 +199,7 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
 
   useEffect(() => {
     if (phase !== "exam" || !simulado || submitted) return;
+    timerStarted.current = true;
     setTimeLeft(simulado.tempoMinutos * 60);
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
@@ -188,17 +211,17 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
       });
       setTimeTaken((t) => t + 1);
     }, 1000);
-    return () => clearInterval(timerRef.current);
+    return () => {
+      clearInterval(timerRef.current);
+    };
   }, [phase, simulado, submitted]);
 
-  // Auto-submit when time runs out
   useEffect(() => {
-    if (phase === "exam" && timeLeft === 0 && simulado && !submitted) {
+    if (phase === "exam" && timeLeft === 0 && simulado && !submitted && timerStarted.current) {
       handleSubmit();
     }
   }, [timeLeft, phase, simulado, submitted, handleSubmit]);
 
-  // Save result to history when results are shown
   useEffect(() => {
     if (phase !== "results" || !simulado || !isAuthenticated) return;
     const scoreVal = simulado.perguntas.filter((p) => answers[p.id] === p.correta).length;
@@ -220,6 +243,14 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
   }, [phase]);
 
   const generateSimulado = async () => {
+    timerStarted.current = false;
+    setError(null);
+    setPhase("loading");
+    setSimulado(null);
+    setAnswers({});
+    setCurrent(0);
+    setSubmitted(false);
+    setTimeTaken(0);
     try {
       const diasConteudo = plan.dias
         .map((d) => {
@@ -266,105 +297,135 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
         className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
         onClick={onClose}
       >
-        <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center" onClick={(e) => e.stopPropagation()}>
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h3 className="font-black text-lg mb-2">Erro ao gerar simulado</h3>
-          <p className="text-muted-foreground text-sm mb-4">{error}</p>
-          <button onClick={onClose} className="px-6 py-2 rounded-xl bg-primary text-white font-bold">Fechar</button>
+        <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-red-500" />
+          </div>
+          <h3 className="font-black text-xl mb-2 text-slate-800">Erro ao gerar simulado</h3>
+          <p className="text-slate-500 text-sm mb-6 leading-relaxed">{error}</p>
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-xl font-bold border-2 border-slate-200 hover:bg-slate-50 transition-colors text-slate-600">
+              Fechar
+            </button>
+            <button onClick={generateSimulado} className="flex-1 px-4 py-2.5 rounded-xl font-black text-white bg-gradient-to-r from-violet-500 to-indigo-600 hover:opacity-90 transition-opacity">
+              Tentar novamente
+            </button>
+          </div>
         </div>
       </motion.div>
     );
   }
 
   const total = simulado?.perguntas.length ?? 0;
-  const score = simulado
-    ? simulado.perguntas.filter((p) => answers[p.id] === p.correta).length
-    : 0;
+  const score = simulado ? simulado.perguntas.filter((p) => answers[p.id] === p.correta).length : 0;
   const grade = simulado ? getGrade(score, total) : null;
   const timeWarning = timeLeft > 0 && timeLeft <= 120;
-
+  const timeCritical = timeLeft > 0 && timeLeft <= 30;
   const currentQ = simulado?.perguntas[current];
   const answeredCount = Object.keys(answers).length;
-  const progressPct = total > 0 ? Math.round((answeredCount / total) * 100) : 0;
+  const pct = total > 0 ? Math.round((answeredCount / total) * 100) : 0;
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4"
+      className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-md flex items-center justify-center p-2 sm:p-4"
     >
       <motion.div
-        initial={{ scale: 0.95, y: 20 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.95, y: 20 }}
+        initial={{ scale: 0.95, y: 30, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={{ scale: 0.95, y: 30, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 28 }}
         className="bg-white rounded-3xl w-full max-w-2xl max-h-[95vh] flex flex-col overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
+        {/* ── HEADER ── */}
         <div className={cn(
-          "px-6 py-4 flex items-center gap-4 flex-shrink-0",
-          phase === "exam" && timeWarning ? "bg-red-600" : "bg-gradient-to-r from-red-500 to-orange-500"
+          "relative px-6 py-4 flex-shrink-0 overflow-hidden",
+          phase === "loading" ? "bg-gradient-to-r from-violet-600 to-indigo-700"
+          : phase === "results" && grade ? `bg-gradient-to-r ${grade.bg}`
+          : timeCritical ? "bg-gradient-to-r from-red-600 to-rose-700"
+          : timeWarning ? "bg-gradient-to-r from-orange-500 to-red-500"
+          : "bg-gradient-to-r from-slate-800 to-slate-900"
         )}>
-          <Target className="w-6 h-6 text-white flex-shrink-0" />
-          <div className="flex-1 min-w-0">
-            <h2 className="font-black text-white text-sm sm:text-base truncate">
-              {simulado?.titulo ?? "Simulado de Prova"}
-            </h2>
-            {phase === "exam" && (
-              <p className="text-white/75 text-xs">{plan.aluno} · {serie}</p>
+          <div className="absolute inset-0 opacity-10" style={{
+            backgroundImage: "radial-gradient(circle at 20% 50%, white 0%, transparent 50%), radial-gradient(circle at 80% 20%, white 0%, transparent 40%)"
+          }} />
+          <div className="relative flex items-center gap-4">
+            <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+              {phase === "loading" ? <Loader2 className="w-5 h-5 text-white animate-spin" />
+               : phase === "results" ? <Trophy className="w-5 h-5 text-white" />
+               : <Target className="w-5 h-5 text-white" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-white/60 text-xs font-semibold uppercase tracking-wider">
+                {phase === "loading" ? "Preparando" : phase === "results" ? "Resultado Final" : `${plan.aluno} · ${serie}`}
+              </p>
+              <h2 className="font-black text-white text-sm sm:text-base truncate leading-tight">
+                {simulado?.titulo ?? "Simulado de Prova"}
+              </h2>
+            </div>
+            {phase === "exam" && simulado && (
+              <div className={cn(
+                "flex items-center gap-1.5 px-3 py-2 rounded-xl font-black text-sm tabular-nums flex-shrink-0",
+                timeCritical ? "bg-white text-red-600 animate-pulse scale-110"
+                : timeWarning ? "bg-white/90 text-orange-600"
+                : "bg-white/15 text-white"
+              )}>
+                <Clock className="w-4 h-4" />
+                {formatTime(timeLeft)}
+              </div>
+            )}
+            {phase !== "exam" && (
+              <button
+                onClick={onClose}
+                className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition-colors flex-shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
             )}
           </div>
-          {phase === "exam" && simulado && (
-            <div className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-sm flex-shrink-0",
-              timeWarning ? "bg-white text-red-600 animate-pulse" : "bg-white/20 text-white"
-            )}>
-              <Clock className="w-4 h-4" />
-              {formatTime(timeLeft)}
+
+          {/* Progress bar (exam only) */}
+          {phase === "exam" && total > 0 && (
+            <div className="relative mt-3">
+              <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-white/80 rounded-full"
+                  animate={{ width: `${pct}%` }}
+                  transition={{ duration: 0.4 }}
+                />
+              </div>
+              <span className="absolute right-0 -top-0.5 text-white/60 text-[10px] font-bold">{pct}%</span>
             </div>
-          )}
-          {phase !== "exam" && (
-            <button onClick={onClose} className="p-1.5 rounded-full hover:bg-white/20 text-white transition-colors">
-              <X className="w-5 h-5" />
-            </button>
           )}
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto">
+        {/* ── BODY ── */}
+        <div className="flex-1 overflow-y-auto bg-slate-50">
+
+          {/* LOADING */}
           {phase === "loading" && <LoadingSimulado />}
 
+          {/* EXAM */}
           {phase === "exam" && simulado && currentQ && (
-            <div className="p-6 space-y-6">
-              {/* Progress */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-bold text-foreground">Questão {current + 1} de {total}</span>
-                  <span className="text-muted-foreground">{answeredCount} respondidas</span>
-                </div>
-                <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-gradient-to-r from-red-500 to-orange-500 rounded-full"
-                    animate={{ width: `${progressPct}%` }}
-                    transition={{ duration: 0.3 }}
-                  />
-                </div>
-              </div>
+            <div className="p-5 space-y-4">
 
-              {/* Question dots */}
+              {/* Question nav dots */}
               <div className="flex gap-1.5 flex-wrap">
                 {simulado.perguntas.map((p, i) => (
                   <button
                     key={p.id}
                     onClick={() => setCurrent(i)}
+                    title={`Questão ${i + 1}`}
                     className={cn(
-                      "w-8 h-8 rounded-lg text-xs font-black transition-all",
+                      "w-7 h-7 rounded-lg text-xs font-black transition-all duration-150",
                       i === current
-                        ? "bg-primary text-white scale-110 shadow-md"
+                        ? "bg-violet-600 text-white scale-115 shadow-md shadow-violet-200 ring-2 ring-violet-300 ring-offset-1"
                         : answers[p.id]
-                        ? "bg-emerald-500 text-white"
-                        : "bg-secondary text-muted-foreground hover:bg-secondary/70"
+                        ? "bg-emerald-400 text-white shadow-sm"
+                        : "bg-white border border-slate-200 text-slate-400 hover:border-violet-300 hover:text-violet-600"
                     )}
                   >
                     {i + 1}
@@ -372,47 +433,64 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
                 ))}
               </div>
 
-              {/* Question */}
+              {/* Question card */}
               <AnimatePresence mode="wait">
                 <motion.div
                   key={currentQ.id}
-                  initial={{ opacity: 0, x: 20 }}
+                  initial={{ opacity: 0, x: 16 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.2 }}
-                  className="space-y-4"
+                  exit={{ opacity: 0, x: -16 }}
+                  transition={{ duration: 0.18 }}
+                  className="space-y-3"
                 >
-                  <div className="bg-secondary/50 rounded-2xl p-5">
+                  {/* Question text */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
                     <div className="flex items-start gap-3">
-                      <span className="w-7 h-7 rounded-full bg-primary text-white text-xs font-black flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <div className="w-8 h-8 rounded-xl bg-violet-600 text-white text-sm font-black flex items-center justify-center flex-shrink-0 mt-0.5">
                         {current + 1}
-                      </span>
-                      <p className="text-base font-medium text-foreground leading-relaxed">{currentQ.enunciado}</p>
+                      </div>
+                      <p className="text-slate-800 font-semibold leading-relaxed text-[15px]">{currentQ.enunciado}</p>
                     </div>
                   </div>
 
-                  <div className="space-y-3">
+                  {/* Answer options */}
+                  <div className="space-y-2.5">
                     {(["A", "B", "C", "D"] as const).map((letra) => {
                       const selected = answers[currentQ.id] === letra;
+                      const colors = OPTION_COLORS[letra];
                       return (
-                        <button
+                        <motion.button
                           key={letra}
+                          whileTap={{ scale: 0.98 }}
                           onClick={() => setAnswers((prev) => ({ ...prev, [currentQ.id]: letra }))}
                           className={cn(
-                            "w-full flex items-start gap-3 p-4 rounded-2xl border-2 text-left transition-all duration-150 font-medium",
-                            selected
-                              ? "border-primary bg-primary/5 text-primary shadow-sm"
-                              : "border-border bg-white hover:border-primary/40 hover:bg-primary/3 text-foreground"
+                            "w-full flex items-start gap-3 p-4 rounded-2xl border-2 text-left transition-all duration-150",
+                            selected ? colors.selected : colors.idle,
+                            "bg-white"
                           )}
                         >
                           <span className={cn(
-                            "w-7 h-7 rounded-full border-2 flex items-center justify-center text-xs font-black flex-shrink-0",
-                            selected ? "bg-primary border-primary text-white" : "border-muted-foreground/30 text-muted-foreground"
+                            "w-8 h-8 rounded-xl text-sm font-black flex items-center justify-center flex-shrink-0 transition-colors",
+                            selected ? `${colors.badge} ring-2 ring-offset-1` : colors.badge
                           )}>
                             {letra}
                           </span>
-                          <span className="pt-0.5 text-sm leading-relaxed">{currentQ.opcoes[letra]}</span>
-                        </button>
+                          <span className={cn(
+                            "pt-0.5 text-sm leading-relaxed",
+                            selected ? "font-semibold text-slate-800" : "text-slate-600"
+                          )}>
+                            {currentQ.opcoes[letra]}
+                          </span>
+                          {selected && (
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              className="ml-auto mt-0.5 flex-shrink-0"
+                            >
+                              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                            </motion.div>
+                          )}
+                        </motion.button>
                       );
                     })}
                   </div>
@@ -421,122 +499,176 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
             </div>
           )}
 
+          {/* RESULTS */}
           {phase === "results" && simulado && grade && (
-            <div className="p-6 space-y-6">
-              {/* Score header */}
-              <div className={cn("rounded-3xl p-6 text-center space-y-3", grade.bg)}>
-                <div className={cn("text-6xl font-black", grade.color)}>{score}<span className="text-3xl text-muted-foreground">/{total}</span></div>
-                <div>
-                  <p className={cn("text-2xl font-black", grade.color)}>{grade.label}</p>
-                  <p className="text-muted-foreground text-sm mt-1">
-                    Nota estimada: <strong className={grade.color}>{grade.nota}</strong> · Tempo: {formatTime(timeTaken)}
-                  </p>
+            <div className="p-5 space-y-5">
+
+              {/* Score hero */}
+              <div className={cn(
+                "relative rounded-3xl p-6 overflow-hidden bg-gradient-to-br",
+                grade.bg
+              )}>
+                <div className="absolute inset-0 opacity-10"
+                  style={{ backgroundImage: "radial-gradient(circle at 70% 30%, white 0%, transparent 60%)" }}
+                />
+                <div className="relative flex items-center gap-5">
+                  {/* Circle score */}
+                  <div className="relative w-24 h-24 flex-shrink-0">
+                    <svg className="w-24 h-24 -rotate-90" viewBox="0 0 96 96">
+                      <circle cx="48" cy="48" r="40" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="8" />
+                      <motion.circle
+                        cx="48" cy="48" r="40" fill="none"
+                        stroke="white" strokeWidth="8"
+                        strokeLinecap="round"
+                        strokeDasharray={`${2 * Math.PI * 40}`}
+                        initial={{ strokeDashoffset: 2 * Math.PI * 40 }}
+                        animate={{ strokeDashoffset: 2 * Math.PI * 40 * (1 - score / total) }}
+                        transition={{ duration: 1.2, ease: "easeOut", delay: 0.2 }}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-white font-black text-2xl leading-none">{score}</span>
+                      <span className="text-white/70 text-xs font-bold">/{total}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex-1">
+                    <p className="text-white/80 text-sm font-semibold mb-0.5">Nota estimada</p>
+                    <p className="text-white font-black text-4xl leading-none mb-1">{grade.nota}</p>
+                    <p className="text-white/90 font-bold text-lg">{grade.emoji} {grade.label}</p>
+                  </div>
                 </div>
 
-                {/* Score bar */}
-                <div className="h-3 bg-white/60 rounded-full overflow-hidden mx-4">
-                  <motion.div
-                    className={cn("h-full rounded-full", score / total >= 0.6 ? "bg-emerald-500" : "bg-red-400")}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(score / total) * 100}%` }}
-                    transition={{ duration: 0.8, delay: 0.2 }}
-                  />
-                </div>
-
-                <div className="flex justify-center gap-6 text-sm font-semibold">
-                  <span className="flex items-center gap-1.5 text-emerald-600">
-                    <CheckCircle2 className="w-4 h-4" /> {score} corretas
-                  </span>
-                  <span className="flex items-center gap-1.5 text-red-500">
-                    <XCircle className="w-4 h-4" /> {total - score} erradas
-                  </span>
+                {/* Stats row */}
+                <div className="relative flex gap-3 mt-4">
+                  <div className="flex-1 bg-white/20 rounded-2xl p-3 text-center">
+                    <CheckCircle2 className="w-5 h-5 text-white mx-auto mb-1" />
+                    <p className="text-white font-black text-xl">{score}</p>
+                    <p className="text-white/75 text-xs font-semibold">Corretas</p>
+                  </div>
+                  <div className="flex-1 bg-white/20 rounded-2xl p-3 text-center">
+                    <XCircle className="w-5 h-5 text-white mx-auto mb-1" />
+                    <p className="text-white font-black text-xl">{total - score}</p>
+                    <p className="text-white/75 text-xs font-semibold">Erradas</p>
+                  </div>
+                  <div className="flex-1 bg-white/20 rounded-2xl p-3 text-center">
+                    <Clock className="w-5 h-5 text-white mx-auto mb-1" />
+                    <p className="text-white font-black text-xl">{formatTime(timeTaken)}</p>
+                    <p className="text-white/75 text-xs font-semibold">Tempo</p>
+                  </div>
+                  <div className="flex-1 bg-white/20 rounded-2xl p-3 text-center">
+                    <TrendingUp className="w-5 h-5 text-white mx-auto mb-1" />
+                    <p className="text-white font-black text-xl">{total > 0 ? Math.round((score / total) * 100) : 0}%</p>
+                    <p className="text-white/75 text-xs font-semibold">Acertos</p>
+                  </div>
                 </div>
               </div>
 
-              {/* Review questions */}
+              {/* Review section */}
               <div>
-                <h3 className="font-black text-lg mb-4 flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-primary" /> Revisão Comentada
+                <h3 className="font-black text-slate-800 text-base mb-3 flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center">
+                    <BookOpen className="w-4 h-4 text-violet-600" />
+                  </div>
+                  Revisão Comentada
                 </h3>
-                <div className="space-y-4">
+                <div className="space-y-2.5">
                   {simulado.perguntas.map((p, i) => {
                     const userAnswer = answers[p.id];
                     const correct = userAnswer === p.correta;
+                    const isOpen = reviewOpen === i;
                     return (
                       <div
                         key={p.id}
                         className={cn(
-                          "rounded-2xl border-2 overflow-hidden",
-                          correct ? "border-emerald-200" : "border-red-200"
+                          "rounded-2xl border overflow-hidden transition-shadow",
+                          correct ? "border-emerald-200 bg-emerald-50/50" : "border-red-200 bg-red-50/50",
+                          isOpen && "shadow-md"
                         )}
                       >
                         <button
-                          className={cn(
-                            "w-full p-4 flex items-start gap-3 text-left",
-                            correct ? "bg-emerald-50" : "bg-red-50"
-                          )}
-                          onClick={() => setReviewIdx(reviewIdx === i ? null : i)}
+                          className="w-full p-4 flex items-center gap-3 text-left hover:bg-black/[0.02] transition-colors"
+                          onClick={() => setReviewOpen(isOpen ? null : i)}
                         >
                           <div className={cn(
-                            "w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5",
+                            "w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0",
                             correct ? "bg-emerald-500" : "bg-red-500"
                           )}>
                             {correct
-                              ? <CheckCircle2 className="w-4 h-4 text-white" />
-                              : <XCircle className="w-4 h-4 text-white" />
-                            }
+                              ? <CheckCircle2 className="w-5 h-5 text-white" />
+                              : <XCircle className="w-5 h-5 text-white" />}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-black uppercase tracking-wider mb-1 text-muted-foreground">Questão {i + 1}</p>
-                            <p className="text-sm font-semibold text-foreground line-clamp-2">{p.enunciado}</p>
-                            {!correct && userAnswer && (
-                              <p className="text-xs text-red-600 mt-1">Sua resposta: <strong>{userAnswer}</strong> · Correta: <strong>{p.correta}</strong></p>
-                            )}
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">Q{i + 1}</span>
+                              {!correct && userAnswer && (
+                                <span className="text-[11px] font-bold text-red-500 bg-red-100 px-2 py-0.5 rounded-full">
+                                  Sua: {userAnswer} · Correta: {p.correta}
+                                </span>
+                              )}
+                              {correct && (
+                                <span className="text-[11px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">
+                                  Correto ✓
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm font-semibold text-slate-700 line-clamp-1">{p.enunciado}</p>
                           </div>
+                          <ChevronDown className={cn(
+                            "w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200",
+                            isOpen && "rotate-180"
+                          )} />
                         </button>
 
                         <AnimatePresence>
-                          {reviewIdx === i && (
+                          {isOpen && (
                             <motion.div
                               initial={{ height: 0, opacity: 0 }}
                               animate={{ height: "auto", opacity: 1 }}
                               exit={{ height: 0, opacity: 0 }}
-                              className="border-t border-border overflow-hidden"
+                              transition={{ duration: 0.22 }}
+                              className="overflow-hidden"
                             >
-                              <div className="p-4 space-y-3 bg-white">
-                                {/* Options with correct highlighted */}
-                                <div className="grid grid-cols-1 gap-2">
+                              <div className="px-4 pb-4 pt-1 space-y-3 border-t border-slate-200/60">
+                                <div className="grid grid-cols-1 gap-2 mt-2">
                                   {(["A", "B", "C", "D"] as const).map((letra) => (
                                     <div
                                       key={letra}
                                       className={cn(
-                                        "flex items-start gap-2 p-2.5 rounded-xl text-sm",
+                                        "flex items-start gap-2.5 p-3 rounded-xl text-sm border",
                                         letra === p.correta
-                                          ? "bg-emerald-50 border border-emerald-300"
+                                          ? "bg-emerald-50 border-emerald-300"
                                           : letra === userAnswer && !correct
-                                          ? "bg-red-50 border border-red-200"
-                                          : "text-muted-foreground"
+                                          ? "bg-red-50 border-red-200"
+                                          : "bg-white border-slate-100 text-slate-400"
                                       )}
                                     >
                                       <span className={cn(
-                                        "w-6 h-6 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0",
+                                        "w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black flex-shrink-0",
                                         letra === p.correta
                                           ? "bg-emerald-500 text-white"
                                           : letra === userAnswer && !correct
                                           ? "bg-red-400 text-white"
-                                          : "bg-secondary text-muted-foreground"
+                                          : "bg-slate-100 text-slate-400"
                                       )}>
                                         {letra}
                                       </span>
-                                      <span className={letra === p.correta ? "font-semibold text-emerald-800" : ""}>{p.opcoes[letra]}</span>
+                                      <span className={cn(
+                                        "leading-relaxed",
+                                        letra === p.correta ? "font-semibold text-emerald-800" : ""
+                                      )}>
+                                        {p.opcoes[letra]}
+                                        {letra === p.correta && <span className="ml-1.5 text-emerald-500 font-black">✓</span>}
+                                      </span>
                                     </div>
                                   ))}
                                 </div>
 
-                                {/* Explanation */}
-                                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-                                  <p className="text-xs font-black uppercase text-blue-600 mb-1">Explicação do Professor</p>
-                                  <p className="text-sm text-blue-900 leading-relaxed">{p.explicacao}</p>
+                                <div className="bg-violet-50 border border-violet-200 rounded-xl p-3.5">
+                                  <p className="text-[11px] font-black uppercase tracking-wider text-violet-500 mb-1.5 flex items-center gap-1">
+                                    <Star className="w-3 h-3" /> Explicação do Professor
+                                  </p>
+                                  <p className="text-sm text-slate-700 leading-relaxed">{p.explicacao}</p>
                                 </div>
                               </div>
                             </motion.div>
@@ -551,66 +683,67 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-border flex-shrink-0 flex items-center justify-between gap-3">
+        {/* ── FOOTER ── */}
+        <div className="px-5 py-4 bg-white border-t border-slate-100 flex-shrink-0">
+
           {phase === "exam" && simulado && (
-            <>
+            <div className="flex items-center gap-3">
               <div className="flex gap-2">
                 <button
                   onClick={() => setCurrent((c) => Math.max(0, c - 1))}
                   disabled={current === 0}
-                  className="p-2.5 rounded-xl bg-secondary hover:bg-secondary/70 disabled:opacity-40 transition-colors"
+                  className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 flex items-center justify-center transition-colors"
                 >
-                  <ChevronLeft className="w-5 h-5" />
+                  <ChevronLeft className="w-5 h-5 text-slate-600" />
                 </button>
                 <button
                   onClick={() => setCurrent((c) => Math.min(total - 1, c + 1))}
                   disabled={current === total - 1}
-                  className="p-2.5 rounded-xl bg-secondary hover:bg-secondary/70 disabled:opacity-40 transition-colors"
+                  className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 flex items-center justify-center transition-colors"
                 >
-                  <ChevronRight className="w-5 h-5" />
+                  <ChevronRight className="w-5 h-5 text-slate-600" />
                 </button>
               </div>
+
+              <div className="flex-1 text-center text-sm text-slate-400 font-semibold">
+                {answeredCount === total
+                  ? <span className="text-emerald-600 font-black">Todas respondidas! ✓</span>
+                  : <span>{answeredCount} de {total} respondidas</span>
+                }
+              </div>
+
               <button
                 onClick={handleSubmit}
                 className={cn(
-                  "flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-white transition-all",
+                  "flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-white text-sm transition-all shadow-lg",
                   answeredCount === total
-                    ? "bg-gradient-to-r from-emerald-500 to-teal-500 hover:opacity-90 shadow-lg"
-                    : "bg-gradient-to-r from-red-500 to-orange-500 hover:opacity-90"
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-500 hover:opacity-90 shadow-emerald-200"
+                    : "bg-gradient-to-r from-violet-600 to-indigo-600 hover:opacity-90 shadow-violet-200"
                 )}
               >
-                {answeredCount === total ? (
-                  <><Trophy className="w-4 h-4" /> Finalizar e Ver Nota</>
-                ) : (
-                  <><Zap className="w-4 h-4" /> Entregar ({answeredCount}/{total})</>
-                )}
+                {answeredCount === total
+                  ? <><Trophy className="w-4 h-4" /> Ver Resultado</>
+                  : <><Zap className="w-4 h-4" /> Entregar ({answeredCount}/{total})</>
+                }
               </button>
-            </>
+            </div>
           )}
 
           {phase === "results" && (
-            <>
+            <div className="flex items-center gap-3">
               <button
                 onClick={onClose}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold border-2 border-border hover:bg-secondary transition-colors"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold border-2 border-slate-200 hover:bg-slate-50 transition-colors text-slate-600 text-sm"
               >
                 <X className="w-4 h-4" /> Fechar
               </button>
               <button
-                onClick={() => {
-                  setAnswers({});
-                  setCurrent(0);
-                  setSubmitted(false);
-                  setTimeTaken(0);
-                  setPhase("loading");
-                  generateSimulado();
-                }}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-white bg-gradient-to-r from-red-500 to-orange-500 hover:opacity-90 transition-opacity"
+                onClick={generateSimulado}
+                className="flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-black text-white text-sm bg-gradient-to-r from-violet-600 to-indigo-600 hover:opacity-90 transition-opacity shadow-lg shadow-violet-200"
               >
                 <RotateCcw className="w-4 h-4" /> Novo Simulado
               </button>
-            </>
+            </div>
           )}
         </div>
       </motion.div>

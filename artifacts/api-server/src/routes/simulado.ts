@@ -77,58 +77,48 @@ router.post("/simulado", async (req, res) => {
       return;
     }
 
-    // Randomize number of questions between 12 and 18
-    const numQuestoes = Math.floor(Math.random() * 7) + 12;
+    // Keep questions fixed at 10 to ensure the response always fits within token budget.
+    // More variation comes from the randomized formats and seed, not from quantity.
+    const numQuestoes = 10;
     const seed = Math.floor(Math.random() * 999999);
     const shuffledFormats = shuffleArray(QUESTION_FORMATS).slice(0, numQuestoes);
-    const correctLetters = ["A", "B", "C", "D"];
-    const targetDistribution = shuffleArray([
-      ...Array(Math.ceil(numQuestoes / 4)).fill("A"),
-      ...Array(Math.ceil(numQuestoes / 4)).fill("B"),
-      ...Array(Math.ceil(numQuestoes / 4)).fill("C"),
-      ...Array(Math.ceil(numQuestoes / 4)).fill("D"),
-    ]).slice(0, numQuestoes);
+    const targetDistribution = shuffleArray(["A","B","C","D","A","B","C","D","A","B"]).slice(0, numQuestoes);
 
-    const hasRealContent = conteudoTexto && conteudoTexto.trim().length > 100;
+    // Trim raw content to 4000 chars — enough for rich question generation,
+    // small enough to leave output tokens free for the full JSON response.
+    const rawContent = (conteudoTexto || "").trim().slice(0, 4000);
+    const hasRealContent = rawContent.length > 100;
 
     let contentSection = "";
     if (hasRealContent) {
-      contentSection = `
-═══════════════════════════════════════════
-MATERIAL REAL DO ALUNO (USE ESTE CONTEÚDO COMO FONTE PRIMÁRIA DAS QUESTÕES):
-═══════════════════════════════════════════
-${conteudoTexto}
-═══════════════════════════════════════════
+      contentSection = `MATERIAL REAL DO ALUNO (fonte primária obrigatória das questões):
+---
+${rawContent}
+---
 
-Conteúdo estruturado do plano de estudos (use como complemento):
+Tópicos estruturados do plano (use como complemento):
 ${diasConteudo}`;
     } else {
-      contentSection = `Conteúdo detalhado por dia (USE APENAS ESTE CONTEÚDO para criar as questões):
+      contentSection = `Conteúdo detalhado por dia:
 ${diasConteudo}`;
     }
 
-    const userContent = `Matéria/Conteúdo: ${materia}
-Série do aluno: ${serie}
+    const userContent = `Matéria: ${materia}
+Série: ${serie}
 Resumo: ${resumo}
 
 ${contentSection}
 
-⚠️ ATENÇÃO CRÍTICA: As ${numQuestoes} questões devem ser baseadas EXCLUSIVAMENTE no conteúdo acima. Não use nenhum conhecimento externo. Todo conceito, dado, nome, fórmula e exemplo nas questões deve aparecer no material acima.
+SEMENTE: #${seed}
 
-SEMENTE DE VARIAÇÃO: #${seed} — garanta questões únicas, nunca repetir perguntas anteriores.
+DISTRIBUIÇÃO DAS RESPOSTAS CORRETAS:
+${targetDistribution.map((l, i) => `Q${i + 1}→${l}`).join(", ")}
 
-DISTRIBUIÇÃO ALVO DAS RESPOSTAS CORRETAS (siga isso):
-${targetDistribution.map((l, i) => `Q${i + 1}: ${l}`).join(", ")}
-
-FORMATOS OBRIGATÓRIOS para cada questão (use estes ângulos, na ordem):
+FORMATO DE CADA QUESTÃO (aplique na ordem):
 ${shuffledFormats.map((f, i) => `Q${i + 1}: ${f}`).join("\n")}
 
-INSTRUÇÕES FINAIS:
-- Gere EXATAMENTE ${numQuestoes} questões com alternativas A, B, C e D
-- Escalone dificuldade: Q1-Q${Math.floor(numQuestoes * 0.3)} fáceis → Q${Math.floor(numQuestoes * 0.3) + 1}-Q${Math.floor(numQuestoes * 0.65)} médias → Q${Math.floor(numQuestoes * 0.65) + 1}-Q${numQuestoes - 1} difíceis → Q${numQuestoes} desafio final
-- Os distradores (alternativas erradas) devem ser plausíveis mas claramente errados para quem leu o material
-- A explicação DEVE citar onde no material a resposta está
-- Enunciados variados — nunca usar o mesmo padrão de início de frase duas vezes`;
+Gere EXATAMENTE 10 questões. Escalone dificuldade: Q1-Q3 fáceis, Q4-Q6 médias, Q7-Q9 difíceis, Q10 desafio.
+Explicações concisas (máx 2 frases). Enunciados nunca repetidos em formato.`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -136,18 +126,34 @@ INSTRUÇÕES FINAIS:
         { role: "system", content: SIMULADO_SYSTEM_PROMPT },
         { role: "user", content: userContent },
       ],
-      max_tokens: 6000,
+      max_tokens: 8000,
       temperature: 1.05,
       response_format: { type: "json_object" },
     });
 
-    const content = response.choices[0].message.content;
-    if (!content) {
-      res.status(500).json({ erro: "Erro ao gerar o simulado." });
+    const choice = response.choices[0];
+
+    // If GPT was cut off mid-response, fail fast with a clear message
+    if (choice.finish_reason === "length") {
+      res.status(500).json({ erro: "O simulado gerado foi muito longo. Tente novamente — cada geração usa semente diferente." });
       return;
     }
 
-    const simulado = JSON.parse(content);
+    const content = choice.message.content;
+    if (!content) {
+      res.status(500).json({ erro: "Resposta vazia da IA. Tente novamente." });
+      return;
+    }
+
+    let simulado: unknown;
+    try {
+      simulado = JSON.parse(content);
+    } catch {
+      req.log.error({ contentLength: content.length, finish_reason: choice.finish_reason }, "JSON inválido na resposta do simulado");
+      res.status(500).json({ erro: "A IA retornou um formato inválido. Tente novamente — cada tentativa gera variações diferentes." });
+      return;
+    }
+
     res.json({ simulado });
   } catch (error) {
     req.log.error({ error }, "Erro ao gerar simulado");

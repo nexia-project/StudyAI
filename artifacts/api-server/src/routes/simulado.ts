@@ -7,59 +7,52 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const SIMULADO_PROMPT = `Você é um professor especialista em criar simulados originais e variados com base EXCLUSIVAMENTE no conteúdo fornecido pelo aluno.
+const SIMULADO_SYSTEM_PROMPT = `Você é um professor especialista em criar simulados variados e originais com base EXCLUSIVAMENTE no conteúdo real fornecido pelo aluno.
 
-⚠️ REGRA ABSOLUTA: Todas as questões devem ser derivadas APENAS do conteúdo fornecido no campo "Conteúdo detalhado por dia" e "Resumo". NÃO invente tópicos, NÃO acrescente informações externas, NÃO use conhecimento geral que não esteja no conteúdo enviado. Se o conteúdo fala de um capítulo específico, as questões devem ser sobre aquele capítulo. Se fala de um assunto específico, as questões devem ser sobre aquele assunto.
+⚠️ REGRA ABSOLUTA: Todas as questões devem ser extraídas DIRETAMENTE do conteúdo real enviado pelo aluno (textos de livros, apostilas, cadernos, PDFs). NÃO invente tópicos externos. NÃO use conhecimento geral que não esteja presente no material. Se o material fala de personagens, datas, fórmulas, teoremas ou conceitos específicos, as questões DEVEM ser sobre esses elementos concretos do material.
 
-RESPONDA APENAS com um JSON válido, sem markdown. Use EXATAMENTE esta estrutura:
+RESPONDA APENAS com um JSON válido, sem markdown. Estrutura EXATA:
 
 {
-  "titulo": "Simulado - [Nome exato da matéria/conteúdo conforme fornecido]",
-  "tempoMinutos": 20,
+  "titulo": "Simulado - [Nome exato do conteúdo identificado no material]",
+  "tempoMinutos": 25,
   "perguntas": [
     {
       "id": 1,
-      "enunciado": "Enunciado completo da questão baseado no conteúdo fornecido. Use conceitos, definições e exemplos que aparecem no material do aluno.",
+      "enunciado": "Enunciado completo e claro da questão, citando termos e conceitos que aparecem literalmente no material do aluno",
       "opcoes": {
-        "A": "Primeira opção",
-        "B": "Segunda opção",
-        "C": "Terceira opção",
-        "D": "Quarta opção"
+        "A": "Alternativa A completa",
+        "B": "Alternativa B completa",
+        "C": "Alternativa C completa",
+        "D": "Alternativa D completa"
       },
       "correta": "B",
-      "explicacao": "Explicação completa citando especificamente o que foi estudado no conteúdo fornecido. Por que a correta é certa? Por que as erradas estão erradas? Inclua dica para não errar."
+      "explicacao": "Explicação detalhada: por que B é correta citando o trecho do material. Por que A, C e D estão erradas. Dica para não esquecer."
     }
   ]
 }
 
 REGRAS OBRIGATÓRIAS:
-- Gere EXATAMENTE 10 questões de múltipla escolha com alternativas A, B, C e D
-- O campo "correta" DEVE ser exatamente uma das letras: A, B, C ou D (sem ponto, sem parêntese)
-- TODAS as questões devem ser baseadas no conteúdo fornecido — nenhuma questão de conhecimento geral fora do material
-- VARIEDADE DE FORMATOS (distribua entre as 10 questões):
-  • Definição: "O que é X conforme o conteúdo estudado?"
-  • Aplicação: "Dado o conceito de X, o que acontece quando...?"
-  • Comparação: "Qual a diferença entre X e Y apresentados no conteúdo?"
-  • Identificação de erro: "Qual afirmação sobre X está INCORRETA segundo o conteúdo?"
-  • Situação-problema baseada em exemplo do material
-  • Completar lacuna usando termos do conteúdo
-- Escalone a dificuldade: questões 1-3 fáceis, 4-6 médias, 7-9 difíceis, questão 10 desafio final
-- As alternativas erradas devem ser plausíveis mas claramente erradas para quem estudou o conteúdo
-- Distribua as respostas corretas: não repita a mesma letra mais de 3 vezes
-- A explicação deve mencionar onde no conteúdo está a resposta
+- O campo "correta" DEVE ser exatamente uma letra: A, B, C ou D (sem ponto, sem parêntese, sem espaço)
+- Distribua respostas corretas: não repita a mesma letra mais de 4 vezes entre todas as questões
 - Adapte linguagem e complexidade ao nível escolar informado`;
 
-const QUESTION_ANGLES = [
-  "definição e conceito fundamental",
-  "aplicação prática no cotidiano",
-  "cálculo ou resolução passo a passo",
-  "comparação entre dois conceitos",
-  "identificação de erro ou afirmação falsa",
-  "causa e efeito",
-  "interpretação de situação-problema",
-  "ordem cronológica ou sequência lógica",
-  "exemplificação de regra ou princípio",
-  "exceção à regra geral",
+const QUESTION_FORMATS = [
+  "definição direta: 'O que é / O que significa [termo do material]?'",
+  "aplicação: 'Dado o conceito de [X presente no material], o que acontece quando...?'",
+  "identificação de erro: 'Qual afirmação sobre [tópico] está INCORRETA segundo o material?'",
+  "cálculo ou resolução passo a passo com dados do material",
+  "comparação: 'Qual a diferença entre [X] e [Y] conforme o conteúdo estudado?'",
+  "causa e efeito extraído diretamente do material",
+  "completar lacuna com termo específico do material",
+  "cronologia ou sequência lógica de eventos/passos do conteúdo",
+  "interpretação de situação-problema usando regra/fórmula do material",
+  "exemplificação: qual dos exemplos abaixo ilustra corretamente o conceito [X] do material?",
+  "exceção à regra: qual caso NÃO se aplica ao princípio [X] descrito no material?",
+  "identificação do conceito: qual opção descreve corretamente [fenômeno/evento/personagem] do material?",
+  "relação entre conceitos presentes no mesmo material",
+  "questão de interpretação: de acordo com o trecho estudado, pode-se concluir que...",
+  "pergunta sobre processo/método descrito no material passo a passo",
 ];
 
 function shuffleArray<T>(arr: T[]): T[] {
@@ -71,11 +64,12 @@ function shuffleArray<T>(arr: T[]): T[] {
 
 router.post("/simulado", async (req, res) => {
   try {
-    const { materia, serie, resumo, diasConteudo } = req.body as {
+    const { materia, serie, resumo, diasConteudo, conteudoTexto } = req.body as {
       materia: string;
       serie: string;
       resumo: string;
       diasConteudo: string;
+      conteudoTexto?: string;
     };
 
     if (!materia || !resumo) {
@@ -83,38 +77,67 @@ router.post("/simulado", async (req, res) => {
       return;
     }
 
-    const seed = Math.floor(Math.random() * 100000);
-    const shuffledAngles = shuffleArray(QUESTION_ANGLES).slice(0, 7);
-    const randomLetter = ["A", "B", "C", "D"][Math.floor(Math.random() * 4)];
+    // Randomize number of questions between 12 and 18
+    const numQuestoes = Math.floor(Math.random() * 7) + 12;
+    const seed = Math.floor(Math.random() * 999999);
+    const shuffledFormats = shuffleArray(QUESTION_FORMATS).slice(0, numQuestoes);
+    const correctLetters = ["A", "B", "C", "D"];
+    const targetDistribution = shuffleArray([
+      ...Array(Math.ceil(numQuestoes / 4)).fill("A"),
+      ...Array(Math.ceil(numQuestoes / 4)).fill("B"),
+      ...Array(Math.ceil(numQuestoes / 4)).fill("C"),
+      ...Array(Math.ceil(numQuestoes / 4)).fill("D"),
+    ]).slice(0, numQuestoes);
+
+    const hasRealContent = conteudoTexto && conteudoTexto.trim().length > 100;
+
+    let contentSection = "";
+    if (hasRealContent) {
+      contentSection = `
+═══════════════════════════════════════════
+MATERIAL REAL DO ALUNO (USE ESTE CONTEÚDO COMO FONTE PRIMÁRIA DAS QUESTÕES):
+═══════════════════════════════════════════
+${conteudoTexto}
+═══════════════════════════════════════════
+
+Conteúdo estruturado do plano de estudos (use como complemento):
+${diasConteudo}`;
+    } else {
+      contentSection = `Conteúdo detalhado por dia (USE APENAS ESTE CONTEÚDO para criar as questões):
+${diasConteudo}`;
+    }
 
     const userContent = `Matéria/Conteúdo: ${materia}
 Série do aluno: ${serie}
-Resumo do que foi estudado: ${resumo}
+Resumo: ${resumo}
 
-Conteúdo detalhado por dia (USE APENAS ESTE CONTEÚDO para criar as questões):
-${diasConteudo}
+${contentSection}
 
-⚠️ ATENÇÃO CRÍTICA: As 10 questões devem ser baseadas EXCLUSIVAMENTE no conteúdo acima. Não use nenhum conhecimento externo. Se um conceito não aparece no conteúdo acima, não faça questão sobre ele.
+⚠️ ATENÇÃO CRÍTICA: As ${numQuestoes} questões devem ser baseadas EXCLUSIVAMENTE no conteúdo acima. Não use nenhum conhecimento externo. Todo conceito, dado, nome, fórmula e exemplo nas questões deve aparecer no material acima.
 
-SEMENTE DE VARIAÇÃO: #${seed} — use para garantir ângulos e contextos únicos, mas SEMPRE dentro do conteúdo fornecido.
+SEMENTE DE VARIAÇÃO: #${seed} — garanta questões únicas, nunca repetir perguntas anteriores.
 
-FORMATOS para distribuir entre as questões (escolha os mais adequados ao conteúdo):
-${shuffledAngles.map((a, i) => `Q${i + 1}: ${a}`).join("\n")}
+DISTRIBUIÇÃO ALVO DAS RESPOSTAS CORRETAS (siga isso):
+${targetDistribution.map((l, i) => `Q${i + 1}: ${l}`).join(", ")}
 
-INSTRUÇÕES ADICIONAIS:
-- A letra correta da questão 3 deve ser "${randomLetter}" (se possível sem forçar)
-- Pelo menos 1 questão deve pedir para identificar a afirmação INCORRETA sobre o conteúdo
-- Os distradores devem ser erros comuns de alunos da ${serie} sobre ESTE conteúdo específico
-- Gere questões com enunciados variados — nunca repita o mesmo padrão de enunciado`;
+FORMATOS OBRIGATÓRIOS para cada questão (use estes ângulos, na ordem):
+${shuffledFormats.map((f, i) => `Q${i + 1}: ${f}`).join("\n")}
+
+INSTRUÇÕES FINAIS:
+- Gere EXATAMENTE ${numQuestoes} questões com alternativas A, B, C e D
+- Escalone dificuldade: Q1-Q${Math.floor(numQuestoes * 0.3)} fáceis → Q${Math.floor(numQuestoes * 0.3) + 1}-Q${Math.floor(numQuestoes * 0.65)} médias → Q${Math.floor(numQuestoes * 0.65) + 1}-Q${numQuestoes - 1} difíceis → Q${numQuestoes} desafio final
+- Os distradores (alternativas erradas) devem ser plausíveis mas claramente errados para quem leu o material
+- A explicação DEVE citar onde no material a resposta está
+- Enunciados variados — nunca usar o mesmo padrão de início de frase duas vezes`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
-        { role: "system", content: SIMULADO_PROMPT },
+        { role: "system", content: SIMULADO_SYSTEM_PROMPT },
         { role: "user", content: userContent },
       ],
-      max_tokens: 4000,
-      temperature: 1.1,
+      max_tokens: 6000,
+      temperature: 1.05,
       response_format: { type: "json_object" },
     });
 

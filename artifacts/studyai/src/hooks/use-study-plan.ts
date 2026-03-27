@@ -61,6 +61,7 @@ export interface StudyPlan {
 
 export interface StudyPlanResponse {
   plano?: StudyPlan;
+  conteudoTexto?: string;
   erro?: string;
 }
 

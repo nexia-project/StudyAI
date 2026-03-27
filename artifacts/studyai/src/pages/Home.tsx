@@ -20,7 +20,8 @@ import {
   EyeOff,
   Brain,
   Dumbbell,
-  Save
+  Save,
+  BarChart2
 } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { TutorChat } from "@/components/TutorChat";
@@ -192,6 +193,7 @@ export default function Home() {
   });
   const [files, setFiles] = useState<File[]>([]);
   const [planResult, setPlanResult] = useState<StudyPlan | null>(null);
+  const [conteudoTexto, setConteudoTexto] = useState<string>("");
   const [savedPlanId, setSavedPlanId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
@@ -295,6 +297,7 @@ export default function Home() {
       onSuccess: (data) => {
         if (data.plano) {
           setPlanResult(data.plano);
+          setConteudoTexto(data.conteudoTexto || "");
           setStep("result");
           setExpandedDay(data.plano.dias?.[0]?.numero || 1);
           savePlanToDB(data.plano);
@@ -314,6 +317,7 @@ export default function Home() {
     setFiles([]);
     setFormData(prev => ({ ...prev, texto: "" }));
     setPlanResult(null);
+    setConteudoTexto("");
     setSavedPlanId(null);
     setErrorMsg(null);
     setStep("form");
@@ -366,6 +370,13 @@ export default function Home() {
 
       {/* Floating top-right user menu */}
       <div className="fixed top-4 right-4 z-40 flex items-center gap-2">
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-white border-2 border-violet-200 hover:border-violet-400 text-violet-600 font-bold text-sm shadow-sm hover:shadow-md transition-all"
+        >
+          <BarChart2 className="w-4 h-4 text-violet-500" />
+          Dashboard
+        </button>
         <button
           onClick={() => navigate("/ranking")}
           className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-white border-2 border-amber-200 hover:border-amber-400 text-amber-600 font-bold text-sm shadow-sm hover:shadow-md transition-all"
@@ -1012,7 +1023,7 @@ export default function Home() {
                   </p>
                 </div>
                 <div className="relative z-10 flex-shrink-0">
-                  <SimuladoButton plan={planResult} serie={formData.serie || "Não informado"} />
+                  <SimuladoButton plan={planResult} serie={formData.serie || "Não informado"} conteudoTexto={conteudoTexto} />
                 </div>
               </div>
 

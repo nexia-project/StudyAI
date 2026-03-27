@@ -9,6 +9,7 @@ import {
   Trophy,
   ChevronDown,
   Loader2,
+  BarChart2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -99,6 +100,16 @@ export function UserMenu() {
               )}
             </div>
             <div className="p-1.5">
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  navigate("/dashboard");
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-foreground hover:bg-violet-50 hover:text-violet-600 transition-colors"
+              >
+                <BarChart2 className="w-4 h-4 text-violet-500" />
+                Dashboard
+              </button>
               <button
                 onClick={() => {
                   setOpen(false);

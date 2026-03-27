@@ -76,6 +76,7 @@ function sanitizeSimulado(raw: any): SimuladoData | null {
 interface SimuladoProps {
   plan: StudyPlan;
   serie: string;
+  conteudoTexto?: string;
   onClose: () => void;
 }
 
@@ -155,7 +156,7 @@ function LoadingSimulado() {
   );
 }
 
-export function SimuladoButton({ plan, serie }: { plan: StudyPlan; serie: string }) {
+export function SimuladoButton({ plan, serie, conteudoTexto }: { plan: StudyPlan; serie: string; conteudoTexto?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <ErrorBoundary>
@@ -167,13 +168,13 @@ export function SimuladoButton({ plan, serie }: { plan: StudyPlan; serie: string
         Fazer Simulado
       </button>
       <AnimatePresence>
-        {open && <Simulado plan={plan} serie={serie} onClose={() => setOpen(false)} />}
+        {open && <Simulado plan={plan} serie={serie} conteudoTexto={conteudoTexto} onClose={() => setOpen(false)} />}
       </AnimatePresence>
     </ErrorBoundary>
   );
 }
 
-function Simulado({ plan, serie, onClose }: SimuladoProps) {
+function Simulado({ plan, serie, conteudoTexto, onClose }: SimuladoProps) {
   const { isAuthenticated } = useAuth();
   const [phase, setPhase] = useState<"loading" | "exam" | "results">("loading");
   const [simulado, setSimulado] = useState<SimuladoData | null>(null);
@@ -298,6 +299,7 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
           serie,
           resumo: plan.resumoDoConteudo,
           diasConteudo,
+          conteudoTexto: conteudoTexto || "",
         }),
       });
 

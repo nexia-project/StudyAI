@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/Home";
 import HistoryPage from "@/pages/History";
 import RankingPage from "@/pages/Ranking";
+import DashboardPage from "@/pages/Dashboard";
 import NotFound from "@/pages/not-found";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
@@ -21,6 +22,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/dashboard" component={DashboardPage} />
       <Route path="/historico" component={HistoryPage} />
       <Route path="/ranking" component={RankingPage} />
       <Route component={NotFound} />

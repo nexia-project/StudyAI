@@ -252,7 +252,24 @@ router.post("/analisar", (req, res, next) => {
     }
 
     const plano = JSON.parse(aiResponse);
-    res.json({ plano });
+
+    // Build the full raw text content to pass to simulado generator
+    const allTextParts: string[] = [];
+    if (texto) allTextParts.push(texto);
+    const filesForText = req.files as Express.Multer.File[] | undefined;
+    if (filesForText) {
+      for (const file of filesForText) {
+        if (!isImage(file.mimetype)) {
+          const extracted = await extractTextFromFile(file);
+          if (extracted && extracted.length > 0) {
+            allTextParts.push(`[${file.originalname}]\n${extracted}`);
+          }
+        }
+      }
+    }
+    const conteudoTexto = allTextParts.join("\n\n---\n\n").slice(0, 12000);
+
+    res.json({ plano, conteudoTexto });
   } catch (error) {
     req.log.error({ error }, "Erro ao processar análise");
     res

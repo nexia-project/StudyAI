@@ -455,14 +455,13 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
                 ))}
               </div>
 
-              {/* Question card */}
-              <AnimatePresence mode="wait">
+              {/* Question card — no exit animation to avoid insertBefore DOM conflict on phase change */}
+              <div className="space-y-3">
                 <motion.div
                   key={currentQ.id}
-                  initial={{ opacity: 0, x: 16 }}
+                  initial={{ opacity: 0, x: 12 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -16 }}
-                  transition={{ duration: 0.18 }}
+                  transition={{ duration: 0.15 }}
                   className="space-y-3"
                 >
                   {/* Question text */}
@@ -532,7 +531,7 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
                     })}
                   </div>
                 </motion.div>
-              </AnimatePresence>
+              </div>
             </div>
           )}
 

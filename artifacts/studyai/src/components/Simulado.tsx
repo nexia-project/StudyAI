@@ -317,7 +317,7 @@ function Simulado({ plan, serie, conteudoTexto, onClose }: SimuladoProps) {
   if (!simulado && error) {
     return (
       <motion.div
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }}
         className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
         onClick={onClose}
       >
@@ -353,13 +353,11 @@ function Simulado({ plan, serie, conteudoTexto, onClose }: SimuladoProps) {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
       className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-md flex items-center justify-center p-2 sm:p-4"
     >
       <motion.div
         initial={{ scale: 0.95, y: 30, opacity: 0 }}
         animate={{ scale: 1, y: 0, opacity: 1 }}
-        exit={{ scale: 0.95, y: 30, opacity: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 28 }}
         className="bg-white rounded-3xl w-full max-w-2xl max-h-[95vh] flex flex-col overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}

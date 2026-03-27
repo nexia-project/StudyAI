@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@workspace/replit-auth-web";
+import { ErrorBoundary } from "./ErrorBoundary";
 import {
   X,
   Clock,
@@ -157,7 +158,7 @@ function LoadingSimulado() {
 export function SimuladoButton({ plan, serie }: { plan: StudyPlan; serie: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <>
+    <ErrorBoundary>
       <button
         onClick={() => setOpen(true)}
         className="flex items-center gap-2 px-5 py-2.5 rounded-2xl font-black text-white bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 shadow-lg shadow-red-200 hover:shadow-xl hover:shadow-red-300 transition-all duration-200 hover:-translate-y-0.5 text-sm"
@@ -168,7 +169,7 @@ export function SimuladoButton({ plan, serie }: { plan: StudyPlan; serie: string
       <AnimatePresence>
         {open && <Simulado plan={plan} serie={serie} onClose={() => setOpen(false)} />}
       </AnimatePresence>
-    </>
+    </ErrorBoundary>
   );
 }
 
@@ -186,6 +187,13 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
   const [error, setError] = useState<string | null>(null);
   const timerRef = useRef<any>(null);
   const timerStarted = useRef(false);
+  // Keep refs to always-fresh values for effects that need them
+  const answersRef = useRef(answers);
+  const timeTakenRef = useRef(timeTaken);
+  const simuladoRef = useRef(simulado);
+  useEffect(() => { answersRef.current = answers; }, [answers]);
+  useEffect(() => { timeTakenRef.current = timeTaken; }, [timeTaken]);
+  useEffect(() => { simuladoRef.current = simulado; }, [simulado]);
 
   const handleSubmit = useCallback(() => {
     clearInterval(timerRef.current);
@@ -196,6 +204,7 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
 
   useEffect(() => {
     generateSimulado();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -223,25 +232,36 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
     }
   }, [timeLeft, phase, simulado, submitted, handleSubmit]);
 
+  // Post history using refs so we always have fresh data at submission time
   useEffect(() => {
-    if (phase !== "results" || !simulado || !isAuthenticated) return;
-    const scoreVal = simulado.perguntas.filter((p) => answers[p.id] === p.correta).length;
-    const totalVal = simulado.perguntas.length;
-    const gradeVal = getGrade(scoreVal, totalVal);
-    fetch("/api/history/simulado", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        materia: (plan as any).materia || "Simulado",
-        titulo: simulado.titulo,
-        score: scoreVal,
-        total: totalVal,
-        timeTaken,
-        nota: gradeVal.nota,
-      }),
-    }).catch(() => {});
-  }, [phase]);
+    if (phase !== "results") return;
+    const sim = simuladoRef.current;
+    if (!sim || !isAuthenticated) return;
+    try {
+      const finalAnswers = answersRef.current;
+      const finalTime = timeTakenRef.current;
+      const scoreVal = sim.perguntas.filter((p) => finalAnswers[p.id] === p.correta).length;
+      const totalVal = sim.perguntas.length;
+      const gradeVal = getGrade(scoreVal, totalVal);
+      const materia = plan && typeof (plan as any).materia === "string" ? (plan as any).materia : "Simulado";
+      fetch("/api/history/simulado", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          materia,
+          titulo: sim.titulo,
+          score: scoreVal,
+          total: totalVal,
+          timeTaken: finalTime,
+          nota: gradeVal.nota,
+        }),
+      }).catch(() => {});
+    } catch {
+      // Never let history POST crash the component
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, isAuthenticated]);
 
   const generateSimulado = async () => {
     timerStarted.current = false;
@@ -663,6 +683,7 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
                         <AnimatePresence>
                           {isOpen && (
                             <motion.div
+                              key={`panel-${p.id}`}
                               initial={{ height: 0, opacity: 0 }}
                               animate={{ height: "auto", opacity: 1 }}
                               exit={{ height: 0, opacity: 0 }}
@@ -738,6 +759,7 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
                                 <AnimatePresence>
                                   {revealed && (
                                     <motion.div
+                                      key={`exp-${p.id}`}
                                       initial={{ opacity: 0, y: 8 }}
                                       animate={{ opacity: 1, y: 0 }}
                                       className="bg-violet-50 border border-violet-200 rounded-xl p-3.5"

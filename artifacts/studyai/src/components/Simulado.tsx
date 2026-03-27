@@ -679,114 +679,98 @@ function Simulado({ plan, serie, onClose }: SimuladoProps) {
                           )} />
                         </button>
 
-                        {/* Expanded content */}
-                        <AnimatePresence>
-                          {isOpen && (
-                            <motion.div
-                              key={`panel-${p.id}`}
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: "auto", opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.22 }}
-                              className="overflow-hidden"
-                            >
-                              <div className="px-4 pb-4 pt-3 space-y-3 border-t border-slate-200/60">
-                                {/* Full question */}
-                                <p className="text-sm font-semibold text-slate-700 leading-relaxed bg-white rounded-xl px-3 py-3 border border-slate-200">
-                                  {p.enunciado}
-                                </p>
+                        {/* Expanded content — CSS-only transition avoids framer-motion DOM conflicts in lists */}
+                        {isOpen && (
+                          <div className="border-t border-slate-200/60">
+                            <div className="px-4 pb-4 pt-3 space-y-3">
+                              {/* Full question */}
+                              <p className="text-sm font-semibold text-slate-700 leading-relaxed bg-white rounded-xl px-3 py-3 border border-slate-200">
+                                {p.enunciado}
+                              </p>
 
-                                {/* Options — neutral until user picks */}
-                                <div className="grid grid-cols-1 gap-2">
-                                  {(["A", "B", "C", "D"] as const).map((letra) => {
-                                    const isPick = reviewPick === letra;
-                                    const isCorrect = letra === p.correta;
-                                    let style = "bg-white border-slate-200 text-slate-700 hover:border-violet-300 hover:bg-violet-50 cursor-pointer";
-                                    let badgeStyle = "bg-slate-100 text-slate-500";
-                                    if (revealed) {
-                                      if (isCorrect) {
-                                        style = "bg-emerald-50 border-emerald-300 text-emerald-800 cursor-default";
-                                        badgeStyle = "bg-emerald-500 text-white";
-                                      } else if (isPick && !isCorrect) {
-                                        style = "bg-red-50 border-red-200 text-red-700 cursor-default";
-                                        badgeStyle = "bg-red-400 text-white";
-                                      } else {
-                                        style = "bg-white border-slate-100 text-slate-400 cursor-default";
-                                        badgeStyle = "bg-slate-100 text-slate-400";
-                                      }
+                              {/* Options — neutral until user picks */}
+                              <div className="grid grid-cols-1 gap-2">
+                                {(["A", "B", "C", "D"] as const).map((letra) => {
+                                  const isPick = reviewPick === letra;
+                                  const isCorrect = letra === p.correta;
+                                  let style = "bg-white border-slate-200 text-slate-700 hover:border-violet-300 hover:bg-violet-50 cursor-pointer";
+                                  let badgeStyle = "bg-slate-100 text-slate-500";
+                                  if (revealed) {
+                                    if (isCorrect) {
+                                      style = "bg-emerald-50 border-emerald-300 text-emerald-800 cursor-default";
+                                      badgeStyle = "bg-emerald-500 text-white";
+                                    } else if (isPick && !isCorrect) {
+                                      style = "bg-red-50 border-red-200 text-red-700 cursor-default";
+                                      badgeStyle = "bg-red-400 text-white";
+                                    } else {
+                                      style = "bg-white border-slate-100 text-slate-400 cursor-default";
+                                      badgeStyle = "bg-slate-100 text-slate-400";
                                     }
-                                    return (
-                                      <button
-                                        key={letra}
-                                        disabled={revealed}
-                                        onClick={() =>
-                                          setReviewAnswers((prev) => ({ ...prev, [p.id]: letra }))
-                                        }
-                                        className={cn(
-                                          "w-full flex items-start gap-2.5 p-3 rounded-xl text-sm border-2 text-left transition-all duration-150",
-                                          style
-                                        )}
-                                      >
-                                        <span className={cn(
-                                          "w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black flex-shrink-0 transition-colors",
-                                          badgeStyle
-                                        )}>
-                                          {letra}
-                                        </span>
-                                        <span className="leading-relaxed break-words min-w-0 flex-1 text-left">
-                                          {p.opcoes[letra]}
-                                          {revealed && isCorrect && (
-                                            <span className="ml-1.5 text-emerald-500 font-black">✓</span>
-                                          )}
-                                          {revealed && isPick && !isCorrect && (
-                                            <span className="ml-1.5 text-red-400 font-black">✗</span>
-                                          )}
-                                        </span>
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-
-                                {/* Prompt before selection */}
-                                {!revealed && (
-                                  <div className="flex items-center justify-center gap-2 py-2 text-xs text-violet-500 font-bold">
-                                    <Zap className="w-3.5 h-3.5" />
-                                    Selecione uma alternativa para ver o gabarito
-                                  </div>
-                                )}
-
-                                {/* Explanation — only shown after pick */}
-                                <AnimatePresence>
-                                  {revealed && (
-                                    <motion.div
-                                      key={`exp-${p.id}`}
-                                      initial={{ opacity: 0, y: 8 }}
-                                      animate={{ opacity: 1, y: 0 }}
-                                      className="bg-violet-50 border border-violet-200 rounded-xl p-3.5"
+                                  }
+                                  return (
+                                    <button
+                                      key={letra}
+                                      disabled={revealed}
+                                      onClick={() =>
+                                        setReviewAnswers((prev) => ({ ...prev, [p.id]: letra }))
+                                      }
+                                      className={cn(
+                                        "w-full flex items-start gap-2.5 p-3 rounded-xl text-sm border-2 text-left transition-all duration-150",
+                                        style
+                                      )}
                                     >
-                                      <p className="text-[11px] font-black uppercase tracking-wider text-violet-500 mb-1.5 flex items-center gap-1">
-                                        <Star className="w-3 h-3" /> Explicação do Professor
-                                      </p>
-                                      <p className="text-sm text-slate-700 leading-relaxed">{p.explicacao}</p>
-                                      <button
-                                        onClick={() =>
-                                          setReviewAnswers((prev) => {
-                                            const next = { ...prev };
-                                            delete next[p.id];
-                                            return next;
-                                          })
-                                        }
-                                        className="mt-3 text-xs text-violet-500 hover:text-violet-700 font-bold flex items-center gap-1 transition-colors"
-                                      >
-                                        <RotateCcw className="w-3 h-3" /> Tentar de novo
-                                      </button>
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
+                                      <span className={cn(
+                                        "w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black flex-shrink-0 transition-colors",
+                                        badgeStyle
+                                      )}>
+                                        {letra}
+                                      </span>
+                                      <span className="leading-relaxed break-words min-w-0 flex-1 text-left">
+                                        {p.opcoes[letra]}
+                                        {revealed && isCorrect && (
+                                          <span className="ml-1.5 text-emerald-500 font-black">✓</span>
+                                        )}
+                                        {revealed && isPick && !isCorrect && (
+                                          <span className="ml-1.5 text-red-400 font-black">✗</span>
+                                        )}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
                               </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+
+                              {/* Prompt before selection */}
+                              {!revealed && (
+                                <div className="flex items-center justify-center gap-2 py-2 text-xs text-violet-500 font-bold">
+                                  <Zap className="w-3.5 h-3.5" />
+                                  Selecione uma alternativa para ver o gabarito
+                                </div>
+                              )}
+
+                              {/* Explanation — shown after pick, simple fade via CSS */}
+                              {revealed && (
+                                <div className="bg-violet-50 border border-violet-200 rounded-xl p-3.5">
+                                  <p className="text-[11px] font-black uppercase tracking-wider text-violet-500 mb-1.5 flex items-center gap-1">
+                                    <Star className="w-3 h-3" /> Explicação do Professor
+                                  </p>
+                                  <p className="text-sm text-slate-700 leading-relaxed">{p.explicacao}</p>
+                                  <button
+                                    onClick={() =>
+                                      setReviewAnswers((prev) => {
+                                        const next = { ...prev };
+                                        delete next[p.id];
+                                        return next;
+                                      })
+                                    }
+                                    className="mt-3 text-xs text-violet-500 hover:text-violet-700 font-bold flex items-center gap-1 transition-colors"
+                                  >
+                                    <RotateCcw className="w-3 h-3" /> Tentar de novo
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

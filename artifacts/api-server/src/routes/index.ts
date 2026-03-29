@@ -7,6 +7,7 @@ import simuladoRouter from "./simulado";
 import flashcardsRouter from "./flashcards";
 import historyRouter from "./history";
 import rankingRouter from "./ranking";
+import waitlistRouter from "./waitlist";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(simuladoRouter);
 router.use(flashcardsRouter);
 router.use(historyRouter);
 router.use(rankingRouter);
+router.use(waitlistRouter);
 
 export default router;

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import {
@@ -180,6 +181,36 @@ const testimonials = [
 
 export default function Landing() {
   const [, navigate] = useLocation();
+  const [wlEmail, setWlEmail] = useState("");
+  const [wlName, setWlName] = useState("");
+  const [wlStatus, setWlStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [wlMessage, setWlMessage] = useState("");
+
+  async function handleWaitlist(e: React.FormEvent) {
+    e.preventDefault();
+    if (!wlEmail.trim()) return;
+    setWlStatus("loading");
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: wlEmail.trim(), name: wlName.trim(), source: "landing" }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        setWlStatus("success");
+        setWlMessage(data.mensagem || "Email cadastrado! Avisaremos você em breve.");
+        setWlEmail("");
+        setWlName("");
+      } else {
+        setWlStatus("error");
+        setWlMessage(data.erro || "Erro ao cadastrar. Tente novamente.");
+      }
+    } catch {
+      setWlStatus("error");
+      setWlMessage("Erro de conexão. Tente novamente.");
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white overflow-x-hidden">
@@ -554,6 +585,117 @@ export default function Landing() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── WAITLIST ── */}
+      <section id="lista-espera" className="py-24 px-6 border-t border-white/5">
+        <div className="max-w-2xl mx-auto">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="text-center mb-10"
+          >
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-sm font-medium mb-4">
+              <Sparkles className="w-3.5 h-3.5" />
+              Lançamento em breve
+            </div>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
+              Entre na lista de espera
+            </h2>
+            <p className="text-white/50 text-lg">
+              Seja um dos primeiros a saber quando o plano Pro for lançado. Quem entrar na lista ganha <span className="text-violet-400 font-semibold">30 dias grátis</span>.
+            </p>
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            custom={0.5}
+            className="bg-white/5 border border-white/10 rounded-2xl p-6 sm:p-8"
+          >
+            {wlStatus === "success" ? (
+              <div className="text-center py-6">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/20 border border-green-500/30 mb-4">
+                  <CheckCircle className="w-8 h-8 text-green-400" />
+                </div>
+                <h3 className="text-xl font-black mb-2">Você está na lista! 🎉</h3>
+                <p className="text-white/60">{wlMessage}</p>
+              </div>
+            ) : (
+              <form onSubmit={handleWaitlist} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-white/70 mb-1.5">
+                      Seu nome
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="João Silva"
+                      value={wlName}
+                      onChange={(e) => setWlName(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl bg-white/8 border border-white/10 text-white placeholder-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-white/70 mb-1.5">
+                      Seu email <span className="text-violet-400">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="joao@email.com"
+                      value={wlEmail}
+                      onChange={(e) => setWlEmail(e.target.value)}
+                      required
+                      className="w-full px-4 py-3 rounded-xl bg-white/8 border border-white/10 text-white placeholder-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all"
+                    />
+                  </div>
+                </div>
+
+                {wlStatus === "error" && (
+                  <p className="text-red-400 text-sm">{wlMessage}</p>
+                )}
+
+                <Button
+                  type="submit"
+                  disabled={wlStatus === "loading"}
+                  className="w-full bg-violet-600 hover:bg-violet-500 text-white h-12 text-base font-bold disabled:opacity-60"
+                >
+                  {wlStatus === "loading" ? "Cadastrando..." : "Quero 30 dias grátis →"}
+                </Button>
+
+                <p className="text-center text-white/30 text-xs">
+                  Sem spam. Apenas avisaremos quando o Pro for lançado.
+                </p>
+              </form>
+            )}
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            custom={1}
+            className="flex flex-wrap justify-center gap-6 mt-8 text-sm text-white/40"
+          >
+            <div className="flex items-center gap-1.5">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              30 dias grátis ao entrar
+            </div>
+            <div className="flex items-center gap-1.5">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              Sem cartão de crédito
+            </div>
+            <div className="flex items-center gap-1.5">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              Cancele quando quiser
+            </div>
+          </motion.div>
         </div>
       </section>
 

@@ -275,21 +275,54 @@ function Simulado({ plan, serie, conteudoTexto, onClose }: SimuladoProps) {
     setSubmitted(false);
     setTimeTaken(0);
     try {
+      // Build a rich text representation of the FULL plan so the simulado
+      // always has real content to work from, even for image-only uploads
+      // where no raw file text could be extracted.
       const diasConteudo = plan.dias
         .map((d) => {
-          const topicDetails = d.topicos.map((t) => {
+          const topicParts = d.topicos.map((t) => {
             if (typeof t === "object" && t !== null) {
               const to = t as any;
-              let detail = `  - ${to.nome}`;
-              if (to.explicacao) detail += `\n    Explicação: ${to.explicacao}`;
-              if (to.gatilho) detail += `\n    Conceito-chave: ${to.gatilho}`;
-              return detail;
+              let s = `  TÓPICO: ${to.nome}`;
+              if (to.explicacao) s += `\n  Explicação: ${to.explicacao}`;
+              if (to.gatilho) s += `\n  Memorização: ${to.gatilho}`;
+              if (to.exercicio?.pergunta) s += `\n  Exercício: ${to.exercicio.pergunta}`;
+              if (to.exercicio?.resposta) s += `\n  Resposta: ${to.exercicio.resposta}`;
+              return s;
             }
-            return `  - ${t}`;
+            return `  TÓPICO: ${t}`;
           });
-          return `Dia ${d.numero} - ${d.titulo}:\n${topicDetails.join("\n")}`;
+
+          const exercParts = Array.isArray((d as any).exerciciosDoDia)
+            ? (d as any).exerciciosDoDia.map((ex: any, ei: number) =>
+                `  Exercício ${ei + 1}: ${ex.pergunta}\n  Gabarito: ${ex.gabarito}`
+              )
+            : [];
+
+          let dayText = `=== DIA ${d.numero}: ${d.titulo} ===\n`;
+          if (d.missao) dayText += `Missão: ${d.missao}\n`;
+          dayText += topicParts.join("\n");
+          if (exercParts.length > 0) dayText += `\n  --- Exercícios do Dia ---\n${exercParts.join("\n")}`;
+          const desafio = (d as any).desafio;
+          if (desafio && typeof desafio === "object" && desafio.enunciado) {
+            dayText += `\n  Desafio: ${desafio.enunciado}\n  Solução: ${desafio.gabarito || ""}`;
+          }
+          return dayText;
         })
         .join("\n\n");
+
+      const dicasText = Array.isArray((plan as any).dicasGerais)
+        ? `\nDicas gerais: ${(plan as any).dicasGerais.join(" | ")}`
+        : "";
+
+      const fullPlanText = `${diasConteudo}${dicasText}`;
+
+      // Use raw file content if available, otherwise fall back to the full plan text.
+      // The plan was generated directly from the uploaded content (even images),
+      // so it faithfully represents what the student actually submitted.
+      const effectiveConteudo = (conteudoTexto && conteudoTexto.trim().length > 100)
+        ? conteudoTexto
+        : fullPlanText;
 
       const res = await fetch("/api/simulado", {
         method: "POST",
@@ -298,8 +331,8 @@ function Simulado({ plan, serie, conteudoTexto, onClose }: SimuladoProps) {
           materia: plan.materia,
           serie,
           resumo: plan.resumoDoConteudo,
-          diasConteudo,
-          conteudoTexto: conteudoTexto || "",
+          diasConteudo: fullPlanText,
+          conteudoTexto: effectiveConteudo,
         }),
       });
 

@@ -253,21 +253,69 @@ router.post("/analisar", (req, res, next) => {
 
     const plano = JSON.parse(aiResponse);
 
-    // Build the full raw text content to pass to simulado generator
-    const allTextParts: string[] = [];
-    if (texto) allTextParts.push(texto);
-    const filesForText = req.files as Express.Multer.File[] | undefined;
-    if (filesForText) {
-      for (const file of filesForText) {
-        if (!isImage(file.mimetype)) {
-          const extracted = await extractTextFromFile(file);
-          if (extracted && extracted.length > 0) {
-            allTextParts.push(`[${file.originalname}]\n${extracted}`);
-          }
+    // Build the richest possible raw text to pass to the simulado generator.
+    // Priority: (1) actual file text (PDF/DOCX), (2) typed text, (3) plan content itself.
+    // For image-only uploads nothing can be extracted directly, so we serialize
+    // the generated plan — which was built from the image — as the content source.
+    const rawParts: string[] = [];
+    if (texto) rawParts.push(texto);
+
+    const allFiles = req.files as Express.Multer.File[] | undefined;
+    let hasImageOnly = false;
+    if (allFiles && allFiles.length > 0) {
+      const imageFiles = allFiles.filter(f => isImage(f.mimetype));
+      const docFiles = allFiles.filter(f => !isImage(f.mimetype));
+      hasImageOnly = imageFiles.length > 0 && docFiles.length === 0 && !texto;
+
+      for (const file of docFiles) {
+        const extracted = await extractTextFromFile(file);
+        if (extracted && extracted.length > 0) {
+          rawParts.push(`[${file.originalname}]\n${extracted}`);
         }
       }
     }
-    const conteudoTexto = allTextParts.join("\n\n---\n\n").slice(0, 12000);
+
+    // If no extractable text, serialize the plan itself as rich text content
+    if (rawParts.length === 0 || hasImageOnly) {
+      const planParts: string[] = [];
+      if (plano.resumoDoConteudo) planParts.push(`Resumo: ${plano.resumoDoConteudo}`);
+      if (Array.isArray(plano.dias)) {
+        for (const dia of plano.dias) {
+          let dayStr = `=== ${dia.titulo || `Dia ${dia.numero}`} ===`;
+          if (dia.missao) dayStr += `\n${dia.missao}`;
+          if (Array.isArray(dia.topicos)) {
+            for (const t of dia.topicos) {
+              if (typeof t === "object" && t !== null) {
+                const to = t as any;
+                dayStr += `\n- ${to.nome}`;
+                if (to.explicacao) dayStr += `\n  ${to.explicacao}`;
+                if (to.gatilho) dayStr += `\n  Memorização: ${to.gatilho}`;
+                if (to.exercicio?.pergunta) dayStr += `\n  Q: ${to.exercicio.pergunta}`;
+                if (to.exercicio?.resposta) dayStr += `\n  R: ${to.exercicio.resposta}`;
+              } else {
+                dayStr += `\n- ${t}`;
+              }
+            }
+          }
+          if (Array.isArray(dia.exerciciosDoDia)) {
+            for (const ex of dia.exerciciosDoDia) {
+              dayStr += `\n  Exercício: ${ex.pergunta}\n  Gabarito: ${ex.gabarito}`;
+            }
+          }
+          const desafio = dia.desafio;
+          if (desafio && typeof desafio === "object" && desafio.enunciado) {
+            dayStr += `\n  Desafio: ${desafio.enunciado}\n  Solução: ${desafio.gabarito || ""}`;
+          }
+          planParts.push(dayStr);
+        }
+      }
+      if (Array.isArray(plano.dicasGerais)) {
+        planParts.push(`Dicas: ${plano.dicasGerais.join(" | ")}`);
+      }
+      rawParts.push(planParts.join("\n\n"));
+    }
+
+    const conteudoTexto = rawParts.join("\n\n---\n\n").slice(0, 8000);
 
     res.json({ plano, conteudoTexto });
   } catch (error) {

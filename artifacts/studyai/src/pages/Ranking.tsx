@@ -176,7 +176,7 @@ export default function RankingPage() {
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center gap-4 mb-4">
             <button
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/app")}
               className="w-9 h-9 rounded-xl bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -263,7 +263,7 @@ export default function RankingPage() {
             <div className="text-5xl mb-4">🏆</div>
             <h3 className="font-black text-xl text-slate-800 mb-2">Ranking vazio por enquanto!</h3>
             <p className="text-slate-500 text-sm">Seja o primeiro a aparecer aqui. Faça simulados e estude com flashcards para ganhar XP!</p>
-            <button onClick={() => navigate("/")} className="mt-4 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-black text-sm hover:opacity-90">
+            <button onClick={() => navigate("/app")} className="mt-4 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-black text-sm hover:opacity-90">
               Começar a estudar
             </button>
           </div>

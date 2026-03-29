@@ -21,7 +21,8 @@ import {
   Brain,
   Dumbbell,
   Save,
-  BarChart2
+  BarChart2,
+  Home as HomeIcon
 } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { TutorChat } from "@/components/TutorChat";
@@ -370,6 +371,13 @@ export default function Home() {
 
       {/* Floating top-right user menu */}
       <div className="fixed top-4 right-4 z-40 flex items-center gap-2">
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-white border-2 border-gray-200 hover:border-gray-400 text-gray-600 font-bold text-sm shadow-sm hover:shadow-md transition-all"
+        >
+          <HomeIcon className="w-4 h-4 text-gray-500" />
+          Início
+        </button>
         <button
           onClick={() => navigate("/dashboard")}
           className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-white border-2 border-violet-200 hover:border-violet-400 text-violet-600 font-bold text-sm shadow-sm hover:shadow-md transition-all"

@@ -142,7 +142,7 @@ export default function HistoryPage() {
           Entrar para ver histórico
         </button>
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/app")}
           className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -170,7 +170,7 @@ export default function HistoryPage() {
       {/* Header */}
       <div className="flex items-center gap-3 mb-8">
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/app")}
           className="p-2 rounded-xl bg-secondary hover:bg-secondary/70 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />

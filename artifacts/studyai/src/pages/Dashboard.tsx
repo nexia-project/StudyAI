@@ -163,7 +163,7 @@ export default function Dashboard() {
           <LogIn className="w-5 h-5" />
           Entrar para ver o Dashboard
         </button>
-        <button onClick={() => navigate("/")} className="text-sm text-slate-400 hover:text-slate-600 transition-colors">
+        <button onClick={() => navigate("/app")} className="text-sm text-slate-400 hover:text-slate-600 transition-colors">
           ← Voltar ao início
         </button>
       </div>
@@ -198,7 +198,7 @@ export default function Dashboard() {
       <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-slate-100">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center gap-4">
           <button
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/app")}
             className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors font-semibold text-sm"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -436,7 +436,7 @@ export default function Dashboard() {
                 <h3 className="text-xl font-black text-slate-700 mb-2">Nenhuma atividade ainda</h3>
                 <p className="text-slate-400 mb-6">Crie um plano de estudos, faça um simulado ou sessão de flashcards para ver suas estatísticas aqui.</p>
                 <button
-                  onClick={() => navigate("/")}
+                  onClick={() => navigate("/app")}
                   className="px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-600 text-white font-black shadow-lg shadow-violet-200 hover:opacity-90 transition-opacity"
                 >
                   Começar a Estudar

@@ -1,0 +1,613 @@
+import { motion } from "framer-motion";
+import { useLocation } from "wouter";
+import {
+  Brain,
+  Zap,
+  Trophy,
+  Clock,
+  FileText,
+  BarChart2,
+  CheckCircle,
+  Star,
+  ArrowRight,
+  BookOpen,
+  Sparkles,
+  Users,
+  ChevronRight,
+  GraduationCap,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 24 },
+  show: (i = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.1, duration: 0.5, ease: "easeOut" },
+  }),
+};
+
+const features = [
+  {
+    icon: Brain,
+    title: "Plano de Estudos com IA",
+    desc: "Envie qualquer conteúdo — PDF, DOCX, imagem ou texto — e receba um plano personalizado gerado pelo GPT-4o em segundos.",
+    color: "from-violet-500/20 to-purple-500/20",
+    border: "border-violet-500/30",
+    iconBg: "bg-violet-500/20",
+    iconColor: "text-violet-400",
+  },
+  {
+    icon: Zap,
+    title: "Simulado Inteligente",
+    desc: "10 questões geradas diretamente do seu material — múltipla escolha, lacuna, verdadeiro/falso — com correção e gabarito comentado.",
+    color: "from-yellow-500/20 to-orange-500/20",
+    border: "border-yellow-500/30",
+    iconBg: "bg-yellow-500/20",
+    iconColor: "text-yellow-400",
+  },
+  {
+    icon: BookOpen,
+    title: "Flashcards (Método Anki)",
+    desc: "Pratique com repetição espaçada. A IA cria os cards a partir do seu plano e ajusta o ritmo conforme seu desempenho.",
+    color: "from-blue-500/20 to-cyan-500/20",
+    border: "border-blue-500/30",
+    iconBg: "bg-blue-500/20",
+    iconColor: "text-blue-400",
+  },
+  {
+    icon: Clock,
+    title: "Pomodoro Gamificado",
+    desc: "Timer de foco integrado ao plano de estudos. Estude por ciclos e ganhe XP a cada sessão concluída.",
+    color: "from-green-500/20 to-emerald-500/20",
+    border: "border-green-500/30",
+    iconBg: "bg-green-500/20",
+    iconColor: "text-green-400",
+  },
+  {
+    icon: Trophy,
+    title: "Ranking Global",
+    desc: "Compare seu desempenho com estudantes do Brasil. Suba na classificação e conquiste badges de Bronze ao Diamante.",
+    color: "from-amber-500/20 to-yellow-500/20",
+    border: "border-amber-500/30",
+    iconBg: "bg-amber-500/20",
+    iconColor: "text-amber-400",
+  },
+  {
+    icon: BarChart2,
+    title: "Dashboard de Progresso",
+    desc: "Acompanhe simulados, taxa de acerto, flashcards e planos gerados. Veja sua evolução ao longo do tempo.",
+    color: "from-pink-500/20 to-rose-500/20",
+    border: "border-pink-500/30",
+    iconBg: "bg-pink-500/20",
+    iconColor: "text-pink-400",
+  },
+];
+
+const steps = [
+  {
+    num: "01",
+    icon: FileText,
+    title: "Envie o conteúdo",
+    desc: "PDF, DOCX, imagem do caderno ou simplesmente cole o texto. Suportamos qualquer formato.",
+  },
+  {
+    num: "02",
+    icon: Sparkles,
+    title: "A IA gera seu plano",
+    desc: "O GPT-4o analisa o material e cria um plano de estudos com tópicos, exercícios, desafios e dicas de memorização.",
+  },
+  {
+    num: "03",
+    icon: GraduationCap,
+    title: "Estude e evolua",
+    desc: "Use o simulado, flashcards e Pomodoro para fixar o conteúdo. Suba no ranking conforme aprende.",
+  },
+];
+
+const plans = [
+  {
+    name: "Grátis",
+    price: "R$ 0",
+    period: "",
+    desc: "Para experimentar",
+    highlight: false,
+    features: [
+      "1 plano de estudos por mês",
+      "1 simulado por mês",
+      "Flashcards básicos",
+      "Timer Pomodoro",
+      "Acesso ao ranking",
+    ],
+    cta: "Começar Grátis",
+    ctaVariant: "outline" as const,
+  },
+  {
+    name: "Pro",
+    price: "R$ 19,90",
+    period: "/mês",
+    desc: "Para estudantes sérios",
+    highlight: true,
+    features: [
+      "Planos de estudos ilimitados",
+      "Simulados ilimitados",
+      "Flashcards com IA avançada",
+      "Tutor IA no chat",
+      "Dashboard completo",
+      "Histórico de sessões",
+      "Ranking prioritário",
+    ],
+    cta: "Assinar Pro",
+    ctaVariant: "default" as const,
+  },
+  {
+    name: "Anual",
+    price: "R$ 159,90",
+    period: "/ano",
+    desc: "Economize 33%",
+    highlight: false,
+    features: [
+      "Tudo do plano Pro",
+      "Prioridade no suporte",
+      "Acesso antecipado a novas funções",
+      "Badge exclusivo no ranking",
+    ],
+    cta: "Assinar Anual",
+    ctaVariant: "outline" as const,
+  },
+];
+
+const testimonials = [
+  {
+    name: "Mariana S.",
+    role: "Estudante — ENEM 2024",
+    text: "Passei de 580 para 720 pontos em 2 meses usando o StudyAI. Os simulados são incríveis — parecem questões reais!",
+    stars: 5,
+  },
+  {
+    name: "Carlos M.",
+    role: "Concurseiro — TRF",
+    text: "Nunca tinha conseguido manter uma rotina de estudos. Com o Pomodoro gamificado e o ranking, virou vício estudar.",
+    stars: 5,
+  },
+  {
+    name: "Juliana R.",
+    role: "Vestibulando — FUVEST",
+    text: "Fotografo minhas apostilas e em 30 segundos tenho um plano completo com exercícios. Simplesmente incrível.",
+    stars: 5,
+  },
+];
+
+export default function Landing() {
+  const [, navigate] = useLocation();
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0f] text-white overflow-x-hidden">
+      {/* ── NAVBAR ── */}
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-[#0a0a0f]/80 backdrop-blur-xl">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+              <Brain className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-bold text-lg tracking-tight">StudyAI</span>
+          </div>
+
+          <nav className="hidden md:flex items-center gap-6 text-sm text-white/60">
+            <a href="#recursos" className="hover:text-white transition-colors">Recursos</a>
+            <a href="#como-funciona" className="hover:text-white transition-colors">Como funciona</a>
+            <a href="#precos" className="hover:text-white transition-colors">Preços</a>
+          </nav>
+
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-white/70 hover:text-white"
+              onClick={() => navigate("/app")}
+            >
+              Entrar
+            </Button>
+            <Button
+              size="sm"
+              className="bg-violet-600 hover:bg-violet-500 text-white"
+              onClick={() => navigate("/app")}
+            >
+              Começar Grátis
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* ── HERO ── */}
+      <section className="relative pt-32 pb-24 px-6 text-center overflow-hidden">
+        {/* Background glow */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-violet-600/10 rounded-full blur-3xl" />
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[400px] h-[300px] bg-purple-600/15 rounded-full blur-2xl" />
+        </div>
+
+        <div className="relative max-w-4xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4 }}
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-sm font-medium mb-6"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Powered by GPT-4o
+          </motion.div>
+
+          <motion.h1
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+            custom={1}
+            className="text-5xl md:text-7xl font-black tracking-tight leading-[1.05] mb-6"
+          >
+            Estude de forma{" "}
+            <span className="bg-gradient-to-r from-violet-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+              inteligente
+            </span>
+            .<br />
+            Passe na prova.
+          </motion.h1>
+
+          <motion.p
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+            custom={2}
+            className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-10 leading-relaxed"
+          >
+            Envie qualquer material e receba um plano de estudos personalizado com IA,
+            simulados, flashcards e um tutor disponível 24h. Tudo em um só lugar.
+          </motion.p>
+
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+            custom={3}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+          >
+            <Button
+              size="lg"
+              className="bg-violet-600 hover:bg-violet-500 text-white text-base px-8 h-12 shadow-lg shadow-violet-900/40"
+              onClick={() => navigate("/app")}
+            >
+              Começar Grátis
+              <ArrowRight className="ml-2 w-4 h-4" />
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-white/10 text-white/80 hover:bg-white/5 text-base px-8 h-12"
+              onClick={() => {
+                document.getElementById("como-funciona")?.scrollIntoView({ behavior: "smooth" });
+              }}
+            >
+              Ver como funciona
+            </Button>
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+            custom={4}
+            className="flex items-center justify-center gap-6 mt-12 text-sm text-white/40"
+          >
+            <div className="flex items-center gap-1.5">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              Sem cartão de crédito
+            </div>
+            <div className="flex items-center gap-1.5">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              Gratuito para começar
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Users className="w-4 h-4 text-violet-400" />
+              +2.000 estudantes
+            </div>
+          </motion.div>
+        </div>
+
+        {/* App preview mockup */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 0.7 }}
+          className="relative max-w-4xl mx-auto mt-20"
+        >
+          <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-[#13131a] shadow-2xl shadow-black/60">
+            <div className="flex items-center gap-1.5 px-4 py-3 bg-[#1a1a24] border-b border-white/5">
+              <div className="w-3 h-3 rounded-full bg-red-500/60" />
+              <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
+              <div className="w-3 h-3 rounded-full bg-green-500/60" />
+              <div className="flex-1 mx-4 h-5 rounded bg-white/5 flex items-center px-3">
+                <span className="text-white/30 text-xs">studyai.app</span>
+              </div>
+            </div>
+            <div className="p-6 grid grid-cols-3 gap-4 min-h-[200px]">
+              {[
+                { label: "Planos gerados", val: "12", color: "text-violet-400" },
+                { label: "Taxa de acerto", val: "87%", color: "text-green-400" },
+                { label: "Flashcards vistos", val: "340", color: "text-blue-400" },
+              ].map((stat) => (
+                <div key={stat.label} className="bg-white/5 rounded-xl p-4 text-left border border-white/5">
+                  <p className="text-white/40 text-xs mb-1">{stat.label}</p>
+                  <p className={`text-2xl font-bold ${stat.color}`}>{stat.val}</p>
+                </div>
+              ))}
+              <div className="col-span-3 bg-white/5 rounded-xl p-4 border border-white/5">
+                <p className="text-white/40 text-xs mb-2">Plano de hoje</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center">
+                    <Brain className="w-4 h-4 text-violet-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Matemática — Equações do 2º grau</p>
+                    <p className="text-xs text-white/40">3 tópicos · 2 exercícios · 1 desafio</p>
+                  </div>
+                  <ChevronRight className="ml-auto text-white/20 w-4 h-4" />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-t from-[#0a0a0f] via-transparent to-transparent pointer-events-none" />
+        </motion.div>
+      </section>
+
+      {/* ── FEATURES ── */}
+      <section id="recursos" className="py-24 px-6">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <p className="text-violet-400 font-semibold text-sm uppercase tracking-widest mb-3">Recursos</p>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
+              Tudo que você precisa para passar
+            </h2>
+            <p className="text-white/50 text-lg max-w-2xl mx-auto">
+              Do plano de estudos ao simulado final — ferramentas poderosas em uma plataforma simples.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {features.map((f, i) => (
+              <motion.div
+                key={f.title}
+                variants={fadeUp}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true }}
+                custom={i * 0.5}
+                className={`relative rounded-2xl border ${f.border} bg-gradient-to-br ${f.color} p-6 backdrop-blur-sm hover:scale-[1.02] transition-transform duration-200`}
+              >
+                <div className={`w-10 h-10 rounded-xl ${f.iconBg} flex items-center justify-center mb-4`}>
+                  <f.icon className={`w-5 h-5 ${f.iconColor}`} />
+                </div>
+                <h3 className="font-bold text-lg mb-2">{f.title}</h3>
+                <p className="text-white/55 text-sm leading-relaxed">{f.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── HOW IT WORKS ── */}
+      <section id="como-funciona" className="py-24 px-6 border-t border-white/5">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <p className="text-violet-400 font-semibold text-sm uppercase tracking-widest mb-3">Como funciona</p>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
+              Em 3 passos simples
+            </h2>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {steps.map((s, i) => (
+              <motion.div
+                key={s.num}
+                variants={fadeUp}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true }}
+                custom={i * 0.7}
+                className="relative text-center"
+              >
+                {i < steps.length - 1 && (
+                  <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-px bg-gradient-to-r from-white/10 to-transparent" />
+                )}
+                <div className="relative inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 mb-5">
+                  <s.icon className="w-7 h-7 text-violet-400" />
+                  <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-violet-600 text-white text-[10px] font-bold flex items-center justify-center">
+                    {i + 1}
+                  </span>
+                </div>
+                <h3 className="font-bold text-xl mb-3">{s.title}</h3>
+                <p className="text-white/50 text-sm leading-relaxed max-w-xs mx-auto">{s.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── TESTIMONIALS ── */}
+      <section className="py-24 px-6 border-t border-white/5">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <p className="text-violet-400 font-semibold text-sm uppercase tracking-widest mb-3">Depoimentos</p>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight">
+              Quem usou, aprovou
+            </h2>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {testimonials.map((t, i) => (
+              <motion.div
+                key={t.name}
+                variants={fadeUp}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true }}
+                custom={i * 0.5}
+                className="bg-white/5 border border-white/8 rounded-2xl p-6"
+              >
+                <div className="flex gap-0.5 mb-4">
+                  {Array.from({ length: t.stars }).map((_, si) => (
+                    <Star key={si} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  ))}
+                </div>
+                <p className="text-white/70 text-sm leading-relaxed mb-5">"{t.text}"</p>
+                <div>
+                  <p className="font-semibold text-sm">{t.name}</p>
+                  <p className="text-white/40 text-xs">{t.role}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── PRICING ── */}
+      <section id="precos" className="py-24 px-6 border-t border-white/5">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <p className="text-violet-400 font-semibold text-sm uppercase tracking-widest mb-3">Preços</p>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
+              Simples e transparente
+            </h2>
+            <p className="text-white/50 text-lg">Comece grátis. Escale conforme evolui.</p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+            {plans.map((plan, i) => (
+              <motion.div
+                key={plan.name}
+                variants={fadeUp}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true }}
+                custom={i * 0.5}
+                className={`relative rounded-2xl border p-8 ${
+                  plan.highlight
+                    ? "border-violet-500/50 bg-gradient-to-b from-violet-600/10 to-purple-600/5 shadow-xl shadow-violet-900/30"
+                    : "border-white/10 bg-white/4"
+                }`}
+              >
+                {plan.highlight && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-violet-600 text-white text-xs font-bold">
+                    Mais popular
+                  </div>
+                )}
+                <p className="text-white/50 text-sm mb-1">{plan.desc}</p>
+                <h3 className="font-black text-2xl mb-1">{plan.name}</h3>
+                <div className="flex items-baseline gap-1 mb-6">
+                  <span className="text-4xl font-black">{plan.price}</span>
+                  <span className="text-white/40 text-sm">{plan.period}</span>
+                </div>
+
+                <ul className="space-y-3 mb-8">
+                  {plan.features.map((feat) => (
+                    <li key={feat} className="flex items-center gap-2.5 text-sm text-white/70">
+                      <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
+                      {feat}
+                    </li>
+                  ))}
+                </ul>
+
+                <Button
+                  className={`w-full ${
+                    plan.highlight
+                      ? "bg-violet-600 hover:bg-violet-500 text-white"
+                      : "border-white/15 text-white/80 hover:bg-white/5"
+                  }`}
+                  variant={plan.ctaVariant}
+                  onClick={() => navigate("/app")}
+                >
+                  {plan.cta}
+                </Button>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CTA FINAL ── */}
+      <section className="py-24 px-6 border-t border-white/5">
+        <div className="max-w-3xl mx-auto text-center">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+          >
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 mb-6">
+              <GraduationCap className="w-8 h-8 text-violet-400" />
+            </div>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
+              Pronto para começar?
+            </h2>
+            <p className="text-white/50 text-lg mb-8">
+              Junte-se a milhares de estudantes que já usam IA para estudar de forma mais eficiente.
+            </p>
+            <Button
+              size="lg"
+              className="bg-violet-600 hover:bg-violet-500 text-white text-base px-10 h-12 shadow-lg shadow-violet-900/40"
+              onClick={() => navigate("/app")}
+            >
+              Criar minha conta grátis
+              <ArrowRight className="ml-2 w-4 h-4" />
+            </Button>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── FOOTER ── */}
+      <footer className="border-t border-white/5 py-10 px-6">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+              <Brain className="w-3.5 h-3.5 text-white" />
+            </div>
+            <span className="font-bold">StudyAI</span>
+          </div>
+
+          <p className="text-white/30 text-sm">
+            © {new Date().getFullYear()} StudyAI · Todos os direitos reservados
+          </p>
+
+          <div className="flex items-center gap-5 text-sm text-white/40">
+            <a href="#" className="hover:text-white transition-colors">Termos</a>
+            <a href="#" className="hover:text-white transition-colors">Privacidade</a>
+            <a href="#" className="hover:text-white transition-colors">Contato</a>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}

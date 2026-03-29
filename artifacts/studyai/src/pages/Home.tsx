@@ -370,27 +370,30 @@ export default function Home() {
       </div>
 
       {/* Floating top-right user menu */}
-      <div className="fixed top-4 right-4 z-40 flex items-center gap-2">
+      <div className="fixed top-3 right-3 z-40 flex items-center gap-1.5 sm:gap-2">
         <button
           onClick={() => navigate("/")}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-white border-2 border-gray-200 hover:border-gray-400 text-gray-600 font-bold text-sm shadow-sm hover:shadow-md transition-all"
+          className="flex items-center gap-1.5 px-2 sm:px-3 py-2 rounded-2xl bg-white border-2 border-gray-200 hover:border-gray-400 text-gray-600 font-bold text-sm shadow-sm hover:shadow-md transition-all"
+          title="Início"
         >
           <HomeIcon className="w-4 h-4 text-gray-500" />
-          Início
+          <span className="hidden sm:inline">Início</span>
         </button>
         <button
           onClick={() => navigate("/dashboard")}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-white border-2 border-violet-200 hover:border-violet-400 text-violet-600 font-bold text-sm shadow-sm hover:shadow-md transition-all"
+          className="flex items-center gap-1.5 px-2 sm:px-3 py-2 rounded-2xl bg-white border-2 border-violet-200 hover:border-violet-400 text-violet-600 font-bold text-sm shadow-sm hover:shadow-md transition-all"
+          title="Dashboard"
         >
           <BarChart2 className="w-4 h-4 text-violet-500" />
-          Dashboard
+          <span className="hidden sm:inline">Dashboard</span>
         </button>
         <button
           onClick={() => navigate("/ranking")}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-white border-2 border-amber-200 hover:border-amber-400 text-amber-600 font-bold text-sm shadow-sm hover:shadow-md transition-all"
+          className="flex items-center gap-1.5 px-2 sm:px-3 py-2 rounded-2xl bg-white border-2 border-amber-200 hover:border-amber-400 text-amber-600 font-bold text-sm shadow-sm hover:shadow-md transition-all"
+          title="Ranking"
         >
           <Trophy className="w-4 h-4 text-amber-500" />
-          Ranking
+          <span className="hidden sm:inline">Ranking</span>
         </button>
         <UserMenu />
       </div>

@@ -296,7 +296,7 @@ export default function Landing() {
             initial="hidden"
             animate="show"
             custom={4}
-            className="flex items-center justify-center gap-6 mt-12 text-sm text-white/40"
+            className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mt-12 text-sm text-white/40"
           >
             <div className="flex items-center gap-1.5">
               <CheckCircle className="w-4 h-4 text-green-500" />
@@ -329,28 +329,28 @@ export default function Landing() {
                 <span className="text-white/30 text-xs">studyai.app</span>
               </div>
             </div>
-            <div className="p-6 grid grid-cols-3 gap-4 min-h-[200px]">
+            <div className="p-3 sm:p-6 grid grid-cols-3 gap-2 sm:gap-4 min-h-[160px] sm:min-h-[200px]">
               {[
-                { label: "Planos gerados", val: "12", color: "text-violet-400" },
-                { label: "Taxa de acerto", val: "87%", color: "text-green-400" },
-                { label: "Flashcards vistos", val: "340", color: "text-blue-400" },
+                { label: "Planos", val: "12", color: "text-violet-400" },
+                { label: "Acerto", val: "87%", color: "text-green-400" },
+                { label: "Cards", val: "340", color: "text-blue-400" },
               ].map((stat) => (
-                <div key={stat.label} className="bg-white/5 rounded-xl p-4 text-left border border-white/5">
-                  <p className="text-white/40 text-xs mb-1">{stat.label}</p>
-                  <p className={`text-2xl font-bold ${stat.color}`}>{stat.val}</p>
+                <div key={stat.label} className="bg-white/5 rounded-xl p-2 sm:p-4 text-left border border-white/5">
+                  <p className="text-white/40 text-[10px] sm:text-xs mb-1">{stat.label}</p>
+                  <p className={`text-lg sm:text-2xl font-bold ${stat.color}`}>{stat.val}</p>
                 </div>
               ))}
-              <div className="col-span-3 bg-white/5 rounded-xl p-4 border border-white/5">
-                <p className="text-white/40 text-xs mb-2">Plano de hoje</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center">
-                    <Brain className="w-4 h-4 text-violet-400" />
+              <div className="col-span-3 bg-white/5 rounded-xl p-2 sm:p-4 border border-white/5">
+                <p className="text-white/40 text-[10px] sm:text-xs mb-2">Plano de hoje</p>
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-violet-500/20 flex items-center justify-center shrink-0">
+                    <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-violet-400" />
                   </div>
-                  <div>
-                    <p className="text-sm font-medium">Matemática — Equações do 2º grau</p>
-                    <p className="text-xs text-white/40">3 tópicos · 2 exercícios · 1 desafio</p>
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm font-medium truncate">Matemática — Equações do 2º grau</p>
+                    <p className="text-[10px] sm:text-xs text-white/40">3 tópicos · 2 exercícios · 1 desafio</p>
                   </div>
-                  <ChevronRight className="ml-auto text-white/20 w-4 h-4" />
+                  <ChevronRight className="ml-auto text-white/20 w-4 h-4 shrink-0" />
                 </div>
               </div>
             </div>

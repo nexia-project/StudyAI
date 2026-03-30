@@ -355,8 +355,8 @@ export default function Landing() {
             transition={{ duration: 0.4 }}
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-sm font-medium mb-6"
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            Powered by GPT-4o
+            <span className="text-base">🤖</span>
+            Múltiplas IAs trabalhando por você — seus professores 24h
           </motion.div>
 
           <motion.h1
@@ -618,8 +618,8 @@ export default function Landing() {
             {/* Left: content */}
             <div className="relative z-10 flex-1">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 text-xs font-bold uppercase tracking-widest mb-5">
-                <Sparkles className="w-3 h-3" />
-                Powered by GPT-4o
+                <span className="text-sm">🤖</span>
+                IAs ensinando como seus melhores professores
               </div>
               <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-5 leading-tight">
                 Resumão Estratégico<br />

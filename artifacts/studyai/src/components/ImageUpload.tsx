@@ -63,6 +63,8 @@ export function ImageUpload({ onFilesSelect, selectedFiles }: ImageUploadProps) 
   const [previews, setPreviews] = useState<(string | null)[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const MAX_FILES = 50;
+
   const processFiles = (incoming: File[]) => {
     const valid = incoming.filter((f) => getFileKind(f) !== "unknown");
     const invalid = incoming.filter((f) => getFileKind(f) === "unknown");
@@ -73,6 +75,10 @@ export function ImageUpload({ onFilesSelect, selectedFiles }: ImageUploadProps) 
     if (valid.length === 0) return;
 
     const merged = [...selectedFiles, ...valid];
+    if (merged.length > MAX_FILES) {
+      alert(`Limite de ${MAX_FILES} arquivos atingido. Você tentou adicionar ${merged.length} arquivos no total.`);
+      return;
+    }
     onFilesSelect(merged);
 
     valid.forEach((file) => {
@@ -218,7 +224,7 @@ export function ImageUpload({ onFilesSelect, selectedFiles }: ImageUploadProps) 
             Envie seu material de estudo
           </h3>
           <p className="text-sm text-muted-foreground max-w-xs mb-4">
-            Clique ou arraste arquivos aqui
+            Clique ou arraste arquivos aqui · até 50 arquivos
           </p>
           {/* Supported formats badges */}
           <div className="flex flex-wrap items-center justify-center gap-2">

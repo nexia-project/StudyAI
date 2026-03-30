@@ -41,9 +41,11 @@ export function useAuth(): AuthState {
     };
   }, []);
 
-  const login = useCallback(() => {
-    const base = import.meta.env.BASE_URL.replace(/\/+$/, "") || "/";
-    window.location.href = `/api/login?returnTo=${encodeURIComponent(base)}`;
+  const login = useCallback((returnTo?: string) => {
+    const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
+    // Default to /app so after login the user lands on the app, not the landing page.
+    const dest = returnTo ?? (base + "/app");
+    window.location.href = `/api/login?returnTo=${encodeURIComponent(dest)}`;
   }, []);
 
   const logout = useCallback(() => {

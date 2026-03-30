@@ -573,12 +573,33 @@ export default function Home() {
 
                 {/* Section: Content */}
                 <section>
-                  <h2 className="text-2xl font-bold flex items-center gap-3 mb-6 text-foreground font-display">
-                    <span className="bg-accent/10 text-accent p-2.5 rounded-2xl"><BookOpen className="w-6 h-6" /></span>
-                    O que vamos dominar?
-                  </h2>
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold flex items-center gap-3 text-foreground font-display">
+                      <span className="bg-accent/10 text-accent p-2.5 rounded-2xl"><BookOpen className="w-6 h-6" /></span>
+                      O que vamos dominar?
+                    </h2>
+                    <p className="text-sm text-muted-foreground mt-3 ml-1 leading-relaxed">
+                      Você tem duas formas de alimentar a IA — escolha a que faz mais sentido para você:
+                    </p>
+                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="flex items-start gap-3 bg-violet-50 border border-violet-200 rounded-2xl px-4 py-3">
+                        <span className="text-2xl mt-0.5">📎</span>
+                        <div>
+                          <p className="text-sm font-bold text-violet-800">Suba seu material</p>
+                          <p className="text-xs text-violet-600 leading-relaxed mt-0.5">PDF, DOCX ou foto do caderno. A IA lê tudo e monta o plano em cima exatamente do que você vai cair na prova. <strong>Quanto mais detalhado o material, mais preciso e cirúrgico será o plano.</strong></p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 bg-pink-50 border border-pink-200 rounded-2xl px-4 py-3">
+                        <span className="text-2xl mt-0.5">✍️</span>
+                        <div>
+                          <p className="text-sm font-bold text-pink-800">Digite o tema ou assunto</p>
+                          <p className="text-xs text-pink-600 leading-relaxed mt-0.5">Sem material em mãos? Sem problema. Digite o tema, matéria ou assunto. <strong>Quanto mais específico, mais focado o plano. Quanto mais genérico, mais amplo e exploratório.</strong></p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
-                  <div className="space-y-8">
+                  <div className="space-y-6">
                     <ImageUpload 
                       selectedFiles={files} 
                       onFilesSelect={setFiles} 
@@ -586,22 +607,23 @@ export default function Home() {
 
                     <div className="flex items-center gap-4">
                       <div className="h-px bg-border flex-1"></div>
-                      <span className="text-xs font-black text-muted-foreground uppercase tracking-widest bg-secondary px-4 py-1 rounded-full">ou digite a missão</span>
+                      <span className="text-xs font-black text-muted-foreground uppercase tracking-widest bg-secondary px-4 py-1 rounded-full">ou escreva o tema / assunto</span>
                       <div className="h-px bg-border flex-1"></div>
                     </div>
 
                     <div className="space-y-2">
                       <label className="text-sm font-bold text-foreground flex items-center gap-2 ml-1">
-                        <FileText className="w-4 h-4 text-accent" /> Assunto Alvo
+                        <FileText className="w-4 h-4 text-accent" /> Tema ou Assunto
                       </label>
                       <textarea
                         name="texto"
                         value={formData.texto}
                         onChange={handleInputChange}
                         rows={4}
-                        placeholder="Ex: Preciso entender como funciona a fotossíntese para a prova de biologia..."
-                        className="w-full px-5 py-4 rounded-2xl bg-secondary/50 border-2 border-transparent focus:border-accent focus:bg-white focus:shadow-[0_0_0_4px_rgba(217,70,239,0.1)] transition-all outline-none resize-y font-medium text-lg leading-relaxed"
+                        placeholder="Ex: Funções do 2º grau para o ENEM&#10;Ex: Revolução Francesa — causas, fases e consequências&#10;Ex: Toda a matéria de química orgânica do 3º ano"
+                        className="w-full px-5 py-4 rounded-2xl bg-secondary/50 border-2 border-transparent focus:border-accent focus:bg-white focus:shadow-[0_0_0_4px_rgba(217,70,239,0.1)] transition-all outline-none resize-y font-medium text-base leading-relaxed"
                       />
+                      <p className="text-xs text-muted-foreground ml-1">Dica: quanto mais detalhado você descrever, mais cirúrgico e personalizado será o plano gerado</p>
                     </div>
                   </div>
                 </section>

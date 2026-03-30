@@ -36,7 +36,7 @@ const features = [
   {
     icon: Brain,
     title: "Plano de Estudos com IA",
-    desc: "Envie qualquer conteúdo — PDF, DOCX, imagem ou texto — e receba um plano personalizado gerado pelo GPT-4o em segundos.",
+    desc: "Suba um PDF, DOCX ou foto do caderno — ou simplesmente digite o tema que quer dominar. Quanto mais detalhado, mais cirúrgico o plano. Quanto mais genérico, mais amplo e exploratório.",
     color: "from-violet-500/20 to-purple-500/20",
     border: "border-violet-500/30",
     iconBg: "bg-violet-500/20",
@@ -120,8 +120,8 @@ const steps = [
   {
     num: "01",
     icon: FileText,
-    title: "Envie o conteúdo",
-    desc: "PDF, DOCX, imagem do caderno ou simplesmente cole o texto. Suportamos qualquer formato.",
+    title: "Envie o material ou escreva o tema",
+    desc: "Suba um PDF, DOCX ou foto do caderno para um plano cirúrgico baseado no seu conteúdo real. Ou simplesmente escreva o tema que quer estudar — sem precisar de arquivo.",
   },
   {
     num: "02",

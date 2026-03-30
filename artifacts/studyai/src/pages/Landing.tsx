@@ -20,6 +20,9 @@ import {
   Map,
   TrendingUp,
   Target,
+  Briefcase,
+  BookMarked,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -187,6 +190,62 @@ const plans = [
     cta: "Assinar Anual",
     ctaVariant: "outline" as const,
   },
+];
+
+const stats = [
+  { value: "+2.400", label: "Estudantes ativos", icon: Users, color: "text-violet-400" },
+  { value: "14.800+", label: "Planos gerados", icon: BookOpen, color: "text-blue-400" },
+  { value: "89%", label: "Taxa de acerto média", icon: TrendingUp, color: "text-emerald-400" },
+  { value: "4.9★", label: "Avaliação dos usuários", icon: Star, color: "text-amber-400" },
+];
+
+const personas = [
+  {
+    icon: GraduationCap,
+    badge: "ENEM",
+    title: "Vestibulandos",
+    desc: "Do primeiro plano até o resultado. Simulados no estilo ENEM, correção de redação nas 5 competências e mapa de calor das suas matérias mais fracas.",
+    bullets: ["Redação avaliada por IA com nota 0–1000", "Simulados gerados do seu próprio material", "Plano adaptado por área de conhecimento"],
+    gradient: "from-violet-500/20 to-purple-500/10",
+    border: "border-violet-500/25",
+    iconBg: "bg-violet-500/20",
+    iconColor: "text-violet-400",
+    badgeBg: "bg-violet-500/20 text-violet-300 border-violet-500/30",
+  },
+  {
+    icon: Briefcase,
+    badge: "CONCURSOS",
+    title: "Concurseiros",
+    desc: "Conteúdo extenso, tempo escasso. Envie o edital ou apostila e receba um plano cirúrgico focado nos tópicos com maior peso e menor domínio.",
+    bullets: ["Plano a partir de edital ou apostila em PDF", "Simulado Adaptativo que ataca suas lacunas", "Pomodoro gamificado para manter a rotina"],
+    gradient: "from-blue-500/20 to-cyan-500/10",
+    border: "border-blue-500/25",
+    iconBg: "bg-blue-500/20",
+    iconColor: "text-blue-400",
+    badgeBg: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+  },
+  {
+    icon: BookMarked,
+    badge: "VESTIBULAR",
+    title: "Estudantes em geral",
+    desc: "Provas do colegial, recuperação, FUVEST, UNICAMP ou qualquer vestibular estadual. A IA se adapta ao conteúdo e ao nível que você informar.",
+    bullets: ["Funciona para qualquer matéria ou banca", "Flashcards com método Anki para fixação", "Ranking para manter a motivação no dia a dia"],
+    gradient: "from-emerald-500/20 to-teal-500/10",
+    border: "border-emerald-500/25",
+    iconBg: "bg-emerald-500/20",
+    iconColor: "text-emerald-400",
+    badgeBg: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+  },
+];
+
+const comparativo = [
+  { aspecto: "Plano de estudos", tradicional: "Genérico, igual para todos", studyai: "100% personalizado para o seu material" },
+  { aspecto: "Simulados", tradicional: "Questões antigas de banco fixo", studyai: "Gerados do seu conteúdo em tempo real" },
+  { aspecto: "Feedback de redação", tradicional: "Aguarda dias / semanas", studyai: "Nota e análise completa em segundos" },
+  { aspecto: "Identificação de lacunas", tradicional: "Você tenta adivinhar onde errou", studyai: "Mapa de Calor mostra exatamente onde focar" },
+  { aspecto: "Memorização", tradicional: "Releituras repetitivas", studyai: "Flashcards com espaçamento inteligente (Anki)" },
+  { aspecto: "Motivação", tradicional: "Depende do humor do dia", studyai: "Ranking, XP, badges e Pomodoro gamificado" },
+  { aspecto: "Disponibilidade", tradicional: "Horário do professor ou cursinho", studyai: "Tutor IA disponível 24h, 7 dias" },
 ];
 
 const testimonials = [
@@ -421,6 +480,87 @@ export default function Landing() {
         </motion.div>
       </section>
 
+      {/* ── STATS BAR ── */}
+      <section className="py-14 px-6 border-t border-white/5 bg-white/[0.02]">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+            {stats.map((s, i) => (
+              <motion.div
+                key={s.label}
+                variants={fadeUp}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true }}
+                custom={i * 0.15}
+                className="flex flex-col items-center gap-2"
+              >
+                <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-1">
+                  <s.icon className={`w-5 h-5 ${s.color}`} />
+                </div>
+                <p className={`text-3xl font-black tracking-tight ${s.color}`}>{s.value}</p>
+                <p className="text-white/45 text-sm font-medium">{s.label}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── PARA QUEM É ── */}
+      <section className="py-24 px-6 border-t border-white/5">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="text-center mb-14"
+          >
+            <p className="text-violet-400 font-semibold text-sm uppercase tracking-widest mb-3">Para quem é</p>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
+              Feito para quem quer passar
+            </h2>
+            <p className="text-white/50 text-lg max-w-xl mx-auto">
+              Independente do seu objetivo, o StudyAI se adapta ao seu conteúdo, ritmo e nível.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {personas.map((p, i) => (
+              <motion.div
+                key={p.title}
+                variants={fadeUp}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true }}
+                custom={i * 0.2}
+                className={`relative rounded-2xl border ${p.border} bg-gradient-to-br ${p.gradient} p-7 flex flex-col gap-5 hover:scale-[1.02] transition-transform duration-200`}
+              >
+                <div>
+                  <span className={`inline-flex items-center text-[11px] font-black px-2.5 py-1 rounded-full border uppercase tracking-widest mb-4 ${p.badgeBg}`}>
+                    {p.badge}
+                  </span>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className={`w-10 h-10 rounded-xl ${p.iconBg} flex items-center justify-center`}>
+                      <p.icon className={`w-5 h-5 ${p.iconColor}`} />
+                    </div>
+                    <h3 className="font-black text-xl">{p.title}</h3>
+                  </div>
+                  <p className="text-white/55 text-sm leading-relaxed">{p.desc}</p>
+                </div>
+                <ul className="space-y-2 mt-auto">
+                  {p.bullets.map((b) => (
+                    <li key={b} className="flex items-start gap-2 text-sm text-white/70">
+                      <CheckCircle className={`w-4 h-4 shrink-0 mt-0.5 ${p.iconColor}`} />
+                      {b}
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── FEATURES ── */}
       <section id="recursos" className="py-24 px-6">
         <div className="max-w-6xl mx-auto">
@@ -459,6 +599,92 @@ export default function Landing() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── RESUMÃO ESTRATÉGICO SPOTLIGHT ── */}
+      <section className="py-4 px-6 pb-20">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="relative rounded-3xl overflow-hidden border border-violet-500/30 bg-gradient-to-br from-violet-900/50 via-purple-900/30 to-[#0a0a0f] p-8 sm:p-14 flex flex-col md:flex-row items-center gap-10"
+          >
+            <div className="absolute top-0 left-0 w-72 h-72 bg-violet-500/15 blur-[100px] rounded-full pointer-events-none" />
+            <div className="absolute bottom-0 right-0 w-48 h-48 bg-purple-500/10 blur-[80px] rounded-full pointer-events-none" />
+
+            {/* Left: content */}
+            <div className="relative z-10 flex-1">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 text-xs font-bold uppercase tracking-widest mb-5">
+                <Sparkles className="w-3 h-3" />
+                Powered by GPT-4o
+              </div>
+              <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-5 leading-tight">
+                Resumão Estratégico<br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-pink-400">
+                  que realmente faz diferença
+                </span>
+              </h2>
+              <p className="text-white/60 text-base sm:text-lg leading-relaxed mb-6 max-w-lg">
+                Antes de começar os exercícios, o GPT-4o analisa seu conteúdo e gera um guia cirúrgico: os conceitos mais cobrados, as armadilhas clássicas, técnicas de memorização personalizadas e a estratégia exata de estudo para <strong className="text-white">aquela matéria específica</strong>.
+              </p>
+              <ul className="space-y-2.5 mb-8">
+                {[
+                  "Conceitos-chave com técnica de memorização para cada um",
+                  "O que mais cai na prova + armadilhas que derrubam estudantes",
+                  "Conexões entre os tópicos para entender, não decorar",
+                  "Estratégia de estudo personalizada para a matéria",
+                  "Dica final que separa nota 8 de nota 10",
+                ].map((item) => (
+                  <li key={item} className="flex items-center gap-2.5 text-sm text-white/70">
+                    <CheckCircle className="w-4 h-4 text-violet-400 shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Button
+                onClick={() => navigate("/app")}
+                className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-400 hover:to-purple-500 text-white font-bold px-7 py-5 rounded-2xl shadow-lg shadow-violet-500/30 text-base"
+              >
+                <Brain className="w-4 h-4 mr-2" />
+                Gerar meu resumão estratégico
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+
+            {/* Right: mockup */}
+            <div className="relative z-10 flex-shrink-0 w-full md:w-72 space-y-3">
+              <div className="rounded-2xl bg-white/5 border border-white/10 p-5 space-y-4">
+                <div className="flex items-center gap-2 pb-3 border-b border-white/10">
+                  <div className="w-7 h-7 rounded-lg bg-violet-500/30 flex items-center justify-center">
+                    <Brain className="w-3.5 h-3.5 text-violet-400" />
+                  </div>
+                  <div>
+                    <p className="text-white/80 text-xs font-black">Resumão Estratégico</p>
+                    <p className="text-white/30 text-[10px]">Gerado por GPT-4o</p>
+                  </div>
+                  <span className="ml-auto text-[9px] font-black px-1.5 py-0.5 rounded-md bg-violet-500/30 text-violet-300 border border-violet-500/20 uppercase">IA</span>
+                </div>
+                {[
+                  { icon: "🎯", label: "Visão Geral", preview: "Entenda o big picture antes de começar..." },
+                  { icon: "📌", label: "Conceitos-chave", preview: "6 conceitos mais cobrados + como memorizar" },
+                  { icon: "✅", label: "O que mais cai", preview: "4 padrões frequentes nesta matéria" },
+                  { icon: "⚠️", label: "Armadilhas", preview: "Erros clássicos + como evitar cada um" },
+                  { icon: "⭐", label: "Dica Final", preview: "O que separa nota 8 de nota 10" },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-start gap-2.5">
+                    <span className="text-base flex-shrink-0 mt-0.5">{item.icon}</span>
+                    <div>
+                      <p className="text-white/70 text-[11px] font-bold">{item.label}</p>
+                      <p className="text-white/35 text-[10px] leading-snug">{item.preview}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
 
@@ -733,6 +959,83 @@ export default function Landing() {
                 </div>
               </div>
             </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── COMPARATIVO ── */}
+      <section className="py-24 px-6 border-t border-white/5">
+        <div className="max-w-4xl mx-auto">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="text-center mb-14"
+          >
+            <p className="text-violet-400 font-semibold text-sm uppercase tracking-widest mb-3">Comparativo</p>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
+              StudyAI vs método tradicional
+            </h2>
+            <p className="text-white/50 text-lg max-w-xl mx-auto">
+              Veja por que estudar com IA é diferente de tudo que você já usou.
+            </p>
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            custom={0.3}
+            className="rounded-2xl border border-white/10 overflow-hidden"
+          >
+            {/* Header row */}
+            <div className="grid grid-cols-[1fr_1fr_1fr] bg-white/5 border-b border-white/10 text-sm font-black uppercase tracking-wide">
+              <div className="px-5 py-4 text-white/40">Aspecto</div>
+              <div className="px-5 py-4 text-white/50 border-l border-white/10 flex items-center gap-2">
+                <X className="w-4 h-4 text-red-400" /> Método Tradicional
+              </div>
+              <div className="px-5 py-4 border-l border-white/10 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-violet-400 inline-block" />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-pink-400">StudyAI</span>
+              </div>
+            </div>
+
+            {comparativo.map((row, i) => (
+              <div
+                key={row.aspecto}
+                className={`grid grid-cols-[1fr_1fr_1fr] text-sm border-b border-white/5 last:border-0 ${i % 2 === 0 ? "" : "bg-white/[0.02]"}`}
+              >
+                <div className="px-5 py-4 font-semibold text-white/70">{row.aspecto}</div>
+                <div className="px-5 py-4 text-white/35 border-l border-white/5 flex items-start gap-2">
+                  <X className="w-3.5 h-3.5 text-red-400/60 shrink-0 mt-0.5" />
+                  {row.tradicional}
+                </div>
+                <div className="px-5 py-4 text-emerald-300/80 border-l border-white/5 flex items-start gap-2">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                  {row.studyai}
+                </div>
+              </div>
+            ))}
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            custom={0.5}
+            className="text-center mt-8"
+          >
+            <Button
+              size="lg"
+              className="bg-violet-600 hover:bg-violet-500 text-white text-base px-8 h-12 shadow-lg shadow-violet-900/40"
+              onClick={() => navigate("/app")}
+            >
+              Experimentar grátis
+              <ArrowRight className="ml-2 w-4 h-4" />
+            </Button>
           </motion.div>
         </div>
       </section>

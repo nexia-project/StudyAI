@@ -309,6 +309,8 @@ export default function Home() {
           setConteudoTexto(data.conteudoTexto || "");
           setStep("result");
           setExpandedDay(data.plano.dias?.[0]?.numero || 1);
+          setCompletedTopics({});
+          setEarnedXp(0);
           savePlanToDB(data.plano);
           generateResumo(data.plano, data.conteudoTexto || "");
         } else {

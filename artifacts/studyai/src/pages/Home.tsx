@@ -25,6 +25,7 @@ import {
   Home as HomeIcon,
   PenLine,
   Map,
+  Layers,
 } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { TutorChat } from "@/components/TutorChat";
@@ -891,9 +892,11 @@ export default function Home() {
                             >
                               <div className="p-6 sm:p-8 space-y-8">
 
-                                {/* Day Tools Row */}
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider mr-1">Ferramentas:</span>
+                                {/* Flashcards Highlight */}
+                                <div>
+                                  <h4 className="font-black text-sm uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+                                    <Layers className="w-4 h-4" /> Fixar com Flashcards
+                                  </h4>
                                   <FlashcardsButton
                                     materia={planResult.materia || "Conteúdo"}
                                     serie={formData.serie || "Não informado"}

@@ -467,10 +467,24 @@ export function FlashcardsButton({
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 text-xs font-bold text-violet-600 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-3 py-2 rounded-xl transition-all hover:scale-105 active:scale-95"
+        className="w-full group relative overflow-hidden rounded-2xl border-2 border-violet-300 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-lg shadow-violet-200 hover:shadow-xl hover:shadow-violet-300 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 text-left"
       >
-        <Layers className="w-3.5 h-3.5" />
-        Flashcards
+        {/* Shine effect */}
+        <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12 pointer-events-none" />
+
+        <div className="relative px-5 py-4 flex items-center gap-4">
+          <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+            <Layers className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-base font-black text-white">Praticar com Flashcards</span>
+              <span className="text-[10px] font-bold bg-white/25 text-white px-2 py-0.5 rounded-full uppercase tracking-wider">Método Anki</span>
+            </div>
+            <p className="text-sm text-violet-100 mt-0.5">15 cards gerados com IA • Repetição espaçada • Marque o que já sabe</p>
+          </div>
+          <Zap className="w-5 h-5 text-yellow-300 flex-shrink-0 group-hover:animate-bounce" />
+        </div>
       </button>
       <AnimatePresence>
         {open && (

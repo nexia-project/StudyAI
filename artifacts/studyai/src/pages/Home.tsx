@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { TutorChat } from "@/components/TutorChat";
-import { SimuladoButton } from "@/components/Simulado";
+import { SimuladoButton, SimuladoAdaptativoButton } from "@/components/Simulado";
 import { FlashcardsButton } from "@/components/Flashcards";
 import { PomodoroWidget } from "@/components/Pomodoro";
 import { UserMenu } from "@/components/UserMenu";
@@ -1048,11 +1048,12 @@ export default function Home() {
                   <p className="text-sm font-black uppercase tracking-widest text-red-400 mb-2">🎯 Hora da Verdade</p>
                   <h3 className="text-2xl sm:text-3xl font-black mb-2">Teste seu conhecimento</h3>
                   <p className="text-gray-400 text-sm max-w-md">
-                    10 questões cronometradas no estilo da sua prova. Com gabarito comentado e nota estimada no final.
+                    10 questões cronometradas. O Adaptativo analisa seu histórico e foca nas suas fraquezas.
                   </p>
                 </div>
-                <div className="relative z-10 flex-shrink-0">
+                <div className="relative z-10 flex-shrink-0 flex flex-col sm:flex-row gap-2">
                   <SimuladoButton plan={planResult} serie={formData.serie || "Não informado"} conteudoTexto={conteudoTexto} />
+                  <SimuladoAdaptativoButton plan={planResult} serie={formData.serie || "Não informado"} conteudoTexto={conteudoTexto} />
                 </div>
               </div>
 

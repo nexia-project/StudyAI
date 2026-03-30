@@ -76,10 +76,19 @@ function sanitizeSimulado(raw: any): SimuladoData | null {
   }
 }
 
+interface DiagnosticoData {
+  totalSimulados: number;
+  avgScore: number;
+  ultimaNota: number | null;
+  tendencia: "melhorando" | "piorando" | "estavel";
+  topicosEstudados: string[];
+}
+
 interface SimuladoProps {
   plan: StudyPlan;
   serie: string;
   conteudoTexto?: string;
+  adaptativo?: boolean;
   onClose: () => void;
 }
 
@@ -107,14 +116,21 @@ const OPTION_COLORS: Record<string, { idle: string; selected: string; badge: str
   D: { idle: "border-slate-200 hover:border-orange-300 hover:bg-orange-50", selected: "border-orange-500 bg-orange-50 shadow-md shadow-orange-100", badge: "bg-orange-100 text-orange-700" },
 };
 
-function LoadingSimulado() {
+function LoadingSimulado({ adaptativo }: { adaptativo?: boolean }) {
   const [step, setStep] = useState(0);
-  const steps = [
-    { icon: "📖", text: "Analisando o conteúdo estudado..." },
-    { icon: "🧠", text: "Criando questões estratégicas..." },
-    { icon: "⚖️", text: "Calibrando a dificuldade..." },
-    { icon: "✅", text: "Finalizando o simulado..." },
-  ];
+  const steps = adaptativo
+    ? [
+        { icon: "🔍", text: "Lendo seu histórico de simulados..." },
+        { icon: "📊", text: "Identificando seus pontos fracos..." },
+        { icon: "🎯", text: "Calibrando questões para suas lacunas..." },
+        { icon: "⚡", text: "Gerando simulado personalizado..." },
+      ]
+    : [
+        { icon: "📖", text: "Analisando o conteúdo estudado..." },
+        { icon: "🧠", text: "Criando questões estratégicas..." },
+        { icon: "⚖️", text: "Calibrando a dificuldade..." },
+        { icon: "✅", text: "Finalizando o simulado..." },
+      ];
   useEffect(() => {
     const id = setInterval(() => setStep((s) => (s + 1) % steps.length), 2000);
     return () => clearInterval(id);
@@ -177,10 +193,32 @@ export function SimuladoButton({ plan, serie, conteudoTexto }: { plan: StudyPlan
   );
 }
 
-function Simulado({ plan, serie, conteudoTexto, onClose }: SimuladoProps) {
+export function SimuladoAdaptativoButton({ plan, serie, conteudoTexto }: { plan: StudyPlan; serie: string; conteudoTexto?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <ErrorBoundary>
+      <button
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-2 px-5 py-2.5 rounded-2xl font-black text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-600 hover:from-indigo-600 hover:via-violet-600 hover:to-purple-700 shadow-lg shadow-violet-200 hover:shadow-xl hover:shadow-violet-300 transition-all duration-200 hover:-translate-y-0.5 text-sm"
+        title="Simulado inteligente que foca nas suas fraquezas com base no seu histórico"
+      >
+        <Zap className="w-4 h-4" />
+        Simulado Adaptativo
+      </button>
+      <AnimatePresence>
+        {open && (
+          <Simulado plan={plan} serie={serie} conteudoTexto={conteudoTexto} adaptativo onClose={() => setOpen(false)} />
+        )}
+      </AnimatePresence>
+    </ErrorBoundary>
+  );
+}
+
+function Simulado({ plan, serie, conteudoTexto, adaptativo, onClose }: SimuladoProps) {
   const { isAuthenticated } = useAuth();
   const [phase, setPhase] = useState<"loading" | "exam" | "results">("loading");
   const [copied, setCopied] = useState(false);
+  const [diagnosticoData, setDiagnosticoData] = useState<DiagnosticoData | null>(null);
   const [simulado, setSimulado] = useState<SimuladoData | null>(null);
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<Record<number, "A" | "B" | "C" | "D">>({});
@@ -328,20 +366,39 @@ function Simulado({ plan, serie, conteudoTexto, onClose }: SimuladoProps) {
         ? conteudoTexto
         : fullPlanText;
 
-      const res = await fetch("/api/simulado", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          materia: plan.materia,
-          serie,
-          resumo: plan.resumoDoConteudo,
-          diasConteudo: fullPlanText,
-          conteudoTexto: effectiveConteudo,
-        }),
-      });
+      let res: Response;
+      if (adaptativo) {
+        res = await fetch("/api/simulado-adaptativo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            materia: plan.materia,
+            serie,
+            diasConteudo: fullPlanText,
+            conteudoTexto: effectiveConteudo,
+          }),
+        });
+      } else {
+        res = await fetch("/api/simulado", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            materia: plan.materia,
+            serie,
+            resumo: plan.resumoDoConteudo,
+            diasConteudo: fullPlanText,
+            conteudoTexto: effectiveConteudo,
+          }),
+        });
+      }
 
       const data = await res.json();
       if (!res.ok || data.erro) throw new Error(data.erro || "Erro ao gerar simulado");
+      // Store adaptive diagnostic if available
+      if (adaptativo && data.diagnostico) {
+        setDiagnosticoData(data.diagnostico);
+      }
       const safe = sanitizeSimulado(data.simulado);
       if (!safe) throw new Error("O simulado gerado veio em formato inválido. Tente novamente.");
       setSimulado(safe);
@@ -418,9 +475,16 @@ function Simulado({ plan, serie, conteudoTexto, onClose }: SimuladoProps) {
                : <Target className="w-5 h-5 text-white" />}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white/60 text-xs font-semibold uppercase tracking-wider">
-                {phase === "loading" ? "Preparando" : phase === "results" ? "Resultado Final" : `${plan.aluno} · ${serie}`}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-white/60 text-xs font-semibold uppercase tracking-wider">
+                  {phase === "loading" ? (adaptativo ? "IA Analisando" : "Preparando") : phase === "results" ? "Resultado Final" : `${plan.aluno} · ${serie}`}
+                </p>
+                {adaptativo && (
+                  <span className="flex-shrink-0 px-1.5 py-0.5 rounded-md bg-white/25 text-white/90 text-[10px] font-black tracking-wide">
+                    ⚡ ADAPTATIVO
+                  </span>
+                )}
+              </div>
               <h2 className="font-black text-white text-sm sm:text-base truncate leading-tight">
                 {simulado?.titulo ?? "Simulado de Prova"}
               </h2>
@@ -465,7 +529,7 @@ function Simulado({ plan, serie, conteudoTexto, onClose }: SimuladoProps) {
         <div className="flex-1 overflow-y-auto bg-slate-50">
 
           {/* LOADING */}
-          {phase === "loading" && <LoadingSimulado />}
+          {phase === "loading" && <LoadingSimulado adaptativo={adaptativo} />}
 
           {/* EXAM */}
           {phase === "exam" && simulado && currentQ && (
@@ -656,6 +720,67 @@ function Simulado({ plan, serie, conteudoTexto, onClose }: SimuladoProps) {
                 {copied ? <Check className="w-4 h-4 text-green-500" /> : <Share2 className="w-4 h-4" />}
                 {copied ? "Copiado! Cole no WhatsApp 💬" : "Compartilhar meu resultado"}
               </button>
+
+              {/* Adaptive diagnostic comparison panel */}
+              {adaptativo && diagnosticoData && (
+                <div className="rounded-2xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 to-violet-50 p-4 space-y-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center">
+                      <Zap className="w-4 h-4 text-indigo-600" />
+                    </div>
+                    <h4 className="font-black text-slate-800 text-sm">Análise Adaptativa</h4>
+                    <span className="ml-auto text-[10px] font-black px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700 uppercase tracking-wide">⚡ Personalizado</span>
+                  </div>
+                  {diagnosticoData.totalSimulados > 0 ? (
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="bg-white rounded-xl p-2.5 text-center border border-indigo-100">
+                        <p className="text-indigo-700 font-black text-lg">{diagnosticoData.avgScore}%</p>
+                        <p className="text-slate-500 text-[10px] font-semibold leading-tight">Média anterior</p>
+                      </div>
+                      <div className="bg-white rounded-xl p-2.5 text-center border border-indigo-100">
+                        <p className={cn(
+                          "font-black text-lg",
+                          total > 0 && Math.round((score / total) * 100) > diagnosticoData.avgScore ? "text-emerald-600" : "text-orange-600"
+                        )}>
+                          {total > 0 ? Math.round((score / total) * 100) : 0}%
+                        </p>
+                        <p className="text-slate-500 text-[10px] font-semibold leading-tight">Agora</p>
+                      </div>
+                      <div className="bg-white rounded-xl p-2.5 text-center border border-indigo-100">
+                        <p className={cn(
+                          "font-black text-lg",
+                          diagnosticoData.tendencia === "melhorando" ? "text-emerald-600"
+                          : diagnosticoData.tendencia === "piorando" ? "text-red-500"
+                          : "text-slate-600"
+                        )}>
+                          {diagnosticoData.tendencia === "melhorando" ? "📈" : diagnosticoData.tendencia === "piorando" ? "📉" : "➡️"}
+                        </p>
+                        <p className="text-slate-500 text-[10px] font-semibold leading-tight capitalize">{diagnosticoData.tendencia}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-slate-500 text-xs font-medium">Este é seu primeiro simulado em {plan.materia}. Faça mais para ver sua evolução comparativa!</p>
+                  )}
+                  {(() => {
+                    const currentPct = total > 0 ? Math.round((score / total) * 100) : 0;
+                    const diff = currentPct - diagnosticoData.avgScore;
+                    if (diagnosticoData.totalSimulados === 0) return null;
+                    return (
+                      <p className={cn(
+                        "text-xs font-bold flex items-center gap-1.5",
+                        diff > 0 ? "text-emerald-700" : diff < 0 ? "text-red-600" : "text-slate-600"
+                      )}>
+                        {diff > 0 ? <TrendingUp className="w-3.5 h-3.5" /> : diff < 0 ? <TrendingUp className="w-3.5 h-3.5 rotate-180" /> : <Target className="w-3.5 h-3.5" />}
+                        {diff > 0
+                          ? `+${diff}pp acima da sua média! Continue assim 🎉`
+                          : diff < 0
+                          ? `${Math.abs(diff)}pp abaixo da média — revisite os tópicos errados.`
+                          : `Exatamente na sua média. Tente superar na próxima!`}
+                      </p>
+                    );
+                  })()}
+                </div>
+              )}
 
               {/* Review section */}
               <div>

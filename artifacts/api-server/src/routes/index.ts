@@ -11,6 +11,7 @@ import waitlistRouter from "./waitlist";
 import streakRouter from "./streak";
 import redacaoRouter from "./redacao";
 import analyticsRouter from "./analytics";
+import simuladoAdaptativoRouter from "./simulado-adaptativo";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(waitlistRouter);
 router.use(streakRouter);
 router.use(redacaoRouter);
 router.use(analyticsRouter);
+router.use(simuladoAdaptativoRouter);
 
 export default router;

@@ -115,6 +115,7 @@ Published at `meubetime.com.br`. ENEM/vestibular/concurso AI tutor platform powe
 ### API Routes (api-server, port 8080)
 - `POST /api/study-plan` — GPT-4o generates gamified study plan
 - `POST /api/simulado` — GPT-4o generates 10-question exam
+- `POST /api/simulado-adaptativo` — Reads student DB history, identifies weak areas by score trend, generates targeted questions via GPT-4o; returns `{ simulado, diagnostico }` with avg score, trend, and topic list
 - `POST /api/flashcards` — GPT-4o generates flashcard deck
 - `POST /api/tutor` — AI tutor chat
 - `POST /api/redacao` — GPT-4o evaluates ENEM essay (5 competências, 0-1000 pts)

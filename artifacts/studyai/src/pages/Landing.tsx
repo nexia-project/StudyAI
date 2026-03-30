@@ -19,6 +19,7 @@ import {
   PenLine,
   Map,
   TrendingUp,
+  Target,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -103,6 +104,15 @@ const features = [
     border: "border-emerald-500/30",
     iconBg: "bg-emerald-500/20",
     iconColor: "text-emerald-400",
+  },
+  {
+    icon: Target,
+    title: "Simulado Adaptativo IA",
+    desc: "A IA analisa seu histórico, detecta suas lacunas e gera 10 questões cirúrgicas focadas no que você mais precisa revisar. Quanto mais usa, mais preciso fica.",
+    color: "from-purple-500/20 to-indigo-500/20",
+    border: "border-purple-500/30",
+    iconBg: "bg-purple-500/20",
+    iconColor: "text-purple-400",
   },
 ];
 
@@ -618,6 +628,108 @@ export default function Landing() {
                     <div className="w-2 h-2 rounded-full bg-red-500" />
                     <span className="text-[10px] text-white/40">Foco: Biologia, Química</span>
                   </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── SIMULADO ADAPTATIVO SPOTLIGHT ── */}
+      <section className="py-4 px-6 pb-20">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="relative rounded-3xl overflow-hidden border border-purple-500/30 bg-gradient-to-br from-purple-900/50 via-indigo-900/30 to-[#0a0a0f] p-8 sm:p-14 flex flex-col md:flex-row items-center gap-10"
+          >
+            <div className="absolute top-0 right-0 w-80 h-80 bg-purple-500/15 blur-[100px] rounded-full pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/10 blur-[80px] rounded-full pointer-events-none" />
+
+            {/* Left: content */}
+            <div className="relative z-10 flex-1">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-bold uppercase tracking-widest mb-5">
+                <Zap className="w-3 h-3" />
+                IA Adaptativa
+              </div>
+              <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-5 leading-tight">
+                O simulado que<br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400">
+                  aprende com você
+                </span>
+              </h2>
+              <p className="text-white/60 text-base sm:text-lg leading-relaxed mb-6 max-w-lg">
+                Diferente do simulado comum, o <strong className="text-white">Simulado Adaptativo</strong> lê seu histórico de desempenho, identifica suas lacunas reais e gera questões cirúrgicas focadas exatamente no que você mais precisa revisar. Quanto mais você usa, mais certeiro ele fica.
+              </p>
+              <ul className="space-y-2.5 mb-8">
+                {[
+                  "Análise automática do seu histórico de acertos e erros",
+                  "Questões geradas especificamente para suas fraquezas",
+                  "Funciona mesmo sem histórico — cria sua linha de base",
+                  "Painel de evolução: compare sua nota atual com a média anterior",
+                ].map((item) => (
+                  <li key={item} className="flex items-center gap-2.5 text-sm text-white/70">
+                    <CheckCircle className="w-4 h-4 text-purple-400 shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Button
+                onClick={() => navigate("/app")}
+                className="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-400 hover:to-indigo-500 text-white font-bold px-7 py-5 rounded-2xl shadow-lg shadow-purple-500/30 text-base"
+              >
+                <Target className="w-4 h-4 mr-2" />
+                Experimentar simulado adaptativo
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+
+            {/* Right: diagnostic mockup */}
+            <div className="relative z-10 flex-shrink-0 w-full md:w-72 space-y-3">
+              {/* Badge adaptativo */}
+              <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-6 h-6 rounded-lg bg-purple-500/30 flex items-center justify-center">
+                    <Zap className="w-3 h-3 text-purple-400" />
+                  </div>
+                  <p className="text-white/80 text-xs font-black">Análise Adaptativa</p>
+                  <span className="ml-auto text-[9px] font-black px-1.5 py-0.5 rounded-md bg-purple-500/30 text-purple-300 uppercase">⚡ Personalizado</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: "Média ant.", value: "54%", color: "text-white/70" },
+                    { label: "Agora", value: "73%", color: "text-emerald-400" },
+                    { label: "Tendência", value: "📈", color: "text-emerald-400" },
+                  ].map((s) => (
+                    <div key={s.label} className="bg-white/5 rounded-xl p-2 text-center border border-white/10">
+                      <p className={`font-black text-base ${s.color}`}>{s.value}</p>
+                      <p className="text-white/30 text-[9px] font-semibold leading-tight">{s.label}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-emerald-400 text-[10px] font-bold flex items-center gap-1">
+                  <TrendingUp className="w-3 h-3" />
+                  +19pp acima da sua média! Continue assim 🎉
+                </p>
+              </div>
+              {/* Focused topics */}
+              <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
+                <p className="text-white/40 text-[10px] font-bold uppercase tracking-wider mb-2.5">Foco das questões</p>
+                <div className="space-y-1.5">
+                  {[
+                    { label: "Equações de 2º grau", lacuna: "Alta" },
+                    { label: "Progressão Geométrica", lacuna: "Média" },
+                    { label: "Trigonometria básica", lacuna: "Alta" },
+                  ].map((t) => (
+                    <div key={t.label} className="flex items-center justify-between">
+                      <span className="text-white/60 text-[11px] font-medium">{t.label}</span>
+                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ${t.lacuna === "Alta" ? "bg-red-500/20 text-red-300" : "bg-amber-500/20 text-amber-300"}`}>
+                        {t.lacuna}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

@@ -270,10 +270,10 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, onClose }: SimuladoP
   }, [phase, simulado, submitted]);
 
   useEffect(() => {
-    if (phase === "exam" && timeLeft === 0 && simulado && !submitted && timerStarted.current) {
+    if (phase === "exam" && timeLeft === 0 && timeTaken > 0 && simulado && !submitted && timerStarted.current) {
       handleSubmit();
     }
-  }, [timeLeft, phase, simulado, submitted, handleSubmit]);
+  }, [timeLeft, timeTaken, phase, simulado, submitted, handleSubmit]);
 
   // Post history using refs so we always have fresh data at submission time
   useEffect(() => {

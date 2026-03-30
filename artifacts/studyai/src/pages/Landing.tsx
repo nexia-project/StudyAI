@@ -17,6 +17,8 @@ import {
   ChevronRight,
   GraduationCap,
   PenLine,
+  Map,
+  TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -92,6 +94,15 @@ const features = [
     border: "border-indigo-500/30",
     iconBg: "bg-indigo-500/20",
     iconColor: "text-indigo-400",
+  },
+  {
+    icon: Map,
+    title: "Mapa de Calor de Desempenho",
+    desc: "Visualize pontos fortes e fracos por matéria. O mapa atualiza automaticamente com base em todos os seus simulados e flashcards.",
+    color: "from-emerald-500/20 to-green-500/20",
+    border: "border-emerald-500/30",
+    iconBg: "bg-emerald-500/20",
+    iconColor: "text-emerald-400",
   },
 ];
 
@@ -523,6 +534,90 @@ export default function Landing() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── MAPA SPOTLIGHT ── */}
+      <section className="py-4 px-6 pb-20">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="relative rounded-3xl overflow-hidden border border-emerald-500/30 bg-gradient-to-br from-emerald-900/50 via-green-900/30 to-[#0a0a0f] p-8 sm:p-14 flex flex-col md:flex-row-reverse items-center gap-10"
+          >
+            <div className="absolute bottom-0 right-0 w-72 h-72 bg-emerald-500/15 blur-[100px] rounded-full pointer-events-none" />
+            <div className="absolute top-0 left-0 w-48 h-48 bg-green-500/10 blur-[80px] rounded-full pointer-events-none" />
+
+            {/* Right: content */}
+            <div className="relative z-10 flex-1">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-bold uppercase tracking-widest mb-5">
+                <TrendingUp className="w-3 h-3" />
+                Inteligência de aprendizado
+              </div>
+              <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-5 leading-tight">
+                Saiba exatamente<br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400">
+                  onde focar seu tempo
+                </span>
+              </h2>
+              <p className="text-white/60 text-base sm:text-lg leading-relaxed mb-6 max-w-lg">
+                O <strong className="text-white">Mapa de Calor</strong> analisa toda a sua trajetória na plataforma — simulados, flashcards, frequência — e mostra em cores quais matérias estão fortes e quais precisam de atenção. Nada mais de estudar o que você já sabe.
+              </p>
+              <ul className="space-y-2.5 mb-8">
+                {[
+                  "Grade visual colorida por nível de domínio (verde = forte, vermelho = crítico)",
+                  "Tendência de melhora ou queda por matéria",
+                  "Resumo automático: pontos fortes × áreas para focar",
+                  "Atualizado em tempo real a cada simulado ou flashcard",
+                ].map((item) => (
+                  <li key={item} className="flex items-center gap-2.5 text-sm text-white/70">
+                    <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Button
+                onClick={() => navigate("/mapa")}
+                className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold px-7 py-5 rounded-2xl shadow-lg shadow-emerald-500/30 text-base"
+              >
+                <Map className="w-4 h-4 mr-2" />
+                Ver meu mapa de desempenho
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+
+            {/* Left: heat grid mockup */}
+            <div className="relative z-10 flex-shrink-0 w-full md:w-64">
+              <div className="rounded-2xl bg-white/5 border border-white/10 p-5 space-y-2.5">
+                <p className="text-white/40 text-[10px] font-bold uppercase tracking-wider mb-3">Mapa de Calor</p>
+                {[
+                  { label: "Matemática", pct: 87, color: "bg-gradient-to-r from-emerald-400 to-green-500", tag: "Forte" },
+                  { label: "Português", pct: 72, color: "bg-gradient-to-r from-lime-400 to-emerald-400", tag: "Bom" },
+                  { label: "História", pct: 55, color: "bg-gradient-to-r from-amber-400 to-yellow-400", tag: "Regular" },
+                  { label: "Química", pct: 38, color: "bg-gradient-to-r from-orange-400 to-amber-500", tag: "Fraco" },
+                  { label: "Biologia", pct: 22, color: "bg-gradient-to-r from-red-500 to-rose-600", tag: "Crítico" },
+                ].map((item) => (
+                  <div key={item.label}>
+                    <div className="flex justify-between text-[11px] mb-1">
+                      <span className="text-white/60 font-semibold">{item.label}</span>
+                      <span className="text-white/40 font-bold">{item.pct}%</span>
+                    </div>
+                    <div className="w-full bg-white/10 rounded-full h-2">
+                      <div className={`h-2 rounded-full ${item.color}`} style={{ width: `${item.pct}%` }} />
+                    </div>
+                  </div>
+                ))}
+                <div className="pt-2 border-t border-white/10 flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-red-500" />
+                    <span className="text-[10px] text-white/40">Foco: Biologia, Química</span>
+                  </div>
                 </div>
               </div>
             </div>

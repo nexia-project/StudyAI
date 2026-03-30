@@ -10,6 +10,7 @@ import rankingRouter from "./ranking";
 import waitlistRouter from "./waitlist";
 import streakRouter from "./streak";
 import redacaoRouter from "./redacao";
+import analyticsRouter from "./analytics";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(rankingRouter);
 router.use(waitlistRouter);
 router.use(streakRouter);
 router.use(redacaoRouter);
+router.use(analyticsRouter);
 
 export default router;

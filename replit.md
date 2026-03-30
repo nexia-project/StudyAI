@@ -110,6 +110,7 @@ Published at `meubetime.com.br`. ENEM/vestibular/concurso AI tutor platform powe
 - `/historico` — Past study sessions
 - `/ranking` — Global XP leaderboard
 - `/redacao` — ENEM essay corrector (5 competências, 0-1000 score)
+- `/mapa` — Performance heat map by subject (strong/weak areas)
 
 ### API Routes (api-server, port 8080)
 - `POST /api/study-plan` — GPT-4o generates gamified study plan
@@ -117,6 +118,7 @@ Published at `meubetime.com.br`. ENEM/vestibular/concurso AI tutor platform powe
 - `POST /api/flashcards` — GPT-4o generates flashcard deck
 - `POST /api/tutor` — AI tutor chat
 - `POST /api/redacao` — GPT-4o evaluates ENEM essay (5 competências, 0-1000 pts)
+- `GET /api/analytics/heatmap` — Aggregate simulado + flashcard data by subject into heat map
 - `POST /api/activity` / `GET /api/streak` — Daily streak tracking
 - `POST /api/waitlist` / `GET /api/waitlist/count` — Landing page waitlist
 - `GET /api/history` — User study history (requires auth)

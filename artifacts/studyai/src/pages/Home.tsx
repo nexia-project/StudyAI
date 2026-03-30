@@ -24,6 +24,7 @@ import {
   BarChart2,
   Home as HomeIcon,
   PenLine,
+  Map,
 } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { TutorChat } from "@/components/TutorChat";
@@ -379,6 +380,14 @@ export default function Home() {
         >
           <HomeIcon className="w-4 h-4 text-gray-500" />
           <span className="hidden sm:inline">Início</span>
+        </button>
+        <button
+          onClick={() => navigate("/mapa")}
+          className="flex items-center gap-1.5 px-2 sm:px-3 py-2 rounded-2xl bg-white border-2 border-emerald-200 hover:border-emerald-400 text-emerald-600 font-bold text-sm shadow-sm hover:shadow-md transition-all"
+          title="Mapa de Desempenho"
+        >
+          <Map className="w-4 h-4 text-emerald-500" />
+          <span className="hidden sm:inline">Mapa</span>
         </button>
         <button
           onClick={() => navigate("/redacao")}

@@ -67,6 +67,26 @@ const LOADING_PHASES = [
   { until: 100, msg: "Quase pronto! 🚀" },
 ];
 
+function buildConteudoTextoFromPlan(plan: any): string {
+  const parts: string[] = [];
+  if (plan?.resumoDoConteudo) parts.push(plan.resumoDoConteudo);
+  if (Array.isArray(plan?.dias)) {
+    for (const dia of plan.dias) {
+      let s = `=== ${dia.titulo || `Dia ${dia.numero}`} ===`;
+      if (Array.isArray(dia.topicos)) {
+        for (const t of dia.topicos) {
+          if (t?.nome) s += `\n- ${t.nome}`;
+          if (t?.explicacao) s += `\n  ${t.explicacao}`;
+          if (t?.exercicio?.pergunta) s += `\n  Q: ${t.exercicio.pergunta}`;
+          if (t?.exercicio?.resposta) s += `\n  R: ${t.exercicio.resposta}`;
+        }
+      }
+      parts.push(s);
+    }
+  }
+  return parts.join("\n\n").slice(0, 8000);
+}
+
 function triggerConfetti() {
   confetti({
     particleCount: 100,
@@ -203,6 +223,7 @@ export default function Home() {
   const [conteudoTexto, setConteudoTexto] = useState<string>("");
   const [savedPlanId, setSavedPlanId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [recentPlans, setRecentPlans] = useState<Array<{ id: string; materia: string; plan: any; createdAt: string }>>([]);
   
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
@@ -240,6 +261,17 @@ export default function Home() {
       // silent fail — saving history is non-critical
     }
   };
+
+  // Fetch recent plans for quick-resume section on the form step
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    fetch("/api/history", { credentials: "include" })
+      .then(r => r.json())
+      .then(d => {
+        if (Array.isArray(d?.plans)) setRecentPlans(d.plans.slice(0, 3));
+      })
+      .catch(() => {});
+  }, [isAuthenticated]);
 
   // Restore plan from history (set by History.tsx before navigating to /app)
   useEffect(() => {

@@ -15,6 +15,9 @@ import {
   AlertCircle,
   GraduationCap,
   LogIn,
+  PlayCircle,
+  ChevronRight,
+  Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -90,6 +93,36 @@ function StatCard({ icon, label, value, color }: {
   );
 }
 
+function buildConteudoTexto(plan: any): string {
+  const parts: string[] = [];
+  if (plan?.resumoDoConteudo) parts.push(plan.resumoDoConteudo);
+  if (Array.isArray(plan?.dias)) {
+    for (const dia of plan.dias) {
+      let s = `=== ${dia.titulo || `Dia ${dia.numero}`} ===`;
+      if (dia.missao) s += `\n${dia.missao}`;
+      if (Array.isArray(dia.topicos)) {
+        for (const t of dia.topicos) {
+          if (t?.nome) s += `\n- ${t.nome}`;
+          if (t?.explicacao) s += `\n  ${t.explicacao}`;
+          if (t?.gatilho) s += `\n  Memorização: ${t.gatilho}`;
+          if (t?.exercicio?.pergunta) s += `\n  Q: ${t.exercicio.pergunta}`;
+          if (t?.exercicio?.resposta) s += `\n  R: ${t.exercicio.resposta}`;
+        }
+      }
+      if (Array.isArray(dia.exerciciosDoDia)) {
+        for (const ex of dia.exerciciosDoDia) {
+          s += `\n  Exercício: ${ex.pergunta}\n  Gabarito: ${ex.gabarito}`;
+        }
+      }
+      parts.push(s);
+    }
+  }
+  if (Array.isArray(plan?.dicasGerais)) {
+    parts.push(`Dicas: ${plan.dicasGerais.join(" | ")}`);
+  }
+  return parts.join("\n\n").slice(0, 8000);
+}
+
 export default function HistoryPage() {
   const { isAuthenticated, isLoading: authLoading, login } = useAuth();
   const [, navigate] = useLocation();
@@ -113,6 +146,12 @@ export default function HistoryPage() {
         setLoading(false);
       });
   }, [isAuthenticated, authLoading]);
+
+  const handleUsePlan = (plan: any) => {
+    const conteudoTexto = buildConteudoTexto(plan);
+    localStorage.setItem("studyai_restore_plan", JSON.stringify({ plano: plan, conteudoTexto }));
+    navigate("/app");
+  };
 
   if (authLoading) {
     return (
@@ -180,7 +219,7 @@ export default function HistoryPage() {
             <History className="w-6 h-6 text-primary" />
             Meu Histórico de Estudos
           </h1>
-          <p className="text-sm text-muted-foreground">Acompanhe sua evolução ao longo do tempo</p>
+          <p className="text-sm text-muted-foreground">Retome qualquer plano e continue estudando</p>
         </div>
       </div>
 
@@ -245,40 +284,82 @@ export default function HistoryPage() {
 
           {/* Plans Tab */}
           {tab === "plans" && (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {!data?.plans.length ? (
                 <EmptyState icon={<BookOpen className="w-8 h-8 text-muted-foreground" />} text="Nenhum plano de estudo salvo ainda." />
               ) : (
-                data.plans.map((p, i) => (
-                  <motion.div
-                    key={p.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    className="bg-white rounded-2xl border border-border p-5 flex items-center gap-4"
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <GraduationCap className="w-6 h-6 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-black text-foreground truncate">{p.materia}</p>
-                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
-                        {p.serie && (
-                          <span className="text-xs text-muted-foreground font-semibold">{p.serie}</span>
-                        )}
-                        {p.diasProva && (
-                          <span className="text-xs text-muted-foreground">
-                            <Clock className="w-3 h-3 inline mr-0.5" />
-                            {p.diasProva} dia{p.diasProva !== 1 ? "s" : ""} de estudo
-                          </span>
-                        )}
+                data.plans.map((p, i) => {
+                  const plan = p.plan;
+                  const emoji = plan?.emoji || "📚";
+                  const cor = plan?.cor || "#8B5CF6";
+                  const dias = Array.isArray(plan?.dias) ? plan.dias.length : p.diasProva;
+                  const mensagem = plan?.mensagemMotivacional;
+
+                  return (
+                    <motion.div
+                      key={p.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="bg-white rounded-2xl border border-border overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                    >
+                      {/* Color bar */}
+                      <div className="h-1.5 w-full" style={{ background: cor }} />
+
+                      <div className="p-5">
+                        <div className="flex items-start gap-4">
+                          {/* Emoji badge */}
+                          <div
+                            className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 text-2xl"
+                            style={{ background: `${cor}20` }}
+                          >
+                            {emoji}
+                          </div>
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-black text-lg text-foreground truncate">{p.materia}</p>
+                            <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                              {p.serie && (
+                                <span className="text-xs text-muted-foreground font-semibold flex items-center gap-1">
+                                  <GraduationCap className="w-3 h-3" />
+                                  {p.serie}
+                                </span>
+                              )}
+                              {dias && (
+                                <span className="text-xs text-muted-foreground font-semibold flex items-center gap-1">
+                                  <Calendar className="w-3 h-3" />
+                                  {dias} dia{dias !== 1 ? "s" : ""} de estudo
+                                </span>
+                              )}
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {formatDate(p.createdAt)}
+                              </span>
+                            </div>
+
+                            {mensagem && (
+                              <p className="mt-2 text-xs text-muted-foreground italic line-clamp-2">
+                                "{mensagem}"
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Action button */}
+                        <button
+                          onClick={() => handleUsePlan(plan)}
+                          className="mt-4 w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm text-white transition-all hover:opacity-90 active:scale-[0.98]"
+                          style={{ background: cor }}
+                        >
+                          <PlayCircle className="w-4 h-4" />
+                          Continuar Estudando
+                          <ChevronRight className="w-4 h-4 ml-auto" />
+                        </button>
                       </div>
-                    </div>
-                    <span className="text-xs text-muted-foreground font-semibold whitespace-nowrap">
-                      {formatDate(p.createdAt)}
-                    </span>
-                  </motion.div>
-                ))
+                    </motion.div>
+                  );
+                })
               )}
             </div>
           )}

@@ -241,6 +241,31 @@ export default function Home() {
     }
   };
 
+  // Restore plan from history (set by History.tsx before navigating to /app)
+  useEffect(() => {
+    const restoreKey = "studyai_restore_plan";
+    const saved = localStorage.getItem(restoreKey);
+    if (!saved) return;
+    try {
+      localStorage.removeItem(restoreKey);
+      const { plano, conteudoTexto: ct } = JSON.parse(saved);
+      if (!plano) return;
+      // Clear any stale completed-topics for this student
+      try { localStorage.removeItem(`studyai_${plano.aluno}_topics`); } catch { /* ignore */ }
+      setPlanResult(plano);
+      setConteudoTexto(ct || "");
+      setStep("result");
+      setExpandedDay(plano.dias?.[0]?.numero || 1);
+      setCompletedTopics({});
+      setEarnedXp(0);
+      setResumaData(null);
+      setResumaLoading(false);
+      setResumaExpanded(true);
+      generateResumo(plano, ct || "");
+    } catch { /* ignore malformed data */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Drive progress bar from real streaming chars (estimated ~4200 chars for full plan)
   useEffect(() => {
     if (step !== "loading") return;

@@ -34,7 +34,7 @@ import { SimuladoButton, SimuladoAdaptativoButton } from "@/components/Simulado"
 import { FlashcardsButton } from "@/components/Flashcards";
 import { PomodoroWidget } from "@/components/Pomodoro";
 import { UserMenu } from "@/components/UserMenu";
-import { useGenerateStudyPlan, StudyPlan, StudyPlanTopic } from "@/hooks/use-study-plan";
+import { streamStudyPlan, StudyPlan, StudyPlanTopic } from "@/hooks/use-study-plan";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
@@ -57,12 +57,14 @@ const GRADES = [
   "Outro / Concurso / Idiomas"
 ];
 
-const LOADING_MESSAGES = [
-  "Analisando seu conteúdo... 🔍",
-  "Mapeando conhecimentos... 🗺️",
-  "Criando missões épicas... 🎮",
-  "Preparando suas conquistas... 🏆",
-  "Quase lá, ajustando a magia... ✨"
+const LOADING_PHASES = [
+  { until: 8,  msg: "Analisando seu conteúdo... 🔍" },
+  { until: 25, msg: "Identificando tópicos principais... 🗺️" },
+  { until: 45, msg: "Criando dias de estudo... 📅" },
+  { until: 65, msg: "Adicionando exercícios e desafios... 🎮" },
+  { until: 82, msg: "Gerando gabaritos e dicas... 💡" },
+  { until: 95, msg: "Finalizando seu plano... ✨" },
+  { until: 100, msg: "Quase pronto! 🚀" },
 ];
 
 function triggerConfetti() {
@@ -204,6 +206,7 @@ export default function Home() {
   
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
+  const [streamChars, setStreamChars] = useState(0);
 
   // Gamification State
   const [completedTopics, setCompletedTopics] = useState<Record<string, boolean>>({});
@@ -213,8 +216,6 @@ export default function Home() {
   const [resumaoData, setResumaData] = useState<any>(null);
   const [resumaoLoading, setResumaLoading] = useState(false);
   const exerciciosRef = useRef<HTMLDivElement>(null);
-
-  const mutation = useGenerateStudyPlan();
 
   // Save plan to DB for authenticated users
   const savePlanToDB = async (plan: StudyPlan) => {
@@ -240,23 +241,16 @@ export default function Home() {
     }
   };
 
+  // Drive progress bar from real streaming chars (estimated ~4200 chars for full plan)
   useEffect(() => {
-    let interval: any;
-    if (step === "loading") {
-      setLoadingProgress(0);
-      setLoadingMsgIdx(0);
-      
-      interval = setInterval(() => {
-        setLoadingProgress(p => {
-          if (p >= 95) return 95;
-          return p + Math.random() * 10;
-        });
-        
-        setLoadingMsgIdx(idx => (idx + 1) % LOADING_MESSAGES.length);
-      }, 1500);
-    }
-    return () => clearInterval(interval);
-  }, [step]);
+    if (step !== "loading") return;
+    const ESTIMATED_TOTAL = 4200;
+    const pct = Math.min(97, (streamChars / ESTIMATED_TOTAL) * 100);
+    setLoadingProgress(pct);
+    const phase = LOADING_PHASES.find(p => pct <= p.until) ?? LOADING_PHASES[LOADING_PHASES.length - 1];
+    const idx = LOADING_PHASES.indexOf(phase);
+    setLoadingMsgIdx(idx >= 0 ? idx : 0);
+  }, [streamChars, step]);
 
   // Load progress from local storage when plan loads
   useEffect(() => {
@@ -293,6 +287,7 @@ export default function Home() {
 
     setStep("loading");
     setErrorMsg(null);
+    setStreamChars(0);
 
     const submitData = new FormData();
     if (formData.nome) submitData.append("nome", formData.nome);
@@ -302,8 +297,10 @@ export default function Home() {
     if (formData.texto) submitData.append("texto", formData.texto);
     files.forEach((f) => submitData.append("files", f));
 
-    mutation.mutate(submitData, {
-      onSuccess: (data) => {
+    await streamStudyPlan(submitData, {
+      onProgress: (chars) => setStreamChars(chars),
+      onStatus: () => {},
+      onDone: (data) => {
         if (data.plano) {
           setPlanResult(data.plano);
           setConteudoTexto(data.conteudoTexto || "");
@@ -318,10 +315,10 @@ export default function Home() {
           setStep("form");
         }
       },
-      onError: (err) => {
-        setErrorMsg(err.message || "Erro de conexão. Tente novamente.");
+      onError: (msg) => {
+        setErrorMsg(msg || "Erro de conexão. Tente novamente.");
         setStep("form");
-      }
+      },
     });
   };
 
@@ -706,7 +703,7 @@ export default function Home() {
                 <div className="text-8xl filter drop-shadow-[0_0_20px_rgba(139,92,246,0.5)]">🚀</div>
               </motion.div>
 
-              <h3 className="text-3xl font-black text-foreground mb-4 font-display z-10">
+              <h3 className="text-3xl font-black text-foreground mb-2 font-display z-10">
                 <AnimatePresence mode="wait">
                   <motion.span
                     key={loadingMsgIdx}
@@ -715,20 +712,25 @@ export default function Home() {
                     exit={{ opacity: 0, y: -10 }}
                     className="block text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent"
                   >
-                    {LOADING_MESSAGES[loadingMsgIdx]}
+                    {LOADING_PHASES[loadingMsgIdx]?.msg ?? LOADING_PHASES[0].msg}
                   </motion.span>
                 </AnimatePresence>
               </h3>
+
+              <p className="text-sm text-muted-foreground z-10 mb-6">
+                {streamChars > 0 ? `${streamChars.toLocaleString()} caracteres gerados` : "Iniciando geração..."}
+              </p>
               
               <div className="w-full max-w-md bg-secondary rounded-full h-4 mb-2 overflow-hidden z-10 border border-black/5 p-0.5">
-                <div 
-                  className="h-full bg-gradient-to-r from-primary via-accent to-pink-500 rounded-full transition-all duration-300 ease-out relative"
-                  style={{ width: `${loadingProgress}%` }}
+                <motion.div 
+                  className="h-full bg-gradient-to-r from-primary via-accent to-pink-500 rounded-full relative"
+                  animate={{ width: `${loadingProgress}%` }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
                 >
                   <div className="absolute inset-0 bg-white/20 w-full animate-[shimmer_2s_infinite]"></div>
-                </div>
+                </motion.div>
               </div>
-              <p className="text-sm font-bold text-muted-foreground z-10">{Math.round(loadingProgress)}% processando magia</p>
+              <p className="text-sm font-bold text-muted-foreground z-10">{Math.round(loadingProgress)}% concluído</p>
             </motion.div>
           )}
 

@@ -63,7 +63,7 @@ router.post("/resumao", async (req, res) => {
       .join("\n");
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: RESUMAO_PROMPT },
         {
@@ -71,7 +71,7 @@ router.post("/resumao", async (req, res) => {
           content: `Crie um resumo estratégico completo para este conteúdo:\n\n${contexto}`,
         },
       ],
-      max_tokens: 3000,
+      max_tokens: 2500,
       response_format: { type: "json_object" },
     });
 

@@ -172,7 +172,26 @@ router.post("/analisar", (req, res, next) => {
     `;
 
     const files = req.files as Express.Multer.File[] | undefined;
-    let aiResponse: string | null = null;
+
+    // ── Streaming support ──────────────────────────────────────────────
+    const wantsStream = req.headers.accept?.includes("text/event-stream");
+    if (wantsStream) {
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.flushHeaders();
+    }
+    const sendSSE = (data: object) => {
+      if (wantsStream) {
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+        (res as any).flush?.();
+      }
+    };
+    // ──────────────────────────────────────────────────────────────────
+
+    // Build the OpenAI messages depending on input type
+    type OAIMessage = { role: "system" | "user"; content: string | ContentPart[] };
+    let messages: OAIMessage[] = [];
 
     if (files && files.length > 0) {
       const imageParts: ContentPart[] = [];
@@ -202,55 +221,75 @@ router.post("/analisar", (req, res, next) => {
         return;
       }
 
+      void hasImages; // hasImages is used for message building above
       const content: ContentPart[] = [...imageParts];
-
       let userText = `Perfil do aluno:\n${perfil}\n\nCrie um plano de estudos gamificado COMPLETO com explicações, exercícios e gabaritos.`;
-
       if (hasImages) {
         userText = `Analise ${imageParts.length > 1 ? "estas imagens" : "esta imagem"} de conteúdo escolar e ${hasText ? "o texto extraído dos outros arquivos " : ""}crie um plano de estudos gamificado COMPLETO.\n\n${userText}`;
       }
-
       if (hasText) {
         userText += `\n\nConteúdo extraído dos documentos:\n${textParts.join("\n\n")}`;
       }
-
       content.push({ type: "text", text: userText });
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: hasImages ? content : content.filter((p) => p.type === "text") },
-        ],
-        max_tokens: 6000,
-        response_format: { type: "json_object" },
-      });
-
-      aiResponse = response.choices[0].message.content;
+      messages = [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: hasImages ? content : content.filter((p) => p.type === "text") as ContentPart[] },
+      ];
     } else if (texto) {
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          {
-            role: "user",
-            content: `Conteúdo para estudar:\n${texto}\n\nPerfil do aluno:\n${perfil}\n\nCrie um plano COMPLETO com explicações detalhadas, exercícios e gabaritos para cada dia.`,
-          },
-        ],
-        max_tokens: 6000,
-        response_format: { type: "json_object" },
-      });
-
-      aiResponse = response.choices[0].message.content;
+      messages = [
+        { role: "system", content: SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: `Conteúdo para estudar:\n${texto}\n\nPerfil do aluno:\n${perfil}\n\nCrie um plano COMPLETO com explicações detalhadas, exercícios e gabaritos para cada dia.`,
+        },
+      ];
     } else {
       res.status(400).json({ erro: "Envie uma imagem, PDF, Word ou texto para análise." });
       return;
     }
 
-    if (!aiResponse) {
-      res.status(500).json({ erro: "Erro ao gerar o plano." });
-      return;
+    // ── Unified OpenAI call (streaming or not) ─────────────────────────
+    let aiResponse: string;
+
+    if (wantsStream) {
+      sendSSE({ type: "status", message: "Analisando conteúdo..." });
+      const stream = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages,
+        max_tokens: 4500,
+        response_format: { type: "json_object" },
+        stream: true,
+      });
+      let accumulated = "";
+      for await (const chunk of stream) {
+        const delta = chunk.choices[0]?.delta?.content || "";
+        if (delta) {
+          accumulated += delta;
+          sendSSE({ type: "progress", chars: accumulated.length });
+        }
+      }
+      if (!accumulated) {
+        sendSSE({ type: "error", message: "Erro ao gerar o plano." });
+        res.end();
+        return;
+      }
+      aiResponse = accumulated;
+    } else {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages,
+        max_tokens: 4500,
+        response_format: { type: "json_object" },
+      });
+      const raw = response.choices[0].message.content;
+      if (!raw) {
+        res.status(500).json({ erro: "Erro ao gerar o plano." });
+        return;
+      }
+      aiResponse = raw;
     }
+    // ──────────────────────────────────────────────────────────────────
 
     const plano = JSON.parse(aiResponse);
 
@@ -318,12 +357,23 @@ router.post("/analisar", (req, res, next) => {
 
     const conteudoTexto = rawParts.join("\n\n---\n\n").slice(0, 8000);
 
-    res.json({ plano, conteudoTexto });
+    if (wantsStream) {
+      sendSSE({ type: "done", plano, conteudoTexto });
+      res.end();
+    } else {
+      res.json({ plano, conteudoTexto });
+    }
   } catch (error) {
     req.log.error({ error }, "Erro ao processar análise");
-    res
-      .status(500)
-      .json({ erro: "Erro ao processar: " + (error as Error).message });
+    if (res.headersSent) {
+      // SSE already started — emit error event and close
+      try {
+        res.write(`data: ${JSON.stringify({ type: "error", message: (error as Error).message })}\n\n`);
+      } catch { /* ignore */ }
+      res.end();
+    } else {
+      res.status(500).json({ erro: "Erro ao processar: " + (error as Error).message });
+    }
   }
 });
 

@@ -126,7 +126,7 @@ Explicações concisas (máx 2 frases). Enunciados nunca repetidos em formato.`;
         { role: "system", content: SIMULADO_SYSTEM_PROMPT },
         { role: "user", content: userContent },
       ],
-      max_tokens: 8000,
+      max_tokens: 4500,
       temperature: 1.05,
       response_format: { type: "json_object" },
     });

@@ -70,12 +70,12 @@ Semente: #${seed} — gere flashcards originais, com âncoras mnemônicas criati
 Crie 15 flashcards no formato Anki (Active Recall + Spaced Repetition) para o aluno dominar este conteúdo.`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: FLASHCARD_PROMPT },
         { role: "user", content: userContent },
       ],
-      max_tokens: 3000,
+      max_tokens: 2000,
       temperature: 1.1,
       response_format: { type: "json_object" },
     });

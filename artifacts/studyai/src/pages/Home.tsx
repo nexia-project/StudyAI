@@ -26,6 +26,7 @@ import {
   PenLine,
   Map,
   Layers,
+  XCircle,
 } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { TutorChat } from "@/components/TutorChat";
@@ -209,6 +210,8 @@ export default function Home() {
   const [earnedXp, setEarnedXp] = useState(0);
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
   const [resumaoExpanded, setResumaExpanded] = useState(true);
+  const [resumaoData, setResumaData] = useState<any>(null);
+  const [resumaoLoading, setResumaLoading] = useState(false);
   const exerciciosRef = useRef<HTMLDivElement>(null);
 
   const mutation = useGenerateStudyPlan();
@@ -307,6 +310,7 @@ export default function Home() {
           setStep("result");
           setExpandedDay(data.plano.dias?.[0]?.numero || 1);
           savePlanToDB(data.plano);
+          generateResumo(data.plano, data.conteudoTexto || "");
         } else {
           setErrorMsg("Não foi possível gerar o plano. Tente novamente.");
           setStep("form");
@@ -330,7 +334,42 @@ export default function Home() {
     setCompletedTopics({});
     setEarnedXp(0);
     setResumaExpanded(true);
+    setResumaData(null);
+    setResumaLoading(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const generateResumo = async (plan: StudyPlan, conteudo: string) => {
+    setResumaLoading(true);
+    setResumaData(null);
+    try {
+      const planoResumo = [
+        plan.resumoDoConteudo,
+        ...plan.dias.map(d =>
+          `Dia ${d.numero} – ${d.titulo}: ` +
+          d.topicos.map(t => typeof t === "object" ? (t as any).nome : t).join(", ")
+        ),
+        ...(plan.dicasGerais ?? []),
+      ].join("\n");
+
+      const res = await fetch("/api/resumao", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          materia: plan.materia,
+          serie: formData.serie || undefined,
+          conteudoTexto: conteudo,
+          planoResumo,
+        }),
+      });
+      if (!res.ok) throw new Error("Erro na API");
+      const data = await res.json();
+      setResumaData(data.resumao);
+    } catch {
+      setResumaData(null);
+    } finally {
+      setResumaLoading(false);
+    }
   };
 
   const toggleTopic = (dayNum: number, topicIdx: number) => {
@@ -775,21 +814,24 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* RESUMÃO GERAL */}
-              <div className="bg-white rounded-[2rem] border-2 overflow-hidden shadow-lg" style={{ borderColor: planResult.cor }}>
+              {/* RESUMÃO ESTRATÉGICO */}
+              <div className="bg-white rounded-[2rem] border-2 overflow-hidden shadow-xl" style={{ borderColor: planResult.cor }}>
                 {/* Header */}
                 <button
                   onClick={() => setResumaExpanded(v => !v)}
                   className="w-full flex items-center justify-between p-6 sm:p-8 text-left group"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0" style={{ backgroundColor: `${planResult.cor}18` }}>
-                      📚
+                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0 shadow-inner" style={{ backgroundColor: `${planResult.cor}18` }}>
+                      🧠
                     </div>
                     <div>
-                      <h2 className="text-2xl font-black text-foreground font-display">Resumão Geral</h2>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h2 className="text-2xl font-black text-foreground font-display">Resumão Estratégico</h2>
+                        <span className="text-[10px] font-black px-2 py-1 rounded-full text-white uppercase tracking-wider" style={{ backgroundColor: planResult.cor }}>IA</span>
+                      </div>
                       <p className="text-sm text-muted-foreground font-medium mt-0.5">
-                        Leia antes de começar os exercícios • {planResult.dias?.reduce((acc, d) => acc + d.topicos.length, 0)} tópicos de {planResult.dias?.length} dias
+                        {resumaoLoading ? "Gerando análise estratégica..." : resumaoData ? "Leia antes de começar — feito especialmente para este conteúdo" : "Clique para expandir"}
                       </p>
                     </div>
                   </div>
@@ -800,82 +842,148 @@ export default function Home() {
 
                 {resumaoExpanded && (
                   <div className="px-6 sm:px-8 pb-8 space-y-6">
-                    {/* resumoDoConteudo */}
-                    <div className="p-4 rounded-2xl text-sm font-medium leading-relaxed" style={{ backgroundColor: `${planResult.cor}12`, color: planResult.cor }}>
-                      <span className="font-black">🎯 Em resumo: </span>{planResult.resumoDoConteudo}
-                    </div>
 
-                    {/* Topics by day */}
-                    <div className="space-y-5">
-                      {planResult.dias?.map((dia) => {
-                        const diaColor = dia.cor || planResult.cor;
-                        return (
-                          <div key={dia.numero} className="rounded-2xl border border-border overflow-hidden">
-                            {/* Day header */}
-                            <div className="flex items-center gap-3 px-5 py-3 font-black text-sm uppercase tracking-wide" style={{ backgroundColor: `${diaColor}15`, color: diaColor }}>
-                              <span className="text-xl">{dia.emoji}</span>
-                              Dia {dia.numero}: {dia.titulo}
-                            </div>
-                            {/* Topics */}
-                            <div className="divide-y divide-border">
-                              {dia.topicos.map((topico, idx) => {
-                                const isObj = typeof topico === "object" && topico !== null;
-                                const t = isObj ? (topico as StudyPlanTopic) : null;
-                                const nome = t ? t.nome : (topico as string);
-                                const explicacao = t?.explicacao;
-                                const gatilho = t?.gatilho;
-                                return (
-                                  <div key={idx} className="px-5 py-4 space-y-2">
-                                    <p className="font-bold text-foreground flex items-center gap-2">
-                                      <span className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black text-white flex-shrink-0" style={{ backgroundColor: diaColor }}>{idx + 1}</span>
-                                      {nome}
-                                    </p>
-                                    {explicacao && (
-                                      <p className="text-sm text-muted-foreground leading-relaxed pl-7">{explicacao}</p>
-                                    )}
-                                    {gatilho && (
-                                      <div className="ml-7 flex items-start gap-2 bg-yellow-50 border border-yellow-200 rounded-xl px-3 py-2">
-                                        <span className="text-base flex-shrink-0">💡</span>
-                                        <p className="text-xs font-semibold text-yellow-800 leading-relaxed">{gatilho}</p>
-                                      </div>
+                    {/* Loading state */}
+                    {resumaoLoading && (
+                      <div className="flex flex-col items-center gap-4 py-10">
+                        <div className="relative">
+                          <div className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg" style={{ background: `linear-gradient(135deg, ${planResult.cor}, #000)` }}>
+                            <Brain className="w-8 h-8 text-white animate-pulse" />
+                          </div>
+                        </div>
+                        <div className="text-center space-y-1">
+                          <p className="font-black text-foreground">Analisando o conteúdo...</p>
+                          <p className="text-sm text-muted-foreground">O GPT-4o está mapeando o que mais cai na prova</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Strategic content */}
+                    {!resumaoLoading && resumaoData && (
+                      <>
+                        {/* Visão geral */}
+                        <div className="p-5 rounded-2xl text-sm font-medium leading-relaxed border-l-4" style={{ backgroundColor: `${planResult.cor}10`, borderColor: planResult.cor, color: "#1e293b" }}>
+                          <p className="font-black mb-1 text-base" style={{ color: planResult.cor }}>🎯 Visão Geral Estratégica</p>
+                          <p>{resumaoData.visaoGeral}</p>
+                        </div>
+
+                        {/* Conceitos-chave */}
+                        {resumaoData.conceitosChave?.length > 0 && (
+                          <div className="space-y-3">
+                            <h4 className="font-black text-foreground flex items-center gap-2 text-base uppercase tracking-wide">
+                              <BookOpen className="w-5 h-5" style={{ color: planResult.cor }} /> Conceitos-Chave para Dominar
+                            </h4>
+                            <div className="space-y-3">
+                              {resumaoData.conceitosChave.map((c: any, i: number) => (
+                                <div key={i} className="rounded-2xl border border-border bg-white overflow-hidden shadow-sm">
+                                  <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 border-b border-border">
+                                    <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black text-white flex-shrink-0" style={{ backgroundColor: planResult.cor }}>{i + 1}</span>
+                                    <span className="font-black text-foreground">{c.titulo}</span>
+                                    {c.nivelImportancia === "alto" && (
+                                      <span className="ml-auto text-[10px] font-black bg-red-100 text-red-600 px-2 py-0.5 rounded-full uppercase">Alta prioridade</span>
                                     )}
                                   </div>
-                                );
-                              })}
+                                  <div className="p-4 space-y-3">
+                                    <p className="text-sm text-slate-700 leading-relaxed">{c.explicacao}</p>
+                                    <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                                      <span className="text-base flex-shrink-0">💡</span>
+                                      <div>
+                                        <p className="text-[11px] font-black text-amber-700 uppercase tracking-wide mb-0.5">Como memorizar</p>
+                                        <p className="text-xs text-amber-900 leading-relaxed">{c.comoMemorizar}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
+                        )}
 
-                    {/* dicasGerais */}
-                    {planResult.dicasGerais && planResult.dicasGerais.length > 0 && (
-                      <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-5 space-y-3">
-                        <h4 className="font-black text-indigo-800 flex items-center gap-2 text-sm uppercase tracking-wide">
-                          <Star className="w-4 h-4 text-indigo-500" /> Dicas de Ouro
-                        </h4>
-                        <ul className="space-y-2">
-                          {planResult.dicasGerais.map((dica, i) => (
-                            <li key={i} className="flex items-start gap-2 text-sm text-indigo-900">
-                              <span className="font-black text-indigo-500 flex-shrink-0">{i + 1}.</span>
-                              {dica}
-                            </li>
-                          ))}
-                        </ul>
+                        {/* O que mais cai / Armadilhas - lado a lado */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {resumaoData.oQueMAisCai?.length > 0 && (
+                            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 space-y-3">
+                              <h4 className="font-black text-emerald-800 flex items-center gap-2 text-sm uppercase tracking-wide">
+                                <Target className="w-4 h-4 text-emerald-600" /> O que mais cai
+                              </h4>
+                              <ul className="space-y-2">
+                                {resumaoData.oQueMAisCai.map((item: string, i: number) => (
+                                  <li key={i} className="flex items-start gap-2 text-sm text-emerald-900">
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                                    {item}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {resumaoData.armadilhas?.length > 0 && (
+                            <div className="rounded-2xl border border-red-200 bg-red-50 p-5 space-y-3">
+                              <h4 className="font-black text-red-800 flex items-center gap-2 text-sm uppercase tracking-wide">
+                                <AlertCircle className="w-4 h-4 text-red-600" /> Armadilhas clássicas
+                              </h4>
+                              <ul className="space-y-2">
+                                {resumaoData.armadilhas.map((item: string, i: number) => (
+                                  <li key={i} className="flex items-start gap-2 text-sm text-red-900">
+                                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                                    {item}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Conexões + Estratégia */}
+                        {resumaoData.conexoes && (
+                          <div className="rounded-2xl border border-violet-200 bg-violet-50 p-5 space-y-2">
+                            <h4 className="font-black text-violet-800 flex items-center gap-2 text-sm uppercase tracking-wide">
+                              <Zap className="w-4 h-4 text-violet-600" /> Conexões entre os tópicos
+                            </h4>
+                            <p className="text-sm text-violet-900 leading-relaxed">{resumaoData.conexoes}</p>
+                          </div>
+                        )}
+
+                        {resumaoData.estrategiaRevisao && (
+                          <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 space-y-2">
+                            <h4 className="font-black text-blue-800 flex items-center gap-2 text-sm uppercase tracking-wide">
+                              <Dumbbell className="w-4 h-4 text-blue-600" /> Estratégia de estudo
+                            </h4>
+                            <p className="text-sm text-blue-900 leading-relaxed">{resumaoData.estrategiaRevisao}</p>
+                          </div>
+                        )}
+
+                        {/* Dica final destacada */}
+                        {resumaoData.dicaFinal && (
+                          <div className="relative overflow-hidden rounded-2xl p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${planResult.cor}, #1e1b4b)` }}>
+                            <div className="absolute top-0 right-0 text-[100px] leading-none opacity-10 -mt-4 -mr-4 select-none">⭐</div>
+                            <p className="text-xs font-black uppercase tracking-widest mb-2 text-white/70">Dica que separa nota 8 de nota 10</p>
+                            <p className="font-bold text-lg leading-snug relative z-10">{resumaoData.dicaFinal}</p>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Fallback: show basic plan summary if AI not loaded yet */}
+                    {!resumaoLoading && !resumaoData && (
+                      <div className="p-4 rounded-2xl text-sm font-medium leading-relaxed" style={{ backgroundColor: `${planResult.cor}10`, color: "#1e293b" }}>
+                        <span className="font-black" style={{ color: planResult.cor }}>🎯 Resumo do conteúdo: </span>{planResult.resumoDoConteudo}
                       </div>
                     )}
 
                     {/* CTA */}
-                    <button
-                      onClick={() => {
-                        setResumaExpanded(false);
-                        setTimeout(() => exerciciosRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
-                      }}
-                      className="w-full py-4 rounded-2xl font-black text-white flex items-center justify-center gap-2 text-lg transition-all hover:-translate-y-0.5"
-                      style={{ background: `linear-gradient(135deg, ${planResult.cor}, #000)` }}
-                    >
-                      <Rocket className="w-5 h-5" /> Pronto! Ir para os Exercícios ↓
-                    </button>
+                    {!resumaoLoading && (
+                      <button
+                        onClick={() => {
+                          setResumaExpanded(false);
+                          setTimeout(() => exerciciosRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+                        }}
+                        className="w-full py-4 rounded-2xl font-black text-white flex items-center justify-center gap-2 text-lg transition-all hover:-translate-y-0.5 shadow-lg"
+                        style={{ background: `linear-gradient(135deg, ${planResult.cor}, #000)` }}
+                      >
+                        <Rocket className="w-5 h-5" /> Pronto! Ir para os Exercícios ↓
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

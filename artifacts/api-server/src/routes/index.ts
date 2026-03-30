@@ -12,6 +12,7 @@ import streakRouter from "./streak";
 import redacaoRouter from "./redacao";
 import analyticsRouter from "./analytics";
 import simuladoAdaptativoRouter from "./simulado-adaptativo";
+import resumaoRouter from "./resumao";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(streakRouter);
 router.use(redacaoRouter);
 router.use(analyticsRouter);
 router.use(simuladoAdaptativoRouter);
+router.use(resumaoRouter);
 
 export default router;

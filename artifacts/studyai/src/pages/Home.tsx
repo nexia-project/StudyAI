@@ -27,6 +27,7 @@ import {
   Map,
   Layers,
   XCircle,
+  PlayCircle,
 } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { TutorChat } from "@/components/TutorChat";
@@ -382,6 +383,22 @@ export default function Home() {
     });
   };
 
+  const handleResumePlan = (plan: any) => {
+    const ct = buildConteudoTextoFromPlan(plan);
+    try { localStorage.removeItem(`studyai_${plan.aluno}_topics`); } catch { /* ignore */ }
+    setPlanResult(plan);
+    setConteudoTexto(ct);
+    setStep("result");
+    setExpandedDay(plan.dias?.[0]?.numero || 1);
+    setCompletedTopics({});
+    setEarnedXp(0);
+    setResumaData(null);
+    setResumaLoading(false);
+    setResumaExpanded(true);
+    generateResumo(plan, ct);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const handleReset = () => {
     setFiles([]);
     setFormData(prev => ({ ...prev, texto: "" }));
@@ -573,6 +590,67 @@ export default function Home() {
           <p className="text-lg md:text-xl text-muted-foreground font-medium">
             Transforme estudos chatos em missões épicas com nossa IA gamificada.
           </p>
+        </motion.div>
+      )}
+
+      {/* Quick Resume Section — shown on form step for authenticated users with history */}
+      {step === "form" && isAuthenticated && recentPlans.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="w-full max-w-3xl mb-6"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+              <span className="text-base">⚡</span> Continuar de onde parou
+            </h2>
+            <button
+              onClick={() => navigate("/historico")}
+              className="text-xs font-bold text-primary hover:underline"
+            >
+              Ver todos
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {recentPlans.map((p) => {
+              const plan = p.plan;
+              const emoji = plan?.emoji || "📚";
+              const cor = plan?.cor || "#8B5CF6";
+              const dias = Array.isArray(plan?.dias) ? plan.dias.length : null;
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => handleResumePlan(plan)}
+                  className="text-left bg-white rounded-2xl border border-border p-4 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all group overflow-hidden relative"
+                >
+                  {/* Color accent bar */}
+                  <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl" style={{ background: cor }} />
+                  <div className="flex items-center gap-3 mb-3 pt-1">
+                    <span
+                      className="text-2xl w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: `${cor}20` }}
+                    >
+                      {emoji}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-black text-sm text-foreground truncate">{p.materia}</p>
+                      {dias && (
+                        <p className="text-xs text-muted-foreground">{dias} dia{dias !== 1 ? "s" : ""}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div
+                    className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-black text-white transition-opacity group-hover:opacity-90"
+                    style={{ background: cor }}
+                  >
+                    <PlayCircle className="w-3.5 h-3.5" />
+                    Continuar Estudando
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </motion.div>
       )}
 

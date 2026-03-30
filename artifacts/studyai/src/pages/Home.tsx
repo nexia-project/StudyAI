@@ -22,7 +22,8 @@ import {
   Dumbbell,
   Save,
   BarChart2,
-  Home as HomeIcon
+  Home as HomeIcon,
+  PenLine,
 } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { TutorChat } from "@/components/TutorChat";
@@ -378,6 +379,14 @@ export default function Home() {
         >
           <HomeIcon className="w-4 h-4 text-gray-500" />
           <span className="hidden sm:inline">Início</span>
+        </button>
+        <button
+          onClick={() => navigate("/redacao")}
+          className="flex items-center gap-1.5 px-2 sm:px-3 py-2 rounded-2xl bg-white border-2 border-indigo-200 hover:border-indigo-400 text-indigo-600 font-bold text-sm shadow-sm hover:shadow-md transition-all"
+          title="Corretor de Redação"
+        >
+          <PenLine className="w-4 h-4 text-indigo-500" />
+          <span className="hidden sm:inline">Redação</span>
         </button>
         <button
           onClick={() => navigate("/dashboard")}

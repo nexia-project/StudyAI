@@ -16,6 +16,7 @@ import {
   Users,
   ChevronRight,
   GraduationCap,
+  PenLine,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -82,6 +83,15 @@ const features = [
     border: "border-pink-500/30",
     iconBg: "bg-pink-500/20",
     iconColor: "text-pink-400",
+  },
+  {
+    icon: PenLine,
+    title: "Corretor de Redação ENEM",
+    desc: "Cole sua redação e receba nota de 0 a 1000, avaliação nas 5 competências e feedback detalhado gerado pelo GPT-4o.",
+    color: "from-indigo-500/20 to-violet-500/20",
+    border: "border-indigo-500/30",
+    iconBg: "bg-indigo-500/20",
+    iconColor: "text-indigo-400",
   },
 ];
 
@@ -428,6 +438,95 @@ export default function Landing() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── REDAÇÃO SPOTLIGHT ── */}
+      <section className="py-20 px-6">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="relative rounded-3xl overflow-hidden border border-indigo-500/30 bg-gradient-to-br from-indigo-900/60 via-violet-900/40 to-[#0a0a0f] p-8 sm:p-14 flex flex-col md:flex-row items-center gap-10"
+          >
+            {/* Glow */}
+            <div className="absolute top-0 left-0 w-72 h-72 bg-indigo-500/20 blur-[100px] rounded-full pointer-events-none" />
+            <div className="absolute bottom-0 right-0 w-48 h-48 bg-violet-500/15 blur-[80px] rounded-full pointer-events-none" />
+
+            {/* Left: content */}
+            <div className="relative z-10 flex-1">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-bold uppercase tracking-widest mb-5">
+                <Sparkles className="w-3 h-3" />
+                Novidade exclusiva
+              </div>
+              <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-5 leading-tight">
+                Corretor de Redação<br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400">
+                  Nota 0–1000 em segundos
+                </span>
+              </h2>
+              <p className="text-white/60 text-base sm:text-lg leading-relaxed mb-6 max-w-lg">
+                Cole sua redação e o GPT-4o avalia <strong className="text-white">todas as 5 competências ENEM</strong> com nota individual, feedback detalhado, pontos fortes e o que melhorar. Como ter um corretor especialista disponível 24h.
+              </p>
+              <ul className="space-y-2.5 mb-8">
+                {[
+                  "Avaliação nas 5 competências (C1 a C5)",
+                  "Nota estimada de 0 a 1000 pontos",
+                  "Feedback específico por parágrafo e competência",
+                  "Sugestões concretas para aumentar a nota",
+                ].map((item) => (
+                  <li key={item} className="flex items-center gap-2.5 text-sm text-white/70">
+                    <CheckCircle className="w-4 h-4 text-indigo-400 shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Button
+                onClick={() => navigate("/redacao")}
+                className="bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-400 hover:to-violet-500 text-white font-bold px-7 py-5 rounded-2xl shadow-lg shadow-indigo-500/30 text-base"
+              >
+                <PenLine className="w-4 h-4 mr-2" />
+                Corrigir minha redação grátis
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+
+            {/* Right: score mockup */}
+            <div className="relative z-10 flex-shrink-0 w-full md:w-72">
+              <div className="rounded-2xl bg-white/5 border border-white/10 p-6 space-y-4">
+                <div className="text-center">
+                  <p className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-1">Sua nota estimada</p>
+                  <p className="text-6xl font-black text-white">840</p>
+                  <p className="text-white/40 text-sm">de 1000 pontos</p>
+                  <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full bg-violet-500/20 border border-violet-500/30">
+                    <Star className="w-3 h-3 text-violet-400" />
+                    <span className="text-violet-300 text-xs font-bold">Muito Bom</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {[
+                    { label: "C1 Norma Culta", nota: 160, color: "bg-violet-500" },
+                    { label: "C2 Repertório", nota: 160, color: "bg-blue-500" },
+                    { label: "C3 Argumentação", nota: 200, color: "bg-emerald-500" },
+                    { label: "C4 Coesão", nota: 160, color: "bg-amber-500" },
+                    { label: "C5 Proposta", nota: 160, color: "bg-rose-500" },
+                  ].map((c) => (
+                    <div key={c.label}>
+                      <div className="flex justify-between text-[10px] text-white/50 mb-1">
+                        <span>{c.label}</span>
+                        <span className="font-bold text-white/70">{c.nota}/200</span>
+                      </div>
+                      <div className="w-full bg-white/10 rounded-full h-1.5">
+                        <div className={`h-1.5 rounded-full ${c.color}`} style={{ width: `${(c.nota / 200) * 100}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
 

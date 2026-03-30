@@ -98,3 +98,39 @@ Browser auth package for Replit OIDC. Exports `useAuth()` hook with `user`, `isA
 ### `scripts` (`@workspace/scripts`)
 
 Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
+
+## StudyAI Application
+
+Published at `meubetime.com.br`. ENEM/vestibular/concurso AI tutor platform powered by GPT-4o.
+
+### Routes
+- `/` — Landing page (marketing, pricing, testimonials, waitlist)
+- `/app` — Main study app (Home.tsx)
+- `/dashboard` — Stats, streak, goal countdown, history
+- `/historico` — Past study sessions
+- `/ranking` — Global XP leaderboard
+- `/redacao` — ENEM essay corrector (5 competências, 0-1000 score)
+
+### API Routes (api-server, port 8080)
+- `POST /api/study-plan` — GPT-4o generates gamified study plan
+- `POST /api/simulado` — GPT-4o generates 10-question exam
+- `POST /api/flashcards` — GPT-4o generates flashcard deck
+- `POST /api/tutor` — AI tutor chat
+- `POST /api/redacao` — GPT-4o evaluates ENEM essay (5 competências, 0-1000 pts)
+- `POST /api/activity` / `GET /api/streak` — Daily streak tracking
+- `POST /api/waitlist` / `GET /api/waitlist/count` — Landing page waitlist
+- `GET /api/history` — User study history (requires auth)
+- `GET /api/ranking` — XP leaderboard
+
+### DB Schema (lib/db/src/schema/history.ts)
+- `studyPlansTable` — Generated plans
+- `simuladoResultsTable` — Exam results
+- `flashcardSessionsTable` — Flashcard sessions
+- `waitlistTable` — Waitlist signups
+- `userActivityTable` — Daily activity for streak calculation
+
+### Critical Rules
+- NEVER use `exit` animations in Simulado (causes `insertBefore` crash) — only `initial` + `animate`
+- Only ADD features, never break existing behavior
+- pdf-parse import: `from "pdf-parse/lib/pdf-parse.js"`, model: `gpt-4o`
+- Auth: PostgreSQL sessions, cookie `sid`, API port 8080 / Vite port 18459

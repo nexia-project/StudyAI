@@ -7,6 +7,7 @@ import Home from "@/pages/Home";
 import HistoryPage from "@/pages/History";
 import RankingPage from "@/pages/Ranking";
 import DashboardPage from "@/pages/Dashboard";
+import RedacaoPage from "@/pages/Redacao";
 import NotFound from "@/pages/not-found";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
@@ -27,6 +28,7 @@ function Router() {
       <Route path="/dashboard" component={DashboardPage} />
       <Route path="/historico" component={HistoryPage} />
       <Route path="/ranking" component={RankingPage} />
+      <Route path="/redacao" component={RedacaoPage} />
       <Route component={NotFound} />
     </Switch>
   );

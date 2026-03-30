@@ -9,6 +9,7 @@ import historyRouter from "./history";
 import rankingRouter from "./ranking";
 import waitlistRouter from "./waitlist";
 import streakRouter from "./streak";
+import redacaoRouter from "./redacao";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(historyRouter);
 router.use(rankingRouter);
 router.use(waitlistRouter);
 router.use(streakRouter);
+router.use(redacaoRouter);
 
 export default router;

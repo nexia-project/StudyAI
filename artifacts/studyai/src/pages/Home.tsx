@@ -536,28 +536,35 @@ export default function Home() {
                       <label className="text-sm font-bold text-foreground flex items-center gap-2 ml-1">
                         <Clock className="w-4 h-4 text-primary" /> Tempo por dia
                       </label>
-                      <input
-                        type="text"
+                      <select
                         name="tempo"
                         value={formData.tempo}
                         onChange={handleInputChange}
-                        placeholder="Ex: 2 horas por dia"
-                        className="w-full px-5 py-4 rounded-2xl bg-secondary/50 border-2 border-transparent focus:border-primary focus:bg-white focus:shadow-[0_0_0_4px_rgba(139,92,246,0.1)] transition-all outline-none font-medium"
-                      />
+                        className="w-full px-5 py-4 rounded-2xl bg-secondary/50 border-2 border-transparent focus:border-primary focus:bg-white focus:shadow-[0_0_0_4px_rgba(139,92,246,0.1)] transition-all outline-none text-foreground appearance-none font-medium cursor-pointer"
+                      >
+                        <option value="">Quanto tempo você tem?</option>
+                        <option value="30 minutos por dia">30 min/dia — plano rápido (3 dias)</option>
+                        <option value="1 hora por dia">1 hora/dia — plano compacto (4 dias)</option>
+                        <option value="1 hora e meia por dia">1h30/dia — plano padrão (5 dias)</option>
+                        <option value="2 horas por dia">2 horas/dia — plano completo (6 dias)</option>
+                        <option value="3 ou mais horas por dia">3h+/dia — plano intensivo (7 dias)</option>
+                      </select>
+                      <p className="text-xs text-muted-foreground ml-1">Define quantos dias terá seu plano</p>
                     </div>
 
                     <div className="space-y-2">
                       <label className="text-sm font-bold text-foreground flex items-center gap-2 ml-1">
-                        <AlertTriangle className="w-4 h-4 text-destructive" /> Inimigos (Dificuldades)
+                        <AlertTriangle className="w-4 h-4 text-destructive" /> Dificuldades
                       </label>
                       <input
                         type="text"
                         name="dificuldades"
                         value={formData.dificuldades}
                         onChange={handleInputChange}
-                        placeholder="Ex: Matemática, focar..."
+                        placeholder="Ex: Matemática, concentração..."
                         className="w-full px-5 py-4 rounded-2xl bg-secondary/50 border-2 border-transparent focus:border-primary focus:bg-white focus:shadow-[0_0_0_4px_rgba(139,92,246,0.1)] transition-all outline-none font-medium"
                       />
+                      <p className="text-xs text-muted-foreground ml-1">O plano vai reforçar esses pontos fracos</p>
                     </div>
                   </div>
                 </section>

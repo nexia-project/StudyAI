@@ -100,8 +100,9 @@ REGRAS OBRIGATÓRIAS:
 - OBRIGATÓRIO: Os gabaritos DEVEM incluir alertas de erros comuns e dicas de prova
 - OBRIGATÓRIO: O desafio DEVE ser uma questão de nível elevado com estratégia de abordagem
 - OBRIGATÓRIO: As dicasGerais devem ser estratégias PRÁTICAS e ESPECÍFICAS, não genéricas
-- Adapte dificuldade, linguagem e tipo de questão ao nível escolar informado
-- Crie entre 3 a 7 dias de plano baseado no tempo disponível do aluno`;
+- Adapte dificuldade, linguagem e tipo de questão ao nível escolar informado (campo Série)
+- Crie entre 3 a 7 dias de plano baseado EXATAMENTE no tempo disponível informado: 30min→3 dias, 1h→4 dias, 1h30→5 dias, 2h→6 dias, 3h+→7 dias
+- OBRIGATÓRIO: Se o aluno informou dificuldades, dedique ao menos 1 tópico por dia reforçando ou conectando com essas dificuldades — mencione-as na mensagemMotivacional e nas dicasGerais com estratégias específicas para superá-las`;
 
 type ContentPart =
   | { type: "text"; text: string }

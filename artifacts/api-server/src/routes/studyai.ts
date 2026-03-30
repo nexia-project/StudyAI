@@ -197,6 +197,10 @@ router.post("/analisar", (req, res, next) => {
       const imageParts: ContentPart[] = [];
       const textParts: string[] = [];
 
+      // Max chars to send as extracted text (~12 000 chars ≈ 9 000 tokens, safe under 30 k TPM)
+      const MAX_TEXT_CHARS = 12_000;
+      let accumulatedTextChars = 0;
+
       for (const file of files) {
         if (isImage(file.mimetype)) {
           imageParts.push({
@@ -206,9 +210,16 @@ router.post("/analisar", (req, res, next) => {
             },
           });
         } else {
+          if (accumulatedTextChars >= MAX_TEXT_CHARS) continue; // already at limit
           const extracted = await extractTextFromFile(file);
           if (extracted && extracted.length > 0) {
-            textParts.push(`--- Conteúdo de "${file.originalname}" ---\n${extracted}`);
+            const remaining = MAX_TEXT_CHARS - accumulatedTextChars;
+            const chunk = extracted.slice(0, remaining);
+            const truncated = extracted.length > remaining;
+            accumulatedTextChars += chunk.length;
+            textParts.push(
+              `--- Conteúdo de "${file.originalname}"${truncated ? " (truncado para caber no limite)" : ""} ---\n${chunk}`
+            );
           }
         }
       }
@@ -237,11 +248,12 @@ router.post("/analisar", (req, res, next) => {
         { role: "user", content: hasImages ? content : content.filter((p) => p.type === "text") as ContentPart[] },
       ];
     } else if (texto) {
+      const textoTruncado = texto.slice(0, 12_000);
       messages = [
         { role: "system", content: SYSTEM_PROMPT },
         {
           role: "user",
-          content: `Conteúdo para estudar:\n${texto}\n\nPerfil do aluno:\n${perfil}\n\nCrie um plano COMPLETO com explicações detalhadas, exercícios e gabaritos para cada dia.`,
+          content: `Conteúdo para estudar:\n${textoTruncado}\n\nPerfil do aluno:\n${perfil}\n\nCrie um plano COMPLETO com explicações detalhadas, exercícios e gabaritos para cada dia.`,
         },
       ];
     } else {

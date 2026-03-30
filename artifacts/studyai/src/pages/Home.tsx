@@ -302,6 +302,9 @@ export default function Home() {
       onStatus: () => {},
       onDone: (data) => {
         if (data.plano) {
+          // Clear any saved progress for this student so the useEffect
+          // doesn't restore old checkmarks from a previous plan
+          try { localStorage.removeItem(`studyai_${data.plano.aluno}_topics`); } catch { /* ignore */ }
           setPlanResult(data.plano);
           setConteudoTexto(data.conteudoTexto || "");
           setStep("result");

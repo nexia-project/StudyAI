@@ -20,6 +20,9 @@ import {
   Star,
   TrendingUp,
   Award,
+  Share2,
+  Copy,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StudyPlan } from "@/hooks/use-study-plan";
@@ -177,6 +180,7 @@ export function SimuladoButton({ plan, serie, conteudoTexto }: { plan: StudyPlan
 function Simulado({ plan, serie, conteudoTexto, onClose }: SimuladoProps) {
   const { isAuthenticated } = useAuth();
   const [phase, setPhase] = useState<"loading" | "exam" | "results">("loading");
+  const [copied, setCopied] = useState(false);
   const [simulado, setSimulado] = useState<SimuladoData | null>(null);
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<Record<number, "A" | "B" | "C" | "D">>({});
@@ -632,6 +636,26 @@ function Simulado({ plan, serie, conteudoTexto, onClose }: SimuladoProps) {
                   </div>
                 </div>
               </div>
+
+              {/* Share result */}
+              <button
+                onClick={() => {
+                  const pct = total > 0 ? Math.round((score / total) * 100) : 0;
+                  const text = `🎓 Acertei ${score}/${total} (${pct}%) no simulado de ${plan.materia} com StudyAI!\n${grade?.emoji} ${grade?.label}\n\n📚 Teste você também: meubetime.com.br`;
+                  if (navigator.share) {
+                    navigator.share({ title: "Resultado StudyAI", text }).catch(() => {});
+                  } else {
+                    navigator.clipboard.writeText(text).then(() => {
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2500);
+                    });
+                  }
+                }}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl border-2 border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 font-black text-sm transition-all"
+              >
+                {copied ? <Check className="w-4 h-4 text-green-500" /> : <Share2 className="w-4 h-4" />}
+                {copied ? "Copiado! Cole no WhatsApp 💬" : "Compartilhar meu resultado"}
+              </button>
 
               {/* Review section */}
               <div>

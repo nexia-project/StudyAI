@@ -38,6 +38,15 @@ export const flashcardSessionsTable = pgTable("flashcard_sessions", {
   completedAt: timestamp("completed_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const userActivityTable = pgTable("user_activity", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  studyDate: varchar("study_date", { length: 10 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type UserActivity = typeof userActivityTable.$inferSelect;
+
 export const waitlistTable = pgTable("waitlist", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email", { length: 255 }).notNull().unique(),

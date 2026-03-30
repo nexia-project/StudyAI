@@ -18,6 +18,9 @@ import {
   Layers,
   LogIn,
   Brain,
+  Flame,
+  GraduationCap,
+  Flag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -123,6 +126,19 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Streak state
+  const [streak, setStreak] = useState({ currentStreak: 0, longestStreak: 0, totalDays: 0 });
+
+  // Goal state (localStorage)
+  const [goalName, setGoalName] = useState(() => localStorage.getItem("studyGoalName") || "");
+  const [goalDate, setGoalDate] = useState(() => localStorage.getItem("studyGoalDate") || "");
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [goalDraft, setGoalDraft] = useState({ name: "", date: "" });
+
+  const daysToGoal = goalDate
+    ? Math.max(0, Math.ceil((new Date(goalDate).getTime() - Date.now()) / 86400000))
+    : null;
+
   useEffect(() => {
     if (!isAuthenticated || isLoading) return;
     setLoading(true);
@@ -136,6 +152,13 @@ export default function Dashboard() {
         setError("Não foi possível carregar o histórico.");
         setLoading(false);
       });
+
+    // Record today's activity and fetch streak
+    fetch("/api/activity", { method: "POST", credentials: "include" }).catch(() => {});
+    fetch("/api/streak", { credentials: "include" })
+      .then((r) => r.json())
+      .then((s) => setStreak(s))
+      .catch(() => {});
   }, [isAuthenticated, isLoading]);
 
   if (isLoading) {
@@ -221,6 +244,114 @@ export default function Dashboard() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 pt-8 space-y-8">
+
+        {/* ── STREAK + GOAL ROW ── */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Streak card */}
+          <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center">
+                <Flame className="w-4 h-4 text-orange-500" />
+              </div>
+              <h3 className="font-black text-slate-700 text-sm">Sequência de Estudos</h3>
+            </div>
+            <div className="flex items-end gap-4">
+              <div>
+                <p className="text-5xl font-black text-orange-500 leading-none">{streak.currentStreak}</p>
+                <p className="text-xs text-slate-500 font-semibold mt-1">
+                  {streak.currentStreak === 1 ? "dia seguido" : "dias seguidos"} 🔥
+                </p>
+              </div>
+              <div className="ml-auto text-right">
+                <p className="text-slate-400 text-xs font-semibold">Recorde</p>
+                <p className="text-xl font-black text-slate-600">{streak.longestStreak}d</p>
+                <p className="text-slate-400 text-xs font-semibold mt-1">Total</p>
+                <p className="text-xl font-black text-slate-600">{streak.totalDays}d</p>
+              </div>
+            </div>
+            {streak.currentStreak === 0 && (
+              <p className="text-xs text-slate-400 mt-3 italic">Acesse o dashboard hoje para iniciar sua sequência!</p>
+            )}
+          </div>
+
+          {/* Goal/Countdown card */}
+          <div className="bg-gradient-to-br from-violet-50 to-indigo-50 border border-violet-200 rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center">
+                <GraduationCap className="w-4 h-4 text-violet-600" />
+              </div>
+              <h3 className="font-black text-slate-700 text-sm">Meu Objetivo</h3>
+              {!editingGoal && (
+                <button
+                  onClick={() => { setGoalDraft({ name: goalName, date: goalDate }); setEditingGoal(true); }}
+                  className="ml-auto text-xs text-violet-500 hover:text-violet-700 font-bold"
+                >
+                  {goalName ? "Editar" : "+ Definir"}
+                </button>
+              )}
+            </div>
+
+            {editingGoal ? (
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  placeholder="Ex: ENEM 2025, OAB, Vestibular..."
+                  value={goalDraft.name}
+                  onChange={(e) => setGoalDraft((g) => ({ ...g, name: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-xl border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white"
+                />
+                <input
+                  type="date"
+                  value={goalDraft.date}
+                  onChange={(e) => setGoalDraft((g) => ({ ...g, date: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-xl border border-violet-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setGoalName(goalDraft.name);
+                      setGoalDate(goalDraft.date);
+                      localStorage.setItem("studyGoalName", goalDraft.name);
+                      localStorage.setItem("studyGoalDate", goalDraft.date);
+                      setEditingGoal(false);
+                    }}
+                    className="flex-1 py-2 rounded-xl bg-violet-600 text-white text-xs font-bold hover:bg-violet-500"
+                  >
+                    Salvar
+                  </button>
+                  <button
+                    onClick={() => setEditingGoal(false)}
+                    className="px-3 py-2 rounded-xl border border-violet-200 text-xs text-slate-500 hover:bg-white"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : goalName ? (
+              <div>
+                <p className="font-black text-slate-700 text-lg truncate">{goalName}</p>
+                {daysToGoal !== null && (
+                  <>
+                    <p className="text-5xl font-black text-violet-600 leading-none mt-1">{daysToGoal}</p>
+                    <p className="text-xs text-slate-500 font-semibold mt-1">
+                      {daysToGoal === 0 ? "É hoje! 🎉" : daysToGoal === 1 ? "dia restante ⚡" : "dias restantes ⏳"}
+                    </p>
+                    {goalDate && (
+                      <p className="text-xs text-slate-400 mt-1">
+                        {new Date(goalDate + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-4 text-center">
+                <Flag className="w-8 h-8 text-violet-300 mb-2" />
+                <p className="text-sm text-slate-400">Defina sua meta para ver a contagem regressiva</p>
+              </div>
+            )}
+          </div>
+        </section>
 
         {/* Stats Grid */}
         <section>

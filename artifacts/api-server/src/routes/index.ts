@@ -8,6 +8,7 @@ import flashcardsRouter from "./flashcards";
 import historyRouter from "./history";
 import rankingRouter from "./ranking";
 import waitlistRouter from "./waitlist";
+import streakRouter from "./streak";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(flashcardsRouter);
 router.use(historyRouter);
 router.use(rankingRouter);
 router.use(waitlistRouter);
+router.use(streakRouter);
 
 export default router;

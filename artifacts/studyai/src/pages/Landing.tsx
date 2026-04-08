@@ -947,9 +947,9 @@ export default function Landing() {
               </div>
             </div>
 
-            <div className="p-6 md:p-8">
+            <div className="p-6 md:p-8 bg-[#1A1612]">
               {/* Input simulado */}
-              <div className="mb-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+              <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-5">
                 <p className="text-xs font-bold text-white/30 uppercase tracking-widest mb-3">O que vamos dominar?</p>
                 <div className="flex items-center gap-3">
                   <div className="flex-1 bg-white/5 rounded-xl px-4 py-3 border border-white/10">
@@ -982,25 +982,25 @@ export default function Landing() {
                     dia: "Dia 1",
                     titulo: "Funções do 1º e 2º grau",
                     topicos: ["Definição e gráfico de função", "Zeros e vértice da parábola", "Aplicações práticas no ENEM"],
-                    cor: "from-violet-500/20 to-purple-500/10",
-                    border: "border-violet-500/20",
+                    cor: "from-violet-600/50 to-purple-700/40",
+                    border: "border-violet-400/40",
                     tag: "violet",
                   },
                   {
                     dia: "Dia 2",
                     titulo: "Geometria Analítica",
                     topicos: ["Distância entre pontos", "Equação da reta e coeficientes", "Circunferência e tangente"],
-                    cor: "from-blue-500/20 to-cyan-500/10",
-                    border: "border-blue-500/20",
+                    cor: "from-blue-600/50 to-cyan-700/40",
+                    border: "border-blue-400/40",
                     tag: "blue",
                   },
                   {
                     dia: "Dia 3",
                     titulo: "Progressões e Sequências",
                     topicos: ["PA: fórmula do termo geral", "PG: razão e aplicações", "Exercícios estilo ENEM comentados"],
-                    cor: "from-[#F26207]/10 to-[#F5803A]/5",
-                    border: "border-[#F26207]/20",
-                    tag: "emerald",
+                    cor: "from-[#F26207]/50 to-[#D85507]/40",
+                    border: "border-[#F26207]/50",
+                    tag: "orange",
                   },
                 ].map((day, i) => (
                   <motion.div
@@ -1014,9 +1014,9 @@ export default function Landing() {
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-black text-white/40 uppercase tracking-widest">{day.dia}</p>
                       <div className="flex gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
-                        <span className="w-1.5 h-1.5 rounded-full bg-violet-400/50" />
-                        <span className="w-1.5 h-1.5 rounded-full bg-violet-400/20" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-white/35" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-white/15" />
                       </div>
                     </div>
                     <p className="text-sm font-black text-white mb-2">{day.titulo}</p>
@@ -1033,17 +1033,17 @@ export default function Landing() {
 
                 {/* Action row */}
                 <div className="flex gap-3 pt-2">
-                  <div className="flex-1 rounded-xl bg-yellow-500/10 border border-yellow-500/20 p-3 flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-yellow-400" />
-                    <span className="text-xs text-yellow-300 font-bold">Simulado gerado</span>
+                  <div className="flex-1 rounded-xl bg-yellow-500/25 border border-yellow-400/40 p-3 flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-yellow-300" />
+                    <span className="text-xs text-yellow-200 font-bold">Simulado gerado</span>
                   </div>
-                  <div className="flex-1 rounded-xl bg-blue-500/10 border border-blue-500/20 p-3 flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-blue-400" />
-                    <span className="text-xs text-blue-300 font-bold">30 flashcards</span>
+                  <div className="flex-1 rounded-xl bg-blue-500/25 border border-blue-400/40 p-3 flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-blue-300" />
+                    <span className="text-xs text-blue-200 font-bold">30 flashcards</span>
                   </div>
-                  <div className="flex-1 rounded-xl bg-[#F26207]/10 border border-[#F26207]/20 p-3 flex items-center gap-2">
-                    <Target className="w-4 h-4 text-[#F26207]" />
-                    <span className="text-xs text-[#F5A07A] font-bold">Resumão estratégico</span>
+                  <div className="flex-1 rounded-xl bg-[#F26207]/30 border border-[#F26207]/50 p-3 flex items-center gap-2">
+                    <Target className="w-4 h-4 text-[#F5803A]" />
+                    <span className="text-xs text-[#FFB07A] font-bold">Resumão estratégico</span>
                   </div>
                 </div>
               </div>

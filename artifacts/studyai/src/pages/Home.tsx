@@ -692,8 +692,60 @@ export default function Home() {
         </motion.div>
       )}
 
+      {/* Community Feed */}
+      {step === "form" && feedEvents.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="w-full max-w-3xl mb-6"
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <h2 className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+              <span className="text-base">🌐</span> Comunidade estudando agora
+            </h2>
+          </div>
+          <div className="relative overflow-hidden rounded-2xl border border-border bg-white">
+            <div className="divide-y divide-border">
+              {feedEvents.slice(0, 5).map((ev) => {
+                const timeAgo = (() => {
+                  const diff = Date.now() - new Date(ev.timestamp).getTime();
+                  const mins = Math.floor(diff / 60000);
+                  const hrs = Math.floor(mins / 60);
+                  if (mins < 2) return "agora";
+                  if (mins < 60) return `há ${mins} min`;
+                  if (hrs < 24) return `há ${hrs}h`;
+                  return `há ${Math.floor(hrs / 24)}d`;
+                })();
+                return (
+                  <div key={ev.id} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center text-white text-sm font-black flex-shrink-0">
+                      {ev.profileImageUrl
+                        ? <img src={ev.profileImageUrl} className="w-8 h-8 rounded-full object-cover" alt="" />
+                        : ev.displayName.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-foreground truncate">
+                        <span>{ev.displayName}</span>
+                        {" "}
+                        <span className="font-normal text-muted-foreground">{ev.detail}</span>
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">{ev.materia}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-lg">{ev.emoji}</span>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">{timeAgo}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* Main Content Area */}
-      <div className={cn("w-full relative", step === "result" ? "max-w-5xl" : "max-w-3xl")}>
+      <div id="main-form" className={cn("w-full relative", step === "result" ? "max-w-5xl" : "max-w-3xl")}>
         <AnimatePresence mode="wait">
           
           {/* STEP 1: FORM */}

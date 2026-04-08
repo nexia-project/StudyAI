@@ -605,36 +605,36 @@ export default function Landing() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white overflow-x-hidden">
+    <div className="min-h-screen bg-stone-50 text-gray-900 overflow-x-hidden">
       {/* ── NAVBAR ── */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-[#0a0a0f]/80 backdrop-blur-xl">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-gray-100 bg-white/95 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center">
               <Brain className="w-4 h-4 text-white" />
             </div>
-            <span className="font-bold text-lg tracking-tight">StudyAI</span>
+            <span className="font-bold text-lg tracking-tight text-gray-900">StudyAI</span>
           </div>
 
-          <nav className="hidden md:flex items-center gap-6 text-sm text-white/60">
-            <a href="#diagnostico" className="hover:text-white transition-colors text-violet-300 font-semibold">Diagnóstico</a>
-            <a href="#recursos" className="hover:text-white transition-colors">Recursos</a>
-            <a href="#como-funciona" className="hover:text-white transition-colors">Como funciona</a>
-            <a href="#precos" className="hover:text-white transition-colors">Preços</a>
+          <nav className="hidden md:flex items-center gap-6 text-sm text-gray-500">
+            <a href="#diagnostico" className="hover:text-gray-900 transition-colors text-emerald-600 font-semibold">Diagnóstico</a>
+            <a href="#recursos" className="hover:text-gray-900 transition-colors">Recursos</a>
+            <a href="#como-funciona" className="hover:text-gray-900 transition-colors">Como funciona</a>
+            <a href="#precos" className="hover:text-gray-900 transition-colors">Preços</a>
           </nav>
 
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
               size="sm"
-              className="text-white/70 hover:text-white"
+              className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
               onClick={() => navigate("/app")}
             >
               Entrar
             </Button>
             <Button
               size="sm"
-              className="bg-violet-600 hover:bg-violet-500 text-white"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={() => navigate("/app")}
             >
               Começar Grátis
@@ -645,11 +645,9 @@ export default function Landing() {
 
       {/* ── HERO ── */}
       <section className="relative pt-32 pb-24 px-6 text-center overflow-hidden">
-        {/* Background glow */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-violet-600/10 rounded-full blur-3xl" />
-          <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[400px] h-[300px] bg-purple-600/15 rounded-full blur-2xl" />
-        </div>
+        {/* Organic blobs - Replit style */}
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-emerald-100 rounded-full translate-x-1/3 -translate-y-1/4 pointer-events-none" />
+        <div className="absolute bottom-20 left-0 w-[350px] h-[350px] bg-stone-200 rounded-full -translate-x-1/2 pointer-events-none" />
 
         <div className="relative max-w-4xl mx-auto">
           {/* Pain hook */}
@@ -660,7 +658,7 @@ export default function Landing() {
             className="flex flex-wrap items-center justify-center gap-2 mb-8"
           >
             {["Estudando horas sem resultado? 😰", "Prova chegando e sem direção? 📅", "Nota emperrada? 📉"].map((pain) => (
-              <span key={pain} className="text-xs font-semibold px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/50">
+              <span key={pain} className="text-xs font-medium px-3 py-1.5 rounded-full bg-white border border-gray-200 text-gray-500 shadow-sm">
                 {pain}
               </span>
             ))}
@@ -671,10 +669,10 @@ export default function Landing() {
             initial="hidden"
             animate="show"
             custom={1}
-            className="text-5xl md:text-7xl font-black tracking-tight leading-[1.05] mb-6"
+            className="text-5xl md:text-7xl font-black tracking-tight leading-[1.05] mb-6 text-gray-900"
           >
             Chega de estudar<br />
-            <span className="bg-gradient-to-r from-violet-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
               do jeito errado.
             </span>
           </motion.h1>
@@ -684,9 +682,9 @@ export default function Landing() {
             initial="hidden"
             animate="show"
             custom={2}
-            className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-4 leading-relaxed"
+            className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto mb-4 leading-relaxed"
           >
-            A IA monta um plano <strong className="text-white">cirúrgico</strong> a partir do seu próprio material — com simulados, flashcards, correção de redação e um tutor que responde qualquer dúvida, 24h por dia.
+            A IA monta um plano <strong className="text-gray-900">cirúrgico</strong> a partir do seu próprio material — com simulados, flashcards, correção de redação e um tutor que responde qualquer dúvida, 24h por dia.
           </motion.p>
 
           <motion.p
@@ -694,7 +692,7 @@ export default function Landing() {
             initial="hidden"
             animate="show"
             custom={2.5}
-            className="text-base text-white/40 max-w-xl mx-auto mb-10 leading-relaxed"
+            className="text-base text-gray-400 max-w-xl mx-auto mb-10 leading-relaxed"
           >
             Enquanto você relê o mesmo capítulo pela terceira vez, outros já sabem <em>exatamente</em> o que vai cair — porque o sistema mostrou.
           </motion.p>
@@ -708,7 +706,7 @@ export default function Landing() {
           >
             <Button
               size="lg"
-              className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white text-base px-10 h-14 shadow-xl shadow-violet-900/50 font-black rounded-2xl text-lg"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white text-base px-10 h-14 shadow-lg shadow-emerald-200 font-black rounded-2xl text-lg"
               onClick={() => navigate("/app")}
             >
               Quero meu plano agora
@@ -717,7 +715,7 @@ export default function Landing() {
             <Button
               size="lg"
               variant="outline"
-              className="border-white/10 text-white/70 hover:bg-white/5 text-base px-8 h-14 rounded-2xl"
+              className="border-gray-200 text-gray-700 hover:bg-gray-50 text-base px-8 h-14 rounded-2xl bg-white"
               onClick={() => {
                 document.getElementById("diagnostico")?.scrollIntoView({ behavior: "smooth" });
               }}
@@ -731,18 +729,18 @@ export default function Landing() {
             initial="hidden"
             animate="show"
             custom={4}
-            className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mt-8 text-sm text-white/40"
+            className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mt-8 text-sm text-gray-400"
           >
             <div className="flex items-center gap-1.5">
-              <CheckCircle className="w-4 h-4 text-green-500" />
+              <CheckCircle className="w-4 h-4 text-emerald-500" />
               Sem cartão de crédito
             </div>
             <div className="flex items-center gap-1.5">
-              <CheckCircle className="w-4 h-4 text-green-500" />
+              <CheckCircle className="w-4 h-4 text-emerald-500" />
               Plano pronto em 30 segundos
             </div>
             <div className="flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-violet-400" />
+              <Users className="w-4 h-4 text-emerald-500" />
               +2.400 estudantes aprovados
             </div>
           </motion.div>
@@ -755,19 +753,19 @@ export default function Landing() {
           transition={{ delay: 0.5, duration: 0.7 }}
           className="relative max-w-4xl mx-auto mt-20"
         >
-          <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-[#13131a] shadow-2xl shadow-black/60">
-            <div className="flex items-center gap-1.5 px-4 py-3 bg-[#1a1a24] border-b border-white/5">
-              <div className="w-3 h-3 rounded-full bg-red-500/60" />
-              <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
-              <div className="w-3 h-3 rounded-full bg-green-500/60" />
-              <div className="flex-1 mx-4 h-5 rounded bg-white/5 flex items-center px-3">
-                <span className="text-white/30 text-xs">studyai.app</span>
+          <div className="relative rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-xl shadow-gray-200/80">
+            <div className="flex items-center gap-1.5 px-4 py-3 bg-gray-50 border-b border-gray-100">
+              <div className="w-3 h-3 rounded-full bg-red-400" />
+              <div className="w-3 h-3 rounded-full bg-amber-400" />
+              <div className="w-3 h-3 rounded-full bg-emerald-400" />
+              <div className="flex-1 mx-4 h-5 rounded bg-gray-100 flex items-center px-3">
+                <span className="text-gray-400 text-xs">studyai.app</span>
               </div>
             </div>
-            <div className="p-3 sm:p-6 grid grid-cols-3 gap-2 sm:gap-4 min-h-[160px] sm:min-h-[200px]">
+            <div className="p-3 sm:p-6 grid grid-cols-3 gap-2 sm:gap-4 min-h-[160px] sm:min-h-[200px] bg-[#0f0f17]">
               {[
                 { label: "Planos", val: "12", color: "text-violet-400" },
-                { label: "Acerto", val: "87%", color: "text-green-400" },
+                { label: "Acerto", val: "87%", color: "text-emerald-400" },
                 { label: "Cards", val: "340", color: "text-blue-400" },
               ].map((stat) => (
                 <div key={stat.label} className="bg-white/5 rounded-xl p-2 sm:p-4 text-left border border-white/5">
@@ -782,7 +780,7 @@ export default function Landing() {
                     <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-violet-400" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs sm:text-sm font-medium truncate">Matemática — Equações do 2º grau</p>
+                    <p className="text-xs sm:text-sm font-medium text-white truncate">Matemática — Equações do 2º grau</p>
                     <p className="text-[10px] sm:text-xs text-white/40">3 tópicos · 2 exercícios · 1 desafio</p>
                   </div>
                   <ChevronRight className="ml-auto text-white/20 w-4 h-4 shrink-0" />
@@ -790,12 +788,11 @@ export default function Landing() {
               </div>
             </div>
           </div>
-          <div className="absolute inset-0 rounded-2xl bg-gradient-to-t from-[#0a0a0f] via-transparent to-transparent pointer-events-none" />
         </motion.div>
       </section>
 
       {/* ── STATS BAR ── */}
-      <section className="py-14 px-6 border-t border-white/5 bg-white/[0.02]">
+      <section className="py-14 px-6 border-t border-b border-gray-100 bg-white">
         <div className="max-w-5xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             {stats.map((s, i) => (
@@ -808,11 +805,11 @@ export default function Landing() {
                 custom={i * 0.15}
                 className="flex flex-col items-center gap-2"
               >
-                <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-1">
-                  <s.icon className={`w-5 h-5 ${s.color}`} />
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-1">
+                  <s.icon className="w-5 h-5 text-emerald-600" />
                 </div>
-                <p className={`text-3xl font-black tracking-tight ${s.color}`}>{s.value}</p>
-                <p className="text-white/45 text-sm font-medium">{s.label}</p>
+                <p className="text-3xl font-black tracking-tight text-gray-900">{s.value}</p>
+                <p className="text-gray-400 text-sm font-medium">{s.label}</p>
               </motion.div>
             ))}
           </div>
@@ -820,7 +817,7 @@ export default function Landing() {
       </section>
 
       {/* ── ANTES vs DEPOIS ── */}
-      <section className="py-24 px-6 border-t border-white/5">
+      <section className="py-24 px-6">
         <div className="max-w-6xl mx-auto">
           <motion.div
             variants={fadeUp}
@@ -829,11 +826,11 @@ export default function Landing() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <p className="text-rose-400 font-semibold text-sm uppercase tracking-widest mb-3">A realidade de quem não usa IA</p>
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
+            <p className="text-rose-500 font-semibold text-sm uppercase tracking-widest mb-3">A realidade de quem não usa IA</p>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4 text-gray-900">
               Reconhece essa situação?
             </h2>
-            <p className="text-white/50 text-lg max-w-xl mx-auto">
+            <p className="text-gray-500 text-lg max-w-xl mx-auto">
               Antes e depois de estudar com o StudyAI. A diferença é brutal.
             </p>
           </motion.div>
@@ -845,13 +842,13 @@ export default function Landing() {
               initial="hidden"
               whileInView="show"
               viewport={{ once: true }}
-              className="relative rounded-3xl border border-red-500/20 bg-gradient-to-br from-red-950/40 to-[#0a0a0f] p-8"
+              className="relative rounded-3xl border border-red-100 bg-red-50 p-8"
             >
-              <div className="absolute top-5 right-5 text-xs font-black px-3 py-1 rounded-full bg-red-500/20 border border-red-500/30 text-red-300 uppercase tracking-widest">
+              <div className="absolute top-5 right-5 text-xs font-black px-3 py-1 rounded-full bg-red-100 border border-red-200 text-red-500 uppercase tracking-widest">
                 Antes
               </div>
               <div className="text-4xl mb-4">😰</div>
-              <h3 className="text-xl font-black mb-6 text-white/90">Estudante sem método</h3>
+              <h3 className="text-xl font-black mb-6 text-gray-800">Estudante sem método</h3>
               <ul className="space-y-4">
                 {[
                   { icon: "📚", text: "Relê o mesmo capítulo 3 vezes e ainda não fixa" },
@@ -864,7 +861,7 @@ export default function Landing() {
                 ].map((item) => (
                   <li key={item.text} className="flex items-start gap-3">
                     <span className="text-xl flex-shrink-0">{item.icon}</span>
-                    <span className="text-white/50 text-sm leading-snug">{item.text}</span>
+                    <span className="text-gray-500 text-sm leading-snug">{item.text}</span>
                   </li>
                 ))}
               </ul>
@@ -877,14 +874,13 @@ export default function Landing() {
               whileInView="show"
               viewport={{ once: true }}
               custom={0.2}
-              className="relative rounded-3xl border border-violet-500/30 bg-gradient-to-br from-violet-950/50 via-purple-950/30 to-[#0a0a0f] p-8"
+              className="relative rounded-3xl border border-emerald-200 bg-emerald-50 p-8"
             >
-              <div className="absolute top-0 left-0 w-48 h-48 bg-violet-500/10 blur-[80px] rounded-full pointer-events-none" />
-              <div className="absolute top-5 right-5 text-xs font-black px-3 py-1 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 uppercase tracking-widest">
+              <div className="absolute top-5 right-5 text-xs font-black px-3 py-1 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-600 uppercase tracking-widest">
                 Com StudyAI
               </div>
               <div className="text-4xl mb-4">🚀</div>
-              <h3 className="text-xl font-black mb-6 text-white">Estudante com IA trabalhando por você</h3>
+              <h3 className="text-xl font-black mb-6 text-gray-900">Estudante com IA trabalhando por você</h3>
               <ul className="space-y-4">
                 {[
                   { icon: "🎯", text: "Plano cirúrgico em 30 segundos baseado no seu material real" },
@@ -897,13 +893,13 @@ export default function Landing() {
                 ].map((item) => (
                   <li key={item.text} className="flex items-start gap-3">
                     <span className="text-xl flex-shrink-0">{item.icon}</span>
-                    <span className="text-white/75 text-sm leading-snug">{item.text}</span>
+                    <span className="text-gray-700 text-sm leading-snug">{item.text}</span>
                   </li>
                 ))}
               </ul>
               <div className="mt-8">
                 <Button
-                  className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-black py-5 rounded-2xl text-base"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-5 rounded-2xl text-base"
                   onClick={() => navigate("/app")}
                 >
                   Quero estudar do jeito certo →
@@ -915,7 +911,7 @@ export default function Landing() {
       </section>
 
       {/* ── DEMO ANIMADA ── */}
-      <section className="py-24 px-6 border-t border-white/5 bg-gradient-to-b from-white/[0.02] to-transparent">
+      <section className="py-24 px-6 bg-white border-t border-gray-100">
         <div className="max-w-4xl mx-auto">
           <motion.div
             variants={fadeUp}
@@ -924,11 +920,11 @@ export default function Landing() {
             viewport={{ once: true }}
             className="text-center mb-14"
           >
-            <p className="text-violet-400 font-semibold text-sm uppercase tracking-widest mb-3">Veja na prática</p>
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
+            <p className="text-emerald-600 font-semibold text-sm uppercase tracking-widest mb-3">Veja na prática</p>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4 text-gray-900">
               30 segundos. Plano pronto.
             </h2>
-            <p className="text-white/50 text-lg max-w-xl mx-auto">
+            <p className="text-gray-500 text-lg max-w-xl mx-auto">
               É assim que funciona: você digita (ou sobe o material) e a IA gera tudo.
             </p>
           </motion.div>
@@ -939,16 +935,15 @@ export default function Landing() {
             whileInView="show"
             viewport={{ once: true }}
             custom={0.2}
-            className="relative rounded-3xl border border-white/10 bg-[#0e0e18] overflow-hidden shadow-2xl shadow-black/60"
+            className="relative rounded-3xl border border-gray-200 bg-white overflow-hidden shadow-lg shadow-gray-100"
           >
             {/* Browser bar */}
-            <div className="flex items-center gap-1.5 px-4 py-3 bg-[#141420] border-b border-white/5">
-              <div className="w-3 h-3 rounded-full bg-red-500/60" />
-              <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
-              <div className="w-3 h-3 rounded-full bg-green-500/60" />
-              <div className="flex-1 mx-4 h-6 rounded-lg bg-white/5 flex items-center px-3 gap-2">
-                <div className="w-3 h-3 rounded-full bg-green-500/60 flex-shrink-0" />
-                <span className="text-white/25 text-xs">meubetime.com.br/app</span>
+            <div className="flex items-center gap-1.5 px-4 py-3 bg-gray-50 border-b border-gray-100">
+              <div className="w-3 h-3 rounded-full bg-red-400" />
+              <div className="w-3 h-3 rounded-full bg-amber-400" />
+              <div className="w-3 h-3 rounded-full bg-emerald-400 flex-shrink-0" />
+              <div className="flex-1 mx-4 h-6 rounded-lg bg-gray-100 flex items-center px-3 gap-2">
+                <span className="text-gray-400 text-xs">meubetime.com.br/app</span>
               </div>
             </div>
 
@@ -960,10 +955,10 @@ export default function Landing() {
                   <div className="flex-1 bg-white/5 rounded-xl px-4 py-3 border border-white/10">
                     <p className="text-white/70 text-sm font-medium">
                       Matemática — Funções, equações e geometria analítica para o ENEM
-                      <span className="inline-block w-0.5 h-4 bg-violet-400 ml-1 animate-pulse align-middle" />
+                      <span className="inline-block w-0.5 h-4 bg-emerald-400 ml-1 animate-pulse align-middle" />
                     </p>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-violet-600 flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center flex-shrink-0">
                     <Sparkles className="w-4 h-4 text-white" />
                   </div>
                 </div>
@@ -972,14 +967,14 @@ export default function Landing() {
               {/* Resultado simulado */}
               <div className="space-y-3">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
-                    <Brain className="w-5 h-5 text-violet-400" />
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+                    <Brain className="w-5 h-5 text-emerald-400" />
                   </div>
                   <div>
                     <p className="text-sm font-black text-white">📐 Plano de Matemática para o ENEM</p>
                     <p className="text-xs text-white/40">5 dias · 3 tópicos/dia · Nível: Ensino Médio</p>
                   </div>
-                  <span className="ml-auto text-xs font-black px-2 py-1 rounded-lg bg-green-500/20 border border-green-500/30 text-green-300">✓ Gerado</span>
+                  <span className="ml-auto text-xs font-black px-2 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-300">✓ Gerado</span>
                 </div>
 
                 {[
@@ -1046,9 +1041,9 @@ export default function Landing() {
                     <BookOpen className="w-4 h-4 text-blue-400" />
                     <span className="text-xs text-blue-300 font-bold">30 flashcards</span>
                   </div>
-                  <div className="flex-1 rounded-xl bg-violet-500/10 border border-violet-500/20 p-3 flex items-center gap-2">
-                    <Target className="w-4 h-4 text-violet-400" />
-                    <span className="text-xs text-violet-300 font-bold">Resumão estratégico</span>
+                  <div className="flex-1 rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3 flex items-center gap-2">
+                    <Target className="w-4 h-4 text-emerald-400" />
+                    <span className="text-xs text-emerald-300 font-bold">Resumão estratégico</span>
                   </div>
                 </div>
               </div>
@@ -1065,19 +1060,19 @@ export default function Landing() {
           >
             <Button
               size="lg"
-              className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-black px-10 h-14 rounded-2xl text-base shadow-xl shadow-violet-900/40"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-10 h-14 rounded-2xl text-base shadow-lg shadow-emerald-100"
               onClick={() => navigate("/app")}
             >
               Gerar meu plano agora — é grátis
               <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
-            <p className="text-white/30 text-sm mt-3">Sem cadastro obrigatório. Plano em 30 segundos.</p>
+            <p className="text-gray-400 text-sm mt-3">Sem cadastro obrigatório. Plano em 30 segundos.</p>
           </motion.div>
         </div>
       </section>
 
       {/* ── DIAGNÓSTICO RÁPIDO ── */}
-      <section id="diagnostico" className="py-24 px-6 border-t border-white/5 bg-gradient-to-b from-violet-950/20 to-transparent">
+      <section id="diagnostico" className="py-24 px-6 bg-stone-50 border-t border-gray-100">
         <div className="max-w-2xl mx-auto">
           <motion.div
             variants={fadeUp}
@@ -1086,14 +1081,14 @@ export default function Landing() {
             viewport={{ once: true }}
             className="text-center mb-10"
           >
-            <span className="inline-flex items-center gap-2 text-xs font-black px-3 py-1.5 rounded-full bg-violet-500/15 border border-violet-500/30 text-violet-300 uppercase tracking-widest mb-4">
+            <span className="inline-flex items-center gap-2 text-xs font-black px-3 py-1.5 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-700 uppercase tracking-widest mb-4">
               <Stethoscope className="w-3 h-3" /> Diagnóstico Gratuito
             </span>
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-3">
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-3 text-gray-900">
               4 perguntas.<br />
-              <span className="text-violet-400">Seu plano ideal.</span>
+              <span className="text-emerald-600">Seu plano ideal.</span>
             </h2>
-            <p className="text-white/50 text-lg">
+            <p className="text-gray-500 text-lg">
               Descubra exatamente o que estudar — sem cadastro, sem custo.
             </p>
           </motion.div>
@@ -1104,13 +1099,13 @@ export default function Landing() {
             whileInView="show"
             viewport={{ once: true }}
             custom={0.1}
-            className="relative rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-sm overflow-hidden"
+            className="relative rounded-3xl border border-gray-200 bg-white shadow-sm overflow-hidden"
           >
             {/* Progress bar */}
             {!diagDone && (
-              <div className="h-1 bg-white/5">
+              <div className="h-1 bg-gray-100">
                 <motion.div
-                  className="h-full bg-gradient-to-r from-violet-500 to-purple-500"
+                  className="h-full bg-emerald-500"
                   animate={{ width: `${((diagStep) / currentSteps.length) * 100}%` }}
                   transition={{ duration: 0.4 }}
                 />
@@ -1133,22 +1128,22 @@ export default function Landing() {
                         {(() => {
                           const StepIcon = currentSteps[diagStep].icon;
                           return (
-                            <div className="w-10 h-10 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
-                              <StepIcon className="w-5 h-5 text-violet-400" />
+                            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+                              <StepIcon className="w-5 h-5 text-emerald-600" />
                             </div>
                           );
                         })()}
                         <div>
-                          <p className="text-xs text-white/40 font-semibold uppercase tracking-wider">
+                          <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
                             Pergunta {diagStep + 1} de {currentSteps.length}
                           </p>
-                          <h3 className="text-xl font-black">{currentSteps[diagStep].question}</h3>
+                          <h3 className="text-xl font-black text-gray-900">{currentSteps[diagStep].question}</h3>
                         </div>
                       </div>
                       {diagStep > 0 && (
                         <button
                           onClick={() => setDiagStep(diagStep - 1)}
-                          className="text-white/30 hover:text-white/70 transition-colors p-1"
+                          className="text-gray-300 hover:text-gray-600 transition-colors p-1"
                         >
                           <ChevronLeft className="w-5 h-5" />
                         </button>
@@ -1161,15 +1156,15 @@ export default function Landing() {
                         <button
                           key={opt.value}
                           onClick={() => handleDiagOption(opt.value)}
-                          className="group text-left p-4 rounded-2xl border border-white/10 bg-white/[0.03] hover:bg-violet-500/15 hover:border-violet-500/50 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                          className="group text-left p-4 rounded-2xl border border-gray-200 bg-gray-50 hover:bg-emerald-50 hover:border-emerald-300 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
                         >
                           <div className="flex items-center gap-3">
                             <span className="text-2xl">{opt.emoji}</span>
                             <div>
-                              <p className="font-bold text-white group-hover:text-violet-200 transition-colors">{opt.label}</p>
-                              <p className="text-xs text-white/40 mt-0.5">{opt.desc}</p>
+                              <p className="font-bold text-gray-900 group-hover:text-emerald-800 transition-colors">{opt.label}</p>
+                              <p className="text-xs text-gray-400 mt-0.5">{opt.desc}</p>
                             </div>
-                            <ChevronRight className="w-4 h-4 text-white/20 group-hover:text-violet-400 ml-auto transition-colors" />
+                            <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-emerald-500 ml-auto transition-colors" />
                           </div>
                         </button>
                       ))}
@@ -1184,42 +1179,42 @@ export default function Landing() {
                   >
                     {/* Header */}
                     <div className="flex items-center gap-3 mb-6">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center flex-shrink-0">
                         <CheckCircle2 className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-violet-400 uppercase tracking-widest">Diagnóstico completo</p>
-                        <h3 className="text-lg font-black leading-snug">{diagResult.title}</h3>
+                        <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest">Diagnóstico completo</p>
+                        <h3 className="text-lg font-black leading-snug text-gray-900">{diagResult.title}</h3>
                       </div>
                     </div>
 
                     {/* Alert */}
                     <div className={`rounded-xl px-4 py-3 mb-5 text-sm font-semibold border ${
-                      diagResult.alertColor === "red" ? "bg-red-500/10 border-red-500/20 text-red-300" :
-                      diagResult.alertColor === "yellow" ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-300" :
-                      "bg-emerald-500/10 border-emerald-500/20 text-emerald-300"
+                      diagResult.alertColor === "red" ? "bg-red-50 border-red-200 text-red-700" :
+                      diagResult.alertColor === "yellow" ? "bg-amber-50 border-amber-200 text-amber-700" :
+                      "bg-emerald-50 border-emerald-200 text-emerald-700"
                     }`}>
                       {diagResult.alertMsg}
                     </div>
 
                     {/* Strategy bullets */}
                     <div className="space-y-3 mb-6">
-                      <p className="text-xs font-black text-white/40 uppercase tracking-widest">Estratégia personalizada</p>
+                      <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Estratégia personalizada</p>
                       {diagResult.bullets.map((b, i) => (
-                        <div key={i} className="flex items-start gap-3 rounded-xl bg-white/[0.03] border border-white/5 px-4 py-3">
-                          <div className="w-5 h-5 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <span className="text-violet-400 text-xs font-black">{i + 1}</span>
+                        <div key={i} className="flex items-start gap-3 rounded-xl bg-gray-50 border border-gray-100 px-4 py-3">
+                          <div className="w-5 h-5 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <span className="text-emerald-700 text-xs font-black">{i + 1}</span>
                           </div>
-                          <p className="text-sm text-white/70">{b}</p>
+                          <p className="text-sm text-gray-600">{b}</p>
                         </div>
                       ))}
                     </div>
 
                     {/* What's included */}
                     <div className="flex flex-wrap gap-2 mb-8">
-                      <p className="w-full text-xs font-black text-white/40 uppercase tracking-widest mb-1">O que será gerado</p>
+                      <p className="w-full text-xs font-black text-gray-400 uppercase tracking-widest mb-1">O que será gerado</p>
                       {diagResult.includes.map((inc) => (
-                        <span key={inc} className="text-xs px-3 py-1.5 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-300 font-bold flex items-center gap-1.5">
+                        <span key={inc} className="text-xs px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold flex items-center gap-1.5">
                           <CheckCircle className="w-3 h-3" /> {inc}
                         </span>
                       ))}
@@ -1229,7 +1224,7 @@ export default function Landing() {
                     <div className="flex flex-col sm:flex-row gap-3">
                       <Button
                         size="lg"
-                        className="flex-1 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-black py-6 rounded-2xl text-base"
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black py-6 rounded-2xl text-base"
                         onClick={handleDiagStart}
                       >
                         <FlameKindling className="w-5 h-5 mr-2" />
@@ -1237,7 +1232,7 @@ export default function Landing() {
                       </Button>
                       <button
                         onClick={() => { setDiagStep(0); setDiagAnswers({}); setDiagDone(false); }}
-                        className="text-white/35 hover:text-white/70 text-sm font-medium transition-colors py-2 sm:px-4"
+                        className="text-gray-400 hover:text-gray-700 text-sm font-medium transition-colors py-2 sm:px-4"
                       >
                         Refazer
                       </button>
@@ -1254,7 +1249,7 @@ export default function Landing() {
             whileInView="show"
             viewport={{ once: true }}
             custom={0.2}
-            className="text-center text-white/30 text-xs mt-4"
+            className="text-center text-gray-400 text-xs mt-4"
           >
             Sem cadastro obrigatório • Resultado imediato • 100% gratuito
           </motion.p>

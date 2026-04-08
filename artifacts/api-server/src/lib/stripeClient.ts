@@ -1,7 +1,39 @@
 // Stripe integration via Replit connector (stripe-replit-sync)
 import Stripe from "stripe";
 
+async function fetchConnectionSettings(hostname: string, token: string, environment: string) {
+  const url = new URL(`https://${hostname}/api/v2/connection`);
+  url.searchParams.set("include_secrets", "true");
+  url.searchParams.set("connector_names", "stripe");
+  url.searchParams.set("environment", environment);
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      Accept: "application/json",
+      "X-Replit-Token": token,
+    },
+  });
+
+  const data = await response.json();
+  const item = data.items?.[0];
+  if (item?.settings?.publishable && item?.settings?.secret) {
+    return {
+      publishableKey: item.settings.publishable as string,
+      secretKey: item.settings.secret as string,
+    };
+  }
+  return null;
+}
+
 async function getCredentials() {
+  // Fallback: plain env vars (set STRIPE_SECRET_KEY and STRIPE_PUBLISHABLE_KEY if needed)
+  if (process.env.STRIPE_SECRET_KEY) {
+    return {
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY ?? "",
+      secretKey: process.env.STRIPE_SECRET_KEY,
+    };
+  }
+
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY
     ? "repl " + process.env.REPL_IDENTITY
@@ -9,41 +41,23 @@ async function getCredentials() {
       ? "depl " + process.env.WEB_REPL_RENEWAL
       : null;
 
-  if (!xReplitToken) {
-    throw new Error("X-Replit-Token not found for repl/depl");
+  if (!hostname || !xReplitToken) {
+    throw new Error("Stripe credentials not found: no STRIPE_SECRET_KEY env var and no Replit connector token");
   }
 
-  const connectorName = "stripe";
   const isProduction = process.env.REPLIT_DEPLOYMENT === "1";
-  const targetEnvironment = isProduction ? "production" : "development";
 
-  const url = new URL(`https://${hostname}/api/v2/connection`);
-  url.searchParams.set("include_secrets", "true");
-  url.searchParams.set("connector_names", connectorName);
-  url.searchParams.set("environment", targetEnvironment);
+  // Try preferred environment first, then fall back to the other
+  const environments = isProduction
+    ? ["production", "development"]
+    : ["development", "production"];
 
-  const response = await fetch(url.toString(), {
-    headers: {
-      Accept: "application/json",
-      "X-Replit-Token": xReplitToken,
-    },
-  });
-
-  const data = await response.json();
-  const connectionSettings = data.items?.[0];
-
-  if (
-    !connectionSettings ||
-    !connectionSettings.settings.publishable ||
-    !connectionSettings.settings.secret
-  ) {
-    throw new Error(`Stripe ${targetEnvironment} connection not found`);
+  for (const env of environments) {
+    const creds = await fetchConnectionSettings(hostname, xReplitToken, env);
+    if (creds) return creds;
   }
 
-  return {
-    publishableKey: connectionSettings.settings.publishable as string,
-    secretKey: connectionSettings.settings.secret as string,
-  };
+  throw new Error("Stripe connection not found in any environment (production or development)");
 }
 
 // WARNING: Never cache this client — always call to get a fresh instance

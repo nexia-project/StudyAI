@@ -31,13 +31,15 @@ app.use(
 app.use(cors({ credentials: true, origin: true }));
 app.use(cookieParser());
 
-// Stripe webhook must be mounted BEFORE express.json() to preserve raw body for signature verification
-app.use("/api", express.raw({ type: "application/json" }), subscriptionWebhookRouter);
+// Stripe webhook: apply raw body parser ONLY to the exact webhook path so
+// express.json() works correctly on every other route (including PATCH/POST with JSON body)
+app.use("/api/subscription/webhook", express.raw({ type: "*/*" }));
 
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(authMiddleware);
 
 app.use("/api", router);
+app.use("/api", subscriptionWebhookRouter);
 
 export default app;

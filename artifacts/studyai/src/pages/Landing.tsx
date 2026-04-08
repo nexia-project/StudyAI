@@ -45,82 +45,82 @@ const features = [
     icon: Brain,
     title: "Plano de Estudos com IA",
     desc: "Suba um PDF, DOCX ou foto do caderno — ou simplesmente digite o tema que quer dominar. Quanto mais detalhado, mais cirúrgico o plano. Quanto mais genérico, mais amplo e exploratório.",
-    color: "from-violet-500/20 to-purple-500/20",
-    border: "border-violet-500/30",
-    iconBg: "bg-violet-500/20",
-    iconColor: "text-violet-400",
+    color: "",
+    border: "",
+    iconBg: "bg-emerald-50",
+    iconColor: "text-emerald-600",
   },
   {
     icon: Zap,
     title: "Simulado Inteligente",
     desc: "10 questões geradas diretamente do seu material — múltipla escolha, lacuna, verdadeiro/falso — com correção e gabarito comentado.",
-    color: "from-yellow-500/20 to-orange-500/20",
-    border: "border-yellow-500/30",
-    iconBg: "bg-yellow-500/20",
-    iconColor: "text-yellow-400",
+    color: "",
+    border: "",
+    iconBg: "bg-amber-50",
+    iconColor: "text-amber-500",
   },
   {
     icon: BookOpen,
     title: "Flashcards (Método Anki)",
     desc: "Pratique com repetição espaçada. A IA cria os cards a partir do seu plano e ajusta o ritmo conforme seu desempenho.",
-    color: "from-blue-500/20 to-cyan-500/20",
-    border: "border-blue-500/30",
-    iconBg: "bg-blue-500/20",
-    iconColor: "text-blue-400",
+    color: "",
+    border: "",
+    iconBg: "bg-blue-50",
+    iconColor: "text-blue-600",
   },
   {
     icon: Clock,
     title: "Pomodoro Gamificado",
     desc: "Timer de foco integrado ao plano de estudos. Estude por ciclos e ganhe XP a cada sessão concluída.",
-    color: "from-green-500/20 to-emerald-500/20",
-    border: "border-green-500/30",
-    iconBg: "bg-green-500/20",
-    iconColor: "text-green-400",
+    color: "",
+    border: "",
+    iconBg: "bg-green-50",
+    iconColor: "text-green-600",
   },
   {
     icon: Trophy,
     title: "Ranking Global",
     desc: "Compare seu desempenho com estudantes do Brasil. Suba na classificação e conquiste badges de Bronze ao Diamante.",
-    color: "from-amber-500/20 to-yellow-500/20",
-    border: "border-amber-500/30",
-    iconBg: "bg-amber-500/20",
-    iconColor: "text-amber-400",
+    color: "",
+    border: "",
+    iconBg: "bg-amber-50",
+    iconColor: "text-amber-600",
   },
   {
     icon: BarChart2,
     title: "Dashboard de Progresso",
     desc: "Acompanhe simulados, taxa de acerto, flashcards e planos gerados. Veja sua evolução ao longo do tempo.",
-    color: "from-pink-500/20 to-rose-500/20",
-    border: "border-pink-500/30",
-    iconBg: "bg-pink-500/20",
-    iconColor: "text-pink-400",
+    color: "",
+    border: "",
+    iconBg: "bg-pink-50",
+    iconColor: "text-pink-500",
   },
   {
     icon: PenLine,
     title: "Corretor de Redação ENEM",
     desc: "Cole sua redação e receba nota de 0 a 1000, avaliação nas 5 competências e feedback detalhado gerado pelo GPT-4o.",
-    color: "from-indigo-500/20 to-violet-500/20",
-    border: "border-indigo-500/30",
-    iconBg: "bg-indigo-500/20",
-    iconColor: "text-indigo-400",
+    color: "",
+    border: "",
+    iconBg: "bg-indigo-50",
+    iconColor: "text-indigo-600",
   },
   {
     icon: Map,
     title: "Mapa de Calor de Desempenho",
     desc: "Visualize pontos fortes e fracos por matéria. O mapa atualiza automaticamente com base em todos os seus simulados e flashcards.",
-    color: "from-emerald-500/20 to-green-500/20",
-    border: "border-emerald-500/30",
-    iconBg: "bg-emerald-500/20",
-    iconColor: "text-emerald-400",
+    color: "",
+    border: "",
+    iconBg: "bg-emerald-50",
+    iconColor: "text-emerald-600",
   },
   {
     icon: Target,
     title: "Simulado Adaptativo IA",
     desc: "A IA analisa seu histórico, detecta suas lacunas e gera 10 questões cirúrgicas focadas no que você mais precisa revisar. Quanto mais usa, mais preciso fica.",
-    color: "from-purple-500/20 to-indigo-500/20",
-    border: "border-purple-500/30",
-    iconBg: "bg-purple-500/20",
-    iconColor: "text-purple-400",
+    color: "",
+    border: "",
+    iconBg: "bg-purple-50",
+    iconColor: "text-purple-600",
   },
 ];
 
@@ -204,7 +204,7 @@ const plans = [
 ];
 
 const stats = [
-  { value: "+2.400", label: "Estudantes ativos", icon: Users, color: "text-violet-400" },
+  { value: "+2.400", label: "Estudantes ativos", icon: Users, color: "text-emerald-600" },
   { value: "14.800+", label: "Planos gerados", icon: BookOpen, color: "text-blue-400" },
   { value: "89%", label: "Taxa de acerto média", icon: TrendingUp, color: "text-emerald-400" },
   { value: "4.9★", label: "Avaliação dos usuários", icon: Star, color: "text-amber-400" },
@@ -1448,33 +1448,32 @@ export default function Landing() {
       </section>
 
       {/* ── REDAÇÃO SPOTLIGHT ── */}
-      <section className="py-20 px-6">
+      <section className="py-20 px-6 bg-stone-50 border-t border-gray-100">
         <div className="max-w-6xl mx-auto">
           <motion.div
             variants={fadeUp}
             initial="hidden"
             whileInView="show"
             viewport={{ once: true }}
-            className="relative rounded-3xl overflow-hidden border border-indigo-500/30 bg-gradient-to-br from-indigo-900/60 via-violet-900/40 to-[#0a0a0f] p-8 sm:p-14 flex flex-col md:flex-row items-center gap-10"
+            className="relative rounded-3xl overflow-hidden border border-indigo-100 bg-indigo-50 p-8 sm:p-14 flex flex-col md:flex-row items-center gap-10"
           >
-            {/* Glow */}
-            <div className="absolute top-0 left-0 w-72 h-72 bg-indigo-500/20 blur-[100px] rounded-full pointer-events-none" />
-            <div className="absolute bottom-0 right-0 w-48 h-48 bg-violet-500/15 blur-[80px] rounded-full pointer-events-none" />
+            <div className="absolute -top-20 -left-20 w-64 h-64 bg-indigo-100 rounded-full pointer-events-none" />
+            <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-violet-100 rounded-full pointer-events-none" />
 
             {/* Left: content */}
             <div className="relative z-10 flex-1">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-bold uppercase tracking-widest mb-5">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 border border-indigo-200 text-indigo-700 text-xs font-bold uppercase tracking-widest mb-5">
                 <Sparkles className="w-3 h-3" />
                 Novidade exclusiva
               </div>
-              <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-5 leading-tight">
+              <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-5 leading-tight text-gray-900">
                 Corretor de Redação<br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400">
+                <span className="text-indigo-600">
                   Nota 0–1000 em segundos
                 </span>
               </h2>
-              <p className="text-white/60 text-base sm:text-lg leading-relaxed mb-6 max-w-lg">
-                Cole sua redação e o GPT-4o avalia <strong className="text-white">todas as 5 competências ENEM</strong> com nota individual, feedback detalhado, pontos fortes e o que melhorar. Como ter um corretor especialista disponível 24h.
+              <p className="text-gray-600 text-base sm:text-lg leading-relaxed mb-6 max-w-lg">
+                Cole sua redação e o GPT-4o avalia <strong className="text-gray-900">todas as 5 competências ENEM</strong> com nota individual, feedback detalhado, pontos fortes e o que melhorar. Como ter um corretor especialista disponível 24h.
               </p>
               <ul className="space-y-2.5 mb-8">
                 {[
@@ -1483,15 +1482,15 @@ export default function Landing() {
                   "Feedback específico por parágrafo e competência",
                   "Sugestões concretas para aumentar a nota",
                 ].map((item) => (
-                  <li key={item} className="flex items-center gap-2.5 text-sm text-white/70">
-                    <CheckCircle className="w-4 h-4 text-indigo-400 shrink-0" />
+                  <li key={item} className="flex items-center gap-2.5 text-sm text-gray-600">
+                    <CheckCircle className="w-4 h-4 text-indigo-500 shrink-0" />
                     {item}
                   </li>
                 ))}
               </ul>
               <Button
                 onClick={() => navigate("/redacao")}
-                className="bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-400 hover:to-violet-500 text-white font-bold px-7 py-5 rounded-2xl shadow-lg shadow-indigo-500/30 text-base"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-7 py-5 rounded-2xl shadow-lg shadow-indigo-100 text-base"
               >
                 <PenLine className="w-4 h-4 mr-2" />
                 Corrigir minha redação grátis
@@ -1501,30 +1500,30 @@ export default function Landing() {
 
             {/* Right: score mockup */}
             <div className="relative z-10 flex-shrink-0 w-full md:w-72">
-              <div className="rounded-2xl bg-white/5 border border-white/10 p-6 space-y-4">
+              <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-6 space-y-4">
                 <div className="text-center">
-                  <p className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-1">Sua nota estimada</p>
-                  <p className="text-6xl font-black text-white">840</p>
-                  <p className="text-white/40 text-sm">de 1000 pontos</p>
-                  <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full bg-violet-500/20 border border-violet-500/30">
-                    <Star className="w-3 h-3 text-violet-400" />
-                    <span className="text-violet-300 text-xs font-bold">Muito Bom</span>
+                  <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-1">Sua nota estimada</p>
+                  <p className="text-6xl font-black text-gray-900">840</p>
+                  <p className="text-gray-400 text-sm">de 1000 pontos</p>
+                  <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200">
+                    <Star className="w-3 h-3 text-indigo-500" />
+                    <span className="text-indigo-600 text-xs font-bold">Muito Bom</span>
                   </div>
                 </div>
                 <div className="space-y-2">
                   {[
-                    { label: "C1 Norma Culta", nota: 160, color: "bg-violet-500" },
+                    { label: "C1 Norma Culta", nota: 160, color: "bg-indigo-500" },
                     { label: "C2 Repertório", nota: 160, color: "bg-blue-500" },
                     { label: "C3 Argumentação", nota: 200, color: "bg-emerald-500" },
                     { label: "C4 Coesão", nota: 160, color: "bg-amber-500" },
                     { label: "C5 Proposta", nota: 160, color: "bg-rose-500" },
                   ].map((c) => (
                     <div key={c.label}>
-                      <div className="flex justify-between text-[10px] text-white/50 mb-1">
+                      <div className="flex justify-between text-[10px] text-gray-400 mb-1">
                         <span>{c.label}</span>
-                        <span className="font-bold text-white/70">{c.nota}/200</span>
+                        <span className="font-bold text-gray-600">{c.nota}/200</span>
                       </div>
-                      <div className="w-full bg-white/10 rounded-full h-1.5">
+                      <div className="w-full bg-gray-100 rounded-full h-1.5">
                         <div className={`h-1.5 rounded-full ${c.color}`} style={{ width: `${(c.nota / 200) * 100}%` }} />
                       </div>
                     </div>
@@ -1537,32 +1536,32 @@ export default function Landing() {
       </section>
 
       {/* ── MAPA SPOTLIGHT ── */}
-      <section className="py-4 px-6 pb-20">
+      <section className="py-20 px-6 bg-white border-t border-gray-100">
         <div className="max-w-6xl mx-auto">
           <motion.div
             variants={fadeUp}
             initial="hidden"
             whileInView="show"
             viewport={{ once: true }}
-            className="relative rounded-3xl overflow-hidden border border-emerald-500/30 bg-gradient-to-br from-emerald-900/50 via-green-900/30 to-[#0a0a0f] p-8 sm:p-14 flex flex-col md:flex-row-reverse items-center gap-10"
+            className="relative rounded-3xl overflow-hidden border border-emerald-100 bg-emerald-50 p-8 sm:p-14 flex flex-col md:flex-row-reverse items-center gap-10"
           >
-            <div className="absolute bottom-0 right-0 w-72 h-72 bg-emerald-500/15 blur-[100px] rounded-full pointer-events-none" />
-            <div className="absolute top-0 left-0 w-48 h-48 bg-green-500/10 blur-[80px] rounded-full pointer-events-none" />
+            <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-emerald-100 rounded-full pointer-events-none" />
+            <div className="absolute -top-10 -left-10 w-40 h-40 bg-teal-100 rounded-full pointer-events-none" />
 
             {/* Right: content */}
             <div className="relative z-10 flex-1">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-bold uppercase tracking-widest mb-5">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-700 text-xs font-bold uppercase tracking-widest mb-5">
                 <TrendingUp className="w-3 h-3" />
                 Inteligência de aprendizado
               </div>
-              <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-5 leading-tight">
+              <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-5 leading-tight text-gray-900">
                 Saiba exatamente<br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400">
+                <span className="text-emerald-600">
                   onde focar seu tempo
                 </span>
               </h2>
-              <p className="text-white/60 text-base sm:text-lg leading-relaxed mb-6 max-w-lg">
-                O <strong className="text-white">Mapa de Calor</strong> analisa toda a sua trajetória na plataforma — simulados, flashcards, frequência — e mostra em cores quais matérias estão fortes e quais precisam de atenção. Nada mais de estudar o que você já sabe.
+              <p className="text-gray-600 text-base sm:text-lg leading-relaxed mb-6 max-w-lg">
+                O <strong className="text-gray-900">Mapa de Calor</strong> analisa toda a sua trajetória na plataforma — simulados, flashcards, frequência — e mostra em cores quais matérias estão fortes e quais precisam de atenção. Nada mais de estudar o que você já sabe.
               </p>
               <ul className="space-y-2.5 mb-8">
                 {[
@@ -1571,15 +1570,15 @@ export default function Landing() {
                   "Resumo automático: pontos fortes × áreas para focar",
                   "Atualizado em tempo real a cada simulado ou flashcard",
                 ].map((item) => (
-                  <li key={item} className="flex items-center gap-2.5 text-sm text-white/70">
-                    <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <li key={item} className="flex items-center gap-2.5 text-sm text-gray-600">
+                    <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
                     {item}
                   </li>
                 ))}
               </ul>
               <Button
                 onClick={() => navigate("/mapa")}
-                className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold px-7 py-5 rounded-2xl shadow-lg shadow-emerald-500/30 text-base"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-7 py-5 rounded-2xl shadow-lg shadow-emerald-100 text-base"
               >
                 <Map className="w-4 h-4 mr-2" />
                 Ver meu mapa de desempenho
@@ -1589,30 +1588,28 @@ export default function Landing() {
 
             {/* Left: heat grid mockup */}
             <div className="relative z-10 flex-shrink-0 w-full md:w-64">
-              <div className="rounded-2xl bg-white/5 border border-white/10 p-5 space-y-2.5">
-                <p className="text-white/40 text-[10px] font-bold uppercase tracking-wider mb-3">Mapa de Calor</p>
+              <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5 space-y-2.5">
+                <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-3">Mapa de Calor</p>
                 {[
-                  { label: "Matemática", pct: 87, color: "bg-gradient-to-r from-emerald-400 to-green-500", tag: "Forte" },
-                  { label: "Português", pct: 72, color: "bg-gradient-to-r from-lime-400 to-emerald-400", tag: "Bom" },
-                  { label: "História", pct: 55, color: "bg-gradient-to-r from-amber-400 to-yellow-400", tag: "Regular" },
-                  { label: "Química", pct: 38, color: "bg-gradient-to-r from-orange-400 to-amber-500", tag: "Fraco" },
-                  { label: "Biologia", pct: 22, color: "bg-gradient-to-r from-red-500 to-rose-600", tag: "Crítico" },
+                  { label: "Matemática", pct: 87, color: "bg-gradient-to-r from-emerald-400 to-green-500" },
+                  { label: "Português", pct: 72, color: "bg-gradient-to-r from-lime-400 to-emerald-400" },
+                  { label: "História", pct: 55, color: "bg-gradient-to-r from-amber-400 to-yellow-400" },
+                  { label: "Química", pct: 38, color: "bg-gradient-to-r from-orange-400 to-amber-500" },
+                  { label: "Biologia", pct: 22, color: "bg-gradient-to-r from-red-500 to-rose-600" },
                 ].map((item) => (
                   <div key={item.label}>
                     <div className="flex justify-between text-[11px] mb-1">
-                      <span className="text-white/60 font-semibold">{item.label}</span>
-                      <span className="text-white/40 font-bold">{item.pct}%</span>
+                      <span className="text-gray-600 font-semibold">{item.label}</span>
+                      <span className="text-gray-400 font-bold">{item.pct}%</span>
                     </div>
-                    <div className="w-full bg-white/10 rounded-full h-2">
+                    <div className="w-full bg-gray-100 rounded-full h-2">
                       <div className={`h-2 rounded-full ${item.color}`} style={{ width: `${item.pct}%` }} />
                     </div>
                   </div>
                 ))}
-                <div className="pt-2 border-t border-white/10 flex items-center justify-between">
-                  <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 rounded-full bg-red-500" />
-                    <span className="text-[10px] text-white/40">Foco: Biologia, Química</span>
-                  </div>
+                <div className="pt-2 border-t border-gray-100 flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-red-500" />
+                  <span className="text-[10px] text-gray-400">Foco: Biologia, Química</span>
                 </div>
               </div>
             </div>
@@ -1621,32 +1618,32 @@ export default function Landing() {
       </section>
 
       {/* ── SIMULADO ADAPTATIVO SPOTLIGHT ── */}
-      <section className="py-4 px-6 pb-20">
+      <section className="py-20 px-6 bg-stone-50 border-t border-gray-100">
         <div className="max-w-6xl mx-auto">
           <motion.div
             variants={fadeUp}
             initial="hidden"
             whileInView="show"
             viewport={{ once: true }}
-            className="relative rounded-3xl overflow-hidden border border-purple-500/30 bg-gradient-to-br from-purple-900/50 via-indigo-900/30 to-[#0a0a0f] p-8 sm:p-14 flex flex-col md:flex-row items-center gap-10"
+            className="relative rounded-3xl overflow-hidden border border-purple-100 bg-purple-50 p-8 sm:p-14 flex flex-col md:flex-row items-center gap-10"
           >
-            <div className="absolute top-0 right-0 w-80 h-80 bg-purple-500/15 blur-[100px] rounded-full pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/10 blur-[80px] rounded-full pointer-events-none" />
+            <div className="absolute -top-20 -right-20 w-64 h-64 bg-purple-100 rounded-full pointer-events-none" />
+            <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-indigo-100 rounded-full pointer-events-none" />
 
             {/* Left: content */}
             <div className="relative z-10 flex-1">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-bold uppercase tracking-widest mb-5">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100 border border-purple-200 text-purple-700 text-xs font-bold uppercase tracking-widest mb-5">
                 <Zap className="w-3 h-3" />
                 IA Adaptativa
               </div>
-              <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-5 leading-tight">
+              <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-5 leading-tight text-gray-900">
                 O simulado que<br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400">
+                <span className="text-purple-600">
                   aprende com você
                 </span>
               </h2>
-              <p className="text-white/60 text-base sm:text-lg leading-relaxed mb-6 max-w-lg">
-                Diferente do simulado comum, o <strong className="text-white">Simulado Adaptativo</strong> lê seu histórico de desempenho, identifica suas lacunas reais e gera questões cirúrgicas focadas exatamente no que você mais precisa revisar. Quanto mais você usa, mais certeiro ele fica.
+              <p className="text-gray-600 text-base sm:text-lg leading-relaxed mb-6 max-w-lg">
+                Diferente do simulado comum, o <strong className="text-gray-900">Simulado Adaptativo</strong> lê seu histórico de desempenho, identifica suas lacunas reais e gera questões cirúrgicas focadas exatamente no que você mais precisa revisar. Quanto mais você usa, mais certeiro ele fica.
               </p>
               <ul className="space-y-2.5 mb-8">
                 {[
@@ -1655,15 +1652,15 @@ export default function Landing() {
                   "Funciona mesmo sem histórico — cria sua linha de base",
                   "Painel de evolução: compare sua nota atual com a média anterior",
                 ].map((item) => (
-                  <li key={item} className="flex items-center gap-2.5 text-sm text-white/70">
-                    <CheckCircle className="w-4 h-4 text-purple-400 shrink-0" />
+                  <li key={item} className="flex items-center gap-2.5 text-sm text-gray-600">
+                    <CheckCircle className="w-4 h-4 text-purple-500 shrink-0" />
                     {item}
                   </li>
                 ))}
               </ul>
               <Button
                 onClick={() => navigate("/app")}
-                className="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-400 hover:to-indigo-500 text-white font-bold px-7 py-5 rounded-2xl shadow-lg shadow-purple-500/30 text-base"
+                className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-7 py-5 rounded-2xl shadow-lg shadow-purple-100 text-base"
               >
                 <Target className="w-4 h-4 mr-2" />
                 Experimentar simulado adaptativo
@@ -1673,35 +1670,33 @@ export default function Landing() {
 
             {/* Right: diagnostic mockup */}
             <div className="relative z-10 flex-shrink-0 w-full md:w-72 space-y-3">
-              {/* Badge adaptativo */}
-              <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
+              <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-4 space-y-3">
                 <div className="flex items-center gap-2 mb-1">
-                  <div className="w-6 h-6 rounded-lg bg-purple-500/30 flex items-center justify-center">
-                    <Zap className="w-3 h-3 text-purple-400" />
+                  <div className="w-6 h-6 rounded-lg bg-purple-50 flex items-center justify-center">
+                    <Zap className="w-3 h-3 text-purple-600" />
                   </div>
-                  <p className="text-white/80 text-xs font-black">Análise Adaptativa</p>
-                  <span className="ml-auto text-[9px] font-black px-1.5 py-0.5 rounded-md bg-purple-500/30 text-purple-300 uppercase">⚡ Personalizado</span>
+                  <p className="text-gray-800 text-xs font-black">Análise Adaptativa</p>
+                  <span className="ml-auto text-[9px] font-black px-1.5 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 uppercase">⚡ Personalizado</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { label: "Média ant.", value: "54%", color: "text-white/70" },
-                    { label: "Agora", value: "73%", color: "text-emerald-400" },
-                    { label: "Tendência", value: "📈", color: "text-emerald-400" },
+                    { label: "Média ant.", value: "54%", color: "text-gray-500" },
+                    { label: "Agora", value: "73%", color: "text-emerald-600" },
+                    { label: "Tendência", value: "📈", color: "text-emerald-600" },
                   ].map((s) => (
-                    <div key={s.label} className="bg-white/5 rounded-xl p-2 text-center border border-white/10">
+                    <div key={s.label} className="bg-gray-50 rounded-xl p-2 text-center border border-gray-100">
                       <p className={`font-black text-base ${s.color}`}>{s.value}</p>
-                      <p className="text-white/30 text-[9px] font-semibold leading-tight">{s.label}</p>
+                      <p className="text-gray-400 text-[9px] font-semibold leading-tight">{s.label}</p>
                     </div>
                   ))}
                 </div>
-                <p className="text-emerald-400 text-[10px] font-bold flex items-center gap-1">
+                <p className="text-emerald-600 text-[10px] font-bold flex items-center gap-1">
                   <TrendingUp className="w-3 h-3" />
                   +19pp acima da sua média! Continue assim 🎉
                 </p>
               </div>
-              {/* Focused topics */}
-              <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
-                <p className="text-white/40 text-[10px] font-bold uppercase tracking-wider mb-2.5">Foco das questões</p>
+              <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-4">
+                <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-2.5">Foco das questões</p>
                 <div className="space-y-1.5">
                   {[
                     { label: "Equações de 2º grau", lacuna: "Alta" },
@@ -1709,8 +1704,8 @@ export default function Landing() {
                     { label: "Trigonometria básica", lacuna: "Alta" },
                   ].map((t) => (
                     <div key={t.label} className="flex items-center justify-between">
-                      <span className="text-white/60 text-[11px] font-medium">{t.label}</span>
-                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ${t.lacuna === "Alta" ? "bg-red-500/20 text-red-300" : "bg-amber-500/20 text-amber-300"}`}>
+                      <span className="text-gray-500 text-[11px] font-medium">{t.label}</span>
+                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ${t.lacuna === "Alta" ? "bg-red-50 text-red-500 border border-red-100" : "bg-amber-50 text-amber-600 border border-amber-100"}`}>
                         {t.lacuna}
                       </span>
                     </div>
@@ -1723,7 +1718,7 @@ export default function Landing() {
       </section>
 
       {/* ── COMPARATIVO ── */}
-      <section className="py-24 px-6 border-t border-white/5">
+      <section className="py-24 px-6 bg-white border-t border-gray-100">
         <div className="max-w-4xl mx-auto">
           <motion.div
             variants={fadeUp}
@@ -1732,11 +1727,11 @@ export default function Landing() {
             viewport={{ once: true }}
             className="text-center mb-14"
           >
-            <p className="text-violet-400 font-semibold text-sm uppercase tracking-widest mb-3">Comparativo</p>
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
+            <p className="text-emerald-600 font-semibold text-sm uppercase tracking-widest mb-3">Comparativo</p>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4 text-gray-900">
               StudyAI vs método tradicional
             </h2>
-            <p className="text-white/50 text-lg max-w-xl mx-auto">
+            <p className="text-gray-500 text-lg max-w-xl mx-auto">
               Veja por que estudar com IA é diferente de tudo que você já usou.
             </p>
           </motion.div>
@@ -1747,32 +1742,32 @@ export default function Landing() {
             whileInView="show"
             viewport={{ once: true }}
             custom={0.3}
-            className="rounded-2xl border border-white/10 overflow-hidden"
+            className="rounded-2xl border border-gray-200 overflow-hidden shadow-sm"
           >
             {/* Header row */}
-            <div className="grid grid-cols-[1fr_1fr_1fr] bg-white/5 border-b border-white/10 text-sm font-black uppercase tracking-wide">
-              <div className="px-5 py-4 text-white/40">Aspecto</div>
-              <div className="px-5 py-4 text-white/50 border-l border-white/10 flex items-center gap-2">
+            <div className="grid grid-cols-[1fr_1fr_1fr] bg-gray-50 border-b border-gray-200 text-sm font-black uppercase tracking-wide">
+              <div className="px-5 py-4 text-gray-400">Aspecto</div>
+              <div className="px-5 py-4 text-gray-500 border-l border-gray-200 flex items-center gap-2">
                 <X className="w-4 h-4 text-red-400" /> Método Tradicional
               </div>
-              <div className="px-5 py-4 border-l border-white/10 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-violet-400 inline-block" />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-pink-400">StudyAI</span>
+              <div className="px-5 py-4 border-l border-gray-200 flex items-center gap-2 text-emerald-700">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                StudyAI
               </div>
             </div>
 
             {comparativo.map((row, i) => (
               <div
                 key={row.aspecto}
-                className={`grid grid-cols-[1fr_1fr_1fr] text-sm border-b border-white/5 last:border-0 ${i % 2 === 0 ? "" : "bg-white/[0.02]"}`}
+                className={`grid grid-cols-[1fr_1fr_1fr] text-sm border-b border-gray-100 last:border-0 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}
               >
-                <div className="px-5 py-4 font-semibold text-white/70">{row.aspecto}</div>
-                <div className="px-5 py-4 text-white/35 border-l border-white/5 flex items-start gap-2">
-                  <X className="w-3.5 h-3.5 text-red-400/60 shrink-0 mt-0.5" />
+                <div className="px-5 py-4 font-semibold text-gray-700">{row.aspecto}</div>
+                <div className="px-5 py-4 text-gray-400 border-l border-gray-100 flex items-start gap-2">
+                  <X className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
                   {row.tradicional}
                 </div>
-                <div className="px-5 py-4 text-emerald-300/80 border-l border-white/5 flex items-start gap-2">
-                  <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                <div className="px-5 py-4 text-emerald-700 border-l border-gray-100 flex items-start gap-2">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
                   {row.studyai}
                 </div>
               </div>
@@ -1789,7 +1784,7 @@ export default function Landing() {
           >
             <Button
               size="lg"
-              className="bg-violet-600 hover:bg-violet-500 text-white text-base px-8 h-12 shadow-lg shadow-violet-900/40"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white text-base px-8 h-12 shadow-md shadow-emerald-100"
               onClick={() => navigate("/app")}
             >
               Experimentar grátis
@@ -1800,7 +1795,7 @@ export default function Landing() {
       </section>
 
       {/* ── HOW IT WORKS ── */}
-      <section id="como-funciona" className="py-24 px-6 border-t border-white/5">
+      <section id="como-funciona" className="py-24 px-6 bg-stone-50 border-t border-gray-100">
         <div className="max-w-6xl mx-auto">
           <motion.div
             variants={fadeUp}
@@ -1809,8 +1804,8 @@ export default function Landing() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <p className="text-violet-400 font-semibold text-sm uppercase tracking-widest mb-3">Como funciona</p>
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
+            <p className="text-emerald-600 font-semibold text-sm uppercase tracking-widest mb-3">Como funciona</p>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4 text-gray-900">
               Em 3 passos simples
             </h2>
           </motion.div>
@@ -1827,16 +1822,16 @@ export default function Landing() {
                 className="relative text-center"
               >
                 {i < steps.length - 1 && (
-                  <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-px bg-gradient-to-r from-white/10 to-transparent" />
+                  <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-px bg-gradient-to-r from-gray-200 to-transparent" />
                 )}
-                <div className="relative inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 mb-5">
-                  <s.icon className="w-7 h-7 text-violet-400" />
-                  <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-violet-600 text-white text-[10px] font-bold flex items-center justify-center">
+                <div className="relative inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200 mb-5">
+                  <s.icon className="w-7 h-7 text-emerald-600" />
+                  <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center">
                     {i + 1}
                   </span>
                 </div>
-                <h3 className="font-bold text-xl mb-3">{s.title}</h3>
-                <p className="text-white/50 text-sm leading-relaxed max-w-xs mx-auto">{s.desc}</p>
+                <h3 className="font-bold text-xl mb-3 text-gray-900">{s.title}</h3>
+                <p className="text-gray-500 text-sm leading-relaxed max-w-xs mx-auto">{s.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -1844,7 +1839,7 @@ export default function Landing() {
       </section>
 
       {/* ── TESTIMONIALS ── */}
-      <section className="py-24 px-6 border-t border-white/5">
+      <section className="py-24 px-6 bg-white border-t border-gray-100">
         <div className="max-w-6xl mx-auto">
           <motion.div
             variants={fadeUp}
@@ -1853,11 +1848,11 @@ export default function Landing() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <p className="text-violet-400 font-semibold text-sm uppercase tracking-widest mb-3">Resultados reais</p>
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
+            <p className="text-emerald-600 font-semibold text-sm uppercase tracking-widest mb-3">Resultados reais</p>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4 text-gray-900">
               Quem usou, passou.
             </h2>
-            <p className="text-white/50 text-lg max-w-xl mx-auto">
+            <p className="text-gray-500 text-lg max-w-xl mx-auto">
               Cada depoimento tem um antes e um depois. Esses são os números reais.
             </p>
           </motion.div>
@@ -1871,15 +1866,14 @@ export default function Landing() {
                 whileInView="show"
                 viewport={{ once: true }}
                 custom={i * 0.15}
-                className="bg-white/[0.04] border border-white/8 rounded-2xl p-6 flex flex-col hover:border-violet-500/30 hover:bg-white/[0.06] transition-all duration-200"
+                className="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col hover:shadow-md hover:border-emerald-200 transition-all duration-200"
               >
-                {/* Before → After badges */}
                 <div className="flex items-center gap-2 mb-4">
-                  <span className="text-xs px-2.5 py-1 rounded-lg bg-red-500/15 border border-red-500/20 text-red-300 font-bold line-through decoration-red-400">
+                  <span className="text-xs px-2.5 py-1 rounded-lg bg-red-50 border border-red-100 text-red-400 font-bold line-through decoration-red-300">
                     {t.before}
                   </span>
-                  <ArrowRight className="w-3.5 h-3.5 text-white/30" />
-                  <span className="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/20 text-emerald-300 font-black">
+                  <ArrowRight className="w-3.5 h-3.5 text-gray-300" />
+                  <span className="text-xs px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 font-black">
                     {t.after}
                   </span>
                   <span className="ml-auto text-xl">{t.emoji}</span>
@@ -1890,10 +1884,10 @@ export default function Landing() {
                     <Star key={si} className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
                   ))}
                 </div>
-                <p className="text-white/65 text-sm leading-relaxed mb-5 flex-1">"{t.text}"</p>
-                <div className="pt-4 border-t border-white/5">
-                  <p className="font-bold text-sm text-white">{t.name}</p>
-                  <p className="text-white/35 text-xs mt-0.5">{t.role}</p>
+                <p className="text-gray-500 text-sm leading-relaxed mb-5 flex-1">"{t.text}"</p>
+                <div className="pt-4 border-t border-gray-100">
+                  <p className="font-bold text-sm text-gray-900">{t.name}</p>
+                  <p className="text-gray-400 text-xs mt-0.5">{t.role}</p>
                 </div>
               </motion.div>
             ))}
@@ -1902,7 +1896,7 @@ export default function Landing() {
       </section>
 
       {/* ── PRICING ── */}
-      <section id="precos" className="py-24 px-6 border-t border-white/5">
+      <section id="precos" className="py-24 px-6 bg-stone-50 border-t border-gray-100">
         <div className="max-w-6xl mx-auto">
           <motion.div
             variants={fadeUp}
@@ -1911,11 +1905,11 @@ export default function Landing() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <p className="text-violet-400 font-semibold text-sm uppercase tracking-widest mb-3">Preços</p>
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
+            <p className="text-emerald-600 font-semibold text-sm uppercase tracking-widest mb-3">Preços</p>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4 text-gray-900">
               Simples e transparente
             </h2>
-            <p className="text-white/50 text-lg">Comece grátis. Escale conforme evolui.</p>
+            <p className="text-gray-500 text-lg">Comece grátis. Escale conforme evolui.</p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
@@ -1929,26 +1923,26 @@ export default function Landing() {
                 custom={i * 0.5}
                 className={`relative rounded-2xl border p-8 ${
                   plan.highlight
-                    ? "border-violet-500/50 bg-gradient-to-b from-violet-600/10 to-purple-600/5 shadow-xl shadow-violet-900/30"
-                    : "border-white/10 bg-white/4"
+                    ? "border-emerald-300 bg-white shadow-xl shadow-emerald-100"
+                    : "border-gray-200 bg-white"
                 }`}
               >
                 {plan.highlight && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-violet-600 text-white text-xs font-bold">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-emerald-600 text-white text-xs font-bold">
                     Mais popular
                   </div>
                 )}
-                <p className="text-white/50 text-sm mb-1">{plan.desc}</p>
-                <h3 className="font-black text-2xl mb-1">{plan.name}</h3>
+                <p className="text-gray-400 text-sm mb-1">{plan.desc}</p>
+                <h3 className="font-black text-2xl mb-1 text-gray-900">{plan.name}</h3>
                 <div className="flex items-baseline gap-1 mb-6">
-                  <span className="text-4xl font-black">{plan.price}</span>
-                  <span className="text-white/40 text-sm">{plan.period}</span>
+                  <span className="text-4xl font-black text-gray-900">{plan.price}</span>
+                  <span className="text-gray-400 text-sm">{plan.period}</span>
                 </div>
 
                 <ul className="space-y-3 mb-8">
                   {plan.features.map((feat) => (
-                    <li key={feat} className="flex items-center gap-2.5 text-sm text-white/70">
-                      <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
+                    <li key={feat} className="flex items-center gap-2.5 text-sm text-gray-600">
+                      <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
                       {feat}
                     </li>
                   ))}
@@ -1957,8 +1951,8 @@ export default function Landing() {
                 <Button
                   className={`w-full ${
                     plan.highlight
-                      ? "bg-violet-600 hover:bg-violet-500 text-white"
-                      : "border-white/15 text-white/80 hover:bg-white/5"
+                      ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                      : "border-gray-200 text-gray-600 hover:bg-gray-50"
                   }`}
                   variant={plan.ctaVariant}
                   onClick={() => navigate("/app")}
@@ -1972,7 +1966,7 @@ export default function Landing() {
       </section>
 
       {/* ── WAITLIST ── */}
-      <section id="lista-espera" className="py-24 px-6 border-t border-white/5">
+      <section id="lista-espera" className="py-24 px-6 bg-white border-t border-gray-100">
         <div className="max-w-2xl mx-auto">
           <motion.div
             variants={fadeUp}
@@ -1981,15 +1975,15 @@ export default function Landing() {
             viewport={{ once: true }}
             className="text-center mb-10"
           >
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-sm font-medium mb-4">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium mb-4">
               <Sparkles className="w-3.5 h-3.5" />
               Lançamento em breve
             </div>
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4 text-gray-900">
               Entre na lista de espera
             </h2>
-            <p className="text-white/50 text-lg">
-              Seja um dos primeiros a saber quando o plano Pro for lançado. Quem entrar na lista ganha <span className="text-violet-400 font-semibold">30 dias grátis</span>.
+            <p className="text-gray-500 text-lg">
+              Seja um dos primeiros a saber quando o plano Pro for lançado. Quem entrar na lista ganha <span className="text-emerald-600 font-semibold">30 dias grátis</span>.
             </p>
           </motion.div>
 
@@ -1999,21 +1993,21 @@ export default function Landing() {
             whileInView="show"
             viewport={{ once: true }}
             custom={0.5}
-            className="bg-white/5 border border-white/10 rounded-2xl p-6 sm:p-8"
+            className="bg-stone-50 border border-gray-200 rounded-2xl p-6 sm:p-8"
           >
             {wlStatus === "success" ? (
               <div className="text-center py-6">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/20 border border-green-500/30 mb-4">
-                  <CheckCircle className="w-8 h-8 text-green-400" />
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-50 border border-emerald-200 mb-4">
+                  <CheckCircle className="w-8 h-8 text-emerald-500" />
                 </div>
-                <h3 className="text-xl font-black mb-2">Você está na lista! 🎉</h3>
-                <p className="text-white/60">{wlMessage}</p>
+                <h3 className="text-xl font-black mb-2 text-gray-900">Você está na lista! 🎉</h3>
+                <p className="text-gray-500">{wlMessage}</p>
               </div>
             ) : (
               <form onSubmit={handleWaitlist} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-white/70 mb-1.5">
+                    <label className="block text-sm font-semibold text-gray-600 mb-1.5">
                       Seu nome
                     </label>
                     <input
@@ -2021,12 +2015,12 @@ export default function Landing() {
                       placeholder="João Silva"
                       value={wlName}
                       onChange={(e) => setWlName(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-white/8 border border-white/10 text-white placeholder-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all"
+                      className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400 transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-white/70 mb-1.5">
-                      Seu email <span className="text-violet-400">*</span>
+                    <label className="block text-sm font-semibold text-gray-600 mb-1.5">
+                      Seu email <span className="text-emerald-600">*</span>
                     </label>
                     <input
                       type="email"
@@ -2034,24 +2028,24 @@ export default function Landing() {
                       value={wlEmail}
                       onChange={(e) => setWlEmail(e.target.value)}
                       required
-                      className="w-full px-4 py-3 rounded-xl bg-white/8 border border-white/10 text-white placeholder-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all"
+                      className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400 transition-all"
                     />
                   </div>
                 </div>
 
                 {wlStatus === "error" && (
-                  <p className="text-red-400 text-sm">{wlMessage}</p>
+                  <p className="text-red-500 text-sm">{wlMessage}</p>
                 )}
 
                 <Button
                   type="submit"
                   disabled={wlStatus === "loading"}
-                  className="w-full bg-violet-600 hover:bg-violet-500 text-white h-12 text-base font-bold disabled:opacity-60"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-12 text-base font-bold disabled:opacity-60"
                 >
                   {wlStatus === "loading" ? "Cadastrando..." : "Quero 30 dias grátis →"}
                 </Button>
 
-                <p className="text-center text-white/30 text-xs">
+                <p className="text-center text-gray-400 text-xs">
                   Sem spam. Apenas avisaremos quando o Pro for lançado.
                 </p>
               </form>
@@ -2064,18 +2058,18 @@ export default function Landing() {
             whileInView="show"
             viewport={{ once: true }}
             custom={1}
-            className="flex flex-wrap justify-center gap-6 mt-8 text-sm text-white/40"
+            className="flex flex-wrap justify-center gap-6 mt-8 text-sm text-gray-400"
           >
             <div className="flex items-center gap-1.5">
-              <CheckCircle className="w-4 h-4 text-green-500" />
+              <CheckCircle className="w-4 h-4 text-emerald-500" />
               30 dias grátis ao entrar
             </div>
             <div className="flex items-center gap-1.5">
-              <CheckCircle className="w-4 h-4 text-green-500" />
+              <CheckCircle className="w-4 h-4 text-emerald-500" />
               Sem cartão de crédito
             </div>
             <div className="flex items-center gap-1.5">
-              <CheckCircle className="w-4 h-4 text-green-500" />
+              <CheckCircle className="w-4 h-4 text-emerald-500" />
               Cancele quando quiser
             </div>
           </motion.div>
@@ -2083,10 +2077,9 @@ export default function Landing() {
       </section>
 
       {/* ── CTA FINAL ── */}
-      <section className="py-24 px-6 border-t border-white/5 relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-violet-600/10 rounded-full blur-3xl" />
-        </div>
+      <section className="py-24 px-6 bg-emerald-600 relative overflow-hidden">
+        <div className="absolute -top-32 -right-32 w-96 h-96 bg-emerald-500 rounded-full pointer-events-none opacity-50" />
+        <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-teal-500 rounded-full pointer-events-none opacity-40" />
         <div className="max-w-3xl mx-auto text-center relative z-10">
           <motion.div
             variants={fadeUp}
@@ -2095,22 +2088,20 @@ export default function Landing() {
             viewport={{ once: true }}
           >
             <div className="text-5xl mb-6">🎯</div>
-            <h2 className="text-4xl md:text-6xl font-black tracking-tight mb-6 leading-tight">
+            <h2 className="text-4xl md:text-6xl font-black tracking-tight mb-6 leading-tight text-white">
               Sua aprovação<br />
-              <span className="bg-gradient-to-r from-violet-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                começa agora.
-              </span>
+              começa agora.
             </h2>
-            <p className="text-white/50 text-lg mb-4 max-w-xl mx-auto">
+            <p className="text-emerald-100 text-lg mb-4 max-w-xl mx-auto">
               Cada dia que passa sem um método certo é um dia jogado fora. O plano cirúrgico está a 30 segundos de distância.
             </p>
-            <p className="text-white/30 text-base mb-10 max-w-lg mx-auto">
+            <p className="text-emerald-200 text-base mb-10 max-w-lg mx-auto">
               Sem cadastro obrigatório para começar. Sem cartão de crédito.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 size="lg"
-                className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-black text-lg px-12 h-16 shadow-2xl shadow-violet-900/50 rounded-2xl"
+                className="bg-white text-emerald-700 hover:bg-emerald-50 font-black text-lg px-12 h-16 rounded-2xl shadow-xl"
                 onClick={() => navigate("/app")}
               >
                 Quero meu plano agora →
@@ -2118,7 +2109,7 @@ export default function Landing() {
               <Button
                 size="lg"
                 variant="outline"
-                className="border-white/10 text-white/60 hover:bg-white/5 text-base px-8 h-16 rounded-2xl"
+                className="border-emerald-300 text-white hover:bg-emerald-500 text-base px-8 h-16 rounded-2xl"
                 onClick={() => document.getElementById("diagnostico")?.scrollIntoView({ behavior: "smooth" })}
               >
                 Fazer diagnóstico grátis
@@ -2133,7 +2124,7 @@ export default function Landing() {
                 { icon: "🤖", text: "Tutor IA disponível 24h" },
                 { icon: "🇧🇷", text: "Feito para o Brasil" },
               ].map((item) => (
-                <div key={item.text} className="flex items-center gap-2 text-white/40 text-sm">
+                <div key={item.text} className="flex items-center gap-2 text-emerald-100 text-sm">
                   <span>{item.icon}</span>
                   <span>{item.text}</span>
                 </div>
@@ -2144,23 +2135,23 @@ export default function Landing() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer className="border-t border-white/5 py-10 px-6">
+      <footer className="border-t border-gray-200 bg-white py-10 px-6">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-emerald-600 flex items-center justify-center">
               <Brain className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="font-bold">StudyAI</span>
+            <span className="font-bold text-gray-900">StudyAI</span>
           </div>
 
-          <p className="text-white/30 text-sm">
+          <p className="text-gray-400 text-sm">
             © {new Date().getFullYear()} StudyAI · Todos os direitos reservados
           </p>
 
-          <div className="flex items-center gap-5 text-sm text-white/40">
-            <a href="#" className="hover:text-white transition-colors">Termos</a>
-            <a href="#" className="hover:text-white transition-colors">Privacidade</a>
-            <a href="#" className="hover:text-white transition-colors">Contato</a>
+          <div className="flex items-center gap-5 text-sm text-gray-400">
+            <a href="#" className="hover:text-gray-700 transition-colors">Termos</a>
+            <a href="#" className="hover:text-gray-700 transition-colors">Privacidade</a>
+            <a href="#" className="hover:text-gray-700 transition-colors">Contato</a>
           </div>
         </div>
       </footer>

@@ -10,6 +10,7 @@ import DashboardPage from "@/pages/Dashboard";
 import RedacaoPage from "@/pages/Redacao";
 import MapaPage from "@/pages/Mapa";
 import PricingPage from "@/pages/Pricing";
+import AdminPage from "@/pages/Admin";
 import NotFound from "@/pages/not-found";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
@@ -34,6 +35,7 @@ function Router() {
       <Route path="/ranking" component={RankingPage} />
       <Route path="/redacao" component={RedacaoPage} />
       <Route path="/mapa" component={MapaPage} />
+      <Route path="/admin" component={AdminPage} />
       <Route component={NotFound} />
     </Switch>
   );

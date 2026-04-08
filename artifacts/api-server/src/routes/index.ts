@@ -15,6 +15,7 @@ import simuladoAdaptativoRouter from "./simulado-adaptativo";
 import resumaoRouter from "./resumao";
 import subscriptionRouter from "./subscription";
 import feedRouter from "./feed";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(simuladoAdaptativoRouter);
 router.use(resumaoRouter);
 router.use(subscriptionRouter);
 router.use(feedRouter);
+router.use(adminRouter);
 
 export default router;

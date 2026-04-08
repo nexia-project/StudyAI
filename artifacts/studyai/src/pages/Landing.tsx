@@ -1032,17 +1032,17 @@ export default function Landing() {
                 ))}
 
                 {/* Action row */}
-                <div className="flex gap-3 pt-2">
-                  <div className="flex-1 rounded-xl bg-yellow-500/25 border border-yellow-400/40 p-3 flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-yellow-300" />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2">
+                  <div className="rounded-xl bg-yellow-500/25 border border-yellow-400/40 p-3 flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-yellow-300 shrink-0" />
                     <span className="text-xs text-yellow-200 font-bold">Simulado gerado</span>
                   </div>
-                  <div className="flex-1 rounded-xl bg-blue-500/25 border border-blue-400/40 p-3 flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-blue-300" />
+                  <div className="rounded-xl bg-blue-500/25 border border-blue-400/40 p-3 flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-blue-300 shrink-0" />
                     <span className="text-xs text-blue-200 font-bold">30 flashcards</span>
                   </div>
-                  <div className="flex-1 rounded-xl bg-[#F26207]/30 border border-[#F26207]/50 p-3 flex items-center gap-2">
-                    <Target className="w-4 h-4 text-[#F5803A]" />
+                  <div className="rounded-xl bg-[#F26207]/30 border border-[#F26207]/50 p-3 flex items-center gap-2">
+                    <Target className="w-4 h-4 text-[#F5803A] shrink-0" />
                     <span className="text-xs text-[#FFB07A] font-bold">Resumão estratégico</span>
                   </div>
                 </div>
@@ -1151,7 +1151,7 @@ export default function Landing() {
                     </div>
 
                     {/* Options */}
-                    <div className={`grid gap-3 ${currentSteps[diagStep].options.length > 4 ? "grid-cols-2" : "grid-cols-1 md:grid-cols-2"}`}>
+                    <div className={`grid gap-3 ${currentSteps[diagStep].options.length > 4 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 md:grid-cols-2"}`}>
                       {currentSteps[diagStep].options.map((opt) => (
                         <button
                           key={opt.value}
@@ -1405,7 +1405,7 @@ export default function Landing() {
               </ul>
               <Button
                 onClick={() => navigate("/app")}
-                className="bg-[#F26207] hover:bg-[#D85507] text-white font-bold px-7 py-5 rounded-2xl shadow-lg shadow-orange-100 text-base"
+                className="w-full sm:w-auto bg-[#F26207] hover:bg-[#D85507] text-white font-bold px-7 py-4 rounded-2xl shadow-lg shadow-orange-100 text-base"
               >
                 <Brain className="w-4 h-4 mr-2" />
                 Gerar meu resumão estratégico
@@ -1490,7 +1490,7 @@ export default function Landing() {
               </ul>
               <Button
                 onClick={() => navigate("/redacao")}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-7 py-5 rounded-2xl shadow-lg shadow-indigo-100 text-base"
+                className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-7 py-4 rounded-2xl shadow-lg shadow-indigo-100 text-base"
               >
                 <PenLine className="w-4 h-4 mr-2" />
                 Corrigir minha redação grátis
@@ -1578,7 +1578,7 @@ export default function Landing() {
               </ul>
               <Button
                 onClick={() => navigate("/mapa")}
-                className="bg-[#F26207] hover:bg-[#D85507] text-white font-bold px-7 py-5 rounded-2xl shadow-lg shadow-orange-100 text-base"
+                className="w-full sm:w-auto bg-[#F26207] hover:bg-[#D85507] text-white font-bold px-7 py-4 rounded-2xl shadow-lg shadow-orange-100 text-base"
               >
                 <Map className="w-4 h-4 mr-2" />
                 Ver meu mapa de desempenho
@@ -1660,7 +1660,7 @@ export default function Landing() {
               </ul>
               <Button
                 onClick={() => navigate("/app")}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-7 py-5 rounded-2xl shadow-lg shadow-purple-100 text-base"
+                className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white font-bold px-7 py-4 rounded-2xl shadow-lg shadow-purple-100 text-base"
               >
                 <Target className="w-4 h-4 mr-2" />
                 Experimentar simulado adaptativo
@@ -1742,16 +1742,18 @@ export default function Landing() {
             whileInView="show"
             viewport={{ once: true }}
             custom={0.3}
-            className="rounded-2xl border border-gray-200 overflow-hidden shadow-sm"
+            className="rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
           >
+            <div className="overflow-x-auto">
+              <div className="min-w-[520px]">
             {/* Header row */}
             <div className="grid grid-cols-[1fr_1fr_1fr] bg-gray-50 border-b border-gray-200 text-sm font-black uppercase tracking-wide">
-              <div className="px-5 py-4 text-gray-400">Aspecto</div>
-              <div className="px-5 py-4 text-gray-500 border-l border-gray-200 flex items-center gap-2">
-                <X className="w-4 h-4 text-red-400" /> Método Tradicional
+              <div className="px-4 py-3 text-gray-400 text-xs">Aspecto</div>
+              <div className="px-4 py-3 text-gray-500 border-l border-gray-200 flex items-center gap-1.5 text-xs">
+                <X className="w-3.5 h-3.5 text-red-400 shrink-0" /> Método Tradicional
               </div>
-              <div className="px-5 py-4 border-l border-gray-200 flex items-center gap-2 text-[#D85507]">
-                <span className="w-2 h-2 rounded-full bg-[#F26207] inline-block" />
+              <div className="px-4 py-3 border-l border-gray-200 flex items-center gap-1.5 text-[#D85507] text-xs">
+                <span className="w-2 h-2 rounded-full bg-[#F26207] inline-block shrink-0" />
                 StudyAI
               </div>
             </div>
@@ -1761,17 +1763,19 @@ export default function Landing() {
                 key={row.aspecto}
                 className={`grid grid-cols-[1fr_1fr_1fr] text-sm border-b border-gray-100 last:border-0 ${i % 2 === 0 ? "bg-[#F9F5F1]" : "bg-[#F5EFE9]/50"}`}
               >
-                <div className="px-5 py-4 font-semibold text-gray-700">{row.aspecto}</div>
-                <div className="px-5 py-4 text-gray-400 border-l border-gray-100 flex items-start gap-2">
-                  <X className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
-                  {row.tradicional}
+                <div className="px-4 py-3 font-semibold text-gray-700 text-xs sm:text-sm">{row.aspecto}</div>
+                <div className="px-4 py-3 text-gray-400 border-l border-gray-100 flex items-start gap-1.5 text-xs sm:text-sm">
+                  <X className="w-3 h-3 text-red-400 shrink-0 mt-0.5" />
+                  <span>{row.tradicional}</span>
                 </div>
-                <div className="px-5 py-4 text-[#D85507] border-l border-gray-100 flex items-start gap-2">
-                  <CheckCircle className="w-3.5 h-3.5 text-[#F26207] shrink-0 mt-0.5" />
-                  {row.studyai}
+                <div className="px-4 py-3 text-[#D85507] border-l border-gray-100 flex items-start gap-1.5 text-xs sm:text-sm">
+                  <CheckCircle className="w-3 h-3 text-[#F26207] shrink-0 mt-0.5" />
+                  <span>{row.studyai}</span>
                 </div>
               </div>
             ))}
+              </div>
+            </div>
           </motion.div>
 
           <motion.div

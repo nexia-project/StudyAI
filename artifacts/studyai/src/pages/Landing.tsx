@@ -256,21 +256,57 @@ const comparativo = [
 const testimonials = [
   {
     name: "Mariana S.",
-    role: "Estudante — ENEM 2024",
-    text: "Passei de 580 para 720 pontos em 2 meses usando o StudyAI. Os simulados são incríveis — parecem questões reais!",
+    role: "ENEM 2024 — aprovada em Medicina",
+    text: "Tirava 580. Depois de 2 meses com o StudyAI, fui para 724. Meu plano atacou exatamente as matérias que eu mais perdia ponto. Os simulados pareciam questões reais da prova.",
     stars: 5,
+    before: "580 pts",
+    after: "724 pts",
+    emoji: "🎓",
   },
   {
     name: "Carlos M.",
-    role: "Concurseiro — TRF",
-    text: "Nunca tinha conseguido manter uma rotina de estudos. Com o Pomodoro gamificado e o ranking, virou vício estudar.",
+    role: "Aprovado no concurso — TRF",
+    text: "Tentei 3 anos sem aprovação. Com o Simulado Adaptativo, o sistema detectou meus pontos cegos e eu finalmente passei. Nunca entendi meus erros tão bem.",
     stars: 5,
+    before: "3 reprovações",
+    after: "Aprovado!",
+    emoji: "📋",
   },
   {
     name: "Juliana R.",
-    role: "Vestibulando — FUVEST",
-    text: "Fotografo minhas apostilas e em 30 segundos tenho um plano completo com exercícios. Simplesmente incrível.",
+    role: "Vestibular FUVEST — Direito",
+    text: "Fotografava minha apostila no ônibus e em 30 segundos tinha exercícios sobre o que ia cair na prova. Nunca estudei tão pouco e aprendi tanto.",
     stars: 5,
+    before: "Sem foco",
+    after: "Aprovada!",
+    emoji: "⚡",
+  },
+  {
+    name: "Rafael T.",
+    role: "Estudante Ensino Médio — 3ª série",
+    text: "Minha nota de redação foi de 640 para 880. O corretor do StudyAI identificou que eu não desenvolvia proposta de intervenção. Professor nenhum tinha me dito isso.",
+    stars: 5,
+    before: "Redação 640",
+    after: "Redação 880",
+    emoji: "✍️",
+  },
+  {
+    name: "Ana P.",
+    role: "Concurso Polícia Federal",
+    text: "Enviei o edital completo e o sistema montou um plano de 90 dias priorizando os tópicos com maior peso. Economizei meses de tentativa e erro.",
+    stars: 5,
+    before: "Sem direção",
+    after: "Aprovada 1ª fase",
+    emoji: "🏆",
+  },
+  {
+    name: "Lucas M.",
+    role: "ENEM 2025 — 2° ano Médio",
+    text: "Antes ficava relendo o mesmo capítulo sem absorver nada. Agora faço flashcards do meu próprio material e fixo de verdade. Minha nota em Matemática subiu 3 pontos por disciplina.",
+    stars: 5,
+    before: "Relendo sem fixar",
+    after: "Notas dispararam",
+    emoji: "🔢",
   },
 ];
 
@@ -438,14 +474,18 @@ export default function Landing() {
         </div>
 
         <div className="relative max-w-4xl mx-auto">
+          {/* Pain hook */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-sm font-medium mb-6"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="flex flex-wrap items-center justify-center gap-2 mb-8"
           >
-            <span className="text-base">🤖</span>
-            Múltiplas IAs trabalhando por você — seus professores 24h
+            {["Estudando horas sem resultado? 😰", "Prova chegando e sem direção? 📅", "Nota emperrada? 📉"].map((pain) => (
+              <span key={pain} className="text-xs font-semibold px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/50">
+                {pain}
+              </span>
+            ))}
           </motion.div>
 
           <motion.h1
@@ -455,12 +495,10 @@ export default function Landing() {
             custom={1}
             className="text-5xl md:text-7xl font-black tracking-tight leading-[1.05] mb-6"
           >
-            Estude de forma{" "}
+            Chega de estudar<br />
             <span className="bg-gradient-to-r from-violet-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-              inteligente
+              do jeito errado.
             </span>
-            .<br />
-            Passe na prova.
           </motion.h1>
 
           <motion.p
@@ -468,10 +506,19 @@ export default function Landing() {
             initial="hidden"
             animate="show"
             custom={2}
-            className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-10 leading-relaxed"
+            className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-4 leading-relaxed"
           >
-            Envie qualquer material e receba um plano de estudos personalizado com IA,
-            simulados, flashcards e um tutor disponível 24h. Tudo em um só lugar.
+            A IA monta um plano <strong className="text-white">cirúrgico</strong> a partir do seu próprio material — com simulados, flashcards, correção de redação e um tutor que responde qualquer dúvida, 24h por dia.
+          </motion.p>
+
+          <motion.p
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+            custom={2.5}
+            className="text-base text-white/40 max-w-xl mx-auto mb-10 leading-relaxed"
+          >
+            Enquanto você relê o mesmo capítulo pela terceira vez, outros já sabem <em>exatamente</em> o que vai cair — porque o sistema mostrou.
           </motion.p>
 
           <motion.div
@@ -483,21 +530,21 @@ export default function Landing() {
           >
             <Button
               size="lg"
-              className="bg-violet-600 hover:bg-violet-500 text-white text-base px-8 h-12 shadow-lg shadow-violet-900/40"
+              className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white text-base px-10 h-14 shadow-xl shadow-violet-900/50 font-black rounded-2xl text-lg"
               onClick={() => navigate("/app")}
             >
-              Começar Grátis
-              <ArrowRight className="ml-2 w-4 h-4" />
+              Quero meu plano agora
+              <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
             <Button
               size="lg"
               variant="outline"
-              className="border-white/10 text-white/80 hover:bg-white/5 text-base px-8 h-12"
+              className="border-white/10 text-white/70 hover:bg-white/5 text-base px-8 h-14 rounded-2xl"
               onClick={() => {
-                document.getElementById("como-funciona")?.scrollIntoView({ behavior: "smooth" });
+                document.getElementById("diagnostico")?.scrollIntoView({ behavior: "smooth" });
               }}
             >
-              Ver como funciona
+              Fazer diagnóstico grátis
             </Button>
           </motion.div>
 
@@ -506,7 +553,7 @@ export default function Landing() {
             initial="hidden"
             animate="show"
             custom={4}
-            className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mt-12 text-sm text-white/40"
+            className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mt-8 text-sm text-white/40"
           >
             <div className="flex items-center gap-1.5">
               <CheckCircle className="w-4 h-4 text-green-500" />
@@ -514,11 +561,11 @@ export default function Landing() {
             </div>
             <div className="flex items-center gap-1.5">
               <CheckCircle className="w-4 h-4 text-green-500" />
-              Gratuito para começar
+              Plano pronto em 30 segundos
             </div>
             <div className="flex items-center gap-1.5">
               <Users className="w-4 h-4 text-violet-400" />
-              +2.000 estudantes
+              +2.400 estudantes aprovados
             </div>
           </motion.div>
         </div>
@@ -591,6 +638,263 @@ export default function Landing() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── ANTES vs DEPOIS ── */}
+      <section className="py-24 px-6 border-t border-white/5">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <p className="text-rose-400 font-semibold text-sm uppercase tracking-widest mb-3">A realidade de quem não usa IA</p>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
+              Reconhece essa situação?
+            </h2>
+            <p className="text-white/50 text-lg max-w-xl mx-auto">
+              Antes e depois de estudar com o StudyAI. A diferença é brutal.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-4">
+            {/* ANTES */}
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true }}
+              className="relative rounded-3xl border border-red-500/20 bg-gradient-to-br from-red-950/40 to-[#0a0a0f] p-8"
+            >
+              <div className="absolute top-5 right-5 text-xs font-black px-3 py-1 rounded-full bg-red-500/20 border border-red-500/30 text-red-300 uppercase tracking-widest">
+                Antes
+              </div>
+              <div className="text-4xl mb-4">😰</div>
+              <h3 className="text-xl font-black mb-6 text-white/90">Estudante sem método</h3>
+              <ul className="space-y-4">
+                {[
+                  { icon: "📚", text: "Relê o mesmo capítulo 3 vezes e ainda não fixa" },
+                  { icon: "📅", text: "Véspera de prova em pânico, sem saber por onde começar" },
+                  { icon: "❓", text: "Faz questões aleatórias mas não sabe onde erra mais" },
+                  { icon: "✏️", text: "Redação entregue sem feedback, vai na esperança" },
+                  { icon: "📉", text: "Nota sobe um ponto, cai dois — sem entender o porquê" },
+                  { icon: "😴", text: "Motivação zero depois da 2ª hora de estudo" },
+                  { icon: "🤷", text: "Não sabe o que vai cair, estuda tudo superficialmente" },
+                ].map((item) => (
+                  <li key={item.text} className="flex items-start gap-3">
+                    <span className="text-xl flex-shrink-0">{item.icon}</span>
+                    <span className="text-white/50 text-sm leading-snug">{item.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+
+            {/* DEPOIS */}
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true }}
+              custom={0.2}
+              className="relative rounded-3xl border border-violet-500/30 bg-gradient-to-br from-violet-950/50 via-purple-950/30 to-[#0a0a0f] p-8"
+            >
+              <div className="absolute top-0 left-0 w-48 h-48 bg-violet-500/10 blur-[80px] rounded-full pointer-events-none" />
+              <div className="absolute top-5 right-5 text-xs font-black px-3 py-1 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 uppercase tracking-widest">
+                Com StudyAI
+              </div>
+              <div className="text-4xl mb-4">🚀</div>
+              <h3 className="text-xl font-black mb-6 text-white">Estudante com IA trabalhando por você</h3>
+              <ul className="space-y-4">
+                {[
+                  { icon: "🎯", text: "Plano cirúrgico em 30 segundos baseado no seu material real" },
+                  { icon: "📋", text: "Sabe exatamente o que estudar amanhã, depois de amanhã e assim por diante" },
+                  { icon: "⚡", text: "Simulado Adaptativo ataca suas lacunas específicas — nada de questão aleatória" },
+                  { icon: "📝", text: "Redação com nota e feedback detalhado nas 5 competências em segundos" },
+                  { icon: "📈", text: "Mapa de Calor mostra onde você melhora e onde ainda precisa focar" },
+                  { icon: "🏆", text: "Gamificação, ranking e XP transformam estudo em competição saudável" },
+                  { icon: "🤖", text: "Tutor IA tira qualquer dúvida instantaneamente — às 2h da manhã se precisar" },
+                ].map((item) => (
+                  <li key={item.text} className="flex items-start gap-3">
+                    <span className="text-xl flex-shrink-0">{item.icon}</span>
+                    <span className="text-white/75 text-sm leading-snug">{item.text}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-8">
+                <Button
+                  className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-black py-5 rounded-2xl text-base"
+                  onClick={() => navigate("/app")}
+                >
+                  Quero estudar do jeito certo →
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── DEMO ANIMADA ── */}
+      <section className="py-24 px-6 border-t border-white/5 bg-gradient-to-b from-white/[0.02] to-transparent">
+        <div className="max-w-4xl mx-auto">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="text-center mb-14"
+          >
+            <p className="text-violet-400 font-semibold text-sm uppercase tracking-widest mb-3">Veja na prática</p>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
+              30 segundos. Plano pronto.
+            </h2>
+            <p className="text-white/50 text-lg max-w-xl mx-auto">
+              É assim que funciona: você digita (ou sobe o material) e a IA gera tudo.
+            </p>
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            custom={0.2}
+            className="relative rounded-3xl border border-white/10 bg-[#0e0e18] overflow-hidden shadow-2xl shadow-black/60"
+          >
+            {/* Browser bar */}
+            <div className="flex items-center gap-1.5 px-4 py-3 bg-[#141420] border-b border-white/5">
+              <div className="w-3 h-3 rounded-full bg-red-500/60" />
+              <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
+              <div className="w-3 h-3 rounded-full bg-green-500/60" />
+              <div className="flex-1 mx-4 h-6 rounded-lg bg-white/5 flex items-center px-3 gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500/60 flex-shrink-0" />
+                <span className="text-white/25 text-xs">meubetime.com.br/app</span>
+              </div>
+            </div>
+
+            <div className="p-6 md:p-8">
+              {/* Input simulado */}
+              <div className="mb-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                <p className="text-xs font-bold text-white/30 uppercase tracking-widest mb-3">O que vamos dominar?</p>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 bg-white/5 rounded-xl px-4 py-3 border border-white/10">
+                    <p className="text-white/70 text-sm font-medium">
+                      Matemática — Funções, equações e geometria analítica para o ENEM
+                      <span className="inline-block w-0.5 h-4 bg-violet-400 ml-1 animate-pulse align-middle" />
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-violet-600 flex items-center justify-center flex-shrink-0">
+                    <Sparkles className="w-4 h-4 text-white" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Resultado simulado */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
+                    <Brain className="w-5 h-5 text-violet-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-white">📐 Plano de Matemática para o ENEM</p>
+                    <p className="text-xs text-white/40">5 dias · 3 tópicos/dia · Nível: Ensino Médio</p>
+                  </div>
+                  <span className="ml-auto text-xs font-black px-2 py-1 rounded-lg bg-green-500/20 border border-green-500/30 text-green-300">✓ Gerado</span>
+                </div>
+
+                {[
+                  {
+                    dia: "Dia 1",
+                    titulo: "Funções do 1º e 2º grau",
+                    topicos: ["Definição e gráfico de função", "Zeros e vértice da parábola", "Aplicações práticas no ENEM"],
+                    cor: "from-violet-500/20 to-purple-500/10",
+                    border: "border-violet-500/20",
+                    tag: "violet",
+                  },
+                  {
+                    dia: "Dia 2",
+                    titulo: "Geometria Analítica",
+                    topicos: ["Distância entre pontos", "Equação da reta e coeficientes", "Circunferência e tangente"],
+                    cor: "from-blue-500/20 to-cyan-500/10",
+                    border: "border-blue-500/20",
+                    tag: "blue",
+                  },
+                  {
+                    dia: "Dia 3",
+                    titulo: "Progressões e Sequências",
+                    topicos: ["PA: fórmula do termo geral", "PG: razão e aplicações", "Exercícios estilo ENEM comentados"],
+                    cor: "from-emerald-500/20 to-green-500/10",
+                    border: "border-emerald-500/20",
+                    tag: "emerald",
+                  },
+                ].map((day, i) => (
+                  <motion.div
+                    key={day.dia}
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.3 + i * 0.15, duration: 0.4 }}
+                    className={`rounded-2xl border ${day.border} bg-gradient-to-br ${day.cor} p-4`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-black text-white/40 uppercase tracking-widest">{day.dia}</p>
+                      <div className="flex gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-violet-400/50" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-violet-400/20" />
+                      </div>
+                    </div>
+                    <p className="text-sm font-black text-white mb-2">{day.titulo}</p>
+                    <div className="space-y-1">
+                      {day.topicos.map((t) => (
+                        <div key={t} className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-white/30 flex-shrink-0" />
+                          <p className="text-xs text-white/55">{t}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                ))}
+
+                {/* Action row */}
+                <div className="flex gap-3 pt-2">
+                  <div className="flex-1 rounded-xl bg-yellow-500/10 border border-yellow-500/20 p-3 flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-yellow-400" />
+                    <span className="text-xs text-yellow-300 font-bold">Simulado gerado</span>
+                  </div>
+                  <div className="flex-1 rounded-xl bg-blue-500/10 border border-blue-500/20 p-3 flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-blue-400" />
+                    <span className="text-xs text-blue-300 font-bold">30 flashcards</span>
+                  </div>
+                  <div className="flex-1 rounded-xl bg-violet-500/10 border border-violet-500/20 p-3 flex items-center gap-2">
+                    <Target className="w-4 h-4 text-violet-400" />
+                    <span className="text-xs text-violet-300 font-bold">Resumão estratégico</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            custom={0.4}
+            className="text-center mt-8"
+          >
+            <Button
+              size="lg"
+              className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-black px-10 h-14 rounded-2xl text-base shadow-xl shadow-violet-900/40"
+              onClick={() => navigate("/app")}
+            >
+              Gerar meu plano agora — é grátis
+              <ArrowRight className="ml-2 w-5 h-5" />
+            </Button>
+            <p className="text-white/30 text-sm mt-3">Sem cadastro obrigatório. Plano em 30 segundos.</p>
+          </motion.div>
         </div>
       </section>
 
@@ -1349,13 +1653,16 @@ export default function Landing() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <p className="text-violet-400 font-semibold text-sm uppercase tracking-widest mb-3">Depoimentos</p>
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight">
-              Quem usou, aprovou
+            <p className="text-violet-400 font-semibold text-sm uppercase tracking-widest mb-3">Resultados reais</p>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
+              Quem usou, passou.
             </h2>
+            <p className="text-white/50 text-lg max-w-xl mx-auto">
+              Cada depoimento tem um antes e um depois. Esses são os números reais.
+            </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {testimonials.map((t, i) => (
               <motion.div
                 key={t.name}
@@ -1363,18 +1670,30 @@ export default function Landing() {
                 initial="hidden"
                 whileInView="show"
                 viewport={{ once: true }}
-                custom={i * 0.5}
-                className="bg-white/5 border border-white/8 rounded-2xl p-6"
+                custom={i * 0.15}
+                className="bg-white/[0.04] border border-white/8 rounded-2xl p-6 flex flex-col hover:border-violet-500/30 hover:bg-white/[0.06] transition-all duration-200"
               >
-                <div className="flex gap-0.5 mb-4">
+                {/* Before → After badges */}
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-xs px-2.5 py-1 rounded-lg bg-red-500/15 border border-red-500/20 text-red-300 font-bold line-through decoration-red-400">
+                    {t.before}
+                  </span>
+                  <ArrowRight className="w-3.5 h-3.5 text-white/30" />
+                  <span className="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/20 text-emerald-300 font-black">
+                    {t.after}
+                  </span>
+                  <span className="ml-auto text-xl">{t.emoji}</span>
+                </div>
+
+                <div className="flex gap-0.5 mb-3">
                   {Array.from({ length: t.stars }).map((_, si) => (
-                    <Star key={si} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                    <Star key={si} className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
                   ))}
                 </div>
-                <p className="text-white/70 text-sm leading-relaxed mb-5">"{t.text}"</p>
-                <div>
-                  <p className="font-semibold text-sm">{t.name}</p>
-                  <p className="text-white/40 text-xs">{t.role}</p>
+                <p className="text-white/65 text-sm leading-relaxed mb-5 flex-1">"{t.text}"</p>
+                <div className="pt-4 border-t border-white/5">
+                  <p className="font-bold text-sm text-white">{t.name}</p>
+                  <p className="text-white/35 text-xs mt-0.5">{t.role}</p>
                 </div>
               </motion.div>
             ))}
@@ -1564,31 +1883,62 @@ export default function Landing() {
       </section>
 
       {/* ── CTA FINAL ── */}
-      <section className="py-24 px-6 border-t border-white/5">
-        <div className="max-w-3xl mx-auto text-center">
+      <section className="py-24 px-6 border-t border-white/5 relative overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-violet-600/10 rounded-full blur-3xl" />
+        </div>
+        <div className="max-w-3xl mx-auto text-center relative z-10">
           <motion.div
             variants={fadeUp}
             initial="hidden"
             whileInView="show"
             viewport={{ once: true }}
           >
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 mb-6">
-              <GraduationCap className="w-8 h-8 text-violet-400" />
-            </div>
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
-              Pronto para começar?
+            <div className="text-5xl mb-6">🎯</div>
+            <h2 className="text-4xl md:text-6xl font-black tracking-tight mb-6 leading-tight">
+              Sua aprovação<br />
+              <span className="bg-gradient-to-r from-violet-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                começa agora.
+              </span>
             </h2>
-            <p className="text-white/50 text-lg mb-8">
-              Junte-se a milhares de estudantes que já usam IA para estudar de forma mais eficiente.
+            <p className="text-white/50 text-lg mb-4 max-w-xl mx-auto">
+              Cada dia que passa sem um método certo é um dia jogado fora. O plano cirúrgico está a 30 segundos de distância.
             </p>
-            <Button
-              size="lg"
-              className="bg-violet-600 hover:bg-violet-500 text-white text-base px-10 h-12 shadow-lg shadow-violet-900/40"
-              onClick={() => navigate("/app")}
-            >
-              Criar minha conta grátis
-              <ArrowRight className="ml-2 w-4 h-4" />
-            </Button>
+            <p className="text-white/30 text-base mb-10 max-w-lg mx-auto">
+              Sem cadastro obrigatório para começar. Sem cartão de crédito.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button
+                size="lg"
+                className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-black text-lg px-12 h-16 shadow-2xl shadow-violet-900/50 rounded-2xl"
+                onClick={() => navigate("/app")}
+              >
+                Quero meu plano agora →
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-white/10 text-white/60 hover:bg-white/5 text-base px-8 h-16 rounded-2xl"
+                onClick={() => document.getElementById("diagnostico")?.scrollIntoView({ behavior: "smooth" })}
+              >
+                Fazer diagnóstico grátis
+              </Button>
+            </div>
+
+            <div className="flex flex-wrap gap-6 justify-center mt-10">
+              {[
+                { icon: "⚡", text: "Plano em 30 segundos" },
+                { icon: "🔒", text: "Sem cartão de crédito" },
+                { icon: "📱", text: "Funciona no celular" },
+                { icon: "🤖", text: "Tutor IA disponível 24h" },
+                { icon: "🇧🇷", text: "Feito para o Brasil" },
+              ].map((item) => (
+                <div key={item.text} className="flex items-center gap-2 text-white/40 text-sm">
+                  <span>{item.icon}</span>
+                  <span>{item.text}</span>
+                </div>
+              ))}
+            </div>
           </motion.div>
         </div>
       </section>

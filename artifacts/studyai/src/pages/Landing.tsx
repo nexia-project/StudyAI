@@ -1257,7 +1257,7 @@ export default function Landing() {
       </section>
 
       {/* ── PARA QUEM É ── */}
-      <section className="py-24 px-6 border-t border-white/5">
+      <section className="py-24 px-6 bg-white border-t border-gray-100">
         <div className="max-w-6xl mx-auto">
           <motion.div
             variants={fadeUp}
@@ -1266,54 +1266,62 @@ export default function Landing() {
             viewport={{ once: true }}
             className="text-center mb-14"
           >
-            <p className="text-violet-400 font-semibold text-sm uppercase tracking-widest mb-3">Para quem é</p>
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
+            <p className="text-emerald-600 font-semibold text-sm uppercase tracking-widest mb-3">Para quem é</p>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4 text-gray-900">
               Feito para quem quer passar
             </h2>
-            <p className="text-white/50 text-lg max-w-xl mx-auto">
+            <p className="text-gray-500 text-lg max-w-xl mx-auto">
               Independente do seu objetivo, o StudyAI se adapta ao seu conteúdo, ritmo e nível.
             </p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {personas.map((p, i) => (
-              <motion.div
-                key={p.title}
-                variants={fadeUp}
-                initial="hidden"
-                whileInView="show"
-                viewport={{ once: true }}
-                custom={i * 0.2}
-                className={`relative rounded-2xl border ${p.border} bg-gradient-to-br ${p.gradient} p-7 flex flex-col gap-5 hover:scale-[1.02] transition-transform duration-200`}
-              >
-                <div>
-                  <span className={`inline-flex items-center text-[11px] font-black px-2.5 py-1 rounded-full border uppercase tracking-widest mb-4 ${p.badgeBg}`}>
-                    {p.badge}
-                  </span>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`w-10 h-10 rounded-xl ${p.iconBg} flex items-center justify-center`}>
-                      <p.icon className={`w-5 h-5 ${p.iconColor}`} />
+            {personas.map((p, i) => {
+              const accentColors = [
+                { border: "border-emerald-200", light: "bg-emerald-50", icon: "text-emerald-600", badge: "bg-emerald-100 text-emerald-700 border-emerald-200", check: "text-emerald-500" },
+                { border: "border-blue-200", light: "bg-blue-50", icon: "text-blue-600", badge: "bg-blue-100 text-blue-700 border-blue-200", check: "text-blue-500" },
+                { border: "border-teal-200", light: "bg-teal-50", icon: "text-teal-600", badge: "bg-teal-100 text-teal-700 border-teal-200", check: "text-teal-500" },
+              ];
+              const ac = accentColors[i];
+              return (
+                <motion.div
+                  key={p.title}
+                  variants={fadeUp}
+                  initial="hidden"
+                  whileInView="show"
+                  viewport={{ once: true }}
+                  custom={i * 0.2}
+                  className={`relative rounded-2xl border ${ac.border} bg-white p-7 flex flex-col gap-5 hover:shadow-md transition-all duration-200`}
+                >
+                  <div>
+                    <span className={`inline-flex items-center text-[11px] font-black px-2.5 py-1 rounded-full border uppercase tracking-widest mb-4 ${ac.badge}`}>
+                      {p.badge}
+                    </span>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`w-10 h-10 rounded-xl ${ac.light} flex items-center justify-center`}>
+                        <p.icon className={`w-5 h-5 ${ac.icon}`} />
+                      </div>
+                      <h3 className="font-black text-xl text-gray-900">{p.title}</h3>
                     </div>
-                    <h3 className="font-black text-xl">{p.title}</h3>
+                    <p className="text-gray-500 text-sm leading-relaxed">{p.desc}</p>
                   </div>
-                  <p className="text-white/55 text-sm leading-relaxed">{p.desc}</p>
-                </div>
-                <ul className="space-y-2 mt-auto">
-                  {p.bullets.map((b) => (
-                    <li key={b} className="flex items-start gap-2 text-sm text-white/70">
-                      <CheckCircle className={`w-4 h-4 shrink-0 mt-0.5 ${p.iconColor}`} />
-                      {b}
-                    </li>
-                  ))}
-                </ul>
-              </motion.div>
-            ))}
+                  <ul className="space-y-2 mt-auto">
+                    {p.bullets.map((b) => (
+                      <li key={b} className="flex items-start gap-2 text-sm text-gray-600">
+                        <CheckCircle className={`w-4 h-4 shrink-0 mt-0.5 ${ac.check}`} />
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </section>
 
       {/* ── FEATURES ── */}
-      <section id="recursos" className="py-24 px-6">
+      <section id="recursos" className="py-24 px-6 bg-stone-50 border-t border-gray-100">
         <div className="max-w-6xl mx-auto">
           <motion.div
             variants={fadeUp}
@@ -1322,11 +1330,11 @@ export default function Landing() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <p className="text-violet-400 font-semibold text-sm uppercase tracking-widest mb-3">Recursos</p>
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
+            <p className="text-emerald-600 font-semibold text-sm uppercase tracking-widest mb-3">Recursos</p>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4 text-gray-900">
               Tudo que você precisa para passar
             </h2>
-            <p className="text-white/50 text-lg max-w-2xl mx-auto">
+            <p className="text-gray-500 text-lg max-w-2xl mx-auto">
               Do plano de estudos ao simulado final — ferramentas poderosas em uma plataforma simples.
             </p>
           </motion.div>
@@ -1340,13 +1348,13 @@ export default function Landing() {
                 whileInView="show"
                 viewport={{ once: true }}
                 custom={i * 0.5}
-                className={`relative rounded-2xl border ${f.border} bg-gradient-to-br ${f.color} p-6 backdrop-blur-sm hover:scale-[1.02] transition-transform duration-200`}
+                className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
               >
                 <div className={`w-10 h-10 rounded-xl ${f.iconBg} flex items-center justify-center mb-4`}>
                   <f.icon className={`w-5 h-5 ${f.iconColor}`} />
                 </div>
-                <h3 className="font-bold text-lg mb-2">{f.title}</h3>
-                <p className="text-white/55 text-sm leading-relaxed">{f.desc}</p>
+                <h3 className="font-bold text-lg mb-2 text-gray-900">{f.title}</h3>
+                <p className="text-gray-500 text-sm leading-relaxed">{f.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -1354,32 +1362,32 @@ export default function Landing() {
       </section>
 
       {/* ── RESUMÃO ESTRATÉGICO SPOTLIGHT ── */}
-      <section className="py-4 px-6 pb-20">
+      <section className="py-20 px-6 bg-white border-t border-gray-100">
         <div className="max-w-6xl mx-auto">
           <motion.div
             variants={fadeUp}
             initial="hidden"
             whileInView="show"
             viewport={{ once: true }}
-            className="relative rounded-3xl overflow-hidden border border-violet-500/30 bg-gradient-to-br from-violet-900/50 via-purple-900/30 to-[#0a0a0f] p-8 sm:p-14 flex flex-col md:flex-row items-center gap-10"
+            className="relative rounded-3xl overflow-hidden border border-emerald-100 bg-emerald-50 p-8 sm:p-14 flex flex-col md:flex-row items-center gap-10"
           >
-            <div className="absolute top-0 left-0 w-72 h-72 bg-violet-500/15 blur-[100px] rounded-full pointer-events-none" />
-            <div className="absolute bottom-0 right-0 w-48 h-48 bg-purple-500/10 blur-[80px] rounded-full pointer-events-none" />
+            <div className="absolute -top-20 -right-20 w-64 h-64 bg-emerald-100 rounded-full pointer-events-none" />
+            <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-teal-100 rounded-full pointer-events-none" />
 
             {/* Left: content */}
             <div className="relative z-10 flex-1">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 text-xs font-bold uppercase tracking-widest mb-5">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-700 text-xs font-bold uppercase tracking-widest mb-5">
                 <span className="text-sm">🤖</span>
                 IAs ensinando como seus melhores professores
               </div>
-              <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-5 leading-tight">
+              <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-5 leading-tight text-gray-900">
                 Resumão Estratégico<br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-pink-400">
+                <span className="text-emerald-600">
                   que realmente faz diferença
                 </span>
               </h2>
-              <p className="text-white/60 text-base sm:text-lg leading-relaxed mb-6 max-w-lg">
-                Antes de começar os exercícios, o GPT-4o analisa seu conteúdo e gera um guia cirúrgico: os conceitos mais cobrados, as armadilhas clássicas, técnicas de memorização personalizadas e a estratégia exata de estudo para <strong className="text-white">aquela matéria específica</strong>.
+              <p className="text-gray-600 text-base sm:text-lg leading-relaxed mb-6 max-w-lg">
+                Antes de começar os exercícios, o GPT-4o analisa seu conteúdo e gera um guia cirúrgico: os conceitos mais cobrados, as armadilhas clássicas, técnicas de memorização personalizadas e a estratégia exata de estudo para <strong className="text-gray-900">aquela matéria específica</strong>.
               </p>
               <ul className="space-y-2.5 mb-8">
                 {[
@@ -1389,15 +1397,15 @@ export default function Landing() {
                   "Estratégia de estudo personalizada para a matéria",
                   "Dica final que separa nota 8 de nota 10",
                 ].map((item) => (
-                  <li key={item} className="flex items-center gap-2.5 text-sm text-white/70">
-                    <CheckCircle className="w-4 h-4 text-violet-400 shrink-0" />
+                  <li key={item} className="flex items-center gap-2.5 text-sm text-gray-600">
+                    <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
                     {item}
                   </li>
                 ))}
               </ul>
               <Button
                 onClick={() => navigate("/app")}
-                className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-400 hover:to-purple-500 text-white font-bold px-7 py-5 rounded-2xl shadow-lg shadow-violet-500/30 text-base"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-7 py-5 rounded-2xl shadow-lg shadow-emerald-100 text-base"
               >
                 <Brain className="w-4 h-4 mr-2" />
                 Gerar meu resumão estratégico
@@ -1407,16 +1415,16 @@ export default function Landing() {
 
             {/* Right: mockup */}
             <div className="relative z-10 flex-shrink-0 w-full md:w-72 space-y-3">
-              <div className="rounded-2xl bg-white/5 border border-white/10 p-5 space-y-4">
-                <div className="flex items-center gap-2 pb-3 border-b border-white/10">
-                  <div className="w-7 h-7 rounded-lg bg-violet-500/30 flex items-center justify-center">
-                    <Brain className="w-3.5 h-3.5 text-violet-400" />
+              <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5 space-y-4">
+                <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center">
+                    <Brain className="w-3.5 h-3.5 text-emerald-600" />
                   </div>
                   <div>
-                    <p className="text-white/80 text-xs font-black">Resumão Estratégico</p>
-                    <p className="text-white/30 text-[10px]">Gerado por GPT-4o</p>
+                    <p className="text-gray-800 text-xs font-black">Resumão Estratégico</p>
+                    <p className="text-gray-400 text-[10px]">Gerado por GPT-4o</p>
                   </div>
-                  <span className="ml-auto text-[9px] font-black px-1.5 py-0.5 rounded-md bg-violet-500/30 text-violet-300 border border-violet-500/20 uppercase">IA</span>
+                  <span className="ml-auto text-[9px] font-black px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase">IA</span>
                 </div>
                 {[
                   { icon: "🎯", label: "Visão Geral", preview: "Entenda o big picture antes de começar..." },
@@ -1428,8 +1436,8 @@ export default function Landing() {
                   <div key={item.label} className="flex items-start gap-2.5">
                     <span className="text-base flex-shrink-0 mt-0.5">{item.icon}</span>
                     <div>
-                      <p className="text-white/70 text-[11px] font-bold">{item.label}</p>
-                      <p className="text-white/35 text-[10px] leading-snug">{item.preview}</p>
+                      <p className="text-gray-700 text-[11px] font-bold">{item.label}</p>
+                      <p className="text-gray-400 text-[10px] leading-snug">{item.preview}</p>
                     </div>
                   </div>
                 ))}

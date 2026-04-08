@@ -35,7 +35,9 @@ import { SimuladoButton, SimuladoAdaptativoButton } from "@/components/Simulado"
 import { FlashcardsButton } from "@/components/Flashcards";
 import { PomodoroWidget } from "@/components/Pomodoro";
 import { UserMenu } from "@/components/UserMenu";
+import { PremiumGate } from "@/components/PremiumGate";
 import { streamStudyPlan, StudyPlan, StudyPlanTopic } from "@/hooks/use-study-plan";
+import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
@@ -210,6 +212,7 @@ function ChallengeCard({ desafio, color }: { desafio: { enunciado: string; gabar
 
 export default function Home() {
   const { isAuthenticated, login } = useAuth();
+  const { isPremium } = useSubscription();
   const [, navigate] = useLocation();
   const [step, setStep] = useState<"form" | "loading" | "result">("form");
   const [formData, setFormData] = useState({
@@ -960,7 +963,10 @@ export default function Home() {
               <div className="bg-white rounded-[2rem] border-2 overflow-hidden shadow-xl" style={{ borderColor: planResult.cor }}>
                 {/* Header */}
                 <button
-                  onClick={() => setResumaExpanded(v => !v)}
+                  onClick={() => {
+                    if (!isPremium) { navigate("/pricing"); return; }
+                    setResumaExpanded(v => !v);
+                  }}
                   className="w-full flex items-center justify-between p-6 sm:p-8 text-left group"
                 >
                   <div className="flex items-center gap-4">
@@ -1255,13 +1261,28 @@ export default function Home() {
                                   <h4 className="font-black text-sm uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
                                     <Layers className="w-4 h-4" /> Fixar com Flashcards
                                   </h4>
-                                  <FlashcardsButton
-                                    materia={planResult.materia || "Conteúdo"}
-                                    serie={formData.serie || "Não informado"}
-                                    resumo={planResult.resumoDoConteudo || ""}
-                                    diaNumero={dia.numero}
-                                    diaTopicos={dia.topicos.map((t) => typeof t === "object" ? (t as any).nome : t).join(", ")}
-                                  />
+                                  {isPremium ? (
+                                    <FlashcardsButton
+                                      materia={planResult.materia || "Conteúdo"}
+                                      serie={formData.serie || "Não informado"}
+                                      resumo={planResult.resumoDoConteudo || ""}
+                                      diaNumero={dia.numero}
+                                      diaTopicos={dia.topicos.map((t) => typeof t === "object" ? (t as any).nome : t).join(", ")}
+                                    />
+                                  ) : (
+                                    <PremiumGate
+                                      feature="Flashcards — Recurso Premium"
+                                      description="Revise com cartões de memória inteligentes"
+                                    >
+                                      <FlashcardsButton
+                                        materia={planResult.materia || "Conteúdo"}
+                                        serie={formData.serie || "Não informado"}
+                                        resumo={planResult.resumoDoConteudo || ""}
+                                        diaNumero={dia.numero}
+                                        diaTopicos={dia.topicos.map((t) => typeof t === "object" ? (t as any).nome : t).join(", ")}
+                                      />
+                                    </PremiumGate>
+                                  )}
                                 </div>
 
                                 {/* Mission */}
@@ -1442,8 +1463,23 @@ export default function Home() {
                   </p>
                 </div>
                 <div className="relative z-10 flex-shrink-0 flex flex-col sm:flex-row gap-2">
-                  <SimuladoButton plan={planResult} serie={formData.serie || "Não informado"} conteudoTexto={conteudoTexto} />
-                  <SimuladoAdaptativoButton plan={planResult} serie={formData.serie || "Não informado"} conteudoTexto={conteudoTexto} />
+                  {isPremium ? (
+                    <>
+                      <SimuladoButton plan={planResult} serie={formData.serie || "Não informado"} conteudoTexto={conteudoTexto} />
+                      <SimuladoAdaptativoButton plan={planResult} serie={formData.serie || "Não informado"} conteudoTexto={conteudoTexto} />
+                    </>
+                  ) : (
+                    <PremiumGate
+                      feature="Simulados — Recurso Premium"
+                      description="10 questões cronometradas com correção por IA"
+                      className="min-w-[280px]"
+                    >
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <SimuladoButton plan={planResult} serie={formData.serie || "Não informado"} conteudoTexto={conteudoTexto} />
+                        <SimuladoAdaptativoButton plan={planResult} serie={formData.serie || "Não informado"} conteudoTexto={conteudoTexto} />
+                      </div>
+                    </PremiumGate>
+                  )}
                 </div>
               </div>
 
@@ -1453,8 +1489,8 @@ export default function Home() {
         </AnimatePresence>
       </div>
 
-      {/* Floating Pomodoro Timer — appears when plan is ready */}
-      {planResult && <PomodoroWidget />}
+      {/* Floating Pomodoro Timer — Premium feature */}
+      {planResult && isPremium && <PomodoroWidget />}
 
       {/* Floating AI Tutor — appears when plan is ready */}
       {planResult && (

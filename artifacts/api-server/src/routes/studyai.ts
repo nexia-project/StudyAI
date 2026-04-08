@@ -4,6 +4,8 @@ import OpenAI from "openai";
 // Import from lib directly to avoid pdf-parse's startup self-test (reads a file at load time)
 import pdfParse from "pdf-parse/lib/pdf-parse.js";
 import mammoth from "mammoth";
+import { db, usersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
 // Use .any() to avoid "Unexpected field" errors with strict field-name matching;
@@ -164,11 +166,28 @@ router.post("/analisar", (req, res, next) => {
       texto?: string;
     };
 
+    // Check subscription status for plan day limit enforcement
+    let isPremium = false;
+    if (req.isAuthenticated() && req.user?.id) {
+      try {
+        const [user] = await db
+          .select({ stripeSubscriptionStatus: usersTable.stripeSubscriptionStatus })
+          .from(usersTable)
+          .where(eq(usersTable.id, req.user.id))
+          .limit(1);
+        const status = user?.stripeSubscriptionStatus;
+        isPremium = status === "active" || status === "trialing";
+      } catch {
+        // If DB check fails, default to free behavior
+      }
+    }
+
     const perfil = `
       - Nome: ${nome || "Herói"}
       - Série: ${serie || "Não informado"}
       - Tempo disponível por dia: ${tempo || "1 hora"}
       - Dificuldades: ${dificuldades || "Nenhuma informada"}
+      ${!isPremium ? "- RESTRIÇÃO: Este usuário está no plano gratuito. Crie EXATAMENTE 3 dias de plano, independente do tempo disponível." : ""}
     `;
 
     const files = req.files as Express.Multer.File[] | undefined;

@@ -13,6 +13,7 @@ import redacaoRouter from "./redacao";
 import analyticsRouter from "./analytics";
 import simuladoAdaptativoRouter from "./simulado-adaptativo";
 import resumaoRouter from "./resumao";
+import subscriptionRouter from "./subscription";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(redacaoRouter);
 router.use(analyticsRouter);
 router.use(simuladoAdaptativoRouter);
 router.use(resumaoRouter);
+router.use(subscriptionRouter);
 
 export default router;

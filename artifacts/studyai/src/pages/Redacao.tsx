@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
+import { useSubscription, startCheckout } from "@/hooks/useSubscription";
 import {
   ArrowLeft,
   PenLine,
@@ -51,6 +52,8 @@ function getNivelColor(nota: number) {
 
 export default function Redacao() {
   const [, navigate] = useLocation();
+  const { isPremium } = useSubscription();
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [tema, setTema] = useState("");
   const [texto, setTexto] = useState("");
   const [loading, setLoading] = useState(false);
@@ -102,6 +105,31 @@ export default function Redacao() {
   }
 
   const nivelInfo = result ? getNivelColor(result.notaTotal) : null;
+
+  if (!isPremium) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 p-8 bg-gradient-to-br from-violet-50 to-indigo-50">
+        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-violet-200">
+          <PenLine className="w-10 h-10 text-white" />
+        </div>
+        <div className="text-center">
+          <h1 className="text-2xl font-black text-slate-800 mb-2">Correção de Redação</h1>
+          <p className="text-slate-500 max-w-sm">Envie sua redação e receba uma avaliação detalhada nas 5 competências do ENEM por IA. Recurso exclusivo Premium.</p>
+        </div>
+        <button
+          onClick={async () => { setCheckoutLoading(true); try { await startCheckout(); } catch { navigate("/pricing"); } finally { setCheckoutLoading(false); } }}
+          disabled={checkoutLoading}
+          className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-black shadow-lg hover:opacity-90 transition-opacity disabled:opacity-60"
+        >
+          <Sparkles className="w-5 h-5" />
+          {checkoutLoading ? "Aguarde..." : "Assinar Premium — R$29,90/mês"}
+        </button>
+        <button onClick={() => navigate("/app")} className="text-sm text-slate-400 hover:text-slate-600 transition-colors">
+          ← Voltar ao início
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50/30 to-indigo-50/40">

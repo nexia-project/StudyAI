@@ -112,8 +112,29 @@ Published at `meubetime.com.br`. ENEM/vestibular/concurso AI tutor platform powe
 - `/redacao` — ENEM essay corrector (5 competências, 0-1000 score)
 - `/mapa` — Performance heat map by subject (strong/weak areas)
 
+### Freemium Model (Stripe)
+- **Free tier**: 3-day plan limit (backend-enforced in studyai route), no Simulado/Flashcards/Resumão/Redação/Ranking/Mapa
+- **Premium** (R$29,90/mês, Stripe): All features unlimited
+- Stripe integration via Replit connector (connector ID: `connector:ccfg_stripe_01K611P4YQR0SZM11XFRQJC44Y`)
+- Stripe product: `prod_UIMLE19aOqLDrF`, price: `price_1TJlcQ89mXjTdwp9ZQjS8stW` (R$29,90/mês BRL)
+- Env var: `STRIPE_PREMIUM_PRICE_ID` (set via Replit secrets)
+- Webhook secret (optional): `STRIPE_WEBHOOK_SECRET` for signature verification
+- Frontend hook: `useSubscription()` in `artifacts/studyai/src/hooks/useSubscription.ts`
+- Paywall component: `PremiumGate` in `artifacts/studyai/src/components/PremiumGate.tsx`
+- Pricing page: `/pricing` and `/app/pricing`
+
+### Routes
+- `/` — Landing page (marketing, pricing, testimonials, waitlist)
+- `/app` — Main study app (Home.tsx)
+- `/app/pricing` / `/pricing` — Pricing + upgrade page (Stripe checkout)
+- `/dashboard` — Stats, streak, goal countdown, history
+- `/historico` — Past study sessions
+- `/ranking` — Global XP leaderboard (Premium only)
+- `/redacao` — ENEM essay corrector (Premium only)
+- `/mapa` — Performance heat map by subject (Premium only)
+
 ### API Routes (api-server, port 8080)
-- `POST /api/study-plan` — GPT-4o generates gamified study plan
+- `POST /api/analisar` — GPT-4o generates gamified study plan (3-day cap for free users)
 - `POST /api/simulado` — GPT-4o generates 10-question exam
 - `POST /api/simulado-adaptativo` — Reads student DB history, identifies weak areas by score trend, generates targeted questions via GPT-4o; returns `{ simulado, diagnostico }` with avg score, trend, and topic list
 - `POST /api/flashcards` — GPT-4o generates flashcard deck
@@ -124,8 +145,13 @@ Published at `meubetime.com.br`. ENEM/vestibular/concurso AI tutor platform powe
 - `POST /api/waitlist` / `GET /api/waitlist/count` — Landing page waitlist
 - `GET /api/history` — User study history (requires auth)
 - `GET /api/ranking` — XP leaderboard
+- `GET /api/subscription/status` — Returns `{ status, isPremium }` for current user
+- `POST /api/subscription/create-checkout` — Creates Stripe checkout session, returns `{ url }`
+- `POST /api/subscription/create-portal` — Creates Stripe billing portal session
+- `POST /api/subscription/webhook` — Stripe webhook handler (raw body, before express.json)
 
-### DB Schema (lib/db/src/schema/history.ts)
+### DB Schema (lib/db/src/schema/)
+- `usersTable` (auth.ts) — users with `stripe_customer_id`, `stripe_subscription_id`, `stripe_subscription_status`
 - `studyPlansTable` — Generated plans
 - `simuladoResultsTable` — Exam results
 - `flashcardSessionsTable` — Flashcard sessions
@@ -137,3 +163,5 @@ Published at `meubetime.com.br`. ENEM/vestibular/concurso AI tutor platform powe
 - Only ADD features, never break existing behavior
 - pdf-parse import: `from "pdf-parse/lib/pdf-parse.js"`, model: `gpt-4o`
 - Auth: PostgreSQL sessions, cookie `sid`, API port 8080 / Vite port 18459
+- Stripe webhook MUST be mounted before `express.json()` (done in app.ts with express.raw)
+- Never cache Stripe client — always call `getUncachableStripeClient()` to get fresh instance

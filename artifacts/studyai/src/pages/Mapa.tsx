@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
+import { useSubscription, startCheckout } from "@/hooks/useSubscription";
 import {
   ArrowLeft,
   Map,
@@ -15,6 +16,7 @@ import {
   BookOpen,
   Layers,
   AlertCircle,
+  Sparkles,
 } from "lucide-react";
 
 interface SubjectData {
@@ -139,9 +141,11 @@ function SubjectTile({ s, index }: { s: SubjectData; index: number }) {
 export default function Mapa() {
   const [, navigate] = useLocation();
   const { isAuthenticated, isLoading, login } = useAuth();
+  const { isPremium } = useSubscription();
   const [data, setData] = useState<HeatmapData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated || isLoading) return;
@@ -176,6 +180,31 @@ export default function Mapa() {
         >
           <LogIn className="w-5 h-5" />
           Entrar para ver o Mapa
+        </button>
+        <button onClick={() => navigate("/app")} className="text-sm text-slate-400 hover:text-slate-600 transition-colors">
+          ← Voltar ao início
+        </button>
+      </div>
+    );
+  }
+
+  if (!isPremium) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 p-8 bg-gradient-to-br from-violet-50 to-indigo-50">
+        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-violet-200">
+          <BarChart2 className="w-10 h-10 text-white" />
+        </div>
+        <div className="text-center">
+          <h1 className="text-2xl font-black text-slate-800 mb-2">Mapa de Calor</h1>
+          <p className="text-slate-500 max-w-sm">Veja seu desempenho por matéria, identifique fraquezas e foque no que mais importa. Recurso exclusivo Premium.</p>
+        </div>
+        <button
+          onClick={async () => { setCheckoutLoading(true); try { await startCheckout(); } catch { navigate("/pricing"); } finally { setCheckoutLoading(false); } }}
+          disabled={checkoutLoading}
+          className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-black shadow-lg hover:opacity-90 transition-opacity disabled:opacity-60"
+        >
+          <Sparkles className="w-5 h-5" />
+          {checkoutLoading ? "Aguarde..." : "Assinar Premium — R$29,90/mês"}
         </button>
         <button onClick={() => navigate("/app")} className="text-sm text-slate-400 hover:text-slate-600 transition-colors">
           ← Voltar ao início

@@ -10,11 +10,15 @@ import {
   ChevronDown,
   Loader2,
   BarChart2,
+  Crown,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useSubscription } from "@/hooks/useSubscription";
 
 export function UserMenu() {
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
+  const { isPremium } = useSubscription();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [, navigate] = useLocation();
@@ -56,7 +60,25 @@ export function UserMenu() {
   const initials = displayName.slice(0, 2).toUpperCase();
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="relative flex items-center gap-2" ref={menuRef}>
+      {/* Premium badge / upgrade button */}
+      {isPremium ? (
+        <button
+          onClick={() => navigate("/pricing")}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-violet-600 to-purple-600 text-white text-xs font-black shadow-md hover:shadow-lg hover:scale-105 transition-all"
+        >
+          <Crown className="w-3 h-3 text-yellow-300" />
+          Premium
+        </button>
+      ) : (
+        <button
+          onClick={() => navigate("/pricing")}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-black shadow-md hover:shadow-lg hover:scale-105 transition-all"
+        >
+          <Sparkles className="w-3 h-3" />
+          Upgrade
+        </button>
+      )}
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-white border-2 border-primary/10 hover:border-primary/30 transition-colors shadow-sm"
@@ -100,6 +122,19 @@ export function UserMenu() {
               )}
             </div>
             <div className="p-1.5">
+              {!isPremium && (
+                <button
+                  onClick={() => {
+                    setOpen(false);
+                    navigate("/pricing");
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-violet-700 bg-violet-50 hover:bg-violet-100 transition-colors mb-1"
+                >
+                  <Crown className="w-4 h-4 text-violet-600" />
+                  Assinar Premium
+                  <span className="ml-auto text-[10px] font-black bg-violet-600 text-white px-2 py-0.5 rounded-full">R$29,90/mês</span>
+                </button>
+              )}
               <button
                 onClick={() => {
                   setOpen(false);

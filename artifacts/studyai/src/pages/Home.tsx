@@ -277,6 +277,41 @@ export default function Home() {
       .catch(() => {});
   }, [isAuthenticated]);
 
+  // Pre-fill form from URL params (coming from diagnóstico rápido on landing page)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const materia = params.get("materia");
+    const serie = params.get("serie");
+    const dias = params.get("dias");
+    if (materia || serie || dias) {
+      setFormData(prev => ({
+        ...prev,
+        ...(materia ? { nome: materia } : {}),
+        ...(serie ? { serie } : {}),
+      }));
+      // scroll to form smoothly
+      setTimeout(() => {
+        document.getElementById("main-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 400);
+      // clean URL without reload
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch community feed
+  const [feedEvents, setFeedEvents] = useState<Array<{
+    id: string; type: string; displayName: string; profileImageUrl: string | null;
+    materia: string; detail: string; emoji: string; color: string; timestamp: string;
+  }>>([]);
+
+  useEffect(() => {
+    fetch("/api/feed")
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d?.feed)) setFeedEvents(d.feed); })
+      .catch(() => {});
+  }, []);
+
   // Restore plan from history (set by History.tsx before navigating to /app)
   useEffect(() => {
     const restoreKey = "studyai_restore_plan";

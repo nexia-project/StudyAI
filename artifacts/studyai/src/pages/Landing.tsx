@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import {
   Brain,
@@ -9,6 +9,7 @@ import {
   FileText,
   BarChart2,
   CheckCircle,
+  CheckCircle2,
   Star,
   ArrowRight,
   BookOpen,
@@ -23,6 +24,10 @@ import {
   Briefcase,
   BookMarked,
   X,
+  Stethoscope,
+  FlameKindling,
+  CalendarDays,
+  ChevronLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -269,12 +274,95 @@ const testimonials = [
   },
 ];
 
+const DIAG_STEPS = [
+  {
+    key: "objetivo",
+    question: "Qual é o seu objetivo?",
+    icon: Target,
+    options: [
+      { value: "enem", label: "ENEM / Vestibular", emoji: "🎓", desc: "Passar no ENEM ou vestibular" },
+      { value: "concurso", label: "Concurso Público", emoji: "📋", desc: "Aprovação em concurso federal, estadual ou municipal" },
+      { value: "reforco", label: "Reforço Escolar", emoji: "📚", desc: "Melhorar notas e entender melhor as aulas" },
+      { value: "faculdade", label: "Faculdade / Pós", emoji: "🏛️", desc: "Provas, trabalhos e residências" },
+    ],
+  },
+  {
+    key: "serie",
+    question: "Qual é o seu nível atual?",
+    icon: GraduationCap,
+    options: [
+      { value: "Fundamental I (1° ao 5° Ano)", label: "Fundamental I", emoji: "🌱", desc: "1° ao 5° ano" },
+      { value: "Fundamental II (6° ao 9° Ano)", label: "Fundamental II", emoji: "📗", desc: "6° ao 9° ano" },
+      { value: "Ensino Médio", label: "Ensino Médio", emoji: "📘", desc: "1° ao 3° ano do Médio" },
+      { value: "Superior / Adulto / Concurso", label: "Superior / Adulto", emoji: "🎯", desc: "Faculdade, concurso ou educação continuada" },
+    ],
+  },
+  {
+    key: "materia",
+    question: "Qual matéria você mais precisa?",
+    icon: BookOpen,
+    options: [
+      { value: "Matemática", label: "Matemática", emoji: "🔢", desc: "Álgebra, geometria, funções" },
+      { value: "Português e Redação", label: "Português / Redação", emoji: "✍️", desc: "Gramática, texto, redação ENEM" },
+      { value: "Ciências e Biologia", label: "Ciências / Biologia", emoji: "🔬", desc: "Biologia, química, física" },
+      { value: "História e Geografia", label: "História / Geografia", emoji: "🌍", desc: "Humanas, geopolítica, atualidades" },
+      { value: "Inglês", label: "Inglês", emoji: "🌐", desc: "Vocabulário, gramática, conversação" },
+      { value: "Física e Química", label: "Física / Química", emoji: "⚗️", desc: "Física, química, fórmulas" },
+    ],
+  },
+  {
+    key: "dias",
+    question: "Quando é a sua prova?",
+    icon: CalendarDays,
+    options: [
+      { value: "7", label: "Em 1 semana", emoji: "🔥", desc: "Modo intensivo, foco total" },
+      { value: "30", label: "Em 1 mês", emoji: "⚡", desc: "Ritmo acelerado mas sustentável" },
+      { value: "90", label: "Em 3 meses", emoji: "📈", desc: "Progressão sólida com revisões" },
+      { value: "180", label: "Mais de 6 meses", emoji: "🌟", desc: "Aprendizado profundo e duradouro" },
+    ],
+  },
+];
+
+function getDiagResultText(answers: Record<string, string>) {
+  const dias = parseInt(answers.dias ?? "90");
+  const urgency = dias <= 7 ? "intensivo de 7 dias" : dias <= 30 ? "acelerado de 30 dias" : dias <= 90 ? "de 90 dias" : "completo de 6 meses";
+  const materia = answers.materia ?? "sua matéria";
+  const objetivo = answers.objetivo;
+  if (objetivo === "enem") return `Plano ${urgency} focado em ${materia} para o ENEM`;
+  if (objetivo === "concurso") return `Plano ${urgency} de ${materia} para concurso público`;
+  if (objetivo === "reforco") return `Plano ${urgency} de reforço em ${materia}`;
+  return `Plano ${urgency} personalizado de ${materia}`;
+}
+
 export default function Landing() {
   const [, navigate] = useLocation();
   const [wlEmail, setWlEmail] = useState("");
   const [wlName, setWlName] = useState("");
   const [wlStatus, setWlStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [wlMessage, setWlMessage] = useState("");
+
+  const [diagStep, setDiagStep] = useState(0);
+  const [diagAnswers, setDiagAnswers] = useState<Record<string, string>>({});
+  const [diagDone, setDiagDone] = useState(false);
+
+  function handleDiagOption(value: string) {
+    const stepKey = DIAG_STEPS[diagStep].key;
+    const newAnswers = { ...diagAnswers, [stepKey]: value };
+    setDiagAnswers(newAnswers);
+    if (diagStep < DIAG_STEPS.length - 1) {
+      setDiagStep(diagStep + 1);
+    } else {
+      setDiagDone(true);
+    }
+  }
+
+  function handleDiagStart() {
+    const params = new URLSearchParams();
+    if (diagAnswers.materia) params.set("materia", diagAnswers.materia);
+    if (diagAnswers.serie) params.set("serie", diagAnswers.serie);
+    if (diagAnswers.dias) params.set("dias", diagAnswers.dias);
+    navigate(`/app?${params.toString()}`);
+  }
 
   async function handleWaitlist(e: React.FormEvent) {
     e.preventDefault();
@@ -315,6 +403,7 @@ export default function Landing() {
           </div>
 
           <nav className="hidden md:flex items-center gap-6 text-sm text-white/60">
+            <a href="#diagnostico" className="hover:text-white transition-colors text-violet-300 font-semibold">Diagnóstico</a>
             <a href="#recursos" className="hover:text-white transition-colors">Recursos</a>
             <a href="#como-funciona" className="hover:text-white transition-colors">Como funciona</a>
             <a href="#precos" className="hover:text-white transition-colors">Preços</a>
@@ -502,6 +591,172 @@ export default function Landing() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── DIAGNÓSTICO RÁPIDO ── */}
+      <section id="diagnostico" className="py-24 px-6 border-t border-white/5 bg-gradient-to-b from-violet-950/20 to-transparent">
+        <div className="max-w-2xl mx-auto">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="text-center mb-10"
+          >
+            <span className="inline-flex items-center gap-2 text-xs font-black px-3 py-1.5 rounded-full bg-violet-500/15 border border-violet-500/30 text-violet-300 uppercase tracking-widest mb-4">
+              <Stethoscope className="w-3 h-3" /> Diagnóstico Gratuito
+            </span>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-3">
+              4 perguntas.<br />
+              <span className="text-violet-400">Seu plano ideal.</span>
+            </h2>
+            <p className="text-white/50 text-lg">
+              Descubra exatamente o que estudar — sem cadastro, sem custo.
+            </p>
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            custom={0.1}
+            className="relative rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-sm overflow-hidden"
+          >
+            {/* Progress bar */}
+            {!diagDone && (
+              <div className="h-1 bg-white/5">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-violet-500 to-purple-500"
+                  animate={{ width: `${((diagStep) / DIAG_STEPS.length) * 100}%` }}
+                  transition={{ duration: 0.4 }}
+                />
+              </div>
+            )}
+
+            <div className="p-8 md:p-10">
+              <AnimatePresence mode="wait">
+                {!diagDone ? (
+                  <motion.div
+                    key={`step-${diagStep}`}
+                    initial={{ opacity: 0, x: 30 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -30 }}
+                    transition={{ duration: 0.25 }}
+                  >
+                    {/* Step header */}
+                    <div className="flex items-center justify-between mb-8">
+                      <div className="flex items-center gap-3">
+                        {(() => {
+                          const StepIcon = DIAG_STEPS[diagStep].icon;
+                          return (
+                            <div className="w-10 h-10 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
+                              <StepIcon className="w-5 h-5 text-violet-400" />
+                            </div>
+                          );
+                        })()}
+                        <div>
+                          <p className="text-xs text-white/40 font-semibold uppercase tracking-wider">
+                            Pergunta {diagStep + 1} de {DIAG_STEPS.length}
+                          </p>
+                          <h3 className="text-xl font-black">{DIAG_STEPS[diagStep].question}</h3>
+                        </div>
+                      </div>
+                      {diagStep > 0 && (
+                        <button
+                          onClick={() => setDiagStep(diagStep - 1)}
+                          className="text-white/30 hover:text-white/70 transition-colors p-1"
+                        >
+                          <ChevronLeft className="w-5 h-5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Options */}
+                    <div className={`grid gap-3 ${DIAG_STEPS[diagStep].options.length > 4 ? "grid-cols-2" : "grid-cols-1 md:grid-cols-2"}`}>
+                      {DIAG_STEPS[diagStep].options.map((opt) => (
+                        <button
+                          key={opt.value}
+                          onClick={() => handleDiagOption(opt.value)}
+                          className="group text-left p-4 rounded-2xl border border-white/10 bg-white/[0.03] hover:bg-violet-500/15 hover:border-violet-500/50 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">{opt.emoji}</span>
+                            <div>
+                              <p className="font-bold text-white group-hover:text-violet-200 transition-colors">{opt.label}</p>
+                              <p className="text-xs text-white/40 mt-0.5">{opt.desc}</p>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-white/20 group-hover:text-violet-400 ml-auto transition-colors" />
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="result"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.35 }}
+                    className="text-center"
+                  >
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center mx-auto mb-6">
+                      <CheckCircle2 className="w-8 h-8 text-white" />
+                    </div>
+                    <p className="text-sm font-bold text-violet-400 uppercase tracking-widest mb-3">Seu diagnóstico</p>
+                    <h3 className="text-2xl md:text-3xl font-black mb-2">
+                      {getDiagResultText(diagAnswers)}
+                    </h3>
+                    <p className="text-white/50 mb-8 text-sm">
+                      A IA vai gerar seu plano personalizado em segundos — com exercícios, dicas e cronograma.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                      <Button
+                        size="lg"
+                        className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-black px-8 py-6 rounded-2xl text-base"
+                        onClick={handleDiagStart}
+                      >
+                        <FlameKindling className="w-5 h-5 mr-2" />
+                        Gerar Meu Plano Grátis →
+                      </Button>
+                      <button
+                        onClick={() => { setDiagStep(0); setDiagAnswers({}); setDiagDone(false); }}
+                        className="text-white/40 hover:text-white/70 text-sm font-medium transition-colors py-2"
+                      >
+                        Refazer diagnóstico
+                      </button>
+                    </div>
+
+                    {/* Summary chips */}
+                    <div className="flex flex-wrap gap-2 justify-center mt-8">
+                      {Object.entries(diagAnswers).map(([k, v]) => {
+                        const step = DIAG_STEPS.find(s => s.key === k);
+                        const opt = step?.options.find(o => o.value === v);
+                        if (!opt) return null;
+                        return (
+                          <span key={k} className="text-xs px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/60">
+                            {opt.emoji} {opt.label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+
+          <motion.p
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            custom={0.2}
+            className="text-center text-white/30 text-xs mt-4"
+          >
+            Sem cadastro obrigatório • Resultado imediato • 100% gratuito
+          </motion.p>
         </div>
       </section>
 

@@ -14,6 +14,7 @@ import analyticsRouter from "./analytics";
 import simuladoAdaptativoRouter from "./simulado-adaptativo";
 import resumaoRouter from "./resumao";
 import subscriptionRouter from "./subscription";
+import feedRouter from "./feed";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(analyticsRouter);
 router.use(simuladoAdaptativoRouter);
 router.use(resumaoRouter);
 router.use(subscriptionRouter);
+router.use(feedRouter);
 
 export default router;

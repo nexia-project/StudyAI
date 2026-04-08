@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ComponentType } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import {
@@ -310,8 +310,14 @@ const testimonials = [
   },
 ];
 
-const DIAG_STEPS = [
-  {
+type DiagOption = { value: string; label: string; emoji: string; desc: string };
+type DiagStep = { key: string; question: string; icon: ComponentType<{ className?: string }>; options: DiagOption[] };
+
+function getDiagSteps(answers: Record<string, string>): DiagStep[] {
+  const obj = answers.objetivo ?? "";
+  const nivel = answers.nivel ?? "";
+
+  const step1: DiagStep = {
     key: "objetivo",
     question: "Qual é o seu objetivo?",
     icon: Target,
@@ -321,53 +327,215 @@ const DIAG_STEPS = [
       { value: "reforco", label: "Reforço Escolar", emoji: "📚", desc: "Melhorar notas e entender melhor as aulas" },
       { value: "faculdade", label: "Faculdade / Pós", emoji: "🏛️", desc: "Provas, trabalhos e residências" },
     ],
-  },
-  {
-    key: "serie",
-    question: "Qual é o seu nível atual?",
-    icon: GraduationCap,
-    options: [
-      { value: "Fundamental I (1° ao 5° Ano)", label: "Fundamental I", emoji: "🌱", desc: "1° ao 5° ano" },
-      { value: "Fundamental II (6° ao 9° Ano)", label: "Fundamental II", emoji: "📗", desc: "6° ao 9° ano" },
-      { value: "Ensino Médio", label: "Ensino Médio", emoji: "📘", desc: "1° ao 3° ano do Médio" },
-      { value: "Superior / Adulto / Concurso", label: "Superior / Adulto", emoji: "🎯", desc: "Faculdade, concurso ou educação continuada" },
-    ],
-  },
-  {
-    key: "materia",
-    question: "Qual matéria você mais precisa?",
-    icon: BookOpen,
-    options: [
+  };
+
+  let step2: DiagStep;
+  if (obj === "enem") {
+    step2 = {
+      key: "nivel",
+      question: "Qual é o seu nível atual no ENEM?",
+      icon: GraduationCap,
+      options: [
+        { value: "iniciante", label: "Iniciante", emoji: "🌱", desc: "Nunca fiz simulado, preciso do básico" },
+        { value: "intermediario", label: "Intermediário", emoji: "📗", desc: "Notas entre 500–650, quero subir mais" },
+        { value: "avancado", label: "Avançado", emoji: "🔥", desc: "Acima de 650, quero top 10%" },
+        { value: "veterano", label: "2ª tentativa", emoji: "🎯", desc: "Já fiz antes e preciso aumentar a nota" },
+      ],
+    };
+  } else if (obj === "concurso") {
+    step2 = {
+      key: "nivel",
+      question: "Qual tipo de concurso?",
+      icon: GraduationCap,
+      options: [
+        { value: "policial", label: "Policial / Militar", emoji: "👮", desc: "PRF, PC, PM, Bombeiro, PCDF" },
+        { value: "fiscal", label: "Fiscal / Tributário", emoji: "📊", desc: "Receita Federal, SEFAZ, TCU, TCE" },
+        { value: "saude", label: "Saúde / Residência", emoji: "🏥", desc: "Residência médica, enfermagem, farmácia" },
+        { value: "geral", label: "Concurso Geral", emoji: "🏛️", desc: "INSS, Correios, Banco do Brasil, outros" },
+      ],
+    };
+  } else if (obj === "reforco") {
+    step2 = {
+      key: "nivel",
+      question: "Qual é a sua série?",
+      icon: GraduationCap,
+      options: [
+        { value: "fund1", label: "Fundamental I", emoji: "🌱", desc: "1° ao 5° ano" },
+        { value: "fund2", label: "Fundamental II", emoji: "📗", desc: "6° ao 9° ano" },
+        { value: "medio", label: "Ensino Médio", emoji: "📘", desc: "1° ao 3° ano" },
+        { value: "eja", label: "EJA / Adulto", emoji: "🎯", desc: "Educação de jovens e adultos" },
+      ],
+    };
+  } else {
+    step2 = {
+      key: "nivel",
+      question: "Qual área da faculdade?",
+      icon: GraduationCap,
+      options: [
+        { value: "exatas", label: "Exatas / Engenharia", emoji: "⚙️", desc: "Cálculo, física, programação" },
+        { value: "saude", label: "Saúde / Biológicas", emoji: "🔬", desc: "Medicina, enfermagem, farmácia" },
+        { value: "humanas", label: "Humanas / Sociais", emoji: "📚", desc: "Direito, psicologia, pedagogia" },
+        { value: "ti", label: "TI / Tecnologia", emoji: "💻", desc: "Sistemas, ADS, redes, dados" },
+      ],
+    };
+  }
+
+  let matOpts: DiagOption[];
+  if (obj === "enem") {
+    matOpts = [
+      { value: "Matemática", label: "Matemática", emoji: "🔢", desc: "Funções, geometria, probabilidade" },
+      { value: "Redação ENEM", label: "Redação", emoji: "✍️", desc: "Nota 1000 nas 5 competências" },
+      { value: "Ciências da Natureza", label: "Ciências da Natureza", emoji: "🔬", desc: "Biologia, Química, Física" },
+      { value: "Ciências Humanas", label: "Ciências Humanas", emoji: "🌍", desc: "História, Geografia, Filosofia, Sociologia" },
+      { value: "Linguagens", label: "Linguagens e Códigos", emoji: "📖", desc: "Português, Inglês, Artes, Ed. Física" },
+    ];
+  } else if (obj === "concurso" && nivel === "policial") {
+    matOpts = [
+      { value: "Raciocínio Lógico", label: "Raciocínio Lógico", emoji: "🧠", desc: "Item mais pesado em provas policiais" },
+      { value: "Língua Portuguesa", label: "Língua Portuguesa", emoji: "✍️", desc: "Interpretação de texto, gramática" },
+      { value: "Legislação Penal", label: "Legislação", emoji: "⚖️", desc: "Constituição, CPP, CP, ECA, LGPD" },
+      { value: "Informática", label: "Informática", emoji: "💻", desc: "Pacote Office, segurança, redes" },
+    ];
+  } else if (obj === "concurso" && nivel === "fiscal") {
+    matOpts = [
+      { value: "Matemática Financeira", label: "Matemática Financeira", emoji: "💰", desc: "Juros, porcentagem, análise" },
+      { value: "Direito Tributário", label: "Direito Tributário", emoji: "⚖️", desc: "CTN, impostos, obrigações fiscais" },
+      { value: "Contabilidade", label: "Contabilidade", emoji: "📊", desc: "Balanços, DRE, escrituração" },
+      { value: "Língua Portuguesa", label: "Língua Portuguesa", emoji: "✍️", desc: "Redação oficial, interpretação" },
+    ];
+  } else if (obj === "concurso" && nivel === "saude") {
+    matOpts = [
+      { value: "Fisiologia e Anatomia", label: "Fisiologia / Anatomia", emoji: "🫀", desc: "Sistemas e funções do corpo" },
+      { value: "Farmacologia", label: "Farmacologia", emoji: "💊", desc: "Medicamentos, doses, interações" },
+      { value: "Saúde Pública", label: "Saúde Pública", emoji: "🏥", desc: "SUS, protocolos, epidemiologia" },
+      { value: "Bioquímica", label: "Bioquímica", emoji: "🔬", desc: "Metabolismo, enzimas, bioquímica" },
+    ];
+  } else if (obj === "concurso") {
+    matOpts = [
+      { value: "Raciocínio Lógico", label: "Raciocínio Lógico", emoji: "🧠", desc: "Lógica, sequências, análise" },
+      { value: "Língua Portuguesa", label: "Língua Portuguesa", emoji: "✍️", desc: "Gramática, interpretação" },
+      { value: "Matemática", label: "Matemática", emoji: "🔢", desc: "Aritmética, porcentagem, álgebra" },
+      { value: "Atualidades", label: "Atualidades", emoji: "🌍", desc: "Política, economia, notícias" },
+    ];
+  } else if (obj === "faculdade" && nivel === "exatas") {
+    matOpts = [
+      { value: "Cálculo", label: "Cálculo", emoji: "📐", desc: "Limites, derivadas, integrais" },
+      { value: "Física", label: "Física", emoji: "⚡", desc: "Mecânica, termodinâmica, eletricidade" },
+      { value: "Álgebra Linear", label: "Álgebra Linear", emoji: "🔢", desc: "Matrizes, vetores, sistemas" },
+      { value: "Programação", label: "Programação", emoji: "💻", desc: "Algoritmos, lógica, linguagens" },
+    ];
+  } else if (obj === "faculdade" && nivel === "ti") {
+    matOpts = [
+      { value: "Programação", label: "Programação", emoji: "💻", desc: "POO, algoritmos, estruturas" },
+      { value: "Banco de Dados", label: "Banco de Dados", emoji: "🗄️", desc: "SQL, modelagem, normalização" },
+      { value: "Redes", label: "Redes e Segurança", emoji: "🌐", desc: "TCP/IP, protocolos, firewalls" },
+      { value: "Matemática Discreta", label: "Matemática Discreta", emoji: "🔢", desc: "Lógica, grafos, combinatória" },
+    ];
+  } else {
+    matOpts = [
       { value: "Matemática", label: "Matemática", emoji: "🔢", desc: "Álgebra, geometria, funções" },
-      { value: "Português e Redação", label: "Português / Redação", emoji: "✍️", desc: "Gramática, texto, redação ENEM" },
+      { value: "Português e Redação", label: "Português / Redação", emoji: "✍️", desc: "Gramática, texto, redação" },
       { value: "Ciências e Biologia", label: "Ciências / Biologia", emoji: "🔬", desc: "Biologia, química, física" },
-      { value: "História e Geografia", label: "História / Geografia", emoji: "🌍", desc: "Humanas, geopolítica, atualidades" },
+      { value: "História e Geografia", label: "História / Geografia", emoji: "🌍", desc: "Humanas, geopolítica" },
       { value: "Inglês", label: "Inglês", emoji: "🌐", desc: "Vocabulário, gramática, conversação" },
-      { value: "Física e Química", label: "Física / Química", emoji: "⚗️", desc: "Física, química, fórmulas" },
-    ],
-  },
-  {
-    key: "dias",
-    question: "Quando é a sua prova?",
-    icon: CalendarDays,
-    options: [
+    ];
+  }
+
+  const step3: DiagStep = {
+    key: "materia",
+    question: obj === "enem" ? "Qual área é sua maior fraqueza?"
+      : obj === "concurso" ? "Onde você precisa mais atenção?"
+      : "Qual matéria você mais precisa?",
+    icon: BookOpen,
+    options: matOpts,
+  };
+
+  let diasOpts: DiagOption[];
+  if (obj === "concurso") {
+    diasOpts = [
+      { value: "30", label: "Prova em menos de 1 mês", emoji: "🔥", desc: "Foco urgente no edital" },
+      { value: "90", label: "Edital aberto, prova em 3 meses", emoji: "⚡", desc: "Estudo por blocos de matéria" },
+      { value: "180", label: "Ainda sem edital aberto", emoji: "📈", desc: "Construção de base sólida" },
+      { value: "365", label: "Pensando a longo prazo", emoji: "🌟", desc: "Ciclo completo de preparação" },
+    ];
+  } else {
+    diasOpts = [
       { value: "7", label: "Em 1 semana", emoji: "🔥", desc: "Modo intensivo, foco total" },
       { value: "30", label: "Em 1 mês", emoji: "⚡", desc: "Ritmo acelerado mas sustentável" },
       { value: "90", label: "Em 3 meses", emoji: "📈", desc: "Progressão sólida com revisões" },
       { value: "180", label: "Mais de 6 meses", emoji: "🌟", desc: "Aprendizado profundo e duradouro" },
-    ],
-  },
-];
+    ];
+  }
 
-function getDiagResultText(answers: Record<string, string>) {
-  const dias = parseInt(answers.dias ?? "90");
-  const urgency = dias <= 7 ? "intensivo de 7 dias" : dias <= 30 ? "acelerado de 30 dias" : dias <= 90 ? "de 90 dias" : "completo de 6 meses";
-  const materia = answers.materia ?? "sua matéria";
-  const objetivo = answers.objetivo;
-  if (objetivo === "enem") return `Plano ${urgency} focado em ${materia} para o ENEM`;
-  if (objetivo === "concurso") return `Plano ${urgency} de ${materia} para concurso público`;
-  if (objetivo === "reforco") return `Plano ${urgency} de reforço em ${materia}`;
-  return `Plano ${urgency} personalizado de ${materia}`;
+  const step4: DiagStep = {
+    key: "dias",
+    question: obj === "concurso" ? "Qual é a sua situação com o edital?" : "Quando é a sua prova?",
+    icon: CalendarDays,
+    options: diasOpts,
+  };
+
+  return [step1, step2, step3, step4];
+}
+
+function getDiagResult(answers: Record<string, string>) {
+  const { objetivo, nivel, materia, dias } = answers;
+  const d = parseInt(dias ?? "90");
+
+  const urgencyLabel =
+    d <= 7 ? "intensivo de 7 dias" :
+    d <= 30 ? "acelerado de 30 dias" :
+    d <= 90 ? "de 90 dias" :
+    d <= 180 ? "de 6 meses" : "anual";
+
+  const alertColor = d <= 7 ? "red" : d <= 30 ? "yellow" : "green";
+  const alertMsg =
+    d <= 7 ? `⚠️ Menos de 7 dias: modo emergência. Vamos focar apenas no essencial de ${materia ?? "sua matéria"}.` :
+    d <= 30 ? `⚡ 30 dias é suficiente para cobrir os pontos críticos de ${materia ?? "sua matéria"} — se o plano for certo.` :
+    `✅ Você tem tempo de sobra. Vamos construir uma base sólida e ir revisando com simulados.`;
+
+  let title = "";
+  let bullets: string[] = [];
+  let includes: string[] = [];
+
+  if (objetivo === "enem") {
+    const nivelLabel = nivel === "iniciante" ? "do zero" : nivel === "intermediario" ? "intermediário" : nivel === "avancado" ? "avançado" : "veterano";
+    title = `Plano ENEM ${nivelLabel} — ${materia ?? "sua matéria"} — ${urgencyLabel}`;
+    bullets = [
+      `Conteúdo priorizado pelo peso histórico do ENEM${nivel === "avancado" ? " — questões nível 3 e 4" : ""}`,
+      `Simulado adaptativo focado nos padrões de questão do ENEM${materia?.includes("Redação") ? " + correção de redação com nota" : ""}`,
+      nivel === "veterano" ? "Análise do que te fez perder pontos na tentativa anterior" : "Flashcards de memorização dos tópicos mais cobrados",
+    ];
+    includes = ["Plano dia a dia", "Simulado ENEM", "Flashcards", materia?.includes("Redação") ? "Correção de Redação" : "Resumão Estratégico", "Tutor IA 24h"];
+  } else if (objetivo === "concurso") {
+    const tipoLabel = nivel === "policial" ? "Policial/Militar" : nivel === "fiscal" ? "Fiscal/Tributário" : nivel === "saude" ? "Residência/Saúde" : "Geral";
+    title = `Plano Concurso ${tipoLabel} — ${materia ?? "sua matéria"} — ${urgencyLabel}`;
+    bullets = [
+      `Conteúdo alinhado ao perfil do concurso ${tipoLabel} — nada fora do edital`,
+      `Questões de provas anteriores (FGV, CESPE, VUNESP, FCC) no estilo da banca`,
+      nivel === "policial" ? "Raciocínio Lógico com cronômetro — treino de velocidade e precisão" : "Análise das bancas mais usadas para sua área",
+    ];
+    includes = ["Plano por edital", "Simulado de banca", "Flashcards de legislação", "Resumão por disciplina", "Tutor IA 24h"];
+  } else if (objetivo === "reforco") {
+    const serieLabel = nivel === "fund1" ? "Fundamental I" : nivel === "fund2" ? "Fundamental II" : nivel === "medio" ? "Ensino Médio" : "EJA";
+    title = `Plano de Reforço — ${materia ?? "sua matéria"} — ${serieLabel}`;
+    bullets = [
+      `Revisão dos pré-requisitos que costumam travar alunos do ${serieLabel}`,
+      `Exercícios progressivos: do básico ao avançado, sem pular etapas`,
+      `Diagnóstico semanal para saber exatamente onde você ainda erra`,
+    ];
+    includes = ["Plano por semana", "Exercícios graduais", "Flashcards", "Resumão", "Tutor IA 24h"];
+  } else {
+    const areaLabel = nivel === "exatas" ? "Exatas/Engenharia" : nivel === "saude" ? "Saúde" : nivel === "humanas" ? "Humanas" : "TI";
+    title = `Plano Faculdade ${areaLabel} — ${materia ?? "sua matéria"} — ${urgencyLabel}`;
+    bullets = [
+      `Foco nos tópicos mais cobrados em provas e trabalhos de ${areaLabel}`,
+      `Resumões e flashcards do conteúdo semestral — ideal para véspera de prova`,
+      `Tutor IA explica qualquer dúvida do seu professor com exemplos práticos`,
+    ];
+    includes = ["Plano por semana", "Simulado temático", "Flashcards", "Resumão Estratégico", "Tutor IA 24h"];
+  }
+
+  return { title, bullets, includes, alertMsg, alertColor };
 }
 
 export default function Landing() {
@@ -381,11 +549,14 @@ export default function Landing() {
   const [diagAnswers, setDiagAnswers] = useState<Record<string, string>>({});
   const [diagDone, setDiagDone] = useState(false);
 
+  const currentSteps = getDiagSteps(diagAnswers);
+  const diagResult = diagDone ? getDiagResult(diagAnswers) : null;
+
   function handleDiagOption(value: string) {
-    const stepKey = DIAG_STEPS[diagStep].key;
+    const stepKey = currentSteps[diagStep].key;
     const newAnswers = { ...diagAnswers, [stepKey]: value };
     setDiagAnswers(newAnswers);
-    if (diagStep < DIAG_STEPS.length - 1) {
+    if (diagStep < currentSteps.length - 1) {
       setDiagStep(diagStep + 1);
     } else {
       setDiagDone(true);
@@ -395,7 +566,8 @@ export default function Landing() {
   function handleDiagStart() {
     const params = new URLSearchParams();
     if (diagAnswers.materia) params.set("materia", diagAnswers.materia);
-    if (diagAnswers.serie) params.set("serie", diagAnswers.serie);
+    if (diagAnswers.nivel) params.set("serie", diagAnswers.nivel);
+    if (diagAnswers.objetivo) params.set("objetivo", diagAnswers.objetivo);
     if (diagAnswers.dias) params.set("dias", diagAnswers.dias);
     navigate(`/app?${params.toString()}`);
   }
@@ -933,7 +1105,7 @@ export default function Landing() {
               <div className="h-1 bg-white/5">
                 <motion.div
                   className="h-full bg-gradient-to-r from-violet-500 to-purple-500"
-                  animate={{ width: `${((diagStep) / DIAG_STEPS.length) * 100}%` }}
+                  animate={{ width: `${((diagStep) / currentSteps.length) * 100}%` }}
                   transition={{ duration: 0.4 }}
                 />
               </div>
@@ -953,7 +1125,7 @@ export default function Landing() {
                     <div className="flex items-center justify-between mb-8">
                       <div className="flex items-center gap-3">
                         {(() => {
-                          const StepIcon = DIAG_STEPS[diagStep].icon;
+                          const StepIcon = currentSteps[diagStep].icon;
                           return (
                             <div className="w-10 h-10 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
                               <StepIcon className="w-5 h-5 text-violet-400" />
@@ -962,9 +1134,9 @@ export default function Landing() {
                         })()}
                         <div>
                           <p className="text-xs text-white/40 font-semibold uppercase tracking-wider">
-                            Pergunta {diagStep + 1} de {DIAG_STEPS.length}
+                            Pergunta {diagStep + 1} de {currentSteps.length}
                           </p>
-                          <h3 className="text-xl font-black">{DIAG_STEPS[diagStep].question}</h3>
+                          <h3 className="text-xl font-black">{currentSteps[diagStep].question}</h3>
                         </div>
                       </div>
                       {diagStep > 0 && (
@@ -978,8 +1150,8 @@ export default function Landing() {
                     </div>
 
                     {/* Options */}
-                    <div className={`grid gap-3 ${DIAG_STEPS[diagStep].options.length > 4 ? "grid-cols-2" : "grid-cols-1 md:grid-cols-2"}`}>
-                      {DIAG_STEPS[diagStep].options.map((opt) => (
+                    <div className={`grid gap-3 ${currentSteps[diagStep].options.length > 4 ? "grid-cols-2" : "grid-cols-1 md:grid-cols-2"}`}>
+                      {currentSteps[diagStep].options.map((opt) => (
                         <button
                           key={opt.value}
                           onClick={() => handleDiagOption(opt.value)}
@@ -997,28 +1169,61 @@ export default function Landing() {
                       ))}
                     </div>
                   </motion.div>
-                ) : (
+                ) : diagResult ? (
                   <motion.div
                     key="result"
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.35 }}
-                    className="text-center"
                   >
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center mx-auto mb-6">
-                      <CheckCircle2 className="w-8 h-8 text-white" />
+                    {/* Header */}
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                        <CheckCircle2 className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-violet-400 uppercase tracking-widest">Diagnóstico completo</p>
+                        <h3 className="text-lg font-black leading-snug">{diagResult.title}</h3>
+                      </div>
                     </div>
-                    <p className="text-sm font-bold text-violet-400 uppercase tracking-widest mb-3">Seu diagnóstico</p>
-                    <h3 className="text-2xl md:text-3xl font-black mb-2">
-                      {getDiagResultText(diagAnswers)}
-                    </h3>
-                    <p className="text-white/50 mb-8 text-sm">
-                      A IA vai gerar seu plano personalizado em segundos — com exercícios, dicas e cronograma.
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+
+                    {/* Alert */}
+                    <div className={`rounded-xl px-4 py-3 mb-5 text-sm font-semibold border ${
+                      diagResult.alertColor === "red" ? "bg-red-500/10 border-red-500/20 text-red-300" :
+                      diagResult.alertColor === "yellow" ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-300" :
+                      "bg-emerald-500/10 border-emerald-500/20 text-emerald-300"
+                    }`}>
+                      {diagResult.alertMsg}
+                    </div>
+
+                    {/* Strategy bullets */}
+                    <div className="space-y-3 mb-6">
+                      <p className="text-xs font-black text-white/40 uppercase tracking-widest">Estratégia personalizada</p>
+                      {diagResult.bullets.map((b, i) => (
+                        <div key={i} className="flex items-start gap-3 rounded-xl bg-white/[0.03] border border-white/5 px-4 py-3">
+                          <div className="w-5 h-5 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <span className="text-violet-400 text-xs font-black">{i + 1}</span>
+                          </div>
+                          <p className="text-sm text-white/70">{b}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* What's included */}
+                    <div className="flex flex-wrap gap-2 mb-8">
+                      <p className="w-full text-xs font-black text-white/40 uppercase tracking-widest mb-1">O que será gerado</p>
+                      {diagResult.includes.map((inc) => (
+                        <span key={inc} className="text-xs px-3 py-1.5 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-300 font-bold flex items-center gap-1.5">
+                          <CheckCircle className="w-3 h-3" /> {inc}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* CTA */}
+                    <div className="flex flex-col sm:flex-row gap-3">
                       <Button
                         size="lg"
-                        className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-black px-8 py-6 rounded-2xl text-base"
+                        className="flex-1 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-black py-6 rounded-2xl text-base"
                         onClick={handleDiagStart}
                       >
                         <FlameKindling className="w-5 h-5 mr-2" />
@@ -1026,27 +1231,13 @@ export default function Landing() {
                       </Button>
                       <button
                         onClick={() => { setDiagStep(0); setDiagAnswers({}); setDiagDone(false); }}
-                        className="text-white/40 hover:text-white/70 text-sm font-medium transition-colors py-2"
+                        className="text-white/35 hover:text-white/70 text-sm font-medium transition-colors py-2 sm:px-4"
                       >
-                        Refazer diagnóstico
+                        Refazer
                       </button>
                     </div>
-
-                    {/* Summary chips */}
-                    <div className="flex flex-wrap gap-2 justify-center mt-8">
-                      {Object.entries(diagAnswers).map(([k, v]) => {
-                        const step = DIAG_STEPS.find(s => s.key === k);
-                        const opt = step?.options.find(o => o.value === v);
-                        if (!opt) return null;
-                        return (
-                          <span key={k} className="text-xs px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/60">
-                            {opt.emoji} {opt.label}
-                          </span>
-                        );
-                      })}
-                    </div>
                   </motion.div>
-                )}
+                ) : null}
               </AnimatePresence>
             </div>
           </motion.div>

@@ -1,36 +1,33 @@
 import { Router } from "express";
 import { db, waitlistTable } from "@workspace/db";
 import { sql } from "drizzle-orm";
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
 const router = Router();
 
 const NOTIFICATION_EMAIL = "nexusatacado@gmail.com";
 
-function createTransporter() {
-  const user = process.env.GMAIL_USER;
-  const pass = process.env.GMAIL_APP_PASSWORD;
-  if (!user || !pass) return null;
-  return nodemailer.createTransport({
-    service: "gmail",
-    auth: { user, pass },
-  });
+function getResend() {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return null;
+  return new Resend(key);
 }
 
 async function sendNotification(name: string | null, email: string) {
   try {
-    const transporter = createTransporter();
-    if (!transporter) {
-      console.warn("[waitlist] GMAIL_USER or GMAIL_APP_PASSWORD not set — email notification skipped");
+    const resend = getResend();
+    if (!resend) {
+      console.warn("[waitlist] RESEND_API_KEY not set — email notification skipped");
       return;
     }
-    await transporter.sendMail({
-      from: `StudyAI <${process.env.GMAIL_USER}>`,
+
+    await resend.emails.send({
+      from: "StudyAI <onboarding@resend.dev>",
       to: NOTIFICATION_EMAIL,
       subject: `🎓 Novo inscrito na waitlist: ${email}`,
       html: `
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; background: #f9fafb; border-radius: 12px;">
-          <h2 style="color: #059669; margin: 0 0 16px;">Novo inscrito na Waitlist!</h2>
+          <h2 style="color: #059669; margin: 0 0 16px;">Novo inscrito na Waitlist! 🎉</h2>
           <table style="width: 100%; border-collapse: collapse;">
             <tr>
               <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Nome:</td>
@@ -45,10 +42,12 @@ async function sendNotification(name: string | null, email: string) {
               <td style="padding: 8px 0; color: #111827;">${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</td>
             </tr>
           </table>
-          <p style="margin: 16px 0 0; font-size: 13px; color: #9ca3af;">Enviado automaticamente pelo StudyAI</p>
+          <p style="margin: 20px 0 0; font-size: 13px; color: #9ca3af;">Enviado automaticamente pelo StudyAI</p>
         </div>
       `,
     });
+
+    console.info(`[waitlist] Notification sent to ${NOTIFICATION_EMAIL} for subscriber ${email}`);
   } catch (err) {
     console.error("[waitlist] Failed to send email notification:", err);
   }

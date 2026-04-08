@@ -20,30 +20,27 @@ import { useAuth } from "@workspace/replit-auth-web";
 import { useSubscription, startCheckout, openBillingPortal } from "@/hooks/useSubscription";
 
 const FREE_FEATURES = [
-  { label: "1 plano de estudos por vez", ok: true },
-  { label: "Planos de até 3 dias", ok: true },
-  { label: "Chat tutor (5 mensagens/dia)", ok: true },
-  { label: "Dashboard básico", ok: true },
-  { label: "Simulado", ok: false },
-  { label: "Flashcards", ok: false },
-  { label: "Resumão Estratégico", ok: false },
-  { label: "Correção de Redação", ok: false },
-  { label: "Ranking de alunos", ok: false },
-  { label: "Mapa de Calor de desempenho", ok: false },
-  { label: "Histórico completo", ok: false },
+  { label: "1 plano de estudos por mês", limit: true },
+  { label: "2 simulados por mês", limit: true },
+  { label: "5 flashcards por semana", limit: true },
+  { label: "Chat tutor (5 msgs/dia)", limit: true },
+  { label: "1 correção de redação por mês", limit: true },
+  { label: "1 resumão estratégico por mês", limit: true },
+  { label: "Dashboard de desempenho", limit: false },
+  { label: "Timer Pomodoro", limit: false },
+  { label: "Acesso ao ranking", limit: false },
 ];
 
 const PREMIUM_FEATURES = [
   { label: "Planos de estudos ilimitados", icon: BookOpen },
-  { label: "Planos de qualquer duração", icon: Zap },
   { label: "Simulados ilimitados (adaptativo)", icon: Brain },
-  { label: "Flashcards inteligentes", icon: BookOpen },
-  { label: "Resumão Estratégico por IA", icon: Sparkles },
-  { label: "Correção de Redação ENEM", icon: PenLine },
-  { label: "Ranking de alunos", icon: Trophy },
-  { label: "Mapa de Calor de desempenho", icon: BarChart2 },
-  { label: "Histórico completo de planos", icon: Clock },
+  { label: "Flashcards ilimitados com IA avançada", icon: BookOpen },
   { label: "Chat tutor ilimitado", icon: Brain },
+  { label: "Correções de redação ilimitadas", icon: PenLine },
+  { label: "Resumões estratégicos ilimitados", icon: Sparkles },
+  { label: "Dashboard completo + mapa de calor", icon: BarChart2 },
+  { label: "Ranking prioritário", icon: Trophy },
+  { label: "Histórico completo de planos", icon: Clock },
 ];
 
 export default function PricingPage() {
@@ -142,31 +139,31 @@ export default function PricingPage() {
         </motion.div>
 
         {/* Pricing cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12">
+
           {/* Free card */}
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm"
+            className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm flex flex-col"
           >
-            <div className="mb-6">
+            <div className="mb-5">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Gratuito</p>
               <div className="flex items-baseline gap-1">
                 <span className="text-4xl font-black text-gray-900">R$0</span>
                 <span className="text-gray-400">/sempre</span>
               </div>
-              <p className="text-sm text-gray-500 mt-1">Para começar a estudar</p>
+              <p className="text-sm text-gray-500 mt-1">Experimente tudo com limites</p>
             </div>
-            <ul className="space-y-3 mb-6">
+            <ul className="space-y-2.5 mb-6 flex-1">
               {FREE_FEATURES.map((f, i) => (
                 <li key={i} className="flex items-center gap-2.5 text-sm">
-                  {f.ok ? (
-                    <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  ) : (
-                    <X className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                  <Check className={`w-4 h-4 flex-shrink-0 ${f.limit ? "text-amber-400" : "text-green-500"}`} />
+                  <span className="text-gray-700">{f.label}</span>
+                  {f.limit && (
+                    <span className="ml-auto text-[10px] font-bold text-amber-500 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">limite</span>
                   )}
-                  <span className={f.ok ? "text-gray-700" : "text-gray-400"}>{f.label}</span>
                 </li>
               ))}
             </ul>
@@ -174,41 +171,40 @@ export default function PricingPage() {
               onClick={() => navigate("/app")}
               className="w-full py-3 rounded-2xl border-2 border-gray-200 text-gray-600 font-semibold text-sm hover:border-gray-300 hover:bg-gray-50 transition-all"
             >
-              Continuar gratuito
+              Começar Grátis
             </button>
           </motion.div>
 
-          {/* Premium card */}
+          {/* Pro / Premium card */}
           <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="relative bg-gradient-to-br from-violet-600 to-purple-700 rounded-3xl p-6 shadow-xl text-white overflow-hidden"
+            className="relative bg-gradient-to-br from-violet-600 to-purple-700 rounded-3xl p-6 shadow-xl text-white overflow-hidden flex flex-col md:-mt-4 md:mb-0"
           >
-            {/* Decorative circles */}
             <div className="absolute -top-8 -right-8 w-32 h-32 bg-white/10 rounded-full" />
             <div className="absolute -bottom-4 -left-4 w-20 h-20 bg-white/10 rounded-full" />
 
-            <div className="relative">
-              <div className="flex items-center justify-between mb-6">
+            <div className="relative flex flex-col flex-1">
+              <div className="flex items-start justify-between mb-5">
                 <div>
                   <div className="flex items-center gap-1.5 mb-1">
                     <Crown className="w-4 h-4 text-yellow-300" />
-                    <p className="text-xs font-semibold text-violet-200 uppercase tracking-widest">Premium</p>
+                    <p className="text-xs font-semibold text-violet-200 uppercase tracking-widest">Pro</p>
                   </div>
-                  <div className="flex items-baseline gap-1">
+                  <div className="flex items-baseline gap-0.5">
                     <span className="text-4xl font-black">R$29</span>
                     <span className="text-2xl font-black">,90</span>
-                    <span className="text-violet-300">/mês</span>
+                    <span className="text-violet-300 ml-1">/mês</span>
                   </div>
                   <p className="text-sm text-violet-200 mt-1">Cancele quando quiser</p>
                 </div>
-                <div className="bg-yellow-400 text-yellow-900 text-xs font-black px-3 py-1 rounded-full">
-                  MAIS POPULAR
+                <div className="bg-yellow-400 text-yellow-900 text-xs font-black px-2.5 py-1 rounded-full whitespace-nowrap">
+                  + POPULAR
                 </div>
               </div>
 
-              <ul className="space-y-2.5 mb-6">
+              <ul className="space-y-2.5 mb-6 flex-1">
                 {PREMIUM_FEATURES.map((f, i) => (
                   <li key={i} className="flex items-center gap-2.5 text-sm">
                     <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
@@ -251,13 +247,63 @@ export default function PricingPage() {
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4" />
-                      Assinar agora — R$29,90/mês
+                      Assinar — R$29,90/mês
                     </>
                   )}
                 </button>
               )}
             </div>
           </motion.div>
+
+          {/* Annual card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white rounded-3xl border-2 border-violet-200 p-6 shadow-sm flex flex-col relative overflow-hidden"
+          >
+            <div className="absolute top-4 right-4 bg-emerald-100 text-emerald-700 text-xs font-black px-2.5 py-1 rounded-full border border-emerald-200">
+              ECONOMIZE 50%
+            </div>
+            <div className="mb-5">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Anual</p>
+              <div className="flex items-baseline gap-1">
+                <span className="text-4xl font-black text-gray-900">R$179</span>
+                <span className="text-xl font-black text-gray-900">,00</span>
+                <span className="text-gray-400">/ano</span>
+              </div>
+              <p className="text-sm text-violet-600 font-semibold mt-1">≈ R$14,92/mês · 6 meses de bônus</p>
+            </div>
+            <ul className="space-y-2.5 mb-6 flex-1">
+              {[
+                "Tudo do plano Pro ilimitado",
+                "Prioridade no suporte",
+                "Acesso antecipado a novas funções",
+                "Badge exclusivo no ranking",
+                "6 meses grátis vs mensal",
+              ].map((feat, i) => (
+                <li key={i} className="flex items-center gap-2.5 text-sm">
+                  <Check className="w-4 h-4 text-violet-500 flex-shrink-0" />
+                  <span className="text-gray-700">{feat}</span>
+                </li>
+              ))}
+            </ul>
+            <button
+              onClick={handleCheckout}
+              disabled={checkoutLoading || subLoading}
+              className="w-full py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-black text-sm hover:from-violet-500 hover:to-purple-500 hover:scale-[1.02] transition-all shadow-md flex items-center justify-center gap-2"
+            >
+              {isPremium ? (
+                <><Crown className="w-4 h-4 text-yellow-300" /> Você já é Premium!</>
+              ) : checkoutLoading ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> Aguarde...</>
+              ) : (
+                <><Zap className="w-4 h-4" /> Assinar Anual — R$179,00</>
+              )}
+            </button>
+            <p className="text-center text-xs text-gray-400 mt-2">Cobrança única anual</p>
+          </motion.div>
+
         </div>
 
         {/* FAQ / guarantee */}

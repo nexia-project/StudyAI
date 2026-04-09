@@ -1,4 +1,5 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,6 +14,7 @@ import PricingPage from "@/pages/Pricing";
 import AdminPage from "@/pages/Admin";
 import NotFound from "@/pages/not-found";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useAuth } from "@workspace/replit-auth-web";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,21 +25,46 @@ const queryClient = new QueryClient({
   },
 });
 
+function PostLoginRedirect() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const [, navigate] = useLocation();
+
+  useEffect(() => {
+    if (isLoading || !isAuthenticated) return;
+    try {
+      const dest = sessionStorage.getItem("auth_return_to");
+      if (dest) {
+        sessionStorage.removeItem("auth_return_to");
+        const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+        const path = dest.startsWith(base) ? dest.slice(base.length) : dest;
+        navigate(path || "/app");
+      }
+    } catch {
+      // ignore (private browsing may block sessionStorage)
+    }
+  }, [isAuthenticated, isLoading, navigate]);
+
+  return null;
+}
+
 function Router() {
   return (
-    <Switch>
-      <Route path="/" component={Landing} />
-      <Route path="/app" component={Home} />
-      <Route path="/app/pricing" component={PricingPage} />
-      <Route path="/pricing" component={PricingPage} />
-      <Route path="/dashboard" component={DashboardPage} />
-      <Route path="/historico" component={HistoryPage} />
-      <Route path="/ranking" component={RankingPage} />
-      <Route path="/redacao" component={RedacaoPage} />
-      <Route path="/mapa" component={MapaPage} />
-      <Route path="/admin" component={AdminPage} />
-      <Route component={NotFound} />
-    </Switch>
+    <>
+      <PostLoginRedirect />
+      <Switch>
+        <Route path="/" component={Landing} />
+        <Route path="/app" component={Home} />
+        <Route path="/app/pricing" component={PricingPage} />
+        <Route path="/pricing" component={PricingPage} />
+        <Route path="/dashboard" component={DashboardPage} />
+        <Route path="/historico" component={HistoryPage} />
+        <Route path="/ranking" component={RankingPage} />
+        <Route path="/redacao" component={RedacaoPage} />
+        <Route path="/mapa" component={MapaPage} />
+        <Route path="/admin" component={AdminPage} />
+        <Route component={NotFound} />
+      </Switch>
+    </>
   );
 }
 

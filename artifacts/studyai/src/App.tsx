@@ -33,8 +33,9 @@ function PostLoginRedirect() {
     if (isLoading || !isAuthenticated) return;
     try {
       const dest = sessionStorage.getItem("auth_return_to");
-      if (dest) {
-        sessionStorage.removeItem("auth_return_to");
+      sessionStorage.removeItem("auth_return_to");
+      // Only navigate if dest is a valid same-origin path (starts with /)
+      if (dest && dest.startsWith("/") && !dest.startsWith("//")) {
         const base = import.meta.env.BASE_URL.replace(/\/$/, "");
         const path = dest.startsWith(base) ? dest.slice(base.length) : dest;
         navigate(path || "/app");

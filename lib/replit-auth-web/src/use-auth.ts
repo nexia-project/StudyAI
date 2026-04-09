@@ -43,8 +43,11 @@ export function useAuth(): AuthState {
 
   const login = useCallback((returnTo?: string) => {
     const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
+    // Only use returnTo if it is a real string path (guards against accidental
+    // SyntheticEvent objects when the function is used directly as onClick handler).
+    const safeReturnTo = typeof returnTo === "string" && returnTo.startsWith("/") ? returnTo : undefined;
     // Default to /app so after login the user lands on the app, not the landing page.
-    const dest = returnTo ?? (base + "/app");
+    const dest = safeReturnTo ?? (base + "/app");
     // Store in sessionStorage as backup in case the return_to cookie is lost
     // during the cross-site OAuth redirect (some browsers/proxies may drop it).
     try {

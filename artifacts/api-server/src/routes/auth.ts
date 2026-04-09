@@ -44,7 +44,7 @@ function setOidcCookie(res: Response, name: string, value: string) {
   res.cookie(name, value, {
     httpOnly: true,
     secure: true,
-    sameSite: "lax",
+    sameSite: "none",
     path: "/",
     maxAge: OIDC_COOKIE_TTL,
   });
@@ -96,7 +96,10 @@ router.get("/login", async (req: Request, res: Response) => {
 
   const returnTo = getSafeReturnTo(req.query.returnTo);
 
-  const state = oidc.randomState();
+  const randomPart = oidc.randomState();
+  const encodedReturnTo = Buffer.from(returnTo).toString("base64url");
+  const state = `${randomPart}|${encodedReturnTo}`;
+
   const nonce = oidc.randomNonce();
   const codeVerifier = oidc.randomPKCECodeVerifier();
   const codeChallenge = await oidc.calculatePKCECodeChallenge(codeVerifier);
@@ -151,7 +154,11 @@ router.get("/callback", async (req: Request, res: Response) => {
     return;
   }
 
-  const returnTo = getSafeReturnTo(req.cookies?.return_to);
+  const callbackState = (req.query.state as string) ?? "";
+  const stateReturnTo = callbackState.includes("|")
+    ? Buffer.from(callbackState.split("|")[1], "base64url").toString("utf8")
+    : null;
+  const returnTo = getSafeReturnTo(stateReturnTo ?? req.cookies?.return_to);
 
   res.clearCookie("code_verifier", { path: "/" });
   res.clearCookie("nonce", { path: "/" });

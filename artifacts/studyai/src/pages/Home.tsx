@@ -41,6 +41,7 @@ import { PremiumGate } from "@/components/PremiumGate";
 import { streamStudyPlan, StudyPlan, StudyPlanTopic } from "@/hooks/use-study-plan";
 import { exportStudyPlanPDF } from "@/hooks/use-pdf-export";
 import { Onboarding, hasOnboarded, getOnboardingData } from "@/components/Onboarding";
+import { triggerProfessor } from "@/lib/professor-events";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useLocation } from "wouter";
@@ -434,6 +435,17 @@ export default function Home() {
           setEarnedXp(0);
           savePlanToDB(data.plano);
           generateResumo(data.plano, data.conteudoTexto || "");
+          // Proactive professor: comment on the new plan
+          setTimeout(() => {
+            const materia = data.plano?.materia || "seus estudos";
+            const dias = data.plano?.dias?.length || 0;
+            const profile = (() => { try { return JSON.parse(localStorage.getItem("studyai_profile") || "{}"); } catch { return {}; } })();
+            const nome = profile?.nome && profile.nome !== "Herói" ? `, ${profile.nome}` : "";
+            triggerProfessor(
+              `Perfeito${nome}! Seu plano de ${materia} ficou ótimo, com ${dias} dias bem distribuídos. Começa pelo primeiro tópico e me chama se tiver qualquer dúvida ao longo do caminho!`,
+              "plan_generated"
+            );
+          }, 2500);
         } else {
           setErrorMsg("Não foi possível gerar o plano. Tente novamente.");
           setStep("form");
@@ -522,8 +534,37 @@ export default function Home() {
       }
 
       if (isCompleted) {
-        setEarnedXp(x => x + 100);
+        setEarnedXp(x => {
+          const newXp = x + 100;
+          // Every 500 XP milestone: proactive professor congratulation
+          if (newXp > 0 && newXp % 500 === 0) {
+            const profile = (() => { try { return JSON.parse(localStorage.getItem("studyai_profile") || "{}"); } catch { return {}; } })();
+            const nome = profile?.nome && profile.nome !== "Herói" ? `, ${profile.nome}` : "";
+            setTimeout(() => triggerProfessor(
+              `Incrível${nome}! Você acabou de atingir ${newXp} pontos de XP! Está indo muito bem. Continue com esse ritmo e você vai fechar o plano antes do tempo!`,
+              "xp_gained"
+            ), 800);
+          }
+          return newXp;
+        });
         triggerConfetti();
+
+        // Check if entire day is completed
+        if (planResult) {
+          const dia = planResult.dias.find(d => d.numero === dayNum);
+          if (dia) {
+            const allDayDone = dia.topicos.every((_, idx) => {
+              const k = `${dayNum}-${idx}`;
+              return k === key || next[k];
+            });
+            if (allDayDone) {
+              setTimeout(() => triggerProfessor(
+                `Parabéns! Você concluiu o Dia ${dayNum} do seu plano. Isso é dedicação de verdade! Quando quiser começar o próximo dia é só me chamar que eu te ajudo.`,
+                "xp_gained"
+              ), 1200);
+            }
+          }
+        }
       } else {
         setEarnedXp(x => Math.max(0, x - 100));
       }
@@ -542,6 +583,13 @@ export default function Home() {
       setTimeout(() => {
         confetti({ particleCount: 200, spread: 100, origin: { y: 0.3 } });
       }, 500);
+      // Proactive professor: celebrate completing the full plan
+      const profile = (() => { try { return JSON.parse(localStorage.getItem("studyai_profile") || "{}"); } catch { return {}; } })();
+      const nome = profile?.nome && profile.nome !== "Herói" ? `, ${profile.nome}` : "";
+      setTimeout(() => triggerProfessor(
+        `UAU${nome}! Você concluiu 100% do plano! Isso é INCRÍVEL! Pouquíssimos alunos chegam até aqui. Que tal fazer um simulado agora pra testar tudo que você aprendeu?`,
+        "xp_gained"
+      ), 1500);
     }
   }, [isAllComplete, progressPercent]);
 

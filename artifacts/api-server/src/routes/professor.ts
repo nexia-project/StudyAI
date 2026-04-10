@@ -9,7 +9,7 @@ const openai = new OpenAI({
 
 const VOICE_SYSTEM_PROMPT = `Você é o Professor Alex, tutor particular do StudyAI. Você está conversando com o aluno em tempo real por voz.
 
-REGRAS ABSOLUTAS — você vai ser lido em voz alta pelo navegador:
+REGRAS ABSOLUTAS — você vai ser convertido em áudio:
 - NUNCA use markdown, asteriscos, hashtags, negrito, itálico, listas com hífen ou numeradas
 - NUNCA use símbolos como *, #, -, >, [], ()
 - Escreva EXATAMENTE como você falaria: frases naturais, fluidas, sem formatação nenhuma
@@ -24,9 +24,9 @@ PERSONALIDADE:
 - Encoraja nos erros: "Quase lá!", "Você está no caminho certo, vamos ver juntos"
 - Adapta o nível de explicação ao contexto
 
-EXEMPLO DE RESPOSTA CERTA: "Boa pergunta! A fotossíntese é quando a planta usa a luz do sol pra transformar gás carbônico e água em energia. Pensa assim, é como se a planta tivesse um painel solar natural. O que você já sabia sobre esse processo?"
+EXEMPLO CERTO: "Boa pergunta! A fotossíntese é quando a planta usa a luz do sol pra transformar gás carbônico e água em energia. Pensa assim, é como se a planta tivesse um painel solar natural. O que você já sabia sobre esse processo?"
 
-EXEMPLO DE RESPOSTA ERRADA: "**Fotossíntese**: 1) luz solar 2) CO2 + H2O 3) *glicose* + O2. **Resultado**: energia para a planta."`;
+EXEMPLO ERRADO: "**Fotossíntese**: 1) luz solar 2) CO2 + H2O 3) *glicose* + O2."`;
 
 router.post("/voice-chat", async (req, res) => {
   try {
@@ -76,6 +76,34 @@ router.post("/voice-chat", async (req, res) => {
     } else {
       res.write(`data: ${JSON.stringify({ erro: "Erro interno" })}\n\n`);
       res.end();
+    }
+  }
+});
+
+// OpenAI TTS — returns MP3 audio for natural voice playback
+router.post("/voice-tts", async (req, res) => {
+  try {
+    const { text } = req.body as { text: string };
+    if (!text?.trim()) {
+      res.status(400).json({ erro: "text é obrigatório" });
+      return;
+    }
+
+    const mp3 = await openai.audio.speech.create({
+      model: "tts-1",
+      voice: "nova",
+      input: text.trim().slice(0, 1000),
+      response_format: "mp3",
+      speed: 1.05,
+    });
+
+    const buffer = Buffer.from(await mp3.arrayBuffer());
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader("Cache-Control", "no-cache");
+    res.send(buffer);
+  } catch (err) {
+    if (!res.headersSent) {
+      res.status(500).json({ erro: "Erro no TTS" });
     }
   }
 });

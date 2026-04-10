@@ -93,7 +93,7 @@ export default function Redacao() {
 
   function handleShare() {
     if (!result) return;
-    const text = `✍️ Minha nota na Redação ENEM (StudyAI): ${result.notaTotal}/1000 — ${getNivelColor(result.notaTotal).label}\n\n📚 Corrija a sua também: studyia.br`;
+    const text = `✍️ Minha nota na Redação ENEM (StudyAI): ${result.notaTotal}/1000 — ${getNivelColor(result.notaTotal).label}\n\n📚 Corrija a sua também: study.ia.br`;
     if (navigator.share) {
       navigator.share({ title: "Minha nota na redação ENEM", text }).catch(() => {});
     } else {

@@ -943,7 +943,7 @@ export default function Landing() {
               <div className="w-3 h-3 rounded-full bg-amber-400" />
               <div className="w-3 h-3 rounded-full bg-[#F26207] flex-shrink-0" />
               <div className="flex-1 mx-4 h-6 rounded-lg bg-gray-100 flex items-center px-3 gap-2">
-                <span className="text-gray-400 text-xs">studyia.br/app</span>
+                <span className="text-gray-400 text-xs">study.ia.br/app</span>
               </div>
             </div>
 

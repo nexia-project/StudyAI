@@ -101,7 +101,7 @@ Utility scripts package. Each script is a `.ts` file in `src/` with a correspond
 
 ## StudyAI Application
 
-Published at `studyia.br`. ENEM/vestibular/concurso AI tutor platform powered by GPT-4o.
+Published at `study.ia.br`. ENEM/vestibular/concurso AI tutor platform powered by GPT-4o.
 
 ### Routes
 - `/` — Landing page (marketing, pricing, testimonials, waitlist)

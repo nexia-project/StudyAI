@@ -705,7 +705,7 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, onClose }: SimuladoP
               <button
                 onClick={() => {
                   const pct = total > 0 ? Math.round((score / total) * 100) : 0;
-                  const text = `🎓 Acertei ${score}/${total} (${pct}%) no simulado de ${plan.materia} com StudyAI!\n${grade?.emoji} ${grade?.label}\n\n📚 Teste você também: studyia.br`;
+                  const text = `🎓 Acertei ${score}/${total} (${pct}%) no simulado de ${plan.materia} com StudyAI!\n${grade?.emoji} ${grade?.label}\n\n📚 Teste você também: study.ia.br`;
                   if (navigator.share) {
                     navigator.share({ title: "Resultado StudyAI", text }).catch(() => {});
                   } else {

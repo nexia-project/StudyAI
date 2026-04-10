@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://meubetime.com.br/sitemap.xml
+User-agent: Googlebot
+Allow: /
+
+Sitemap: https://study.ia.br/sitemap.xml

@@ -28,6 +28,7 @@ import {
   FlameKindling,
   CalendarDays,
   ChevronLeft,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -1963,6 +1964,74 @@ export default function Landing() {
                 >
                   {plan.cta}
                 </Button>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FAQ ── */}
+      <section id="faq" className="py-24 px-6 bg-white border-t border-[#E5D9CF]">
+        <div className="max-w-3xl mx-auto">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-14">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FFF2EA] border border-[#F5C4A0] text-[#D85507] text-sm font-medium mb-4">
+              <Sparkles className="w-3.5 h-3.5" />
+              Perguntas frequentes
+            </div>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4 text-gray-900">
+              Ficou alguma dúvida?
+            </h2>
+            <p className="text-gray-500 text-lg">Tudo que você precisa saber antes de começar.</p>
+          </motion.div>
+
+          <div className="space-y-4">
+            {[
+              {
+                q: "O StudyAI é gratuito?",
+                a: "Sim! O plano gratuito inclui plano de estudos personalizado, simulados, flashcards e acesso ao tutor IA. O plano Pro (R$29,90/mês) libera recursos ilimitados: correção de redação ilimitada, simulado adaptativo avançado e muito mais."
+              },
+              {
+                q: "Como o plano de estudos é gerado com IA?",
+                a: "Você informa sua matéria, nível de conhecimento, tempo disponível e objetivo (ENEM, vestibular ou concurso). O GPT-4o cria um cronograma personalizado dia a dia, com tópicos, exercícios, flashcards e dicas para o seu perfil."
+              },
+              {
+                q: "Funciona para ENEM 2025, vestibular e concursos públicos?",
+                a: "Sim! O StudyAI foi desenvolvido para os três. A IA adapta o conteúdo, a linguagem e a dificuldade de acordo com o seu objetivo específico — seja o ENEM, a FUVEST, a OAB ou qualquer concurso federal."
+              },
+              {
+                q: "O tutor responde qualquer dúvida de qualquer matéria?",
+                a: "Sim! Matemática, Português, História, Biologia, Química, Física, Geografia e mais — 24 horas por dia, 7 dias por semana, com explicações didáticas e exemplos práticos em nível ENEM."
+              },
+              {
+                q: "Como funciona a correção de redação ENEM?",
+                a: "Você envia sua redação (foto ou texto) e a IA avalia nos 5 critérios oficiais do ENEM, com nota em cada competência e sugestões de melhoria detalhadas. Tudo em menos de 30 segundos."
+              },
+              {
+                q: "Preciso instalar algum aplicativo?",
+                a: "Não! O StudyAI funciona direto no navegador do celular ou computador, sem instalar nada. Acesse study.ia.br e comece agora."
+              },
+              {
+                q: "Vale mais do que um cursinho presencial?",
+                a: "Enquanto cursinhos custam R$200 a R$800 por mês, o StudyAI oferece plano personalizado, simulados ilimitados, tutor 24h e correção de redação por R$29,90/mês — ou até de graça no plano básico."
+              },
+            ].map((item, i) => (
+              <motion.div
+                key={i}
+                variants={fadeUp}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true }}
+                custom={i * 0.1}
+              >
+                <details className="group bg-[#FAF5F0] border border-[#E5D5C8] rounded-2xl overflow-hidden">
+                  <summary className="flex items-center justify-between gap-4 px-6 py-5 cursor-pointer list-none font-bold text-gray-900 text-lg hover:bg-[#F5EFE9] transition-colors">
+                    {item.q}
+                    <ChevronDown className="w-5 h-5 text-[#F26207] flex-shrink-0 transition-transform group-open:rotate-180" />
+                  </summary>
+                  <div className="px-6 pb-5 text-gray-600 leading-relaxed">
+                    {item.a}
+                  </div>
+                </details>
               </motion.div>
             ))}
           </div>

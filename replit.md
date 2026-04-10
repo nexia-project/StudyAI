@@ -149,6 +149,7 @@ Published at `study.ia.br`. ENEM/vestibular/concurso AI tutor platform powered b
 - `POST /api/subscription/create-checkout` — Creates Stripe checkout session, returns `{ url }`
 - `POST /api/subscription/create-portal` — Creates Stripe billing portal session
 - `POST /api/subscription/webhook` — Stripe webhook handler (raw body, before express.json)
+- `POST /api/voice-chat` — GPT-4o streaming voice tutor (SSE); voice-optimized: no markdown, 3-4 sentences max, conversational tone
 
 ### DB Schema (lib/db/src/schema/)
 - `usersTable` (auth.ts) — users with `stripe_customer_id`, `stripe_subscription_id`, `stripe_subscription_status`
@@ -157,6 +158,11 @@ Published at `study.ia.br`. ENEM/vestibular/concurso AI tutor platform powered b
 - `flashcardSessionsTable` — Flashcard sessions
 - `waitlistTable` — Waitlist signups
 - `userActivityTable` — Daily activity for streak calculation
+
+### New Features (2025-04)
+- **VoiceProfessor** (`artifacts/studyai/src/components/VoiceProfessor.tsx`) — Floating 👨‍🏫 button (bottom-left), opens voice chat panel; uses `SpeechRecognition` (pt-BR) for mic input and `SpeechSynthesis` for audio output; streams from `/api/voice-chat`; reads `studyai_profile` from localStorage for greeting
+- **Onboarding Wizard** (`artifacts/studyai/src/components/Onboarding.tsx`) — 3-step modal on first visit: Name → Série → Goal; stores to `localStorage.studyai_profile`; pre-fills Home.tsx form on next visits; exports `hasOnboarded()` and `getOnboardingData()` helpers
+- **URL-to-Study-Plan** — Home.tsx form has a URL input field; backend (`/api/analisar`) fetches and strips HTML from the URL, merges content with texto field before GPT-4o call
 
 ### Critical Rules
 - NEVER use `exit` animations in Simulado (causes `insertBefore` crash) — only `initial` + `animate`

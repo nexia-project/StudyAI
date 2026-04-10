@@ -158,13 +158,40 @@ router.post("/analisar", (req, res, next) => {
   });
 }, async (req, res) => {
   try {
-    const { nome, serie, tempo, dificuldades, texto } = req.body as {
+    const { nome, serie, tempo, dificuldades, texto, url } = req.body as {
       nome?: string;
       serie?: string;
       tempo?: string;
       dificuldades?: string;
       texto?: string;
+      url?: string;
     };
+
+    // If URL provided, fetch its content and prepend to texto
+    let textoFinal = texto || "";
+    if (url?.trim()) {
+      try {
+        const urlRes = await fetch(url.trim(), {
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; StudyAI/1.0; +https://study.ia.br)" },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (urlRes.ok) {
+          const html = await urlRes.text();
+          const extracted = html
+            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
+            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
+            .replace(/<[^>]+>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 10000);
+          if (extracted.length > 200) {
+            textoFinal = `Conteúdo extraído do link (${url}):\n${extracted}` + (textoFinal ? `\n\n${textoFinal}` : "");
+          }
+        }
+      } catch {
+        // URL fetch failed — continue with any existing texto
+      }
+    }
 
     // Check subscription status for plan day limit enforcement
     let isPremium = false;
@@ -266,8 +293,8 @@ router.post("/analisar", (req, res, next) => {
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: hasImages ? content : content.filter((p) => p.type === "text") as ContentPart[] },
       ];
-    } else if (texto) {
-      const textoTruncado = texto.slice(0, 12_000);
+    } else if (textoFinal) {
+      const textoTruncado = textoFinal.slice(0, 12_000);
       messages = [
         { role: "system", content: SYSTEM_PROMPT },
         {

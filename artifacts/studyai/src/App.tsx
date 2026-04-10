@@ -16,6 +16,7 @@ import NotFound from "@/pages/not-found";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useAuth } from "@workspace/replit-auth-web";
 import { WhatsAppBanner } from "@/components/WhatsAppBanner";
+import { VoiceProfessor } from "@/components/VoiceProfessor";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -79,6 +80,7 @@ function App() {
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Router />
           </WouterRouter>
+          <VoiceProfessor />
           <Toaster />
         </TooltipProvider>
       </QueryClientProvider>

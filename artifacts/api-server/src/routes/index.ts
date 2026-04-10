@@ -16,6 +16,7 @@ import resumaoRouter from "./resumao";
 import subscriptionRouter from "./subscription";
 import feedRouter from "./feed";
 import adminRouter from "./admin";
+import professorRouter from "./professor";
 
 const router: IRouter = Router();
 
@@ -36,5 +37,6 @@ router.use(resumaoRouter);
 router.use(subscriptionRouter);
 router.use(feedRouter);
 router.use(adminRouter);
+router.use(professorRouter);
 
 export default router;

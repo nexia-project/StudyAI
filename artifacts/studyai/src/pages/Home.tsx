@@ -29,6 +29,7 @@ import {
   XCircle,
   PlayCircle,
   Download,
+  Link,
 } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { TutorChat } from "@/components/TutorChat";
@@ -39,6 +40,7 @@ import { UserMenu } from "@/components/UserMenu";
 import { PremiumGate } from "@/components/PremiumGate";
 import { streamStudyPlan, StudyPlan, StudyPlanTopic } from "@/hooks/use-study-plan";
 import { exportStudyPlanPDF } from "@/hooks/use-pdf-export";
+import { Onboarding, hasOnboarded, getOnboardingData } from "@/components/Onboarding";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useLocation } from "wouter";
@@ -217,12 +219,14 @@ export default function Home() {
   const { isPremium } = useSubscription();
   const [, navigate] = useLocation();
   const [step, setStep] = useState<"form" | "loading" | "result">("form");
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [formData, setFormData] = useState({
     nome: "",
     serie: "",
     tempo: "",
     dificuldades: "",
     texto: "",
+    url: "",
   });
   const [files, setFiles] = useState<File[]>([]);
   const [planResult, setPlanResult] = useState<StudyPlan | null>(null);
@@ -298,6 +302,23 @@ export default function Home() {
       }, 400);
       // clean URL without reload
       window.history.replaceState({}, "", window.location.pathname);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Show onboarding wizard on first visit, then pre-fill form with profile
+  useEffect(() => {
+    if (!hasOnboarded()) {
+      setShowOnboarding(true);
+    } else {
+      const profile = getOnboardingData();
+      if (profile) {
+        setFormData(prev => ({
+          ...prev,
+          ...(profile.nome && profile.nome !== "Herói" ? { nome: profile.nome } : {}),
+          ...(profile.serie ? { serie: profile.serie } : {}),
+        }));
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -379,8 +400,8 @@ export default function Home() {
   };
 
   const handleSubmit = async () => {
-    if (files.length === 0 && !formData.texto.trim()) {
-      setErrorMsg("Por favor, envie uma imagem do material ou digite o conteúdo.");
+    if (files.length === 0 && !formData.texto.trim() && !formData.url.trim()) {
+      setErrorMsg("Por favor, envie uma imagem, cole um link ou escreva o tema do estudo.");
       return;
     }
 
@@ -394,6 +415,7 @@ export default function Home() {
     if (formData.tempo) submitData.append("tempo", formData.tempo);
     if (formData.dificuldades) submitData.append("dificuldades", formData.dificuldades);
     if (formData.texto) submitData.append("texto", formData.texto);
+    if (formData.url) submitData.append("url", formData.url);
     files.forEach((f) => submitData.append("files", f));
 
     await streamStudyPlan(submitData, {
@@ -524,6 +546,19 @@ export default function Home() {
   }, [isAllComplete, progressPercent]);
 
   return (
+    <>
+    {showOnboarding && (
+      <Onboarding
+        onComplete={(data) => {
+          setShowOnboarding(false);
+          setFormData(prev => ({
+            ...prev,
+            ...(data.nome && data.nome !== "Herói" ? { nome: data.nome } : {}),
+            ...(data.serie ? { serie: data.serie } : {}),
+          }));
+        }}
+      />
+    )}
     <div className="min-h-screen pb-20 pt-12 px-4 sm:px-6 lg:px-8 flex flex-col items-center overflow-x-hidden relative">
       {/* Background Animated Elements */}
       <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
@@ -877,6 +912,24 @@ export default function Home() {
                       selectedFiles={files} 
                       onFilesSelect={setFiles} 
                     />
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-foreground flex items-center gap-2 ml-1">
+                        <Link className="w-4 h-4 text-accent" /> Cole um link (opcional)
+                      </label>
+                      <div className="relative">
+                        <Link className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <input
+                          type="url"
+                          name="url"
+                          value={formData.url}
+                          onChange={handleInputChange}
+                          placeholder="https://... — artigo, Wikipedia, apostila online"
+                          className="w-full pl-11 pr-5 py-3.5 rounded-2xl bg-secondary/50 border-2 border-transparent focus:border-accent focus:bg-white focus:shadow-[0_0_0_4px_rgba(217,70,239,0.1)] transition-all outline-none font-medium text-base"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground ml-1">O conteúdo da página será extraído e usado como base do plano</p>
+                    </div>
 
                     <div className="flex items-center gap-4">
                       <div className="h-px bg-border flex-1"></div>
@@ -1618,5 +1671,6 @@ export default function Home() {
         />
       )}
     </div>
+    </>
   );
 }

@@ -5,6 +5,10 @@ import type { ProfessorProactiveDetail } from "@/lib/professor-events";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
+// Minimal silent WAV — used to unlock browser autoplay on first user gesture
+const SILENT_WAV =
+  "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+
 type Message = { role: "user" | "professor"; text: string };
 
 async function fetchTTS(text: string, signal?: AbortSignal): Promise<HTMLAudioElement | null> {
@@ -27,6 +31,14 @@ async function fetchTTS(text: string, signal?: AbortSignal): Promise<HTMLAudioEl
   }
 }
 
+function playAudio(audio: HTMLAudioElement): Promise<void> {
+  return new Promise((resolve) => {
+    audio.onended = () => resolve();
+    audio.onerror = () => resolve();
+    audio.play().catch(() => resolve());
+  });
+}
+
 export function VoiceProfessor() {
   const [open, setOpen] = useState(false);
   const [listening, setListening] = useState(false);
@@ -37,7 +49,6 @@ export function VoiceProfessor() {
   const [muted, setMuted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [greeted, setGreeted] = useState(false);
-  const [speakingText, setSpeakingText] = useState("");
 
   const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -47,6 +58,7 @@ export function VoiceProfessor() {
   const historyRef = useRef<Message[]>([]);
   const mutedRef = useRef(false);
   const openRef = useRef(false);
+  const audioUnlockedRef = useRef(false);
 
   const hasSpeechInput =
     typeof window !== "undefined" &&
@@ -60,6 +72,27 @@ export function VoiceProfessor() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, transcript]);
 
+  // Unlock browser autoplay on first user interaction anywhere on the page.
+  // Once a silent audio plays via user gesture, all subsequent audio.play() calls
+  // on this origin work automatically (browser "media engagement" unlocked).
+  useEffect(() => {
+    const unlock = () => {
+      if (audioUnlockedRef.current) return;
+      const silent = new Audio(SILENT_WAV);
+      silent.volume = 0;
+      silent
+        .play()
+        .then(() => { audioUnlockedRef.current = true; })
+        .catch(() => {});
+    };
+    document.addEventListener("click", unlock, { capture: true, once: true });
+    document.addEventListener("touchstart", unlock, { capture: true, once: true });
+    return () => {
+      document.removeEventListener("click", unlock, true);
+      document.removeEventListener("touchstart", unlock, true);
+    };
+  }, []);
+
   const stopAudio = useCallback(() => {
     if (currentAudioRef.current) {
       currentAudioRef.current.pause();
@@ -68,7 +101,6 @@ export function VoiceProfessor() {
     }
     ttsAbortRef.current?.abort();
     setSpeaking(false);
-    setSpeakingText("");
   }, []);
 
   const speakText = useCallback(
@@ -77,35 +109,22 @@ export function VoiceProfessor() {
       stopAudio();
       ttsAbortRef.current = new AbortController();
       setSpeaking(true);
-      setSpeakingText(text);
+
       const audio = await fetchTTS(text, ttsAbortRef.current.signal);
-      if (!audio) { setSpeaking(false); setSpeakingText(""); return; }
+      if (!audio) {
+        setSpeaking(false);
+        return;
+      }
       currentAudioRef.current = audio;
-      return new Promise<void>((resolve) => {
-        audio.onended = () => {
-          currentAudioRef.current = null;
-          setSpeaking(false);
-          setSpeakingText("");
-          resolve();
-        };
-        audio.onerror = () => {
-          currentAudioRef.current = null;
-          setSpeaking(false);
-          setSpeakingText("");
-          resolve();
-        };
-        audio.play().catch(() => {
-          currentAudioRef.current = null;
-          setSpeaking(false);
-          setSpeakingText("");
-          resolve();
-        });
-      });
+      await playAudio(audio);
+      currentAudioRef.current = null;
+      setSpeaking(false);
     },
     [stopAudio]
   );
 
-  // Proactive: always speak immediately + add to messages (even if panel is closed)
+  // Proactive events: always add to messages AND speak immediately
+  // (works after the audio unlock, even when panel is closed)
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<ProfessorProactiveDetail>).detail;
@@ -117,7 +136,7 @@ export function VoiceProfessor() {
     return () => window.removeEventListener("professor:proactive", handler);
   }, [speakText]);
 
-  // When panel opens: greet if first time
+  // Greet when panel is opened for the first time
   useEffect(() => {
     if (!open) return;
     if (!greeted) {
@@ -128,10 +147,13 @@ export function VoiceProfessor() {
       const greeting = profile?.nome
         ? `Oi, ${profile.nome}! Aqui é a Professora Paula. Sobre o que você quer estudar hoje?`
         : "Oi! Aqui é a Professora Paula, sua tutora do StudyAI. Sobre o que você quer estudar hoje?";
+
+      // Only add greeting if there are no messages yet (proactive messages might already be there)
       if (messages.length === 0) {
         setMessages([{ role: "professor", text: greeting }]);
-        setTimeout(() => speakText(greeting), 300);
       }
+      // Use a small delay to let the panel render + audio context be ready after click
+      setTimeout(() => speakText(greeting), 150);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -249,44 +271,48 @@ export function VoiceProfessor() {
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => (open ? handleClose() : setOpen(true))}
-        className="fixed bottom-6 left-6 z-40 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-white"
+        className="fixed bottom-6 left-6 z-40 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center"
         style={{ background: open ? "#6b7280" : "linear-gradient(135deg, #f97316 0%, #ea580c 100%)" }}
         title="Professora Paula — Tutora por voz"
       >
         {open ? (
-          <X className="w-5 h-5" />
+          <X className="w-5 h-5 text-white" />
         ) : (
           <div className="relative">
             <span className="text-2xl leading-none">👩‍🏫</span>
-            <span className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${speaking ? "bg-yellow-400 animate-pulse" : "bg-green-400 animate-pulse"}`} />
+            <span
+              className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
+                speaking ? "bg-yellow-400 animate-ping" : "bg-green-400 animate-pulse"
+              }`}
+            />
           </div>
         )}
       </motion.button>
 
-      {/* Mini "is speaking" card — shown when panel is closed and she's talking */}
+      {/* Mini speaking card — shown when panel is CLOSED and she's talking */}
       <AnimatePresence>
         {!open && speaking && (
           <motion.div
-            initial={{ opacity: 0, y: 8, scale: 0.95 }}
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.95 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            transition={{ type: "spring", damping: 24, stiffness: 300 }}
             className="fixed bottom-24 left-4 right-4 sm:left-6 sm:right-auto sm:w-80 z-40 bg-white rounded-2xl shadow-xl border border-orange-100 p-3 flex items-center gap-3"
           >
             <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-xl flex-shrink-0">
               👩‍🏫
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-black text-orange-600 leading-none mb-0.5">Professora Paula</p>
-              <div className="flex gap-1 items-center">
-                {[0, 1, 2, 3].map((i) => (
+              <p className="text-xs font-black text-orange-600 leading-none mb-1">Professora Paula</p>
+              <div className="flex gap-0.5 items-end h-4">
+                {[3, 5, 8, 5, 3, 7, 4].map((h, i) => (
                   <span
                     key={i}
                     className="inline-block w-1 bg-orange-400 rounded-full animate-bounce"
-                    style={{ height: `${8 + (i % 2) * 6}px`, animationDelay: `${i * 100}ms` }}
+                    style={{ height: `${h}px`, animationDelay: `${i * 80}ms` }}
                   />
                 ))}
-                <span className="text-xs text-gray-400 ml-1 truncate">falando...</span>
+                <span className="text-xs text-gray-400 ml-1.5 self-center">falando...</span>
               </div>
             </div>
             <button
@@ -316,12 +342,12 @@ export function VoiceProfessor() {
               style={{ background: "linear-gradient(135deg, #f97316, #ea580c)" }}
             >
               <div className="relative">
-                <div className="w-11 h-11 rounded-full bg-white/20 flex items-center justify-center text-2xl">
-                  👩‍🏫
-                </div>
-                <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white transition-colors ${
-                  speaking ? "bg-yellow-400 animate-pulse" : listening ? "bg-red-400 animate-pulse" : "bg-green-400"
-                }`} />
+                <div className="w-11 h-11 rounded-full bg-white/20 flex items-center justify-center text-2xl">👩‍🏫</div>
+                <span
+                  className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white ${
+                    speaking ? "bg-yellow-400 animate-pulse" : listening ? "bg-red-400 animate-pulse" : "bg-green-400"
+                  }`}
+                />
               </div>
               <div className="flex-1">
                 <p className="text-white font-black text-sm leading-none">Professora Paula</p>
@@ -334,7 +360,9 @@ export function VoiceProfessor() {
                 className="text-white/70 hover:text-white transition-colors p-1"
                 title={muted ? "Ativar som" : "Silenciar"}
               >
-                {muted ? <VolumeX className="w-5 h-5" /> : (
+                {muted ? (
+                  <VolumeX className="w-5 h-5" />
+                ) : (
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M12 6v12m-3.536-9.536a5 5 0 000 7.072" />
                   </svg>
@@ -347,15 +375,15 @@ export function VoiceProfessor() {
               {messages.map((msg, i) => (
                 <div key={i} className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
                   {msg.role === "professor" && (
-                    <div className="w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center text-base flex-shrink-0 mt-0.5">
-                      👩‍🏫
-                    </div>
+                    <div className="w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center text-base flex-shrink-0 mt-0.5">👩‍🏫</div>
                   )}
-                  <div className={`rounded-2xl px-4 py-2.5 max-w-[82%] text-sm leading-relaxed ${
-                    msg.role === "user"
-                      ? "bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-tr-sm"
-                      : "bg-gray-50 border border-gray-100 text-gray-800 rounded-tl-sm"
-                  }`}>
+                  <div
+                    className={`rounded-2xl px-4 py-2.5 max-w-[82%] text-sm leading-relaxed ${
+                      msg.role === "user"
+                        ? "bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-tr-sm"
+                        : "bg-gray-50 border border-gray-100 text-gray-800 rounded-tl-sm"
+                    }`}
+                  >
                     {msg.text || (
                       <span className="flex gap-1 py-1">
                         {[0, 150, 300].map((d) => (

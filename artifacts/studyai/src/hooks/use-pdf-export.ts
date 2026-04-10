@@ -26,7 +26,7 @@ function addPageHeader(doc: jsPDF, pageNum: number) {
   if (pageNum > 1) {
     doc.setFontSize(7);
     doc.setTextColor(180, 180, 180);
-    doc.text("StudyAI — meubetime.com.br", 105, 14, { align: "center" });
+    doc.text("StudyAI — studyia.br", 105, 14, { align: "center" });
   }
 }
 
@@ -35,7 +35,7 @@ function addPageFooter(doc: jsPDF, pageNum: number, total: number) {
   doc.setFontSize(7);
   doc.setTextColor(180, 180, 180);
   doc.text(`Página ${pageNum} de ${total}`, 105, pageH - 6, { align: "center" });
-  doc.text("Gerado por StudyAI • meubetime.com.br", 200, pageH - 6, { align: "right" });
+  doc.text("Gerado por StudyAI • studyia.br", 200, pageH - 6, { align: "right" });
 }
 
 export async function exportStudyPlanPDF(plan: StudyPlan): Promise<void> {
@@ -335,7 +335,7 @@ export async function exportStudyPlanPDF(plan: StudyPlan): Promise<void> {
     doc.setFontSize(7);
     doc.setTextColor(180, 180, 180);
     doc.text(`Página ${i} de ${totalPages}`, 105, ph - 6, { align: "center" });
-    doc.text("Gerado por StudyAI • meubetime.com.br", 200, ph - 6, { align: "right" });
+    doc.text("Gerado por StudyAI • studyia.br", 200, ph - 6, { align: "right" });
   }
 
   const safeMateria = (plan.materia || "plano").replace(/[^a-zA-Z0-9]/g, "_").slice(0, 40);

@@ -28,6 +28,7 @@ import {
   Layers,
   XCircle,
   PlayCircle,
+  Download,
 } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { TutorChat } from "@/components/TutorChat";
@@ -37,6 +38,7 @@ import { PomodoroWidget } from "@/components/Pomodoro";
 import { UserMenu } from "@/components/UserMenu";
 import { PremiumGate } from "@/components/PremiumGate";
 import { streamStudyPlan, StudyPlan, StudyPlanTopic } from "@/hooks/use-study-plan";
+import { exportStudyPlanPDF } from "@/hooks/use-pdf-export";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useLocation } from "wouter";
@@ -240,6 +242,7 @@ export default function Home() {
   const [resumaoExpanded, setResumaExpanded] = useState(true);
   const [resumaoData, setResumaData] = useState<any>(null);
   const [resumaoLoading, setResumaLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const exerciciosRef = useRef<HTMLDivElement>(null);
 
   // Save plan to DB for authenticated users
@@ -981,9 +984,23 @@ export default function Home() {
                   <RotateCcw className="w-5 h-5" />
                   Nova Missão
                 </button>
-                <div className="flex items-center gap-2 bg-white px-6 py-3 rounded-2xl shadow-sm font-black text-lg w-full sm:w-auto justify-center border-b-4" style={{ borderColor: planResult.cor }}>
-                  <Zap className="w-6 h-6" style={{ color: planResult.cor }} />
-                  XP Total: {earnedXp} / {planResult.xpTotal || (totalTopics * 100)}
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <button
+                    onClick={async () => {
+                      if (!planResult || pdfLoading) return;
+                      setPdfLoading(true);
+                      try { await exportStudyPlanPDF(planResult); } finally { setPdfLoading(false); }
+                    }}
+                    disabled={pdfLoading}
+                    className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-white border-2 border-primary/30 hover:border-primary shadow-sm hover:shadow-md text-primary font-bold transition-all w-full sm:w-auto justify-center disabled:opacity-60"
+                  >
+                    <Download className={`w-4 h-4 ${pdfLoading ? "animate-bounce" : ""}`} />
+                    {pdfLoading ? "Gerando..." : "Baixar PDF"}
+                  </button>
+                  <div className="flex items-center gap-2 bg-white px-6 py-3 rounded-2xl shadow-sm font-black text-lg w-full sm:w-auto justify-center border-b-4" style={{ borderColor: planResult.cor }}>
+                    <Zap className="w-6 h-6" style={{ color: planResult.cor }} />
+                    XP Total: {earnedXp} / {planResult.xpTotal || (totalTopics * 100)}
+                  </div>
                 </div>
               </div>
 

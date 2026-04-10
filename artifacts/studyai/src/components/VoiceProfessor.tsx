@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, VolumeX, X, BellDot } from "lucide-react";
+import { Mic, MicOff, VolumeX, X, Square } from "lucide-react";
 import type { ProfessorProactiveDetail } from "@/lib/professor-events";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -37,8 +37,7 @@ export function VoiceProfessor() {
   const [muted, setMuted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [greeted, setGreeted] = useState(false);
-  const [pendingCount, setPendingCount] = useState(0);
-  const [pendingMessages, setPendingMessages] = useState<string[]>([]);
+  const [speakingText, setSpeakingText] = useState("");
 
   const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -53,17 +52,9 @@ export function VoiceProfessor() {
     typeof window !== "undefined" &&
     ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
 
-  useEffect(() => {
-    historyRef.current = messages;
-  }, [messages]);
-
-  useEffect(() => {
-    mutedRef.current = muted;
-  }, [muted]);
-
-  useEffect(() => {
-    openRef.current = open;
-  }, [open]);
+  useEffect(() => { historyRef.current = messages; }, [messages]);
+  useEffect(() => { mutedRef.current = muted; }, [muted]);
+  useEffect(() => { openRef.current = open; }, [open]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -77,6 +68,7 @@ export function VoiceProfessor() {
     }
     ttsAbortRef.current?.abort();
     setSpeaking(false);
+    setSpeakingText("");
   }, []);
 
   const speakText = useCallback(
@@ -85,26 +77,27 @@ export function VoiceProfessor() {
       stopAudio();
       ttsAbortRef.current = new AbortController();
       setSpeaking(true);
+      setSpeakingText(text);
       const audio = await fetchTTS(text, ttsAbortRef.current.signal);
-      if (!audio) {
-        setSpeaking(false);
-        return;
-      }
+      if (!audio) { setSpeaking(false); setSpeakingText(""); return; }
       currentAudioRef.current = audio;
       return new Promise<void>((resolve) => {
         audio.onended = () => {
           currentAudioRef.current = null;
           setSpeaking(false);
+          setSpeakingText("");
           resolve();
         };
         audio.onerror = () => {
           currentAudioRef.current = null;
           setSpeaking(false);
+          setSpeakingText("");
           resolve();
         };
         audio.play().catch(() => {
           currentAudioRef.current = null;
           setSpeaking(false);
+          setSpeakingText("");
           resolve();
         });
       });
@@ -112,73 +105,33 @@ export function VoiceProfessor() {
     [stopAudio]
   );
 
-  const addProfessorMessage = useCallback(
-    async (text: string, speak = true) => {
-      setMessages((prev) => [...prev, { role: "professor", text }]);
-      if (speak) await speakText(text);
-    },
-    [speakText]
-  );
-
-  // Listen for proactive professor events from anywhere in the app
+  // Proactive: always speak immediately + add to messages (even if panel is closed)
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<ProfessorProactiveDetail>).detail;
       if (!detail?.text) return;
-
-      if (openRef.current) {
-        addProfessorMessage(detail.text, true);
-      } else {
-        setPendingMessages((prev) => [...prev, detail.text]);
-        setPendingCount((n) => n + 1);
-      }
+      setMessages((prev) => [...prev, { role: "professor", text: detail.text }]);
+      speakText(detail.text);
     };
     window.addEventListener("professor:proactive", handler);
     return () => window.removeEventListener("professor:proactive", handler);
-  }, [addProfessorMessage]);
+  }, [speakText]);
 
-  // When panel opens: greet + flush any pending proactive messages
+  // When panel opens: greet if first time
   useEffect(() => {
     if (!open) return;
-
-    const profile = (() => {
-      try {
-        const raw = localStorage.getItem("studyai_profile");
-        return raw ? JSON.parse(raw) : null;
-      } catch {
-        return null;
-      }
-    })();
-
     if (!greeted) {
       setGreeted(true);
+      const profile = (() => {
+        try { return JSON.parse(localStorage.getItem("studyai_profile") || "{}"); } catch { return {}; }
+      })();
       const greeting = profile?.nome
-        ? `Oi, ${profile.nome}! Aqui é o Professor Alex. Sobre o que você quer estudar hoje?`
-        : "Oi! Aqui é o Professor Alex, seu tutor do StudyAI. Sobre o que você quer estudar hoje?";
-      setMessages([{ role: "professor", text: greeting }]);
-      setPendingCount(0);
-
-      // After greeting, flush pending proactive messages
-      const pending = pendingMessages.slice();
-      setPendingMessages([]);
-
-      setTimeout(async () => {
-        await speakText(greeting);
-        for (const msg of pending) {
-          if (!mutedRef.current) await addProfessorMessage(msg, true);
-        }
-      }, 300);
-    } else if (pendingMessages.length > 0) {
-      const pending = pendingMessages.slice();
-      setPendingMessages([]);
-      setPendingCount(0);
-      setTimeout(async () => {
-        for (const msg of pending) {
-          await addProfessorMessage(msg, true);
-        }
-      }, 300);
-    } else {
-      setPendingCount(0);
+        ? `Oi, ${profile.nome}! Aqui é a Professora Paula. Sobre o que você quer estudar hoje?`
+        : "Oi! Aqui é a Professora Paula, sua tutora do StudyAI. Sobre o que você quer estudar hoje?";
+      if (messages.length === 0) {
+        setMessages([{ role: "professor", text: greeting }]);
+        setTimeout(() => speakText(greeting), 300);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -203,9 +156,7 @@ export function VoiceProfessor() {
         const res = await fetch(`${BASE_URL}/api/voice-chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
-          body: JSON.stringify({
-            messages: [...history, { role: "user", content: userText }],
-          }),
+          body: JSON.stringify({ messages: [...history, { role: "user", content: userText }] }),
           signal: chatAbortRef.current.signal,
           credentials: "include",
         });
@@ -242,19 +193,14 @@ export function VoiceProfessor() {
         if (fullText) await speakText(fullText);
       } catch (err: any) {
         setLoading(false);
-        if (err?.name !== "AbortError") {
-          setError("Não consegui responder. Tente novamente.");
-        }
+        if (err?.name !== "AbortError") setError("Não consegui responder. Tente novamente.");
       }
     },
     [speakText, stopAudio]
   );
 
   const startListening = useCallback(() => {
-    if (!hasSpeechInput) {
-      setError("Seu navegador não suporta voz. Use Chrome ou Edge.");
-      return;
-    }
+    if (!hasSpeechInput) { setError("Use Chrome ou Edge para ativar o microfone."); return; }
     stopAudio();
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const rec = new SR();
@@ -272,10 +218,7 @@ export function VoiceProfessor() {
         else interimText += t;
       }
       setTranscript(finalText || interimText);
-      if (finalText) {
-        sendMessage(finalText);
-        setTranscript("");
-      }
+      if (finalText) { sendMessage(finalText); setTranscript(""); }
     };
     rec.onerror = (e: any) => {
       setListening(false);
@@ -307,30 +250,56 @@ export function VoiceProfessor() {
         whileTap={{ scale: 0.95 }}
         onClick={() => (open ? handleClose() : setOpen(true))}
         className="fixed bottom-6 left-6 z-40 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-white"
-        style={{
-          background: open
-            ? "#6b7280"
-            : "linear-gradient(135deg, #f97316 0%, #ea580c 100%)",
-        }}
-        title="Professor Alex — Tutor por voz"
+        style={{ background: open ? "#6b7280" : "linear-gradient(135deg, #f97316 0%, #ea580c 100%)" }}
+        title="Professora Paula — Tutora por voz"
       >
         {open ? (
           <X className="w-5 h-5" />
         ) : (
           <div className="relative">
-            <span className="text-2xl leading-none">👨‍🏫</span>
-            {pendingCount > 0 ? (
-              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full border-2 border-white flex items-center justify-center text-white text-[9px] font-black animate-bounce">
-                {pendingCount}
-              </span>
-            ) : (
-              <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white animate-pulse" />
-            )}
+            <span className="text-2xl leading-none">👩‍🏫</span>
+            <span className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${speaking ? "bg-yellow-400 animate-pulse" : "bg-green-400 animate-pulse"}`} />
           </div>
         )}
       </motion.button>
 
-      {/* Panel */}
+      {/* Mini "is speaking" card — shown when panel is closed and she's talking */}
+      <AnimatePresence>
+        {!open && speaking && (
+          <motion.div
+            initial={{ opacity: 0, y: 8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.95 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="fixed bottom-24 left-4 right-4 sm:left-6 sm:right-auto sm:w-80 z-40 bg-white rounded-2xl shadow-xl border border-orange-100 p-3 flex items-center gap-3"
+          >
+            <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-xl flex-shrink-0">
+              👩‍🏫
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-black text-orange-600 leading-none mb-0.5">Professora Paula</p>
+              <div className="flex gap-1 items-center">
+                {[0, 1, 2, 3].map((i) => (
+                  <span
+                    key={i}
+                    className="inline-block w-1 bg-orange-400 rounded-full animate-bounce"
+                    style={{ height: `${8 + (i % 2) * 6}px`, animationDelay: `${i * 100}ms` }}
+                  />
+                ))}
+                <span className="text-xs text-gray-400 ml-1 truncate">falando...</span>
+              </div>
+            </div>
+            <button
+              onClick={stopAudio}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-xs font-bold transition-colors flex-shrink-0"
+            >
+              <Square className="w-3 h-3 fill-current" /> Parar
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Full chat panel */}
       <AnimatePresence>
         {open && (
           <motion.div
@@ -348,28 +317,16 @@ export function VoiceProfessor() {
             >
               <div className="relative">
                 <div className="w-11 h-11 rounded-full bg-white/20 flex items-center justify-center text-2xl">
-                  👨‍🏫
+                  👩‍🏫
                 </div>
-                <span
-                  className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white transition-colors ${
-                    speaking
-                      ? "bg-yellow-400 animate-pulse"
-                      : listening
-                      ? "bg-red-400 animate-pulse"
-                      : "bg-green-400"
-                  }`}
-                />
+                <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white transition-colors ${
+                  speaking ? "bg-yellow-400 animate-pulse" : listening ? "bg-red-400 animate-pulse" : "bg-green-400"
+                }`} />
               </div>
               <div className="flex-1">
-                <p className="text-white font-black text-sm leading-none">Professor Alex</p>
+                <p className="text-white font-black text-sm leading-none">Professora Paula</p>
                 <p className="text-orange-100 text-xs mt-0.5">
-                  {speaking
-                    ? "Falando..."
-                    : listening
-                    ? "Ouvindo você..."
-                    : loading
-                    ? "Pensando..."
-                    : "Tutor de Voz IA • Online"}
+                  {speaking ? "Falando..." : listening ? "Ouvindo você..." : loading ? "Pensando..." : "Tutora de Voz IA • Online"}
                 </p>
               </div>
               <button
@@ -388,30 +345,21 @@ export function VoiceProfessor() {
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
               {messages.map((msg, i) => (
-                <div
-                  key={i}
-                  className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
-                >
+                <div key={i} className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
                   {msg.role === "professor" && (
                     <div className="w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center text-base flex-shrink-0 mt-0.5">
-                      👨‍🏫
+                      👩‍🏫
                     </div>
                   )}
-                  <div
-                    className={`rounded-2xl px-4 py-2.5 max-w-[82%] text-sm leading-relaxed ${
-                      msg.role === "user"
-                        ? "bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-tr-sm"
-                        : "bg-gray-50 border border-gray-100 text-gray-800 rounded-tl-sm"
-                    }`}
-                  >
+                  <div className={`rounded-2xl px-4 py-2.5 max-w-[82%] text-sm leading-relaxed ${
+                    msg.role === "user"
+                      ? "bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-tr-sm"
+                      : "bg-gray-50 border border-gray-100 text-gray-800 rounded-tl-sm"
+                  }`}>
                     {msg.text || (
                       <span className="flex gap-1 py-1">
                         {[0, 150, 300].map((d) => (
-                          <span
-                            key={d}
-                            className="w-2 h-2 bg-orange-400 rounded-full animate-bounce"
-                            style={{ animationDelay: `${d}ms` }}
-                          />
+                          <span key={d} className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: `${d}ms` }} />
                         ))}
                       </span>
                     )}
@@ -419,7 +367,6 @@ export function VoiceProfessor() {
                 </div>
               ))}
 
-              {/* Interim transcript */}
               {transcript && (
                 <div className="flex flex-row-reverse">
                   <div className="rounded-2xl px-4 py-2.5 max-w-[82%] text-sm bg-orange-50 text-orange-600 italic rounded-tr-sm border border-orange-100">
@@ -427,13 +374,9 @@ export function VoiceProfessor() {
                   </div>
                 </div>
               )}
-
               {error && (
                 <div className="text-center text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">
-                  {error}{" "}
-                  <button onClick={() => setError(null)} className="underline">
-                    OK
-                  </button>
+                  {error} <button onClick={() => setError(null)} className="underline">OK</button>
                 </div>
               )}
               <div ref={messagesEndRef} />
@@ -441,45 +384,33 @@ export function VoiceProfessor() {
 
             {/* Controls */}
             <div className="p-3 border-t border-gray-100 bg-gray-50 flex-shrink-0">
-              <div className="flex items-center gap-2">
+              {speaking ? (
+                <button
+                  onClick={stopAudio}
+                  className="w-full py-3 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors shadow-md shadow-red-100"
+                >
+                  <Square className="w-4 h-4 fill-current" /> Interromper a Professora
+                </button>
+              ) : (
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={listening ? stopListening : startListening}
                   disabled={loading}
-                  className={`flex-1 py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 shadow-md ${
+                  className={`w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 shadow-md ${
                     listening
                       ? "bg-red-500 text-white shadow-red-200"
                       : "bg-orange-500 text-white shadow-orange-200 hover:bg-orange-600"
                   }`}
                 >
                   {listening ? (
-                    <>
-                      <MicOff className="w-4 h-4" /> Parar de falar
-                    </>
-                  ) : speaking ? (
-                    <>
-                      <Mic className="w-4 h-4" /> Interromper e falar
-                    </>
+                    <><MicOff className="w-4 h-4" /> Parar de falar</>
                   ) : (
-                    <>
-                      <Mic className="w-4 h-4" /> Falar com o Professor
-                    </>
+                    <><Mic className="w-4 h-4" /> Falar com a Professora</>
                   )}
                 </motion.button>
-                {speaking && (
-                  <button
-                    onClick={stopAudio}
-                    title="Silenciar resposta atual"
-                    className="px-3 py-3 rounded-2xl bg-gray-200 hover:bg-gray-300 transition-colors"
-                  >
-                    <VolumeX className="w-4 h-4 text-gray-600" />
-                  </button>
-                )}
-              </div>
+              )}
               {!hasSpeechInput && (
-                <p className="text-xs text-center text-gray-400 mt-2">
-                  Use Chrome ou Edge para ativar o microfone
-                </p>
+                <p className="text-xs text-center text-gray-400 mt-2">Use Chrome ou Edge para ativar o microfone</p>
               )}
             </div>
           </motion.div>

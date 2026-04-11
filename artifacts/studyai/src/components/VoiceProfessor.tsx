@@ -2,10 +2,10 @@
  * VoiceProfessor — Professora Paula
  *
  * Audio strategy: Web Audio API (AudioContext).
- * Once created and resumed inside a user gesture, AudioContext stays
- * "unlocked" for the entire page session — no re-gesture needed.
- * This avoids HTMLAudioElement autoplay-policy failures that occur
- * when audio.play() is called after a long async fetch.
+ * CRITICAL FIX: AudioContext.resume() MUST be called synchronously
+ * (fire-and-forget, no await) inside the user-gesture handler.
+ * Awaiting it inside an async handler can cause browsers to consider
+ * the gesture "stale" and block subsequent audio playback.
  */
 
 import { useState, useRef, useCallback, useEffect } from "react";
@@ -19,11 +19,10 @@ import {
 } from "@/lib/professor-events";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
-const PROACTIVE_INTERVAL_MS = 5 * 60 * 1000; // 5 min
-const PROACTIVE_MIN_GAP_MS = 10 * 60 * 1000; // 10 min between proactive messages
+const PROACTIVE_INTERVAL_MS = 5 * 60 * 1000;
+const PROACTIVE_MIN_GAP_MS = 10 * 60 * 1000;
 
 // ─── Shared AudioContext ─────────────────────────────────────────────────────
-// Module-level so it survives re-renders and stays unlocked once resumed.
 let _ctx: AudioContext | null = null;
 let _currentSource: AudioBufferSourceNode | null = null;
 let _isAudioUnlocked = false;
@@ -33,19 +32,29 @@ function getCtx(): AudioContext {
   return _ctx;
 }
 
-/** Call inside a user-gesture handler. Resumes + plays a silent 1-frame buffer
- *  to permanently unlock autoplay for this page session. */
-async function unlockAudio(): Promise<void> {
+/**
+ * Call SYNCHRONOUSLY inside a user-gesture handler (no await).
+ * Fires ctx.resume() without awaiting so the browser registers it
+ * within the user activation context, then plays a silent 1-frame buffer
+ * to "prime" the AudioContext.
+ */
+function unlockAudioSync(): void {
   if (_isAudioUnlocked) return;
   try {
     const ctx = getCtx();
-    if (ctx.state === "suspended") await ctx.resume();
-    const buf = ctx.createBuffer(1, 1, 44100);
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    src.connect(ctx.destination);
-    src.start(0);
+    // fire-and-forget — do NOT await here; must be synchronous in gesture handler
+    void ctx.resume();
     _isAudioUnlocked = true;
+    // Play silent 1-frame buffer to warm up pipeline
+    setTimeout(() => {
+      try {
+        const buf = ctx.createBuffer(1, 1, 44100);
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.connect(ctx.destination);
+        src.start(0);
+      } catch { /* ignore */ }
+    }, 50);
   } catch { /* ignore */ }
 }
 
@@ -54,26 +63,48 @@ function stopCurrentAudio() {
   _currentSource = null;
 }
 
-/** Fetch MP3 from TTS endpoint, decode via AudioContext, and play it. */
+/** Fetch MP3 from TTS endpoint, decode via AudioContext, and play. */
 async function playTTS(text: string, signal?: AbortSignal): Promise<void> {
   if (!text.trim()) return;
   stopCurrentAudio();
-  const ctx = getCtx();
-  if (ctx.state === "suspended") await ctx.resume();
 
-  const res = await fetch(`${BASE_URL}/api/voice-tts`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
-    credentials: "include",
-    signal,
-  });
-  if (!res.ok || signal?.aborted) return;
+  const ctx = getCtx();
+  // Ensure context is running (should be already unlocked by gesture handler)
+  if (ctx.state !== "running") {
+    try { await ctx.resume(); } catch { return; }
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}/api/voice-tts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+      credentials: "include",
+      signal,
+    });
+  } catch (e: any) {
+    if (e?.name !== "AbortError") console.warn("[Paula] TTS fetch error:", e);
+    return;
+  }
+
+  if (signal?.aborted) return;
+
+  if (!res.ok) {
+    console.warn("[Paula] TTS endpoint error:", res.status, await res.text().catch(() => ""));
+    return;
+  }
 
   const ab = await res.arrayBuffer();
   if (signal?.aborted) return;
 
-  const audioBuffer = await ctx.decodeAudioData(ab);
+  let audioBuffer: AudioBuffer;
+  try {
+    audioBuffer = await ctx.decodeAudioData(ab);
+  } catch (e) {
+    console.warn("[Paula] decodeAudioData failed:", e);
+    return;
+  }
   if (signal?.aborted) return;
 
   await new Promise<void>((resolve) => {
@@ -210,29 +241,33 @@ export function VoiceProfessor() {
     return () => window.removeEventListener("professor:proactive", handler);
   }, [speak]);
 
-  // ── Proactive timer (every 5 min, after first interaction) ────────────────
+  // ── Proactive timer ───────────────────────────────────────────────────────
   useEffect(() => {
     proactiveTimerRef.current = setInterval(runProactive, PROACTIVE_INTERVAL_MS);
     return () => { if (proactiveTimerRef.current) clearInterval(proactiveTimerRef.current); };
   }, [runProactive]);
 
-  // ── FIRST USER CLICK anywhere → unlock audio + greet immediately ──────────
-  // This is the key fix: greet on first user gesture, not on panel open.
-  // AudioContext is unlocked synchronously inside the click handler.
+  // ── FIRST USER CLICK — unlock audio + greet ───────────────────────────────
+  // CRITICAL: handler must be synchronous (not async) so that unlockAudioSync()
+  // is called within the browser's user-activation window.
   useEffect(() => {
-    const handleFirstInteraction = async () => {
+    const handleFirstInteraction = () => {
       if (greetedRef.current) return;
       greetedRef.current = true;
-      await unlockAudio(); // runs synchronously inside user gesture context
+
+      // ← Synchronous unlock: ctx.resume() fires before any await/setTimeout
+      unlockAudioSync();
+
       const ctx = collectStudentContext();
       const greeting = ctx.nome
         ? `Oi, ${ctx.nome}! Aqui é a Paula, sua tutora. Pode me chamar quando quiser estudar qualquer coisa!`
         : "Oi! Aqui é a Paula, sua tutora de estudos. Pode me chamar a qualquer hora!";
       historyRef.current.push({ role: "assistant", content: greeting });
       lastProactiveRef.current = Date.now();
-      // Small delay so AudioContext fully warms up before TTS fetch
-      setTimeout(() => speak(greeting), 300);
+      // Delay TTS so AudioContext has time to fully warm up after resume()
+      setTimeout(() => speak(greeting), 600);
     };
+
     document.addEventListener("click", handleFirstInteraction, { once: true, capture: true });
     document.addEventListener("touchstart", handleFirstInteraction, { once: true, capture: true });
     return () => {

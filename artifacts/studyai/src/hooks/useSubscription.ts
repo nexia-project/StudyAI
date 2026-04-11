@@ -12,7 +12,9 @@ export function useSubscription() {
   const query = useQuery<SubscriptionStatus>({
     queryKey: ["subscription-status", user?.id],
     queryFn: async () => {
-      const res = await fetch("/api/subscription/status");
+      const res = await fetch("/api/subscription/status", {
+        credentials: "include",
+      });
       if (!res.ok) return { status: "free" as const, isPremium: false };
       return res.json();
     },

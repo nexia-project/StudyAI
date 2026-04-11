@@ -27,35 +27,35 @@ let _ctx: AudioContext | null = null;
 let _currentSource: AudioBufferSourceNode | null = null;
 let _isAudioUnlocked = false;
 
-function getCtx(): AudioContext {
-  if (!_ctx) _ctx = new AudioContext();
-  return _ctx;
-}
-
 /**
- * Call SYNCHRONOUSLY inside a user-gesture handler (no await).
- * Fires ctx.resume() without awaiting so the browser registers it
- * within the user activation context, then plays a silent 1-frame buffer
- * to "prime" the AudioContext.
+ * MUST be called synchronously inside a user-gesture handler.
+ * Creating AudioContext inside a gesture handler gives it "running" state
+ * automatically (Chrome 70+, Firefox 68+, Safari 14+) — no resume() needed.
+ * This is more reliable than creating it outside and calling resume() later.
  */
 function unlockAudioSync(): void {
   if (_isAudioUnlocked) return;
   try {
-    const ctx = getCtx();
-    // fire-and-forget — do NOT await here; must be synchronous in gesture handler
-    void ctx.resume();
+    // Create INSIDE the user gesture → auto "running" state in all modern browsers
+    _ctx = new AudioContext();
     _isAudioUnlocked = true;
-    // Play silent 1-frame buffer to warm up pipeline
-    setTimeout(() => {
-      try {
-        const buf = ctx.createBuffer(1, 1, 44100);
-        const src = ctx.createBufferSource();
-        src.buffer = buf;
-        src.connect(ctx.destination);
-        src.start(0);
-      } catch { /* ignore */ }
-    }, 50);
-  } catch { /* ignore */ }
+    // Warm up: play a silent 1-frame buffer immediately
+    const buf = _ctx.createBuffer(1, 1, _ctx.sampleRate);
+    const src = _ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(_ctx.destination);
+    src.start(0);
+  } catch (e) {
+    console.warn("[Paula] AudioContext unlock failed:", e);
+  }
+}
+
+function getCtx(): AudioContext {
+  if (!_ctx) {
+    // Fallback: create context (may be suspended if outside gesture)
+    _ctx = new AudioContext();
+  }
+  return _ctx;
 }
 
 function stopCurrentAudio() {
@@ -69,9 +69,17 @@ async function playTTS(text: string, signal?: AbortSignal): Promise<void> {
   stopCurrentAudio();
 
   const ctx = getCtx();
-  // Ensure context is running (should be already unlocked by gesture handler)
+  // Context should already be "running" from unlockAudioSync().
+  // If somehow still suspended, attempt resume (best-effort).
+  if (ctx.state === "suspended") {
+    console.warn("[Paula] AudioContext suspended at playback time — attempting resume");
+    try { await ctx.resume(); } catch (e) {
+      console.warn("[Paula] resume() failed:", e);
+    }
+  }
   if (ctx.state !== "running") {
-    try { await ctx.resume(); } catch { return; }
+    console.warn("[Paula] AudioContext state:", ctx.state, "— skipping playback");
+    return;
   }
 
   let res: Response;

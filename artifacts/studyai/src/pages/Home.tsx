@@ -617,7 +617,7 @@ export default function Home() {
       {/* Floating top-right user menu */}
       <div className="fixed top-3 right-3 z-40 flex items-center gap-1.5 sm:gap-2">
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/app")}
           className="flex items-center gap-1.5 px-2 sm:px-3 py-2 rounded-2xl bg-white border-2 border-gray-200 hover:border-gray-400 text-gray-600 font-bold text-sm shadow-sm hover:shadow-md transition-all"
           title="Início"
         >

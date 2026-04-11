@@ -52,7 +52,7 @@ function getNivelColor(nota: number) {
 
 export default function Redacao() {
   const [, navigate] = useLocation();
-  const { isPremium } = useSubscription();
+  const { isPremium, isLoading: subLoading } = useSubscription();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [tema, setTema] = useState("");
   const [texto, setTexto] = useState("");
@@ -105,6 +105,14 @@ export default function Redacao() {
   }
 
   const nivelInfo = result ? getNivelColor(result.notaTotal) : null;
+
+  if (subLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!isPremium) {
     return (

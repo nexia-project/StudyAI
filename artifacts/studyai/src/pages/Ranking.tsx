@@ -138,7 +138,7 @@ function PodiumCard({ entry, position }: { entry: RankEntry; position: 1 | 2 | 3
 export default function RankingPage() {
   const [, navigate] = useLocation();
   const { user, isAuthenticated } = useAuth();
-  const { isPremium } = useSubscription();
+  const { isPremium, isLoading: subLoading } = useSubscription();
   const [data, setData] = useState<RankingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -171,6 +171,14 @@ export default function RankingPage() {
     if (rank === 3) return <span className="text-amber-600 font-black text-lg">🥉</span>;
     return <span className="text-slate-500 font-black text-sm w-6 text-center">#{rank}</span>;
   };
+
+  if (subLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!isPremium) {
     return (

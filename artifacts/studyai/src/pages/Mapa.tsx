@@ -141,7 +141,7 @@ function SubjectTile({ s, index }: { s: SubjectData; index: number }) {
 export default function Mapa() {
   const [, navigate] = useLocation();
   const { isAuthenticated, isLoading, login } = useAuth();
-  const { isPremium } = useSubscription();
+  const { isPremium, isLoading: subLoading } = useSubscription();
   const [data, setData] = useState<HeatmapData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -156,7 +156,7 @@ export default function Mapa() {
       .catch(() => { setError("Não foi possível carregar o mapa."); setLoading(false); });
   }, [isAuthenticated, isLoading]);
 
-  if (isLoading) {
+  if (isLoading || subLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />

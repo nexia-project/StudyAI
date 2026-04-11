@@ -362,6 +362,52 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Write student context to localStorage so VoiceProfessor (Paula) can read it
+  useEffect(() => {
+    try {
+      const profile = (() => { try { return JSON.parse(localStorage.getItem("studyai_profile") || "{}"); } catch { return {}; } })();
+      const completedCount = Object.values(completedTopics).filter(Boolean).length;
+      const diasTotal = planResult?.plano?.dias?.length ?? 0;
+      const ultimosTopicos: string[] = [];
+      if (planResult?.plano?.dias) {
+        for (const dia of planResult.plano.dias) {
+          for (const topico of dia.topicos || []) {
+            if (ultimosTopicos.length < 5) ultimosTopicos.push(topico.titulo || topico.nome || "");
+          }
+        }
+      }
+      const ctx = {
+        nome: profile?.nome,
+        serie: profile?.serie || formData.serie,
+        objetivo: profile?.objetivo,
+        materia: planResult?.plano?.materia || formData.texto?.slice(0, 60),
+        diasCompletos: completedCount,
+        diasTotal: diasTotal || undefined,
+        xp: earnedXp,
+        ultimosTopicos: ultimosTopicos.filter(Boolean),
+      };
+      localStorage.setItem("studyai_current_context", JSON.stringify(ctx));
+    } catch { /* ignore */ }
+  }, [planResult, completedTopics, earnedXp, formData.serie, formData.texto]);
+
+  // Listen for Paula's actions: criar_plano means pre-fill and auto-submit the form
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { type, param } = (e as CustomEvent<{ type: string; param: string }>).detail;
+      if (type === "criar_plano" && param) {
+        setStep("form");
+        setFormData(prev => ({ ...prev, texto: param }));
+        // Auto-submit after a short delay so the user can see what's happening
+        setTimeout(() => {
+          document.getElementById("paula-auto-submit-btn")?.click();
+        }, 1200);
+      }
+    };
+    window.addEventListener("professor:action", handler);
+    return () => window.removeEventListener("professor:action", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Drive progress bar from real streaming chars (estimated ~4200 chars for full plan)
   useEffect(() => {
     if (step !== "loading") return;
@@ -1003,6 +1049,7 @@ export default function Home() {
                 </section>
 
                 <button
+                  id="paula-auto-submit-btn"
                   onClick={handleSubmit}
                   className="w-full relative overflow-hidden group px-8 py-5 rounded-2xl font-black text-white bg-gradient-to-r from-primary via-accent to-pink-500 shadow-[0_10px_40px_-10px_rgba(139,92,246,0.5)] hover:shadow-[0_20px_50px_-10px_rgba(139,92,246,0.6)] hover:-translate-y-1 active:translate-y-0 transition-all duration-300"
                 >

@@ -23,12 +23,10 @@ const FREE_FEATURES = [
   { label: "1 plano de estudos por mês", limit: true },
   { label: "2 simulados por mês", limit: true },
   { label: "5 flashcards por semana", limit: true },
-  { label: "Chat tutor (5 msgs/dia)", limit: true },
+  { label: "5 mensagens/dia com a Professora Paula", limit: true },
   { label: "1 correção de redação por mês", limit: true },
-  { label: "1 resumão estratégico por mês", limit: true },
   { label: "Dashboard de desempenho", limit: false },
   { label: "Timer Pomodoro", limit: false },
-  { label: "Acesso ao ranking", limit: false },
 ];
 
 const PREMIUM_FEATURES = [

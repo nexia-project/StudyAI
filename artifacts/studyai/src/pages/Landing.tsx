@@ -22,8 +22,8 @@ const features = [
   { icon: Brain, label: "Plano de Estudos IA", desc: "PDF, foto do caderno ou tema digitado. Nossa IA cria um cronograma personalizado.", color: "text-violet-600", bg: "bg-violet-50" },
   { icon: Zap, label: "Simulado Inteligente", desc: "10 questões do seu material, com gabarito comentado em tempo real.", color: "text-blue-500", bg: "bg-blue-50" },
   { icon: BookOpen, label: "Flashcards Anki", desc: "Repetição espaçada inteligente. A IA cria os cards e ajusta o ritmo.", color: "text-emerald-600", bg: "bg-emerald-50" },
-  { icon: Clock, label: "Pomodoro Gamificado", desc: "Timer de foco integrado ao plano. Cada sessão gera XP e sobe no ranking.", color: "text-pink-500", bg: "bg-pink-50" },
-  { icon: Trophy, label: "Ranking Global", desc: "Compita com estudantes do Brasil. Conquiste badges de Bronze ao Diamante.", color: "text-amber-500", bg: "bg-amber-50" },
+  { icon: Clock, label: "Pomodoro Gamificado", desc: "Timer de foco integrado ao plano. Cada sessão concluída mantém sua sequência de estudos.", color: "text-pink-500", bg: "bg-pink-50" },
+  { icon: Trophy, label: "Ranking Global + XP", desc: "Cada tópico, simulado e flashcard gera XP real no banco. Suba de Bronze ao Diamante.", color: "text-amber-500", bg: "bg-amber-50" },
   { icon: BarChart2, label: "Dashboard + Mapa de Calor", desc: "Visualize pontos fortes e fracos por matéria. Atualiza com cada simulado.", color: "text-indigo-500", bg: "bg-indigo-50" },
   { icon: PenLine, label: "Corretor de Redação", desc: "Nota 0–1000 nas 5 competências ENEM. Análise pela nossa IA em 30 segundos.", color: "text-rose-500", bg: "bg-rose-50" },
   { icon: Target, label: "Simulado Adaptativo", desc: "A IA detecta suas lacunas e gera questões cirúrgicas. Fica mais preciso com o uso.", color: "text-purple-600", bg: "bg-purple-50" },
@@ -326,6 +326,64 @@ export default function Landing() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── XP JOURNEY ── */}
+      <section className="py-20 px-6">
+        <div className="max-w-4xl mx-auto">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
+            className="text-center mb-12">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-600 uppercase tracking-wide mb-3">
+              <Trophy className="w-3 h-3" /> Sistema de Conquistas
+            </span>
+            <h2 className="text-4xl font-black tracking-tight text-gray-900">
+              Cada estudo vira XP real
+            </h2>
+            <p className="mt-3 text-gray-500 text-lg max-w-xl mx-auto">
+              Tópico concluído, simulado feito, flashcard dominado — tudo gera pontos que ficam salvos e sobem no ranking nacional.
+            </p>
+          </motion.div>
+
+          {/* XP sources */}
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={0.1}
+            className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-10">
+            {[
+              { icon: "📚", label: "Tópico concluído", xp: "+100 XP", color: "bg-violet-50 border-violet-100" },
+              { icon: "⚡", label: "Simulado feito", xp: "até +200 XP", color: "bg-blue-50 border-blue-100" },
+              { icon: "🃏", label: "Flashcards", xp: "até +50 XP", color: "bg-emerald-50 border-emerald-100" },
+              { icon: "🗺️", label: "Plano criado", xp: "+25 XP", color: "bg-orange-50 border-orange-100" },
+            ].map((item, i) => (
+              <motion.div key={i} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i * 0.07}
+                className={`flex flex-col items-center gap-1.5 p-4 rounded-2xl border text-center ${item.color}`}>
+                <span className="text-2xl">{item.icon}</span>
+                <p className="text-xs text-gray-600 font-medium leading-tight">{item.label}</p>
+                <p className="text-sm font-black text-gray-900">{item.xp}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          {/* Badge progression */}
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={0.2}
+            className="relative">
+            {/* connecting line */}
+            <div className="absolute top-8 left-[12.5%] right-[12.5%] h-0.5 bg-gradient-to-r from-amber-300 via-gray-300 to-blue-400 hidden sm:block" />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {[
+                { emoji: "🥉", name: "Bronze", range: "0 – 499 XP", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200" },
+                { emoji: "🥈", name: "Prata", range: "500 – 1.499 XP", color: "text-gray-500", bg: "bg-gray-50", border: "border-gray-200" },
+                { emoji: "🥇", name: "Ouro", range: "1.500 – 2.999 XP", color: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-200" },
+                { emoji: "💎", name: "Diamante", range: "3.000+ XP", color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200" },
+              ].map((badge, i) => (
+                <motion.div key={i} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i * 0.08}
+                  className={`relative flex flex-col items-center gap-2 p-5 rounded-2xl border ${badge.bg} ${badge.border} text-center`}>
+                  <span className="text-3xl">{badge.emoji}</span>
+                  <p className={`font-black text-sm ${badge.color}`}>{badge.name}</p>
+                  <p className="text-xs text-gray-400 leading-tight">{badge.range}</p>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
         </div>
       </section>
 

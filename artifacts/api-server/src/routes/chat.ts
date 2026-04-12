@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import OpenAI from "openai";
+import { checkFreeUsage } from "../lib/freeUsage";
 
 const router: IRouter = Router();
 
@@ -54,7 +55,7 @@ REGRAS IMPORTANTES:
 - Seja o professor que o aluno nunca teve mas sempre precisou`;
 }
 
-router.post("/chat", async (req, res) => {
+router.post("/chat", checkFreeUsage, async (req, res) => {
   try {
     const {
       messages,

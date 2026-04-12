@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@workspace/replit-auth-web";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { triggerProfessorBehavior } from "@/lib/professor-events";
 import {
   X,
   Clock,
@@ -243,6 +244,7 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, onClose }: SimuladoP
     timerStarted.current = false;
     setSubmitted(true);
     setPhase("results");
+    setTimeout(() => triggerProfessorBehavior("simulado_result"), 3000);
   }, []);
 
   useEffect(() => {

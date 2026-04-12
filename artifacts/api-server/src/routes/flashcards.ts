@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import OpenAI from "openai";
+import { checkFreeUsage } from "../lib/freeUsage";
 
 const router: IRouter = Router();
 
@@ -39,7 +40,7 @@ REGRAS OBRIGATÓRIAS:
   • "Qual é o erro nesta afirmação: '...'"
 - A âncora mnemônica no Verso deve ser criativa e memorável (acrônimo, rima, imagem mental, história)`;
 
-router.post("/flashcards", async (req, res) => {
+router.post("/flashcards", checkFreeUsage, async (req, res) => {
   try {
     const { materia, serie, resumo, diaNumero, diaTopicos } = req.body as {
       materia: string;

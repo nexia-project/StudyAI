@@ -35,6 +35,20 @@ export function triggerProfessor(text: string, context: ProfessorEventContext = 
   );
 }
 
+export interface ProfessorBehaviorDetail {
+  reason: string;
+  data?: Record<string, unknown>;
+}
+
+export function triggerProfessorBehavior(reason: string, data?: Record<string, unknown>) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent<ProfessorBehaviorDetail>("professor:behavior", {
+      detail: { reason, data },
+    })
+  );
+}
+
 // Dispatch an action from Paula (navigate, create plan, etc.)
 export function triggerProfessorAction(type: string, param: string) {
   if (typeof window === "undefined") return;

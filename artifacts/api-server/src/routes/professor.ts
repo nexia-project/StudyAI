@@ -265,7 +265,11 @@ router.post("/voice-chat", async (req, res) => {
 // ─── Proactive intelligence ───────────────────────────────────────────────────
 router.post("/voice-proactive", async (req, res) => {
   try {
-    const { context } = req.body as { context?: FrontendContext };
+    const { context, triggerReason, idleMs } = req.body as {
+      context?: FrontendContext;
+      triggerReason?: string;
+      idleMs?: number;
+    };
 
     // Fetch real student data if authenticated
     let dbData: Awaited<ReturnType<typeof fetchStudentData>> | null = null;
@@ -279,18 +283,36 @@ router.post("/voice-proactive", async (req, res) => {
 
     const richContext = buildRichContext(context, dbData);
 
-    const systemPrompt = `Você é a Professora Paula do StudyAI. Com base nos dados reais do aluno abaixo, decida se você tem algo genuinamente útil ou encorajador para dizer agora — de forma espontânea, como se tivesse acabado de notar algo.
+    // Build trigger-specific instruction
+    const idleMinutes = idleMs ? Math.round(idleMs / 60000) : 0;
+    let triggerInstruction = "";
+    if (triggerReason === "idle" && idleMinutes >= 3) {
+      triggerInstruction = `O aluno está PARADO há ${idleMinutes} minutos sem interagir. Faça uma observação espontânea — pode ser: lembrar que há matérias fracas para estudar, sugerir um flashcard ou simulado, ou perguntar se precisa de ajuda. Tom de amiga que percebeu que o aluno travou.`;
+    } else if (triggerReason === "page_return") {
+      triggerInstruction = `O aluno voltou ao app depois de um tempo afastado. Dê boas-vindas de volta com energia e mencione algo concreto que ele deveria fazer agora (matéria fraca, plano pendente, etc.).`;
+    } else if (triggerReason === "simulado_result") {
+      triggerInstruction = `O aluno acabou de fazer um simulado. Reaja ao resultado — se foi bom, parabenize com entusiasmo; se foi ruim, seja empática e sugira estudar a matéria fraca detectada.`;
+    } else if (triggerReason === "flashcard_result") {
+      triggerInstruction = `O aluno acabou de fazer flashcards. Comente sobre o desempenho e sugira o próximo passo (simulado, plano, ou revisar matéria específica).`;
+    } else if (triggerReason === "plan_done") {
+      triggerInstruction = `O aluno acabou de completar um tópico ou dia do plano de estudos. Parabenize com entusiasmo genuíno e encoraje a continuar.`;
+    } else {
+      triggerInstruction = `Decida espontaneamente se tem algo útil ou encorajador para dizer com base nos dados do aluno.`;
+    }
 
-REGRAS:
-- Se houver algo relevante: escreva UMA mensagem curta (2 frases, tom humano e caloroso, zero markdown)
-- Se não há nada útil agora: responda exatamente NULL
-- Seja espontânea — como uma amiga que percebeu algo e resolveu falar
-- Use dados reais (matérias fracas, simulados feitos, XP, progresso)
-- Nunca repita a última mensagem
-- Pode incluir UMA ação no final: <ir:/ranking>, <ir:/mapa>, <ir:/simulado>, <ir:/flashcards>, <criar_plano:MATERIA>
+    const systemPrompt = `Você é a Professora Paula do StudyAI. ${triggerInstruction}
+
+REGRAS ABSOLUTAS:
+- Escreva UMA mensagem curta (2 frases no máximo, tom humano, zero markdown, zero asterisco)
+- Se genuinamente não tem nada útil: responda exatamente NULL
+- Use dados reais do aluno — nunca finja não saber
+- Não repita o que já foi dito antes
+- Pode incluir UMA ação: <ir:/ranking>, <ir:/mapa>, <ir:/simulado>, <ir:/flashcards>, <criar_plano:MATERIA>
 ${richContext}`;
 
-    const lastMsg = context?.ultimaMensagem ? `Última mensagem enviada: "${context.ultimaMensagem}"` : "Nenhuma mensagem anterior.";
+    const lastMsg = context?.ultimaMensagem
+      ? `Última coisa que eu disse: "${context.ultimaMensagem}"`
+      : "Primeira vez falando com o aluno nesta sessão.";
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",

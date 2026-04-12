@@ -1,5 +1,6 @@
 import { Router } from "express";
 import OpenAI from "openai";
+import { checkFreeUsage } from "../lib/freeUsage";
 
 const router = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -40,7 +41,7 @@ REGRAS:
 
 export default router;
 
-router.post("/resumao", async (req, res) => {
+router.post("/resumao", checkFreeUsage, async (req, res) => {
   try {
     const { materia, serie, conteudoTexto, planoResumo } = req.body as {
       materia?: string;

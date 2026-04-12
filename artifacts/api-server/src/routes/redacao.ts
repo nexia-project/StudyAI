@@ -1,5 +1,6 @@
 import { Router } from "express";
 import OpenAI from "openai";
+import { checkFreeUsage } from "../lib/freeUsage";
 
 const router = Router();
 const openai = new OpenAI();
@@ -30,7 +31,7 @@ Responda SOMENTE com um JSON válido no seguinte formato:
 }
 Seja específico, didático e encorajador. Feedback em português brasileiro. Não inclua nada além do JSON.`;
 
-router.post("/api/redacao", async (req, res) => {
+router.post("/api/redacao", checkFreeUsage, async (req, res) => {
   try {
     const { texto, tema } = req.body as { texto?: string; tema?: string };
 

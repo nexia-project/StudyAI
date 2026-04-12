@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { motion, AnimatePresence } from "framer-motion";
+import { triggerProfessorBehavior } from "@/lib/professor-events";
 import {
   X,
   RotateCcw,
@@ -91,6 +92,7 @@ export function FlashcardsModal({
         unknown: unknown.size,
       }),
     }).catch(() => {});
+    setTimeout(() => triggerProfessorBehavior("flashcard_result"), 2000);
   }, [finished]);
 
   const generate = useCallback(async () => {

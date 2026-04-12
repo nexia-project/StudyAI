@@ -19,6 +19,7 @@ import { useAuth } from "@workspace/replit-auth-web";
 import { WhatsAppBanner } from "@/components/WhatsAppBanner";
 import { VoiceProfessor } from "@/components/VoiceProfessor";
 import { CookieConsent } from "@/components/CookieConsent";
+import { FreeLimitModal, triggerLimitModal } from "@/components/FreeLimitModal";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -74,16 +75,38 @@ function Router() {
   );
 }
 
+function FetchInterceptor() {
+  useEffect(() => {
+    const original = window.fetch.bind(window);
+    window.fetch = async function (...args: Parameters<typeof fetch>) {
+      const res = await original(...args);
+      if (res.status === 402) {
+        const clone = res.clone();
+        clone.json().then((data: any) => {
+          if (data?.erro === "limite_gratuito") {
+            triggerLimitModal();
+          }
+        }).catch(() => {});
+      }
+      return res;
+    };
+    return () => { window.fetch = original; };
+  }, []);
+  return null;
+}
+
 function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
+          <FetchInterceptor />
           <WhatsAppBanner />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Router />
           </WouterRouter>
           <VoiceProfessor />
+          <FreeLimitModal />
           <CookieConsent />
           <Toaster />
         </TooltipProvider>

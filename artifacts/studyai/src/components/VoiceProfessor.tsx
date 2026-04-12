@@ -16,11 +16,13 @@ import {
   collectStudentContext,
   triggerProfessorAction,
   type ProfessorProactiveDetail,
+  type ProfessorBehaviorDetail,
 } from "@/lib/professor-events";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
-const PROACTIVE_INTERVAL_MS = 5 * 60 * 1000;
-const PROACTIVE_MIN_GAP_MS = 10 * 60 * 1000;
+const IDLE_TRIGGER_MS = 3 * 60 * 1000;
+const PROACTIVE_MIN_GAP_MS = 8 * 60 * 1000;
+const CHECK_INTERVAL_MS = 30 * 1000;
 
 // ─── Shared AudioContext ─────────────────────────────────────────────────────
 let _ctx: AudioContext | null = null;
@@ -146,6 +148,7 @@ export function VoiceProfessor() {
   const recognitionRef = useRef<any>(null);
   const historyRef = useRef<Array<{ role: string; content: string }>>([]);
   const lastProactiveRef = useRef<number>(0);
+  const lastUserActivityRef = useRef<number>(Date.now());
   const greetedRef = useRef(false);
   const proactiveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -213,17 +216,18 @@ export function VoiceProfessor() {
   }, [speak, navigate]);
 
   // ── Proactive: Paula calls student on her own ──────────────────────────────
-  const runProactive = useCallback(async () => {
+  const runProactive = useCallback(async (triggerReason?: string) => {
     if (phase !== "idle" || mutedRef.current) return;
     if (Date.now() - lastProactiveRef.current < PROACTIVE_MIN_GAP_MS) return;
     const context = collectStudentContext();
     const lastMsg = [...historyRef.current].reverse().find(m => m.role === "assistant");
     if (lastMsg) context.ultimaMensagem = lastMsg.content.slice(0, 100);
+    const idleMs = Date.now() - lastUserActivityRef.current;
     try {
       const res = await fetch(`${BASE_URL}/api/voice-proactive`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ context }),
+        body: JSON.stringify({ context, triggerReason: triggerReason || "idle", idleMs }),
         credentials: "include",
       });
       if (!res.ok) return;
@@ -250,10 +254,56 @@ export function VoiceProfessor() {
     return () => window.removeEventListener("professor:proactive", handler);
   }, [speak]);
 
-  // ── Proactive timer ───────────────────────────────────────────────────────
+  // ── Behavior events from app (simulado done, flashcards done, etc.) ───────
   useEffect(() => {
-    proactiveTimerRef.current = setInterval(runProactive, PROACTIVE_INTERVAL_MS);
-    return () => { if (proactiveTimerRef.current) clearInterval(proactiveTimerRef.current); };
+    const handler = (e: Event) => {
+      const { reason } = (e as CustomEvent<ProfessorBehaviorDetail>).detail;
+      if (mutedRef.current) return;
+      lastUserActivityRef.current = Date.now();
+      setTimeout(() => runProactive(reason), 1500);
+    };
+    window.addEventListener("professor:behavior", handler);
+    return () => window.removeEventListener("professor:behavior", handler);
+  }, [runProactive]);
+
+  // ── Activity tracking + behavior-based proactive ─────────────────────────
+  useEffect(() => {
+    const recordActivity = () => { lastUserActivityRef.current = Date.now(); };
+
+    window.addEventListener("click", recordActivity, { passive: true });
+    window.addEventListener("keydown", recordActivity, { passive: true });
+    window.addEventListener("scroll", recordActivity, { passive: true });
+    window.addEventListener("touchstart", recordActivity, { passive: true });
+
+    // Page visibility: when user returns after being away, maybe Paula should comment
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        const away = Date.now() - lastUserActivityRef.current;
+        // If away > 5 minutes and Paula hasn't spoken recently, greet return
+        if (away > 5 * 60 * 1000) {
+          lastUserActivityRef.current = Date.now();
+          setTimeout(() => runProactive("page_return"), 2000);
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    // Polling check: every 30s, check if user is idle
+    proactiveTimerRef.current = setInterval(() => {
+      const idleMs = Date.now() - lastUserActivityRef.current;
+      if (idleMs >= IDLE_TRIGGER_MS) {
+        runProactive("idle");
+      }
+    }, CHECK_INTERVAL_MS);
+
+    return () => {
+      window.removeEventListener("click", recordActivity);
+      window.removeEventListener("keydown", recordActivity);
+      window.removeEventListener("scroll", recordActivity);
+      window.removeEventListener("touchstart", recordActivity);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      if (proactiveTimerRef.current) clearInterval(proactiveTimerRef.current);
+    };
   }, [runProactive]);
 
   // ── FIRST PANEL OPEN — unlock audio + greet ──────────────────────────────

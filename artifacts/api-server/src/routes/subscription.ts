@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { FREE_AI_LIMIT } from "../lib/freeUsage";
 import { getUncachableStripeClient, getStripePublishableKey } from "../lib/stripeClient";
 
 const router: IRouter = Router();
@@ -17,6 +18,7 @@ router.get("/subscription/status", async (req: Request, res: Response) => {
       .select({
         stripeSubscriptionStatus: usersTable.stripeSubscriptionStatus,
         stripeCustomerId: usersTable.stripeCustomerId,
+        freeAiUses: usersTable.freeAiUses,
       })
       .from(usersTable)
       .where(eq(usersTable.id, req.user.id))
@@ -24,8 +26,10 @@ router.get("/subscription/status", async (req: Request, res: Response) => {
 
     const status = user?.stripeSubscriptionStatus || "free";
     const isPremium = status === "active" || status === "trialing";
+    const freeAiUses = user?.freeAiUses ?? 0;
+    const freeAiUsesRemaining = isPremium ? null : Math.max(0, FREE_AI_LIMIT - freeAiUses);
 
-    res.json({ status, isPremium });
+    res.json({ status, isPremium, freeAiUses, freeAiUsesRemaining, freeAiLimit: FREE_AI_LIMIT });
   } catch (err) {
     req.log.error({ err }, "Error fetching subscription status");
     res.json({ status: "free", isPremium: false });

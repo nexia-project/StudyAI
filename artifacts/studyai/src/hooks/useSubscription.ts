@@ -4,6 +4,9 @@ import { useAuth } from "@workspace/replit-auth-web";
 export interface SubscriptionStatus {
   status: "free" | "active" | "inactive" | "trialing" | "past_due";
   isPremium: boolean;
+  freeAiUses: number;
+  freeAiUsesRemaining: number | null;
+  freeAiLimit: number;
 }
 
 export function useSubscription() {
@@ -15,21 +18,22 @@ export function useSubscription() {
       const res = await fetch("/api/subscription/status", {
         credentials: "include",
       });
-      if (!res.ok) return { status: "free" as const, isPremium: false };
+      if (!res.ok) return { status: "free" as const, isPremium: false, freeAiUses: 0, freeAiUsesRemaining: 5, freeAiLimit: 5 };
       return res.json();
     },
     enabled: !!user,
-    staleTime: 60_000,
+    staleTime: 30_000,
     refetchOnWindowFocus: true,
   });
 
-  // isLoading must be true while auth is still loading OR while subscription query is fetching.
-  // Without this, pages see isPremium=false before the auth resolves and flash the paywall.
   const isLoading = authLoading || (!!user && query.isLoading);
 
   return {
     isPremium: query.data?.isPremium ?? false,
     status: query.data?.status ?? "free",
+    freeAiUses: query.data?.freeAiUses ?? 0,
+    freeAiUsesRemaining: query.data?.freeAiUsesRemaining ?? 5,
+    freeAiLimit: query.data?.freeAiLimit ?? 5,
     isLoading,
     refetch: query.refetch,
   };

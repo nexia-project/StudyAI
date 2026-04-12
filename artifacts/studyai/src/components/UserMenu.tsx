@@ -13,13 +13,14 @@ import {
   Crown,
   Sparkles,
   Shield,
+  Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSubscription } from "@/hooks/useSubscription";
 
 export function UserMenu() {
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
-  const { isPremium } = useSubscription();
+  const { isPremium, freeAiUsesRemaining, freeAiLimit } = useSubscription();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [, navigate] = useLocation();
@@ -71,13 +72,22 @@ export function UserMenu() {
           <Crown className="w-3 h-3 text-yellow-300" />
           Premium
         </button>
+      ) : freeAiUsesRemaining !== null && freeAiUsesRemaining <= 0 ? (
+        <button
+          onClick={() => navigate("/pricing")}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-red-500 to-rose-600 text-white text-xs font-black shadow-md hover:shadow-lg hover:scale-105 transition-all animate-pulse"
+        >
+          <Lock className="w-3 h-3" />
+          Limite atingido
+        </button>
       ) : (
         <button
           onClick={() => navigate("/pricing")}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-black shadow-md hover:shadow-lg hover:scale-105 transition-all"
+          title={`${freeAiUsesRemaining} de ${freeAiLimit} estudos gratuitos restantes`}
         >
           <Sparkles className="w-3 h-3" />
-          Upgrade
+          {freeAiUsesRemaining !== null ? `${freeAiUsesRemaining}/${freeAiLimit} grátis` : "Upgrade"}
         </button>
       )}
       <button

@@ -113,14 +113,18 @@ Published at `study.ia.br`. ENEM/vestibular/concurso AI tutor platform powered b
 - `/mapa` — Performance heat map by subject (strong/weak areas)
 
 ### Freemium Model (Stripe)
-- **Free tier**: 3-day plan limit (backend-enforced in studyai route), no Simulado/Flashcards/Resumão/Redação/Ranking/Mapa
+- **Free tier**: 5 AI uses total (`free_ai_uses` column in DB, default 0). Tracked via atomic UPDATE WHERE clause (race-condition-safe). Returns 402 `{ erro: "limite_gratuito" }` when exhausted.
 - **Premium** (R$29,90/mês, Stripe): All features unlimited
+- Middleware: `checkFreeUsage` in `artifacts/api-server/src/lib/freeUsage.ts` — applied to `/analisar`, `/chat`, `/flashcards`, `/resumao`, `/redacao`
+- Atomic increment: `UPDATE users SET free_ai_uses = free_ai_uses + 1 WHERE id = ? AND free_ai_uses < 5` (prevents race conditions)
 - Stripe integration via Replit connector (connector ID: `connector:ccfg_stripe_01K611P4YQR0SZM11XFRQJC44Y`)
 - Stripe product: `prod_UIMLE19aOqLDrF`, price: `price_1TJlcQ89mXjTdwp9ZQjS8stW` (R$29,90/mês BRL)
 - Env var: `STRIPE_PREMIUM_PRICE_ID` (set via Replit secrets)
 - Webhook secret (optional): `STRIPE_WEBHOOK_SECRET` for signature verification
-- Frontend hook: `useSubscription()` in `artifacts/studyai/src/hooks/useSubscription.ts`
+- Frontend hook: `useSubscription()` in `artifacts/studyai/src/hooks/useSubscription.ts` — exposes `freeAiUses`, `freeAiUsesRemaining`, `freeAiLimit`
 - Paywall component: `PremiumGate` in `artifacts/studyai/src/components/PremiumGate.tsx`
+- Free limit modal: `FreeLimitModal.tsx` — global 402 interceptor in App.tsx fires `studyai:limit-reached` event
+- UserMenu: shows "X/5 grátis" counter (amber), "Limite atingido" (red, pulsing) when exhausted, "Premium" with crown for paid users
 - Pricing page: `/pricing` and `/app/pricing`
 
 ### Routes

@@ -4,8 +4,7 @@ import OpenAI from "openai";
 // Import from lib directly to avoid pdf-parse's startup self-test (reads a file at load time)
 import pdfParse from "pdf-parse/lib/pdf-parse.js";
 import mammoth from "mammoth";
-import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { checkFreeUsage } from "../lib/freeUsage";
 
 const router: IRouter = Router();
 // Use .any() to avoid "Unexpected field" errors with strict field-name matching;
@@ -147,7 +146,7 @@ async function extractTextFromFile(file: Express.Multer.File): Promise<string | 
   return null;
 }
 
-router.post("/analisar", (req, res, next) => {
+router.post("/analisar", checkFreeUsage, (req, res, next) => {
   upload.any()(req, res, (err) => {
     if (err) {
       req.log?.error({ err }, "Multer error");
@@ -193,21 +192,7 @@ router.post("/analisar", (req, res, next) => {
       }
     }
 
-    // Check subscription status for plan day limit enforcement
-    let isPremium = false;
-    if (req.isAuthenticated() && req.user?.id) {
-      try {
-        const [user] = await db
-          .select({ stripeSubscriptionStatus: usersTable.stripeSubscriptionStatus })
-          .from(usersTable)
-          .where(eq(usersTable.id, req.user.id))
-          .limit(1);
-        const status = user?.stripeSubscriptionStatus;
-        isPremium = status === "active" || status === "trialing";
-      } catch {
-        // If DB check fails, default to free behavior
-      }
-    }
+    const isPremium = (req as any).isPremium === true;
 
     const perfil = `
       - Nome: ${nome || "Herói"}
@@ -312,15 +297,18 @@ router.post("/analisar", (req, res, next) => {
 
     if (wantsStream) {
       sendSSE({ type: "status", message: "Analisando conteúdo..." });
+      const abortCtrl = new AbortController();
+      req.on("close", () => abortCtrl.abort());
       const stream = await openai.chat.completions.create({
         model: "gpt-4o",
         messages,
         max_tokens: 4500,
         response_format: { type: "json_object" },
         stream: true,
-      });
+      }, { signal: abortCtrl.signal });
       let accumulated = "";
       for await (const chunk of stream) {
+        if (abortCtrl.signal.aborted) break;
         const delta = chunk.choices[0]?.delta?.content || "";
         if (delta) {
           accumulated += delta;

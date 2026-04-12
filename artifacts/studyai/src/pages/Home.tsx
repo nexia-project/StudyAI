@@ -1253,7 +1253,7 @@ export default function Home() {
                         </div>
                         <div className="text-center space-y-1">
                           <p className="font-black text-foreground">Analisando o conteúdo...</p>
-                          <p className="text-sm text-muted-foreground">O GPT-4o está mapeando o que mais cai na prova</p>
+                          <p className="text-sm text-muted-foreground">Nossa IA está mapeando o que mais cai na prova</p>
                         </div>
                       </div>
                     )}

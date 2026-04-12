@@ -296,7 +296,7 @@ export default function Redacao() {
                 <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center text-2xl">✍️</div>
                 <div>
                   <h2 className="font-black text-xl leading-tight">Corretor de Redação ENEM</h2>
-                  <p className="text-violet-200 text-sm font-semibold">Avaliação por GPT-4o nas 5 competências</p>
+                  <p className="text-violet-200 text-sm font-semibold">Avaliação por IA nas 5 competências oficiais</p>
                 </div>
               </div>
               <p className="text-violet-100 text-sm leading-relaxed">
@@ -373,7 +373,7 @@ export default function Redacao() {
               {loading && (
                 <div className="text-center">
                   <p className="text-xs text-slate-400 font-semibold animate-pulse">
-                    O GPT-4o está analisando suas 5 competências... ⏳ (30-60 seg)
+                    Nossa IA está analisando suas 5 competências... ⏳ (30-60 seg)
                   </p>
                 </div>
               )}

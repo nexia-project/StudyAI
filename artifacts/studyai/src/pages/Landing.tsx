@@ -19,13 +19,13 @@ const fadeUp = {
 
 const features = [
   { icon: Mic, label: "Professora Paula", desc: "Tutora por voz — fala com você, sabe seu progresso e age proativamente.", color: "text-orange-500", bg: "bg-orange-50" },
-  { icon: Brain, label: "Plano de Estudos IA", desc: "PDF, foto do caderno ou tema digitado. GPT-4o cria um cronograma personalizado.", color: "text-violet-600", bg: "bg-violet-50" },
+  { icon: Brain, label: "Plano de Estudos IA", desc: "PDF, foto do caderno ou tema digitado. Nossa IA cria um cronograma personalizado.", color: "text-violet-600", bg: "bg-violet-50" },
   { icon: Zap, label: "Simulado Inteligente", desc: "10 questões do seu material, com gabarito comentado em tempo real.", color: "text-blue-500", bg: "bg-blue-50" },
   { icon: BookOpen, label: "Flashcards Anki", desc: "Repetição espaçada inteligente. A IA cria os cards e ajusta o ritmo.", color: "text-emerald-600", bg: "bg-emerald-50" },
   { icon: Clock, label: "Pomodoro Gamificado", desc: "Timer de foco integrado ao plano. Cada sessão gera XP e sobe no ranking.", color: "text-pink-500", bg: "bg-pink-50" },
   { icon: Trophy, label: "Ranking Global", desc: "Compita com estudantes do Brasil. Conquiste badges de Bronze ao Diamante.", color: "text-amber-500", bg: "bg-amber-50" },
   { icon: BarChart2, label: "Dashboard + Mapa de Calor", desc: "Visualize pontos fortes e fracos por matéria. Atualiza com cada simulado.", color: "text-indigo-500", bg: "bg-indigo-50" },
-  { icon: PenLine, label: "Corretor de Redação", desc: "Nota 0–1000 nas 5 competências ENEM. Análise pelo GPT-4o em 30 segundos.", color: "text-rose-500", bg: "bg-rose-50" },
+  { icon: PenLine, label: "Corretor de Redação", desc: "Nota 0–1000 nas 5 competências ENEM. Análise pela nossa IA em 30 segundos.", color: "text-rose-500", bg: "bg-rose-50" },
   { icon: Target, label: "Simulado Adaptativo", desc: "A IA detecta suas lacunas e gera questões cirúrgicas. Fica mais preciso com o uso.", color: "text-purple-600", bg: "bg-purple-50" },
 ];
 
@@ -92,10 +92,10 @@ const testimonials = [
 const faqs = [
   { q: "O StudyAI é gratuito?", a: "Sim! O plano gratuito inclui plano de estudos personalizado, simulados, flashcards, correção de redação e acesso à Professora Paula. O plano Pro (R$29,90/mês) libera tudo ilimitado: simulado adaptativo avançado, Paula proativa por voz, correções ilimitadas e muito mais." },
   { q: "O que é a Professora Paula?", a: "Paula é a primeira tutora por voz com IA do Brasil. Ela age de forma proativa — fala com você quando percebe que você ficou dias sem estudar, sabe seu plano de estudos, suas matérias e pontos fracos. É como ter uma tutora particular disponível 24 horas por dia, 7 dias por semana." },
-  { q: "Como o plano de estudos personalizado é gerado?", a: "Você informa sua matéria, nível de conhecimento, tempo disponível e objetivo (ENEM 2025, vestibular ou concurso). Pode também enviar um PDF, DOCX ou foto do caderno. O GPT-4o analisa tudo e cria um cronograma personalizado dia a dia, com tópicos, exercícios práticos, flashcards e dicas de memorização específicos para o seu perfil." },
+  { q: "Como o plano de estudos personalizado é gerado?", a: "Você informa sua matéria, nível de conhecimento, tempo disponível e objetivo (ENEM 2025, vestibular ou concurso). Pode também enviar um PDF, DOCX ou foto do caderno. Nossa IA analisa tudo e cria um cronograma personalizado dia a dia, com tópicos, exercícios práticos, flashcards e dicas de memorização específicos para o seu perfil." },
   { q: "Funciona para ENEM 2025, vestibular e concursos públicos?", a: "Sim! O StudyAI foi criado especialmente para estudantes brasileiros. A IA adapta o conteúdo, a linguagem e a dificuldade para o seu objetivo — seja o ENEM 2025, FUVEST, UNICAMP, UEL, ENADE, OAB, Receita Federal, INSS, PRF, concursos militares ou qualquer outra prova federal ou estadual." },
   { q: "Como funciona a correção de redação ENEM?", a: "Você envia sua redação (texto digitado ou foto) e a IA avalia nas 5 competências oficiais do ENEM: domínio da norma culta, compreensão do tema, seleção de argumentos, coesão e proposta de intervenção. Você recebe nota de 0 a 1000 em cada competência e sugestões detalhadas de melhoria — tudo em menos de 30 segundos." },
-  { q: "O tutor IA responde qualquer dúvida de qualquer matéria?", a: "Sim! O tutor IA do StudyAI, alimentado pelo GPT-4o, responde dúvidas de Matemática, Português, História, Biologia, Química, Física, Geografia, Sociologia, Filosofia, Inglês e todas as matérias do ENEM e vestibular — 24 horas por dia, com explicações didáticas, exemplos práticos e linguagem acessível." },
+  { q: "O tutor IA responde qualquer dúvida de qualquer matéria?", a: "Sim! O tutor IA do StudyAI responde dúvidas de Matemática, Português, História, Biologia, Química, Física, Geografia, Sociologia, Filosofia, Inglês e todas as matérias do ENEM e vestibular — 24 horas por dia, com explicações didáticas, exemplos práticos e linguagem acessível." },
   { q: "O que é o Simulado Adaptativo com IA?", a: "É um simulado que aprende com você. A IA analisa todo o seu histórico de respostas, identifica suas lacunas e pontos fracos, e gera 10 questões cirúrgicas focadas exatamente no que você mais precisa revisar. Quanto mais você usa, mais preciso e personalizado ele fica — como um cursinho que conhece cada aluno individualmente." },
   { q: "Vale mais do que um cursinho presencial?", a: "Enquanto cursinhos tradicionais custam R$200 a R$800 por mês com conteúdo igual para todos, o StudyAI oferece plano 100% personalizado, simulados ilimitados do seu próprio material, tutor IA 24h e correção de redação por apenas R$29,90/mês — ou até gratuitamente no plano básico. É o cursinho do futuro, no seu ritmo e no seu bolso." },
   { q: "Posso usar o StudyAI no celular?", a: "Sim! O StudyAI funciona perfeitamente em qualquer celular Android ou iPhone, direto no navegador — sem precisar instalar nenhum aplicativo. Acesse study.ia.br e comece agora mesmo. A interface é totalmente adaptada para telas menores." },
@@ -164,7 +164,7 @@ export default function Landing() {
 
           <motion.p variants={fadeUp} initial="hidden" animate="show" custom={2}
             className="mt-5 text-xl text-gray-500 max-w-2xl mx-auto leading-relaxed">
-            A Professora Paula fala com você por voz, sabe seu progresso e age de forma proativa. Planos de estudo, simulados, flashcards e correção de redação — powered by GPT-4o.
+            A Professora Paula fala com você por voz, sabe seu progresso e age de forma proativa. Planos de estudo, simulados, flashcards e correção de redação — tudo com nossa IA exclusiva.
           </motion.p>
 
           <motion.div variants={fadeUp} initial="hidden" animate="show" custom={3}
@@ -218,7 +218,7 @@ export default function Landing() {
                   { icon: Radio, title: "Fala primeiro, sem você pedir", desc: "Paula percebe quando você ficou dias sem estudar e chama por voz.", color: "text-orange-500", bg: "bg-orange-50" },
                   { icon: Cpu, title: "Sabe tudo sobre seu progresso", desc: "Tem acesso ao seu plano, XP, dias concluídos e matérias em estudo.", color: "text-violet-500", bg: "bg-violet-50" },
                   { icon: Layers, title: "Age no app por você", desc: "Peça para ela criar um plano ou navegar — ela executa diretamente.", color: "text-blue-500", bg: "bg-blue-50" },
-                  { icon: Shield, title: "Voz natural, zero robótica", desc: "Sintetizada pela OpenAI TTS — feminina, calorosa e fluida.", color: "text-emerald-500", bg: "bg-emerald-50" },
+                  { icon: Shield, title: "Voz natural, zero robótica", desc: "Voz feminina, calorosa e fluida — 100% exclusiva do StudyAI.", color: "text-emerald-500", bg: "bg-emerald-50" },
                 ].map((b, i) => (
                   <motion.div key={i} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i * 0.1}
                     className="flex gap-3 items-start">
@@ -265,7 +265,7 @@ export default function Landing() {
                       <Mic className="w-4 h-4 text-white" />
                     </div>
                   </div>
-                  <p className="text-center text-xs text-gray-400">● Online 24h • Voz natural OpenAI</p>
+                  <p className="text-center text-xs text-gray-400">● Online 24h • Voz exclusiva StudyAI</p>
                 </div>
               </div>
             </motion.div>
@@ -281,7 +281,7 @@ export default function Landing() {
             <h2 className="text-4xl font-black tracking-tight text-gray-900">
               Tudo que você precisa para passar
             </h2>
-            <p className="mt-3 text-gray-500 text-lg">9 ferramentas integradas, todas powered by GPT-4o.</p>
+            <p className="mt-3 text-gray-500 text-lg">9 ferramentas integradas, todas com inteligência artificial.</p>
           </motion.div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {features.map((f, i) => (
@@ -311,7 +311,7 @@ export default function Landing() {
           <div className="space-y-4">
             {[
               { num: "1", title: "Envie o material ou escreva o tema", desc: "PDF, DOCX, foto do caderno ou simplesmente o tema que quer estudar. A IA entende qualquer formato." },
-              { num: "2", title: "O GPT-4o cria seu plano personalizado", desc: "Cronograma dia a dia, tópicos, exercícios e dicas adaptados para o seu perfil e objetivo." },
+              { num: "2", title: "Nossa IA cria seu plano personalizado", desc: "Cronograma dia a dia, tópicos, exercícios e dicas adaptados para o seu perfil e objetivo." },
               { num: "3", title: "Paula te acompanha enquanto você evolui", desc: "Flashcards, simulados, Pomodoro e a Paula te chamando quando precisar revisar. Suba no ranking." },
             ].map((s, i) => (
               <motion.div key={i} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i * 0.1}
@@ -468,7 +468,7 @@ export default function Landing() {
             </h2>
             <div className="prose prose-gray max-w-none text-gray-600 space-y-4 text-sm leading-relaxed">
               <p>
-                O <strong className="text-gray-800">StudyAI</strong> é a plataforma de estudos com inteligência artificial mais completa do Brasil para quem quer passar no <strong className="text-gray-800">ENEM 2025</strong>, vestibular ou concurso público. Diferente de aplicativos genéricos, o StudyAI usa o <strong className="text-gray-800">GPT-4o</strong> — o modelo mais avançado da OpenAI — para criar um plano de estudos 100% personalizado com base no seu nível, tempo disponível, pontos fracos e objetivo específico.
+                O <strong className="text-gray-800">StudyAI</strong> é a plataforma de estudos com inteligência artificial mais completa do Brasil para quem quer passar no <strong className="text-gray-800">ENEM 2025</strong>, vestibular ou concurso público. Diferente de aplicativos genéricos, o StudyAI usa <strong className="text-gray-800">nossa própria IA educacional</strong> para criar um plano de estudos 100% personalizado com base no seu nível, tempo disponível, pontos fracos e objetivo específico.
               </p>
               <p>
                 Para quem vai fazer o <strong className="text-gray-800">ENEM 2025</strong>, o StudyAI gera simulados no estilo das provas reais, avalia redações nas 5 competências oficiais e cria um cronograma de estudos adaptado por área de conhecimento: <strong className="text-gray-800">Matemática e suas Tecnologias</strong>, <strong className="text-gray-800">Ciências da Natureza</strong>, <strong className="text-gray-800">Ciências Humanas</strong> e <strong className="text-gray-800">Linguagens e Códigos</strong>. O Mapa de Calor mostra exatamente onde você perde pontos, para focar onde mais importa.
@@ -504,10 +504,10 @@ export default function Landing() {
             <h3 className="text-xl font-black text-gray-900 mb-3">Por que o StudyAI é diferente de outros apps de estudo?</h3>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm text-gray-700">
               {[
-                { title: "Plano do SEU material", desc: "Não usamos banco de questões genérico. O GPT-4o cria exercícios do seu próprio conteúdo, adaptados ao seu nível e objetivo." },
+                { title: "Plano do SEU material", desc: "Não usamos banco de questões genérico. Nossa IA cria exercícios do seu próprio conteúdo, adaptados ao seu nível e objetivo." },
                 { title: "Tutora por voz proativa", desc: "A Professora Paula é a única tutora de IA no Brasil que fala primeiro — te chamando quando você precisa estudar, sem você precisar perguntar nada." },
                 { title: "Sem mensalidade absurda", desc: "Cursinho presencial cobra R$200–800/mês pelo mesmo conteúdo para todos. O StudyAI é pessoal, ilimitado e custa R$29,90/mês — ou gratuito no básico." },
-                { title: "Tecnologia de ponta", desc: "Powered by GPT-4o, o mesmo modelo que profissionais de todo o mundo usam. Não é IA de prateleira: é o estado da arte aplicado à educação brasileira." },
+                { title: "Tecnologia de ponta", desc: "Nossa IA é treinada para o contexto educacional brasileiro, não é IA genérica de prateleira: é estado da arte aplicado ao ENEM e vestibulares." },
                 { title: "Funciona no celular", desc: "Estude no ônibus, no intervalo do trabalho, ou em qualquer lugar. Sem instalar aplicativo — só acesse study.ia.br no navegador." },
                 { title: "Feito para o Brasil", desc: "Conteúdo alinhado ao currículo nacional, às bancas dos principais vestibulares e aos editais dos maiores concursos públicos do país." },
               ].map((item, i) => (
@@ -589,7 +589,7 @@ export default function Landing() {
             <span className="font-black text-gray-800">StudyAI</span>
             <span className="text-gray-400 text-sm">· study.ia.br</span>
           </div>
-          <p className="text-gray-400 text-sm">© 2025 StudyAI · Powered by GPT-4o</p>
+          <p className="text-gray-400 text-sm">© 2025 StudyAI · IA exclusiva para estudantes brasileiros</p>
           <div className="flex gap-4 text-sm text-gray-400">
             <a href="#faq" className="hover:text-gray-700 transition-colors">FAQ</a>
             <button onClick={handleStart} className="hover:text-gray-700 transition-colors">Entrar</button>

@@ -40,9 +40,10 @@ import { UserMenu } from "@/components/UserMenu";
 import { PremiumGate } from "@/components/PremiumGate";
 import { streamStudyPlan, StudyPlan, StudyPlanTopic } from "@/hooks/use-study-plan";
 import { exportStudyPlanPDF } from "@/hooks/use-pdf-export";
-import { Onboarding, hasOnboarded, getOnboardingData } from "@/components/Onboarding";
+import { Onboarding, hasOnboarded } from "@/components/Onboarding";
 import { triggerProfessor } from "@/lib/professor-events";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useStudentProfile } from "@/hooks/useStudentProfile";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
@@ -218,6 +219,7 @@ function ChallengeCard({ desafio, color }: { desafio: { enunciado: string; gabar
 export default function Home() {
   const { isAuthenticated, login } = useAuth();
   const { isPremium } = useSubscription();
+  const { profile: studentProfile, saveProfile } = useStudentProfile();
   const [, navigate] = useLocation();
   const [step, setStep] = useState<"form" | "loading" | "result">("form");
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -311,18 +313,20 @@ export default function Home() {
   useEffect(() => {
     if (!hasOnboarded()) {
       setShowOnboarding(true);
-    } else {
-      const profile = getOnboardingData();
-      if (profile) {
-        setFormData(prev => ({
-          ...prev,
-          ...(profile.nome && profile.nome !== "Herói" ? { nome: profile.nome } : {}),
-          ...(profile.serie ? { serie: profile.serie } : {}),
-        }));
-      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Pre-fill form when student profile is loaded (from DB or localStorage)
+  useEffect(() => {
+    if (!studentProfile) return;
+    setFormData(prev => ({
+      ...prev,
+      ...(studentProfile.nome && studentProfile.nome !== "Herói" ? { nome: studentProfile.nome } : {}),
+      ...(studentProfile.serie ? { serie: studentProfile.serie } : {}),
+    }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studentProfile?.nome, studentProfile?.serie]);
 
   // Fetch community feed
   const [feedEvents, setFeedEvents] = useState<Array<{
@@ -365,7 +369,6 @@ export default function Home() {
   // Write student context to localStorage so VoiceProfessor (Paula) can read it
   useEffect(() => {
     try {
-      const profile = (() => { try { return JSON.parse(localStorage.getItem("studyai_profile") || "{}"); } catch { return {}; } })();
       const completedCount = Object.values(completedTopics).filter(Boolean).length;
       const diasTotal = planResult?.plano?.dias?.length ?? 0;
       const ultimosTopicos: string[] = [];
@@ -377,9 +380,9 @@ export default function Home() {
         }
       }
       const ctx = {
-        nome: profile?.nome,
-        serie: profile?.serie || formData.serie,
-        objetivo: profile?.objetivo,
+        nome: studentProfile?.nome,
+        serie: studentProfile?.serie || formData.serie,
+        objetivo: studentProfile?.objetivo,
         materia: planResult?.plano?.materia || formData.texto?.slice(0, 60),
         diasCompletos: completedCount,
         diasTotal: diasTotal || undefined,
@@ -388,7 +391,7 @@ export default function Home() {
       };
       localStorage.setItem("studyai_current_context", JSON.stringify(ctx));
     } catch { /* ignore */ }
-  }, [planResult, completedTopics, earnedXp, formData.serie, formData.texto]);
+  }, [studentProfile, planResult, completedTopics, earnedXp, formData.serie, formData.texto]);
 
   // Listen for Paula's actions: criar_plano means pre-fill and auto-submit the form
   useEffect(() => {
@@ -485,10 +488,9 @@ export default function Home() {
           setTimeout(() => {
             const materia = data.plano?.materia || "seus estudos";
             const dias = data.plano?.dias?.length || 0;
-            const profile = (() => { try { return JSON.parse(localStorage.getItem("studyai_profile") || "{}"); } catch { return {}; } })();
-            const nome = profile?.nome && profile.nome !== "Herói" ? `, ${profile.nome}` : "";
+            const nomeAluno = studentProfile?.nome && studentProfile.nome !== "Herói" ? `, ${studentProfile.nome}` : "";
             triggerProfessor(
-              `Perfeito${nome}! Seu plano de ${materia} ficou ótimo, com ${dias} dias bem distribuídos. Começa pelo primeiro tópico e me chama se tiver qualquer dúvida ao longo do caminho!`,
+              `Perfeito${nomeAluno}! Seu plano de ${materia} ficou ótimo, com ${dias} dias bem distribuídos. Começa pelo primeiro tópico e me chama se tiver qualquer dúvida ao longo do caminho!`,
               "plan_generated"
             );
           }, 2500);
@@ -584,10 +586,9 @@ export default function Home() {
           const newXp = x + 100;
           // Every 500 XP milestone: proactive professor congratulation
           if (newXp > 0 && newXp % 500 === 0) {
-            const profile = (() => { try { return JSON.parse(localStorage.getItem("studyai_profile") || "{}"); } catch { return {}; } })();
-            const nome = profile?.nome && profile.nome !== "Herói" ? `, ${profile.nome}` : "";
+            const nomeAluno = studentProfile?.nome && studentProfile.nome !== "Herói" ? `, ${studentProfile.nome}` : "";
             setTimeout(() => triggerProfessor(
-              `Incrível${nome}! Você acabou de atingir ${newXp} pontos de XP! Está indo muito bem. Continue com esse ritmo e você vai fechar o plano antes do tempo!`,
+              `Incrível${nomeAluno}! Você acabou de atingir ${newXp} pontos de XP! Está indo muito bem. Continue com esse ritmo e você vai fechar o plano antes do tempo!`,
               "xp_gained"
             ), 800);
           }
@@ -630,10 +631,9 @@ export default function Home() {
         confetti({ particleCount: 200, spread: 100, origin: { y: 0.3 } });
       }, 500);
       // Proactive professor: celebrate completing the full plan
-      const profile = (() => { try { return JSON.parse(localStorage.getItem("studyai_profile") || "{}"); } catch { return {}; } })();
-      const nome = profile?.nome && profile.nome !== "Herói" ? `, ${profile.nome}` : "";
+      const nomeAluno = studentProfile?.nome && studentProfile.nome !== "Herói" ? `, ${studentProfile.nome}` : "";
       setTimeout(() => triggerProfessor(
-        `UAU${nome}! Você concluiu 100% do plano! Isso é INCRÍVEL! Pouquíssimos alunos chegam até aqui. Que tal fazer um simulado agora pra testar tudo que você aprendeu?`,
+        `UAU${nomeAluno}! Você concluiu 100% do plano! Isso é INCRÍVEL! Pouquíssimos alunos chegam até aqui. Que tal fazer um simulado agora pra testar tudo que você aprendeu?`,
         "xp_gained"
       ), 1500);
     }
@@ -645,6 +645,7 @@ export default function Home() {
       <Onboarding
         onComplete={(data) => {
           setShowOnboarding(false);
+          saveProfile(data);
           setFormData(prev => ({
             ...prev,
             ...(data.nome && data.nome !== "Herói" ? { nome: data.nome } : {}),
@@ -754,9 +755,20 @@ export default function Home() {
             <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 to-accent/10 rounded-3xl animate-spin-slow"></div>
             <GraduationCap className="w-12 h-12 text-primary relative z-10" />
           </div>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-black text-foreground mb-4 tracking-tight">
-            Crie seu <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-accent to-pink-500 animate-gradient-x">Plano Mágico</span>
-          </h1>
+          {studentProfile?.nome && studentProfile.nome !== "Herói" ? (
+            <>
+              <p className="text-base md:text-lg font-bold text-primary/70 mb-1 tracking-wide">
+                Olá, {studentProfile.nome}! 👋
+              </p>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-black text-foreground mb-4 tracking-tight">
+                Crie seu <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-accent to-pink-500 animate-gradient-x">Plano Mágico</span>
+              </h1>
+            </>
+          ) : (
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-black text-foreground mb-4 tracking-tight">
+              Crie seu <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-accent to-pink-500 animate-gradient-x">Plano Mágico</span>
+            </h1>
+          )}
           <p className="text-lg md:text-xl text-muted-foreground font-medium">
             Transforme estudos chatos em missões épicas com nossa IA gamificada.
           </p>

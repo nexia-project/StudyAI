@@ -184,7 +184,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
 
         <div className="px-6 pb-4 flex items-center gap-2 text-xs text-gray-400">
           <BookOpen className="w-3 h-3" />
-          <span>Seus dados ficam só no seu dispositivo</span>
+          <span>Seus dados são salvos com segurança para personalizar sua experiência</span>
         </div>
       </motion.div>
     </div>

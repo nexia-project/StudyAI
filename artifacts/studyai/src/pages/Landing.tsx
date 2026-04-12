@@ -103,11 +103,60 @@ const faqs = [
   { q: "O Pomodoro do StudyAI é diferente?", a: "Sim! O Pomodoro do StudyAI é gamificado e integrado ao seu plano de estudos. Cada sessão concluída gera XP (pontos de experiência) que sobem no ranking nacional de estudantes. Você também conquista badges e medalhas conforme avança — tornando o estudo mais motivador e consistente." },
 ];
 
+const B2B_TYPES = [
+  "Escola privada",
+  "Cursinho pré-vestibular",
+  "Universidade / Faculdade",
+  "Entidade governamental",
+  "Secretaria de Educação",
+  "ONG / Terceiro Setor",
+  "Empresa (RH / T&D)",
+  "Outro",
+];
+
+const B2B_STUDENTS = [
+  "Até 100 alunos",
+  "101 – 500 alunos",
+  "501 – 2.000 alunos",
+  "2.001 – 10.000 alunos",
+  "Mais de 10.000 alunos",
+];
+
 export default function Landing() {
   const [, navigate] = useLocation();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [activeTest, setActiveTest] = useState(0);
+
+  const [b2bForm, setB2bForm] = useState({ name: "", email: "", institution: "", type: "", students: "", message: "" });
+  const [b2bLoading, setB2bLoading] = useState(false);
+  const [b2bDone, setB2bDone] = useState(false);
+  const [b2bError, setB2bError] = useState("");
+
+  const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+  const handleB2bSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setB2bError("");
+    if (!b2bForm.name || !b2bForm.email || !b2bForm.institution || !b2bForm.type) {
+      setB2bError("Preencha todos os campos obrigatórios.");
+      return;
+    }
+    setB2bLoading(true);
+    try {
+      const res = await fetch(`${BASE}/api/leads`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(b2bForm),
+      });
+      if (!res.ok) throw new Error("erro");
+      setB2bDone(true);
+    } catch {
+      setB2bError("Erro ao enviar. Tente novamente ou mande e-mail para contato@study.ia.br.");
+    } finally {
+      setB2bLoading(false);
+    }
+  };
 
   const handleStart = () => navigate("/app");
   const handlePro = async () => {
@@ -129,6 +178,7 @@ export default function Landing() {
           <div className="hidden md:flex items-center gap-8 text-sm text-gray-500">
             <a href="#funcoes" className="hover:text-gray-900 transition-colors">Funções</a>
             <a href="#paula" className="hover:text-gray-900 transition-colors">Professora Paula</a>
+            <a href="#institucional" className="hover:text-gray-900 transition-colors">Institucional</a>
             <a href="#precos" className="hover:text-gray-900 transition-colors">Preços</a>
             <a href="#faq" className="hover:text-gray-900 transition-colors">FAQ</a>
           </div>
@@ -467,6 +517,159 @@ export default function Landing() {
                 className="w-2 h-2 rounded-full transition-all"
                 style={{ background: i === activeTest ? "#f97316" : "#e5e7eb", transform: i === activeTest ? "scale(1.4)" : "scale(1)" }} />
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── B2B / INSTITUCIONAL ── */}
+      <section id="institucional" className="py-20 px-6 bg-gray-900 text-white">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-14 items-start">
+
+            {/* Left — pitch */}
+            <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}>
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-orange-400 uppercase tracking-wide mb-4">
+                <GraduationCap className="w-3 h-3" /> Para Instituições de Ensino
+              </span>
+              <h2 className="text-4xl font-black tracking-tight mb-4 leading-tight">
+                StudyAI para escolas, cursinhos e governo
+              </h2>
+              <p className="text-gray-400 text-lg leading-relaxed mb-8">
+                Leve tutoria por IA personalizada para centenas ou milhares de alunos de uma vez. Planos institucionais com painel de gestão, relatórios de desempenho da turma e suporte dedicado.
+              </p>
+
+              <div className="space-y-5 mb-8">
+                {[
+                  { emoji: "🏫", title: "Escolas e colégios privados", desc: "Complemento ideal para reforço escolar e preparação para vestibular." },
+                  { emoji: "📝", title: "Cursinhos pré-vestibular", desc: "Simulados adaptativos individuais para cada aluno da sua turma, em escala." },
+                  { emoji: "🏛️", title: "Redes públicas e secretarias", desc: "Democratize o acesso à tutoria de qualidade para alunos de escola pública." },
+                  { emoji: "🎓", title: "Universidades e faculdades", desc: "Suporte à permanência e desempenho acadêmico com IA pedagógica." },
+                  { emoji: "💼", title: "Empresas (T&D / concursos)", desc: "Prepare equipes para certificações, OAB, concursos e treinamentos internos." },
+                ].map((item, i) => (
+                  <motion.div key={i} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i * 0.06}
+                    className="flex gap-3 items-start">
+                    <span className="text-xl mt-0.5">{item.emoji}</span>
+                    <div>
+                      <p className="font-semibold text-white text-sm">{item.title}</p>
+                      <p className="text-gray-400 text-sm leading-relaxed">{item.desc}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                <span>Preços sob medida · Contrato flexível · Onboarding dedicado</span>
+              </div>
+            </motion.div>
+
+            {/* Right — form */}
+            <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={0.15}>
+              <div className="bg-white/5 border border-white/10 rounded-3xl p-8">
+                {b2bDone ? (
+                  <div className="text-center py-8">
+                    <div className="text-5xl mb-4">🎉</div>
+                    <p className="text-xl font-black text-white mb-2">Recebemos seu contato!</p>
+                    <p className="text-gray-400 text-sm leading-relaxed">
+                      Nossa equipe vai analisar sua demanda e entrar em contato em até <strong className="text-white">1 dia útil</strong> para agendar uma conversa.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="font-black text-white text-lg mb-1">Agende uma conversa</p>
+                    <p className="text-gray-400 text-sm mb-6">Sem compromisso — entendemos sua demanda e apresentamos uma proposta.</p>
+
+                    <form onSubmit={handleB2bSubmit} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs text-gray-400 mb-1">Nome *</label>
+                          <input
+                            type="text"
+                            value={b2bForm.name}
+                            onChange={e => setB2bForm(f => ({ ...f, name: e.target.value }))}
+                            placeholder="Seu nome"
+                            className="w-full px-3 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-400 mb-1">E-mail *</label>
+                          <input
+                            type="email"
+                            value={b2bForm.email}
+                            onChange={e => setB2bForm(f => ({ ...f, email: e.target.value }))}
+                            placeholder="seu@email.com"
+                            className="w-full px-3 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Instituição *</label>
+                        <input
+                          type="text"
+                          value={b2bForm.institution}
+                          onChange={e => setB2bForm(f => ({ ...f, institution: e.target.value }))}
+                          placeholder="Nome da escola, cursinho ou empresa"
+                          className="w-full px-3 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs text-gray-400 mb-1">Tipo de instituição *</label>
+                          <select
+                            value={b2bForm.type}
+                            onChange={e => setB2bForm(f => ({ ...f, type: e.target.value }))}
+                            className="w-full px-3 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white text-sm focus:outline-none focus:border-orange-500 transition-colors appearance-none"
+                          >
+                            <option value="" className="bg-gray-900">Selecione...</option>
+                            {B2B_TYPES.map(t => <option key={t} value={t} className="bg-gray-900">{t}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-400 mb-1">Nº de alunos</label>
+                          <select
+                            value={b2bForm.students}
+                            onChange={e => setB2bForm(f => ({ ...f, students: e.target.value }))}
+                            className="w-full px-3 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white text-sm focus:outline-none focus:border-orange-500 transition-colors appearance-none"
+                          >
+                            <option value="" className="bg-gray-900">Selecione...</option>
+                            {B2B_STUDENTS.map(s => <option key={s} value={s} className="bg-gray-900">{s}</option>)}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Mensagem ou contexto (opcional)</label>
+                        <textarea
+                          value={b2bForm.message}
+                          onChange={e => setB2bForm(f => ({ ...f, message: e.target.value }))}
+                          placeholder="Conte um pouco sobre sua necessidade..."
+                          rows={3}
+                          className="w-full px-3 py-2.5 rounded-xl bg-white/10 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors resize-none"
+                        />
+                      </div>
+
+                      {b2bError && (
+                        <p className="text-red-400 text-xs">{b2bError}</p>
+                      )}
+
+                      <button
+                        type="submit"
+                        disabled={b2bLoading}
+                        className="w-full py-3 rounded-xl font-bold text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-[1.01] active:scale-[0.99]"
+                      >
+                        {b2bLoading ? "Enviando..." : "Quero conhecer os planos institucionais →"}
+                      </button>
+
+                      <p className="text-center text-xs text-gray-500">
+                        Resposta em até 1 dia útil · Sem spam · Seus dados são protegidos pela LGPD
+                      </p>
+                    </form>
+                  </>
+                )}
+              </div>
+            </motion.div>
           </div>
         </div>
       </section>

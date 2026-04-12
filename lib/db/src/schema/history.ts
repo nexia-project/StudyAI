@@ -58,6 +58,20 @@ export const waitlistTable = pgTable("waitlist", {
 export type Waitlist = typeof waitlistTable.$inferSelect;
 export type InsertWaitlist = typeof waitlistTable.$inferInsert;
 
+export const corporateLeadsTable = pgTable("corporate_leads", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  institution: varchar("institution", { length: 255 }).notNull(),
+  type: varchar("type", { length: 100 }).notNull(),
+  students: varchar("students", { length: 50 }),
+  message: varchar("message", { length: 1000 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type CorporateLead = typeof corporateLeadsTable.$inferSelect;
+export type InsertCorporateLead = typeof corporateLeadsTable.$inferInsert;
+
 export type StudyPlan = typeof studyPlansTable.$inferSelect;
 export type InsertStudyPlan = typeof studyPlansTable.$inferInsert;
 export type SimuladoResult = typeof simuladoResultsTable.$inferSelect;

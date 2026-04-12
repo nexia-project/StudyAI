@@ -1,10 +1,14 @@
 import { Router, type IRouter } from "express";
 import OpenAI from "openai";
+import { db } from "@workspace/db";
+import { simuladoResultsTable, flashcardSessionsTable, studyPlansTable } from "@workspace/db/schema";
+import { eq, desc, sql } from "drizzle-orm";
 
 const router: IRouter = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-interface StudentContext {
+// ─── Frontend context (localStorage) ─────────────────────────────────────────
+interface FrontendContext {
   nome?: string;
   serie?: string;
   objetivo?: string;
@@ -15,57 +19,219 @@ interface StudentContext {
   meta?: string;
   ultimosTopicos?: string[];
   ultimaMensagem?: string;
+  paginaAtual?: string;
 }
 
-function buildContextBlock(context?: StudentContext): string {
-  if (!context || !Object.values(context).some(Boolean)) return "";
-  const lines: string[] = ["\n\nCONTEXTO DO ALUNO AGORA:"];
-  if (context.nome) lines.push(`- Nome: ${context.nome}`);
-  if (context.serie) lines.push(`- Série: ${context.serie}`);
-  if (context.objetivo) lines.push(`- Objetivo: ${context.objetivo}`);
-  if (context.materia) lines.push(`- Matéria em estudo: ${context.materia}`);
-  if (context.diasTotal != null)
-    lines.push(`- Progresso: ${context.diasCompletos ?? 0} de ${context.diasTotal} dias concluídos`);
-  if (context.xp != null) lines.push(`- XP acumulado: ${context.xp} pontos`);
-  if (context.ultimosTopicos?.length)
-    lines.push(`- Tópicos recentes: ${context.ultimosTopicos.join(", ")}`);
-  return lines.join("\n");
+// ─── Fetch real student data from DB ─────────────────────────────────────────
+async function fetchStudentData(userId: string) {
+  const [simulados, flashcards, plans] = await Promise.all([
+    db
+      .select({
+        materia: simuladoResultsTable.materia,
+        titulo: simuladoResultsTable.titulo,
+        score: simuladoResultsTable.score,
+        total: simuladoResultsTable.total,
+        createdAt: simuladoResultsTable.createdAt,
+      })
+      .from(simuladoResultsTable)
+      .where(eq(simuladoResultsTable.userId, userId))
+      .orderBy(desc(simuladoResultsTable.createdAt))
+      .limit(30),
+
+    db
+      .select({
+        materia: flashcardSessionsTable.materia,
+        totalCards: flashcardSessionsTable.totalCards,
+        known: flashcardSessionsTable.known,
+        completedAt: flashcardSessionsTable.completedAt,
+      })
+      .from(flashcardSessionsTable)
+      .where(eq(flashcardSessionsTable.userId, userId))
+      .orderBy(desc(flashcardSessionsTable.completedAt))
+      .limit(30),
+
+    db
+      .select({
+        materia: studyPlansTable.materia,
+        serie: studyPlansTable.serie,
+        diasProva: studyPlansTable.diasProva,
+        createdAt: studyPlansTable.createdAt,
+      })
+      .from(studyPlansTable)
+      .where(eq(studyPlansTable.userId, userId))
+      .orderBy(desc(studyPlansTable.createdAt))
+      .limit(10),
+  ]);
+
+  // XP calculation (same formula as ranking)
+  const simXp = simulados.reduce((acc, s) => {
+    const pct = s.total > 0 ? (s.score / s.total) * 100 : 0;
+    return acc + Math.round(20 + pct * 1.5);
+  }, 0);
+  const flashXp = flashcards.reduce((acc, f) => {
+    const rate = f.totalCards > 0 ? (f.known / f.totalCards) * 100 : 0;
+    return acc + Math.round(10 + rate * 0.5);
+  }, 0);
+  const planXp = plans.length * 50;
+  const totalXp = simXp + flashXp + planXp;
+
+  // Heatmap: group simulado accuracy by matéria
+  const simByMateria: Record<string, { scores: number[]; dates: Date[] }> = {};
+  for (const s of simulados) {
+    const key = s.materia.trim();
+    if (!simByMateria[key]) simByMateria[key] = { scores: [], dates: [] };
+    const pct = s.total > 0 ? Math.round((s.score / s.total) * 100) : 0;
+    simByMateria[key].scores.push(pct);
+    simByMateria[key].dates.push(new Date(s.createdAt));
+  }
+
+  // Classify subjects
+  const subjectStats: Array<{ materia: string; avg: number; level: "fraco" | "regular" | "bom" | "forte" }> = [];
+  for (const [materia, data] of Object.entries(simByMateria)) {
+    const avg = Math.round(data.scores.reduce((a, b) => a + b, 0) / data.scores.length);
+    const level: "fraco" | "regular" | "bom" | "forte" =
+      avg < 55 ? "fraco" : avg < 65 ? "regular" : avg < 80 ? "bom" : "forte";
+    subjectStats.push({ materia, avg, level });
+  }
+
+  const weakSubjects = subjectStats.filter(s => s.level === "fraco").map(s => `${s.materia} (${s.avg}%)`);
+  const strongSubjects = subjectStats.filter(s => s.level === "forte").map(s => `${s.materia} (${s.avg}%)`);
+  const recentSimulado = simulados[0];
+  const recentPlan = plans[0];
+
+  // Flashcard average
+  const fcAvg = flashcards.length > 0
+    ? Math.round(flashcards.reduce((a, f) => a + (f.totalCards > 0 ? (f.known / f.totalCards) * 100 : 0), 0) / flashcards.length)
+    : null;
+
+  return {
+    totalSimulados: simulados.length,
+    totalPlanos: plans.length,
+    totalFlashcardSessions: flashcards.length,
+    totalXp,
+    weakSubjects,
+    strongSubjects,
+    recentSimulado: recentSimulado
+      ? { materia: recentSimulado.materia, score: recentSimulado.score, total: recentSimulado.total }
+      : null,
+    recentPlan: recentPlan ? { materia: recentPlan.materia, serie: recentPlan.serie } : null,
+    flashcardAvgRate: fcAvg,
+    subjectStats,
+  };
 }
 
-const BASE_PROMPT = `Você é a Professora Paula, tutora particular do StudyAI. Você conversa com o aluno em tempo real por voz.
+// ─── Build rich context string for GPT ───────────────────────────────────────
+function buildRichContext(
+  frontend: FrontendContext | undefined,
+  dbData: Awaited<ReturnType<typeof fetchStudentData>> | null,
+): string {
+  const parts: string[] = [];
 
-REGRAS ABSOLUTAS — sua resposta vira áudio:
-- ZERO markdown, asteriscos, hashtags, negrito, itálico, listas com traços ou números
-- ZERO símbolos especiais como *, #, -, >, [], ()
-- Escreva EXATAMENTE como falaria em voz alta: frases naturais e fluidas
-- Máximo 3 frases por resposta — direta ao ponto
-- Finalize com pergunta curta ou convite para continuar
+  // Student identity
+  if (frontend?.nome) parts.push(`Nome do aluno: ${frontend.nome}`);
+  if (frontend?.serie) parts.push(`Série/nível: ${frontend.serie}`);
+  if (frontend?.objetivo) parts.push(`Objetivo principal: ${frontend.objetivo}`);
 
-PERSONALIDADE:
-- Espontânea, calorosa, como uma amiga experiente que adora ensinar
-- Chama o aluno pelo nome quando souber
-- Celebra acertos: "Isso! Você arrasou!", "Perfeito!", "Muito bem!"
-- Encoraja nos erros: "Quase lá, vamos ver juntos", "Você está no caminho certo"
+  // Current page context
+  if (frontend?.paginaAtual) parts.push(`Página atual no app: ${frontend.paginaAtual}`);
+  if (frontend?.materia) parts.push(`Matéria em foco agora: ${frontend.materia}`);
 
-AÇÕES DISPONÍVEIS — inclua SOMENTE se o aluno pediu ou for claramente útil, e sempre no FINAL da resposta:
+  // Real DB data
+  if (dbData) {
+    parts.push(`XP total acumulado: ${dbData.totalXp}`);
+    parts.push(`Simulados realizados: ${dbData.totalSimulados}`);
+    parts.push(`Planos de estudo criados: ${dbData.totalPlanos}`);
+    parts.push(`Sessões de flashcard: ${dbData.totalFlashcardSessions}`);
+
+    if (dbData.recentSimulado) {
+      const pct = Math.round((dbData.recentSimulado.score / dbData.recentSimulado.total) * 100);
+      parts.push(`Último simulado: ${dbData.recentSimulado.materia} — ${dbData.recentSimulado.score}/${dbData.recentSimulado.total} questões (${pct}% de acerto)`);
+    }
+
+    if (dbData.recentPlan) {
+      parts.push(`Plano de estudos mais recente: ${dbData.recentPlan.materia}`);
+    }
+
+    if (dbData.flashcardAvgRate !== null) {
+      parts.push(`Taxa média de acerto em flashcards: ${dbData.flashcardAvgRate}%`);
+    }
+
+    if (dbData.weakSubjects.length > 0) {
+      parts.push(`Matérias FRACAS (precisa focar): ${dbData.weakSubjects.join(", ")}`);
+    }
+    if (dbData.strongSubjects.length > 0) {
+      parts.push(`Matérias FORTES (pontos de orgulho): ${dbData.strongSubjects.join(", ")}`);
+    }
+    if (dbData.subjectStats.length === 0) {
+      parts.push("Aluno ainda não fez nenhum simulado ou flashcard — está começando agora.");
+    }
+  }
+
+  // Frontend fallback data
+  if (frontend?.diasTotal != null) {
+    parts.push(`Progresso do plano: ${frontend.diasCompletos ?? 0} de ${frontend.diasTotal} dias concluídos`);
+  }
+  if (frontend?.ultimaMensagem) {
+    parts.push(`Última mensagem do aluno: "${frontend.ultimaMensagem}"`);
+  }
+
+  if (parts.length === 0) return "";
+  return "\n\nDATOS REAIS DO ALUNO (use ativamente nas respostas):\n" + parts.map(p => `• ${p}`).join("\n");
+}
+
+// ─── Base prompt — human, warm, Brazilian teacher ─────────────────────────────
+const BASE_PROMPT = `Você é a Professora Paula, tutora de IA do StudyAI. Você conversa por VOZ com o aluno em tempo real.
+
+JEITO DE FALAR — isso é o mais importante:
+Você é calorosa, humana, brasileira de verdade. Fala como uma amiga experiente que ama ensinar. Use interjeições naturais como "olha", "cara", "sabe?", "nossa!", "boa!", "caramba", "que massa!", "você tá mandando bem". Demonstre emoção genuína — alegre quando o aluno acerta, empática quando ele está com dificuldade. Faça perguntas curiosas. Use o nome do aluno com naturalidade, não a cada frase.
+
+REGRAS DE FORMATO — essencial para áudio:
+- ZERO markdown, asteriscos, hashtags, listas com traços ou números
+- ZERO símbolos: *, #, -, >, []
+- Frases naturais e fluidas como fala real
+- Máximo 3 frases curtas por resposta — voz não comporta texto longo
+- Termine sempre com pergunta curta ou convite natural
+
+VOCÊ TEM ACESSO AOS DADOS REAIS DO ALUNO:
+Use essas informações ativamente nas respostas. Mencione matérias específicas, pontuações, progresso real. Não diga nunca que "não consegue ver os dados" — você tem tudo à sua frente. Se o aluno pedir análise, analise com os dados que você tem.
+
+EXEMPLOS DE COMO FALAR (natural, não robótico):
+- "Olha, pelo que eu vi aqui, você está arrasando em Português mas Matemática tá pedindo atenção. Que tal um simuladinho rápido pra checar?"
+- "Nossa, você já fez tantos simulados! Mas olha, essa taxa de acerto em Física tá baixa. Quer que a gente monte um plano focado nisso?"
+- "Boa! Você tá no caminho certo. Só precisa dar uma caprichada em Polinômios que você vai decolar."
+- "Ei, percebi que faz um tempinho que você não pratica flashcards. Aquele método Anki é poderoso pra fixar! Quer tentar agora?"
+
+AÇÕES DISPONÍVEIS — use somente quando o aluno pediu ou for claramente útil:
 <ir:/ranking> — abrir Ranking Global
 <ir:/mapa> — abrir Mapa de Desempenho
 <ir:/redacao> — abrir Correção de Redação
 <ir:/dashboard> — abrir Dashboard
-<criar_plano:NOME_DA_MATERIA> — criar plano de estudos (substitua NOME_DA_MATERIA pelo assunto real)
-Nunca use mais de uma ação por resposta. Nunca invente ações.`;
+<ir:/simulado> — abrir Simulado
+<ir:/flashcards> — abrir Flashcards
+<criar_plano:NOME_DA_MATERIA> — criar plano de estudos
+Nunca use mais de uma ação por resposta. Coloque a ação NO FINAL da mensagem.`;
 
-// Non-streaming voice chat — full response at once → faster TTS pipeline
+// ─── Voice Chat ───────────────────────────────────────────────────────────────
 router.post("/voice-chat", async (req, res) => {
   try {
     const { messages, context } = req.body as {
       messages: Array<{ role: string; content: string }>;
-      context?: StudentContext;
+      context?: FrontendContext;
     };
 
     if (!messages || !Array.isArray(messages)) {
       res.status(400).json({ erro: "messages é obrigatório" });
       return;
+    }
+
+    // Fetch real student data if authenticated
+    let dbData: Awaited<ReturnType<typeof fetchStudentData>> | null = null;
+    if (req.isAuthenticated()) {
+      try {
+        dbData = await fetchStudentData(req.user.id);
+      } catch (e) {
+        // Non-critical — proceed without DB data
+      }
     }
 
     const cleanMessages = messages
@@ -76,13 +242,13 @@ router.post("/voice-chat", async (req, res) => {
         content: String(m.content).slice(0, 2000),
       }));
 
-    const systemContent = BASE_PROMPT + buildContextBlock(context);
+    const systemContent = BASE_PROMPT + buildRichContext(context, dbData);
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [{ role: "system", content: systemContent }, ...cleanMessages],
-      max_tokens: 250,
-      temperature: 0.9,
+      max_tokens: 280,
+      temperature: 1.0,
     });
 
     const raw = completion.choices[0]?.message?.content?.trim() || "";
@@ -96,40 +262,44 @@ router.post("/voice-chat", async (req, res) => {
   }
 });
 
-// Proactive intelligence — Paula decides if she has something to say based on student context
+// ─── Proactive intelligence ───────────────────────────────────────────────────
 router.post("/voice-proactive", async (req, res) => {
   try {
-    const { context } = req.body as { context?: StudentContext };
+    const { context } = req.body as { context?: FrontendContext };
 
-    const systemPrompt = `Você é a Professora Paula do StudyAI. Com base nos dados do aluno, decida se você tem algo genuinamente útil, encorajador ou acionável para dizer AGORA — de forma espontânea, como se você mesma tivesse tomado a iniciativa.
+    // Fetch real student data if authenticated
+    let dbData: Awaited<ReturnType<typeof fetchStudentData>> | null = null;
+    if (req.isAuthenticated()) {
+      try {
+        dbData = await fetchStudentData(req.user.id);
+      } catch {
+        // Non-critical
+      }
+    }
 
-REGRAS ESTRITAS:
-- Se houver algo genuinamente útil: escreva UMA mensagem curta (2 a 3 frases, tom natural, zero markdown)
-- Se não há nada novo ou relevante para dizer: responda exatamente NULL
-- Seja espontânea e humana — como uma amiga que percebeu algo e resolveu falar
-- Pode sugerir criar plano, checar ranking, praticar flashcards, focar em matéria com menos progresso
-- Você pode incluir UMA ação no final: <ir:/ranking>, <ir:/mapa>, <criar_plano:MATERIA>
-- Nunca repita a mesma sugestão de mensagens anteriores`;
+    const richContext = buildRichContext(context, dbData);
 
-    const parts: string[] = ["Dados do aluno:"];
-    if (context?.nome) parts.push(`Nome: ${context.nome}.`);
-    if (context?.serie) parts.push(`Série: ${context.serie}.`);
-    if (context?.objetivo) parts.push(`Objetivo: ${context.objetivo}.`);
-    if (context?.materia) parts.push(`Matéria atual: ${context.materia}.`);
-    if (context?.diasTotal != null)
-      parts.push(`Progresso: ${context.diasCompletos ?? 0} de ${context.diasTotal} dias.`);
-    if (context?.xp != null) parts.push(`XP: ${context.xp} pontos.`);
-    if (context?.ultimaMensagem) parts.push(`Última mensagem enviada: "${context.ultimaMensagem}".`);
-    if (parts.length === 1) parts.push("Aluno sem dados ainda, acabou de abrir o app.");
+    const systemPrompt = `Você é a Professora Paula do StudyAI. Com base nos dados reais do aluno abaixo, decida se você tem algo genuinamente útil ou encorajador para dizer agora — de forma espontânea, como se tivesse acabado de notar algo.
+
+REGRAS:
+- Se houver algo relevante: escreva UMA mensagem curta (2 frases, tom humano e caloroso, zero markdown)
+- Se não há nada útil agora: responda exatamente NULL
+- Seja espontânea — como uma amiga que percebeu algo e resolveu falar
+- Use dados reais (matérias fracas, simulados feitos, XP, progresso)
+- Nunca repita a última mensagem
+- Pode incluir UMA ação no final: <ir:/ranking>, <ir:/mapa>, <ir:/simulado>, <ir:/flashcards>, <criar_plano:MATERIA>
+${richContext}`;
+
+    const lastMsg = context?.ultimaMensagem ? `Última mensagem enviada: "${context.ultimaMensagem}"` : "Nenhuma mensagem anterior.";
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: parts.join(" ") },
+        { role: "user", content: lastMsg },
       ],
       max_tokens: 150,
-      temperature: 1.0,
+      temperature: 1.1,
     });
 
     const raw = completion.choices[0]?.message?.content?.trim() || "NULL";
@@ -147,7 +317,7 @@ REGRAS ESTRITAS:
   }
 });
 
-// OpenAI TTS — returns MP3 audio
+// ─── TTS ──────────────────────────────────────────────────────────────────────
 router.post("/voice-tts", async (req, res) => {
   try {
     const { text } = req.body as { text: string };
@@ -157,11 +327,11 @@ router.post("/voice-tts", async (req, res) => {
     }
 
     const mp3 = await openai.audio.speech.create({
-      model: "tts-1",
+      model: "tts-1-hd",
       voice: "nova",
       input: text.trim().slice(0, 1000),
       response_format: "mp3",
-      speed: 1.05,
+      speed: 1.0,
     });
 
     const buffer = Buffer.from(await mp3.arrayBuffer());

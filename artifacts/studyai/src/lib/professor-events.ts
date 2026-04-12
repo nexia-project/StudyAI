@@ -23,6 +23,7 @@ export interface StudentContext {
   meta?: string;
   ultimosTopicos?: string[];
   ultimaMensagem?: string;
+  paginaAtual?: string;
 }
 
 export function triggerProfessor(text: string, context: ProfessorEventContext = "generic") {
@@ -42,11 +43,31 @@ export function triggerProfessorAction(type: string, param: string) {
   );
 }
 
-// Collect current student context from localStorage + any extra data written by Home.tsx
+// Detect current page from URL (works regardless of base path)
+function detectCurrentPage(): string {
+  const path = window.location.pathname;
+  if (path.includes("/mapa")) return "Mapa de Desempenho";
+  if (path.includes("/dashboard")) return "Dashboard de Progresso";
+  if (path.includes("/redacao")) return "Correção de Redação ENEM";
+  if (path.includes("/ranking")) return "Ranking Global";
+  if (path.includes("/simulado-adaptativo")) return "Simulado Adaptativo";
+  if (path.includes("/simulado")) return "Simulado";
+  if (path.includes("/flashcards")) return "Flashcards";
+  if (path.includes("/pomodoro")) return "Pomodoro";
+  if (path.includes("/pricing")) return "Planos e Preços";
+  if (path.includes("/historico")) return "Histórico de Planos";
+  if (path.includes("/app")) return "Home / Gerador de Plano";
+  return "StudyAI";
+}
+
+// Collect current student context from localStorage + current page
 export function collectStudentContext(): StudentContext {
   try {
     const profile = JSON.parse(localStorage.getItem("studyai_profile") || "{}");
     const ctx = JSON.parse(localStorage.getItem("studyai_current_context") || "{}");
+
+    const paginaAtual = detectCurrentPage();
+
     return {
       nome: profile?.nome || ctx?.nome,
       serie: profile?.serie || ctx?.serie,
@@ -57,6 +78,7 @@ export function collectStudentContext(): StudentContext {
       xp: ctx?.xp,
       ultimosTopicos: ctx?.ultimosTopicos,
       ultimaMensagem: ctx?.ultimaMensagem,
+      paginaAtual,
     };
   } catch {
     return {};

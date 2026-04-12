@@ -12,11 +12,13 @@ import RedacaoPage from "@/pages/Redacao";
 import MapaPage from "@/pages/Mapa";
 import PricingPage from "@/pages/Pricing";
 import AdminPage from "@/pages/Admin";
+import PrivacidadePage from "@/pages/Privacidade";
 import NotFound from "@/pages/not-found";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useAuth } from "@workspace/replit-auth-web";
 import { WhatsAppBanner } from "@/components/WhatsAppBanner";
 import { VoiceProfessor } from "@/components/VoiceProfessor";
+import { CookieConsent } from "@/components/CookieConsent";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -65,6 +67,7 @@ function Router() {
         <Route path="/redacao" component={RedacaoPage} />
         <Route path="/mapa" component={MapaPage} />
         <Route path="/admin" component={AdminPage} />
+        <Route path="/privacidade" component={PrivacidadePage} />
         <Route component={NotFound} />
       </Switch>
     </>
@@ -81,6 +84,7 @@ function App() {
             <Router />
           </WouterRouter>
           <VoiceProfessor />
+          <CookieConsent />
           <Toaster />
         </TooltipProvider>
       </QueryClientProvider>

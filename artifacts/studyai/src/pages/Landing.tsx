@@ -592,6 +592,7 @@ export default function Landing() {
           <p className="text-gray-400 text-sm">© 2025 StudyAI · IA exclusiva para estudantes brasileiros</p>
           <div className="flex gap-4 text-sm text-gray-400">
             <a href="#faq" className="hover:text-gray-700 transition-colors">FAQ</a>
+            <a href="/privacidade" className="hover:text-gray-700 transition-colors">Privacidade & LGPD</a>
             <button onClick={handleStart} className="hover:text-gray-700 transition-colors">Entrar</button>
           </div>
         </div>

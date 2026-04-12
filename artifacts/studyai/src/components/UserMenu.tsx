@@ -12,6 +12,7 @@ import {
   BarChart2,
   Crown,
   Sparkles,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -164,6 +165,16 @@ export function UserMenu() {
               >
                 <Trophy className="w-4 h-4 text-amber-500" />
                 Ranking Global
+              </button>
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  navigate("/privacidade");
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-foreground hover:bg-green-50 hover:text-green-700 transition-colors"
+              >
+                <Shield className="w-4 h-4 text-green-600" />
+                Privacidade & LGPD
               </button>
               <button
                 onClick={() => {

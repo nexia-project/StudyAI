@@ -42,10 +42,11 @@ export function useSubscription() {
 export async function startCheckout(): Promise<void> {
   const res = await fetch("/api/subscription/create-checkout", {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
   });
   if (!res.ok) {
-    const err = await res.json();
+    const err = await res.json().catch(() => ({}));
     throw new Error(err.error || "Erro ao iniciar pagamento");
   }
   const { url } = await res.json();
@@ -55,10 +56,11 @@ export async function startCheckout(): Promise<void> {
 export async function openBillingPortal(): Promise<void> {
   const res = await fetch("/api/subscription/create-portal", {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
   });
   if (!res.ok) {
-    const err = await res.json();
+    const err = await res.json().catch(() => ({}));
     throw new Error(err.error || "Erro ao abrir portal");
   }
   const { url } = await res.json();

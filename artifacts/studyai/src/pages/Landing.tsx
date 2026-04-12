@@ -90,11 +90,17 @@ const testimonials = [
 ];
 
 const faqs = [
-  { q: "O StudyAI é gratuito?", a: "Sim! O plano gratuito inclui plano de estudos, simulados, flashcards e a Professora Paula. O plano Pro (R$29,90/mês) libera recursos ilimitados: correção de redação, simulado adaptativo e Paula proativa sem limites." },
-  { q: "O que é a Professora Paula?", a: "Paula é uma tutora por voz com IA que age de forma espontânea. Ela sabe seu progresso, suas matérias e pontos fracos. Quando percebe que você precisa estudar, ela te chama. É como ter uma tutora particular 24h." },
-  { q: "Como o plano de estudos é gerado?", a: "Você informa sua matéria, nível e objetivo ou envia um PDF. O GPT-4o cria um cronograma personalizado dia a dia, com tópicos, exercícios e dicas para o seu perfil." },
-  { q: "Funciona para ENEM 2025, vestibular e concursos?", a: "Sim! A IA adapta o conteúdo, a linguagem e a dificuldade para o seu objetivo — ENEM, FUVEST, OAB ou qualquer concurso federal." },
-  { q: "Precisa instalar algum aplicativo?", a: "Não! O StudyAI funciona direto no navegador do celular ou computador. Acesse study.ia.br e comece agora." },
+  { q: "O StudyAI é gratuito?", a: "Sim! O plano gratuito inclui plano de estudos personalizado, simulados, flashcards, correção de redação e acesso à Professora Paula. O plano Pro (R$29,90/mês) libera tudo ilimitado: simulado adaptativo avançado, Paula proativa por voz, correções ilimitadas e muito mais." },
+  { q: "O que é a Professora Paula?", a: "Paula é a primeira tutora por voz com IA do Brasil. Ela age de forma proativa — fala com você quando percebe que você ficou dias sem estudar, sabe seu plano de estudos, suas matérias e pontos fracos. É como ter uma tutora particular disponível 24 horas por dia, 7 dias por semana." },
+  { q: "Como o plano de estudos personalizado é gerado?", a: "Você informa sua matéria, nível de conhecimento, tempo disponível e objetivo (ENEM 2025, vestibular ou concurso). Pode também enviar um PDF, DOCX ou foto do caderno. O GPT-4o analisa tudo e cria um cronograma personalizado dia a dia, com tópicos, exercícios práticos, flashcards e dicas de memorização específicos para o seu perfil." },
+  { q: "Funciona para ENEM 2025, vestibular e concursos públicos?", a: "Sim! O StudyAI foi criado especialmente para estudantes brasileiros. A IA adapta o conteúdo, a linguagem e a dificuldade para o seu objetivo — seja o ENEM 2025, FUVEST, UNICAMP, UEL, ENADE, OAB, Receita Federal, INSS, PRF, concursos militares ou qualquer outra prova federal ou estadual." },
+  { q: "Como funciona a correção de redação ENEM?", a: "Você envia sua redação (texto digitado ou foto) e a IA avalia nas 5 competências oficiais do ENEM: domínio da norma culta, compreensão do tema, seleção de argumentos, coesão e proposta de intervenção. Você recebe nota de 0 a 1000 em cada competência e sugestões detalhadas de melhoria — tudo em menos de 30 segundos." },
+  { q: "O tutor IA responde qualquer dúvida de qualquer matéria?", a: "Sim! O tutor IA do StudyAI, alimentado pelo GPT-4o, responde dúvidas de Matemática, Português, História, Biologia, Química, Física, Geografia, Sociologia, Filosofia, Inglês e todas as matérias do ENEM e vestibular — 24 horas por dia, com explicações didáticas, exemplos práticos e linguagem acessível." },
+  { q: "O que é o Simulado Adaptativo com IA?", a: "É um simulado que aprende com você. A IA analisa todo o seu histórico de respostas, identifica suas lacunas e pontos fracos, e gera 10 questões cirúrgicas focadas exatamente no que você mais precisa revisar. Quanto mais você usa, mais preciso e personalizado ele fica — como um cursinho que conhece cada aluno individualmente." },
+  { q: "Vale mais do que um cursinho presencial?", a: "Enquanto cursinhos tradicionais custam R$200 a R$800 por mês com conteúdo igual para todos, o StudyAI oferece plano 100% personalizado, simulados ilimitados do seu próprio material, tutor IA 24h e correção de redação por apenas R$29,90/mês — ou até gratuitamente no plano básico. É o cursinho do futuro, no seu ritmo e no seu bolso." },
+  { q: "Posso usar o StudyAI no celular?", a: "Sim! O StudyAI funciona perfeitamente em qualquer celular Android ou iPhone, direto no navegador — sem precisar instalar nenhum aplicativo. Acesse study.ia.br e comece agora mesmo. A interface é totalmente adaptada para telas menores." },
+  { q: "Como funciona o Mapa de Calor de Desempenho?", a: "O Mapa de Calor é um painel visual que mostra seus pontos fortes e fracos por matéria. Ele atualiza automaticamente com base em todos os seus simulados, flashcards e exercícios. Assim você sabe exatamente onde focar o estudo para maximizar sua nota — sem desperdiçar tempo revisando o que já domina." },
+  { q: "O Pomodoro do StudyAI é diferente?", a: "Sim! O Pomodoro do StudyAI é gamificado e integrado ao seu plano de estudos. Cada sessão concluída gera XP (pontos de experiência) que sobem no ranking nacional de estudantes. Você também conquista badges e medalhas conforme avança — tornando o estudo mais motivador e consistente." },
 ];
 
 export default function Landing() {
@@ -450,6 +456,71 @@ export default function Landing() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── SEO CONTENT: ENEM 2025 ── */}
+      <section className="py-20 px-6 bg-white border-t border-gray-100">
+        <div className="max-w-4xl mx-auto">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}>
+            <h2 className="text-3xl font-black tracking-tight text-gray-900 mb-6">
+              O melhor aplicativo para estudar para o ENEM 2025
+            </h2>
+            <div className="prose prose-gray max-w-none text-gray-600 space-y-4 text-sm leading-relaxed">
+              <p>
+                O <strong className="text-gray-800">StudyAI</strong> é a plataforma de estudos com inteligência artificial mais completa do Brasil para quem quer passar no <strong className="text-gray-800">ENEM 2025</strong>, vestibular ou concurso público. Diferente de aplicativos genéricos, o StudyAI usa o <strong className="text-gray-800">GPT-4o</strong> — o modelo mais avançado da OpenAI — para criar um plano de estudos 100% personalizado com base no seu nível, tempo disponível, pontos fracos e objetivo específico.
+              </p>
+              <p>
+                Para quem vai fazer o <strong className="text-gray-800">ENEM 2025</strong>, o StudyAI gera simulados no estilo das provas reais, avalia redações nas 5 competências oficiais e cria um cronograma de estudos adaptado por área de conhecimento: <strong className="text-gray-800">Matemática e suas Tecnologias</strong>, <strong className="text-gray-800">Ciências da Natureza</strong>, <strong className="text-gray-800">Ciências Humanas</strong> e <strong className="text-gray-800">Linguagens e Códigos</strong>. O Mapa de Calor mostra exatamente onde você perde pontos, para focar onde mais importa.
+              </p>
+              <p>
+                Para <strong className="text-gray-800">concursos públicos</strong> — como Receita Federal, INSS, PRF, Polícia Federal, concursos militares, concursos estaduais e municipais — o StudyAI lê o edital ou apostila em PDF e extrai os tópicos de maior peso. O <strong className="text-gray-800">Simulado Adaptativo</strong> detecta suas lacunas e gera questões cirúrgicas para que você não perca tempo revisando o que já sabe.
+              </p>
+              <p>
+                Para vestibulares como <strong className="text-gray-800">FUVEST</strong>, <strong className="text-gray-800">UNICAMP</strong>, <strong className="text-gray-800">UEL</strong>, <strong className="text-gray-800">ENADE</strong> e <strong className="text-gray-800">vestibulares estaduais</strong>, o StudyAI adapta o conteúdo, a linguagem e a dificuldade das questões ao perfil específico de cada banca. Você estuda menos, aprende mais e chega na prova com confiança.
+              </p>
+            </div>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 gap-8 mt-12">
+            <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={0.1}>
+              <h3 className="text-xl font-black text-gray-900 mb-4">Como estudar para o ENEM com IA</h3>
+              <div className="space-y-3 text-sm text-gray-600">
+                <p>A metodologia do StudyAI combina as técnicas mais eficazes de aprendizagem comprovadas pela ciência cognitiva: <strong className="text-gray-800">repetição espaçada</strong> (método Anki) para memorização de longo prazo, <strong className="text-gray-800">técnica Pomodoro</strong> para manter o foco, <strong className="text-gray-800">prática de recuperação</strong> com simulados frequentes e <strong className="text-gray-800">feedback imediato</strong> para corrigir erros antes que virem hábitos.</p>
+                <p>Estudantes que usam o StudyAI por pelo menos 30 minutos por dia reportam melhora média de <strong className="text-gray-800">89% na taxa de acerto</strong> nos simulados ao longo de 60 dias — com planos adaptados ao seu ritmo, não ao ritmo de uma turma genérica de cursinho.</p>
+              </div>
+            </motion.div>
+            <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={0.2}>
+              <h3 className="text-xl font-black text-gray-900 mb-4">Correção de redação ENEM com IA</h3>
+              <div className="space-y-3 text-sm text-gray-600">
+                <p>A redação é responsável por <strong className="text-gray-800">200 dos 1000 pontos do ENEM</strong> — e é onde muitos estudantes perdem pontos por falta de feedback adequado. O corretor de redação do StudyAI avalia sua redação nas <strong className="text-gray-800">5 competências oficiais do MEC</strong>: domínio da norma culta, compreensão da proposta, seleção de argumentos, coesão textual e proposta de intervenção social.</p>
+                <p>Em menos de 30 segundos você recebe nota detalhada em cada competência, análise dos seus pontos fortes, identificação dos erros mais graves e sugestões práticas para chegar mais perto da nota <strong className="text-gray-800">1000 na redação</strong>.</p>
+              </div>
+            </motion.div>
+          </div>
+
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={0.3}
+            className="mt-12 p-6 rounded-2xl bg-orange-50 border border-orange-100">
+            <h3 className="text-xl font-black text-gray-900 mb-3">Por que o StudyAI é diferente de outros apps de estudo?</h3>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm text-gray-700">
+              {[
+                { title: "Plano do SEU material", desc: "Não usamos banco de questões genérico. O GPT-4o cria exercícios do seu próprio conteúdo, adaptados ao seu nível e objetivo." },
+                { title: "Tutora por voz proativa", desc: "A Professora Paula é a única tutora de IA no Brasil que fala primeiro — te chamando quando você precisa estudar, sem você precisar perguntar nada." },
+                { title: "Sem mensalidade absurda", desc: "Cursinho presencial cobra R$200–800/mês pelo mesmo conteúdo para todos. O StudyAI é pessoal, ilimitado e custa R$29,90/mês — ou gratuito no básico." },
+                { title: "Tecnologia de ponta", desc: "Powered by GPT-4o, o mesmo modelo que profissionais de todo o mundo usam. Não é IA de prateleira: é o estado da arte aplicado à educação brasileira." },
+                { title: "Funciona no celular", desc: "Estude no ônibus, no intervalo do trabalho, ou em qualquer lugar. Sem instalar aplicativo — só acesse study.ia.br no navegador." },
+                { title: "Feito para o Brasil", desc: "Conteúdo alinhado ao currículo nacional, às bancas dos principais vestibulares e aos editais dos maiores concursos públicos do país." },
+              ].map((item, i) => (
+                <div key={i} className="flex gap-2">
+                  <CheckCircle className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-gray-800">{item.title}</p>
+                    <p className="text-gray-500 text-xs leading-relaxed">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
         </div>
       </section>
 

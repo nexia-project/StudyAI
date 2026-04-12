@@ -1,7 +1,13 @@
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /historico
+Disallow: /api/
 
 User-agent: Googlebot
 Allow: /
+Disallow: /admin
+Disallow: /historico
+Disallow: /api/
 
 Sitemap: https://study.ia.br/sitemap.xml

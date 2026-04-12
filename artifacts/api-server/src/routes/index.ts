@@ -17,6 +17,7 @@ import subscriptionRouter from "./subscription";
 import feedRouter from "./feed";
 import adminRouter from "./admin";
 import professorRouter from "./professor";
+import lgpdRouter from "./lgpd";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(subscriptionRouter);
 router.use(feedRouter);
 router.use(adminRouter);
 router.use(professorRouter);
+router.use(lgpdRouter);
 
 export default router;

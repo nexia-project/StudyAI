@@ -7,7 +7,7 @@ export interface SubscriptionStatus {
 }
 
 export function useSubscription() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
 
   const query = useQuery<SubscriptionStatus>({
     queryKey: ["subscription-status", user?.id],
@@ -23,10 +23,14 @@ export function useSubscription() {
     refetchOnWindowFocus: true,
   });
 
+  // isLoading must be true while auth is still loading OR while subscription query is fetching.
+  // Without this, pages see isPremium=false before the auth resolves and flash the paywall.
+  const isLoading = authLoading || (!!user && query.isLoading);
+
   return {
     isPremium: query.data?.isPremium ?? false,
     status: query.data?.status ?? "free",
-    isLoading: query.isLoading,
+    isLoading,
     refetch: query.refetch,
   };
 }

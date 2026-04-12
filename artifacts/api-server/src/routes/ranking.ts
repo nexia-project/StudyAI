@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db } from "@workspace/db";
-import { usersTable, sessionsTable } from "@workspace/db";
+import { usersTable } from "@workspace/db";
 import { simuladoResultsTable, flashcardSessionsTable, studyPlansTable } from "@workspace/db/schema";
 import { eq, sql, desc } from "drizzle-orm";
 
@@ -23,6 +23,8 @@ router.get("/ranking", async (req: Request, res: Response) => {
         lastName: usersTable.lastName,
         email: usersTable.email,
         profileImageUrl: usersTable.profileImageUrl,
+        studentName: usersTable.studentName,
+        storedXp: usersTable.xp,
       }).from(usersTable),
 
       db.select({
@@ -56,27 +58,16 @@ router.get("/ranking", async (req: Request, res: Response) => {
         const plan = planMap.get(u.id);
 
         const simCount = sim?.count ?? 0;
-        const simXp = sim
-          ? Math.round(
-              sim.count * 50 +
-              (sim.totalQuestions > 0 ? (sim.totalScore / sim.totalQuestions) * 150 * sim.count : 0)
-            )
-          : 0;
-        const flashXp = flash
-          ? Math.round(
-              flash.totalCards > 0
-                ? (flash.totalKnown / flash.totalCards) * 50 * flash.sessions
-                : 0
-            )
-          : 0;
-        const planXp = (plan?.count ?? 0) * 25;
-        const totalXp = simXp + flashXp + planXp;
-
         const simAccuracy = sim && sim.totalQuestions > 0
           ? Math.round((sim.totalScore / sim.totalQuestions) * 100)
           : 0;
 
-        const displayName = u.firstName
+        // Use stored XP as the authoritative source (seeded from historical data + awarded going forward)
+        const totalXp = u.storedXp ?? 0;
+
+        const displayName = u.studentName
+          ? u.studentName
+          : u.firstName
           ? u.lastName
             ? `${u.firstName} ${u.lastName.charAt(0)}.`
             : u.firstName
@@ -107,16 +98,17 @@ router.get("/ranking", async (req: Request, res: Response) => {
       } else {
         const u = users.find((u) => u.id === currentUserId);
         if (u) {
+          const displayName = u.studentName || u.firstName || u.email?.split("@")[0] || "Você";
           currentUserEntry = {
             id: u.id,
-            displayName: u.firstName ?? u.email?.split("@")[0] ?? "Você",
+            displayName,
             profileImageUrl: u.profileImageUrl,
-            xp: 0,
+            xp: u.storedXp ?? 0,
             simCount: 0,
             simAccuracy: 0,
             flashSessions: 0,
             planCount: 0,
-            tier: getTier(0),
+            tier: getTier(u.storedXp ?? 0),
             rank: ranked.length + 1,
           };
         }

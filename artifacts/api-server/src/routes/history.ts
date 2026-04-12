@@ -4,8 +4,16 @@ import {
   studyPlansTable,
   simuladoResultsTable,
   flashcardSessionsTable,
+  usersTable,
 } from "@workspace/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
+
+async function awardXp(userId: string, amount: number) {
+  if (amount <= 0) return;
+  await db.update(usersTable)
+    .set({ xp: sql`${usersTable.xp} + ${amount}` })
+    .where(eq(usersTable.id, userId));
+}
 
 const router = Router();
 
@@ -24,7 +32,7 @@ router.get("/history", async (req, res) => {
   res.json({ plans, simulados, flashcards });
 });
 
-// POST /api/history/plan — save a study plan
+// POST /api/history/plan — save a study plan (+25 XP)
 router.post("/history/plan", async (req, res) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ erro: "Não autenticado." });
@@ -45,10 +53,12 @@ router.post("/history/plan", async (req, res) => {
       plan,
     })
     .returning();
-  res.json({ id: inserted.id });
+  awardXp(req.user.id, 25).catch(() => {});
+  res.json({ id: inserted.id, xpAwarded: 25 });
 });
 
 // POST /api/history/simulado — save a simulado result
+// XP formula: 50 base + até 150 de bônus por acertos (total máx 200 por simulado)
 router.post("/history/simulado", async (req, res) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ erro: "Não autenticado." });
@@ -73,10 +83,14 @@ router.post("/history/simulado", async (req, res) => {
       answers: answers ?? null,
     })
     .returning();
-  res.json({ id: inserted.id });
+  const accuracy = total > 0 ? score / total : 0;
+  const xpAwarded = Math.round(50 + accuracy * 150);
+  awardXp(req.user.id, xpAwarded).catch(() => {});
+  res.json({ id: inserted.id, xpAwarded });
 });
 
 // POST /api/history/flashcard — save a flashcard session
+// XP formula: até 50 XP por sessão baseado na taxa de acerto
 router.post("/history/flashcard", async (req, res) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ erro: "Não autenticado." });
@@ -99,7 +113,27 @@ router.post("/history/flashcard", async (req, res) => {
       unknown: unknown ?? 0,
     })
     .returning();
-  res.json({ id: inserted.id });
+  const knownCards = known ?? 0;
+  const xpAwarded = totalCards > 0 ? Math.round((knownCards / totalCards) * 50) : 0;
+  if (xpAwarded > 0) awardXp(req.user.id, xpAwarded).catch(() => {});
+  res.json({ id: inserted.id, xpAwarded });
+});
+
+// POST /api/xp/award — award XP for topic completion from frontend (100 XP per topic)
+router.post("/xp/award", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ erro: "Não autenticado." });
+    return;
+  }
+  const { amount } = req.body as { amount?: number };
+  const xp = Math.min(Math.max(Math.round(amount ?? 0), 0), 200); // cap at 200 per call
+  if (xp <= 0) {
+    res.json({ xpAwarded: 0 });
+    return;
+  }
+  await awardXp(req.user.id, xp);
+  const [user] = await db.select({ xp: usersTable.xp }).from(usersTable).where(eq(usersTable.id, req.user.id)).limit(1);
+  res.json({ xpAwarded: xp, totalXp: user?.xp ?? 0 });
 });
 
 export default router;

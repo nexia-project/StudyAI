@@ -19,7 +19,6 @@ import { useAuth } from "@workspace/replit-auth-web";
 import { WhatsAppBanner } from "@/components/WhatsAppBanner";
 import { VoiceProfessor } from "@/components/VoiceProfessor";
 import { CookieConsent } from "@/components/CookieConsent";
-import { FreeLimitModal, triggerLimitModal } from "@/components/FreeLimitModal";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,7 +38,6 @@ function PostLoginRedirect() {
     try {
       const dest = sessionStorage.getItem("auth_return_to");
       sessionStorage.removeItem("auth_return_to");
-      // Only navigate if dest is a valid same-origin path (starts with /)
       if (dest && dest.startsWith("/") && !dest.startsWith("//")) {
         const base = import.meta.env.BASE_URL.replace(/\/$/, "");
         const path = dest.startsWith(base) ? dest.slice(base.length) : dest;
@@ -53,10 +51,35 @@ function PostLoginRedirect() {
   return null;
 }
 
+// Intercepts 402 (free limit reached) and redirects directly to /pricing
+function FetchInterceptor() {
+  const [, navigate] = useLocation();
+
+  useEffect(() => {
+    const original = window.fetch.bind(window);
+    window.fetch = async function (...args: Parameters<typeof fetch>) {
+      const res = await original(...args);
+      if (res.status === 402) {
+        const clone = res.clone();
+        clone.json().then((data: any) => {
+          if (data?.erro === "limite_gratuito") {
+            navigate("/pricing");
+          }
+        }).catch(() => {});
+      }
+      return res;
+    };
+    return () => { window.fetch = original; };
+  }, [navigate]);
+
+  return null;
+}
+
 function Router() {
   return (
     <>
       <PostLoginRedirect />
+      <FetchInterceptor />
       <Switch>
         <Route path="/" component={Landing} />
         <Route path="/app" component={Home} />
@@ -75,38 +98,16 @@ function Router() {
   );
 }
 
-function FetchInterceptor() {
-  useEffect(() => {
-    const original = window.fetch.bind(window);
-    window.fetch = async function (...args: Parameters<typeof fetch>) {
-      const res = await original(...args);
-      if (res.status === 402) {
-        const clone = res.clone();
-        clone.json().then((data: any) => {
-          if (data?.erro === "limite_gratuito") {
-            triggerLimitModal();
-          }
-        }).catch(() => {});
-      }
-      return res;
-    };
-    return () => { window.fetch = original; };
-  }, []);
-  return null;
-}
-
 function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <FetchInterceptor />
           <WhatsAppBanner />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Router />
           </WouterRouter>
           <VoiceProfessor />
-          <FreeLimitModal />
           <CookieConsent />
           <Toaster />
         </TooltipProvider>

@@ -23,6 +23,7 @@ export const usersTable = pgTable("users", {
   stripeSubscriptionId: varchar("stripe_subscription_id"),
   stripeSubscriptionStatus: varchar("stripe_subscription_status").default("free"),
   freeAiUses: integer("free_ai_uses").default(0).notNull(),
+  xp: integer("xp").default(0).notNull(),
   studentName: varchar("student_name"),
   studentGrade: varchar("student_grade"),
   studentGoal: varchar("student_goal"),

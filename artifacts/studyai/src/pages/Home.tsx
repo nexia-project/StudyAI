@@ -571,6 +571,8 @@ export default function Home() {
     }
   };
 
+  const BASE_URL_API = import.meta.env.BASE_URL.replace(/\/$/, "");
+
   const toggleTopic = (dayNum: number, topicIdx: number) => {
     const key = `${dayNum}-${topicIdx}`;
     setCompletedTopics(prev => {
@@ -582,6 +584,16 @@ export default function Home() {
       }
 
       if (isCompleted) {
+        // Award 100 XP in the backend (persisted, counted in ranking)
+        if (isAuthenticated) {
+          fetch(`${BASE_URL_API}/api/xp/award`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ amount: 100 }),
+          }).catch(() => {});
+        }
+
         setEarnedXp(x => {
           const newXp = x + 100;
           // Every 500 XP milestone: proactive professor congratulation

@@ -298,7 +298,7 @@ router.post("/analisar", checkFreeUsage, (req, res, next) => {
     if (wantsStream) {
       sendSSE({ type: "status", message: "Analisando conteúdo..." });
       const abortCtrl = new AbortController();
-      req.on("close", () => abortCtrl.abort());
+      res.on("close", () => abortCtrl.abort());
       const stream = await openai.chat.completions.create({
         model: "gpt-4o",
         messages,

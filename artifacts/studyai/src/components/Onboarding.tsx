@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { GraduationCap, Target, BookOpen, ArrowRight, Sparkles } from "lucide-react";
+import { GraduationCap, Target, BookOpen, ArrowRight, Sparkles, Trophy } from "lucide-react";
 
 const GRADES = [
   "1º Ano - Fundamental", "2º Ano - Fundamental", "3º Ano - Fundamental",
@@ -11,17 +11,18 @@ const GRADES = [
 ];
 
 const GOALS = [
-  { id: "enem", label: "ENEM 2025", emoji: "📚", desc: "Quero passar no ENEM" },
-  { id: "vestibular", label: "Vestibular", emoji: "🎓", desc: "FUVEST, UNICAMP e outros" },
-  { id: "concurso", label: "Concurso Público", emoji: "🏛️", desc: "Federal, estadual ou municipal" },
-  { id: "escola", label: "Escola / Faculdade", emoji: "📖", desc: "Provas e trabalhos" },
-  { id: "outros", label: "Outro objetivo", emoji: "🎯", desc: "Aprender algo específico" },
+  { id: "enem", label: "ENEM 2025", emoji: "📚", desc: "Vestibular nacional unificado", needsDetail: false },
+  { id: "vestibular", label: "Vestibular", emoji: "🎓", desc: "FUVEST, UNICAMP, UNESP e outros", needsDetail: true, placeholder: "Ex: FUVEST – Medicina USP" },
+  { id: "concurso", label: "Concurso Público", emoji: "🏛️", desc: "Federal, estadual ou municipal", needsDetail: true, placeholder: "Ex: Receita Federal – Auditor Fiscal" },
+  { id: "escola", label: "Escola / Faculdade", emoji: "📖", desc: "Provas, trabalhos e matérias", needsDetail: false },
+  { id: "outros", label: "Outro objetivo", emoji: "🎯", desc: "Aprender algo específico", needsDetail: false },
 ];
 
 export type OnboardingData = {
   nome: string;
   serie: string;
   objetivo: string;
+  concursoAlvo?: string;
 };
 
 interface OnboardingProps {
@@ -52,19 +53,45 @@ export function Onboarding({ onComplete }: OnboardingProps) {
   const [nome, setNome] = useState("");
   const [serie, setSerie] = useState("");
   const [objetivo, setObjetivo] = useState("");
+  const [selectedGoal, setSelectedGoal] = useState<typeof GOALS[0] | null>(null);
+  const [concursoAlvo, setConcursoAlvo] = useState("");
+
+  const handleSelectGoal = (goal: typeof GOALS[0]) => {
+    setObjetivo(goal.label);
+    setSelectedGoal(goal);
+    if (goal.needsDetail) {
+      setStep(3);
+    } else {
+      const data: OnboardingData = { nome: nome.trim() || "Estudante", serie, objetivo: goal.label };
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
+      onComplete(data);
+    }
+  };
 
   const handleComplete = () => {
-    const data: OnboardingData = { nome: nome.trim() || "Herói", serie, objetivo };
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch {}
+    const data: OnboardingData = {
+      nome: nome.trim() || "Estudante",
+      serie,
+      objetivo,
+      ...(concursoAlvo.trim() ? { concursoAlvo: concursoAlvo.trim() } : {}),
+    };
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
     onComplete(data);
   };
 
-  const steps = [
+  const stepIcons = [
+    <Sparkles className="w-6 h-6" />,
+    <GraduationCap className="w-6 h-6" />,
+    <Target className="w-6 h-6" />,
+    <Trophy className="w-6 h-6" />,
+  ];
+
+  const totalSteps = selectedGoal?.needsDetail ? 4 : 3;
+
+  const stepsContent = [
     {
       title: "Bem-vindo ao StudyAI! 🚀",
-      subtitle: "Vou criar uma experiência de estudos única para você. Primeiro, como posso te chamar?",
+      subtitle: "Vou criar uma experiência de estudos única para você. Como posso te chamar?",
       content: (
         <div className="space-y-4">
           <input
@@ -88,7 +115,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
     },
     {
       title: `Em qual série você está, ${nome || "amigo"}?`,
-      subtitle: "Isso me ajuda a adaptar o conteúdo ao seu nível.",
+      subtitle: "Adapto todo o conteúdo e as questões ao seu nível.",
       content: (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
@@ -109,13 +136,13 @@ export function Onboarding({ onComplete }: OnboardingProps) {
     },
     {
       title: "Qual é o seu objetivo principal?",
-      subtitle: "Vou personalizar tudo para você chegar lá mais rápido.",
+      subtitle: "O plano de estudos muda completamente dependendo do seu objetivo.",
       content: (
         <div className="space-y-3">
           {GOALS.map((g) => (
             <button
               key={g.id}
-              onClick={() => { setObjetivo(g.label); setTimeout(handleComplete, 150); }}
+              onClick={() => handleSelectGoal(g)}
               className={`w-full px-5 py-4 rounded-2xl border-2 text-left transition-all hover:border-primary hover:bg-primary/5 flex items-center gap-4 ${
                 objetivo === g.label ? "border-primary bg-primary/10" : "border-gray-200"
               }`}
@@ -125,14 +152,54 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                 <p className="font-black text-gray-900">{g.label}</p>
                 <p className="text-sm text-gray-500">{g.desc}</p>
               </div>
+              {g.needsDetail && (
+                <span className="ml-auto text-xs text-primary font-bold bg-primary/10 px-2 py-1 rounded-lg">+ detalhes</span>
+              )}
             </button>
           ))}
         </div>
       ),
     },
+    {
+      title: selectedGoal?.id === "concurso" ? "Qual concurso você está mirando?" : "Qual vestibular é o seu alvo?",
+      subtitle: selectedGoal?.id === "concurso"
+        ? "Com o concurso específico, o plano fica cirúrgico — focado no edital e na banca."
+        : "Sabendo a universidade, adapto o nível e o estilo das questões.",
+      content: (
+        <div className="space-y-4">
+          <input
+            autoFocus
+            type="text"
+            value={concursoAlvo}
+            onChange={(e) => setConcursoAlvo(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleComplete()}
+            placeholder={selectedGoal?.placeholder || "Descreva seu objetivo"}
+            className="w-full px-5 py-4 text-base rounded-2xl border-2 border-primary/20 focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all font-semibold"
+          />
+          <p className="text-xs text-gray-400 text-center">
+            {selectedGoal?.id === "concurso"
+              ? "Ex: Polícia Federal – Delegado, INSS – Técnico, Receita Federal – Auditor..."
+              : "Ex: FUVEST – Engenharia USP, UNICAMP – Medicina, PUC-SP – Direito..."}
+          </p>
+          <button
+            onClick={handleComplete}
+            className="w-full py-4 rounded-2xl bg-gradient-to-r from-primary to-accent text-white font-black text-lg flex items-center justify-center gap-2 hover:opacity-90 transition-opacity shadow-lg"
+          >
+            Criar meu plano personalizado 🚀
+          </button>
+          <button
+            onClick={handleComplete}
+            className="w-full py-2 text-sm text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            Pular — informar depois
+          </button>
+        </div>
+      ),
+    },
   ];
 
-  const current = steps[step];
+  const current = stepsContent[step];
+  const visibleStep = Math.min(step, 2);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -144,11 +211,11 @@ export function Onboarding({ onComplete }: OnboardingProps) {
         <div className="bg-gradient-to-r from-primary via-accent to-pink-500 p-6 text-white text-center">
           <div className="flex items-center justify-center gap-3 mb-3">
             <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center">
-              {step === 0 ? <Sparkles className="w-6 h-6" /> : step === 1 ? <GraduationCap className="w-6 h-6" /> : <Target className="w-6 h-6" />}
+              {stepIcons[Math.min(step, stepIcons.length - 1)]}
             </div>
           </div>
           <div className="flex gap-2 justify-center mb-4">
-            {steps.map((_, i) => (
+            {Array.from({ length: totalSteps }).map((_, i) => (
               <div
                 key={i}
                 className={`h-1.5 rounded-full transition-all duration-300 ${i <= step ? "bg-white w-8" : "bg-white/30 w-4"}`}
@@ -172,10 +239,18 @@ export function Onboarding({ onComplete }: OnboardingProps) {
             </motion.div>
           </AnimatePresence>
 
-          {step > 0 && (
+          {step > 0 && step < 3 && (
             <button
               onClick={() => setStep(s => s - 1)}
               className="mt-3 w-full py-2 text-sm text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              ← Voltar
+            </button>
+          )}
+          {step === 3 && (
+            <button
+              onClick={() => setStep(2)}
+              className="mt-1 w-full py-2 text-sm text-gray-400 hover:text-gray-600 transition-colors"
             >
               ← Voltar
             </button>

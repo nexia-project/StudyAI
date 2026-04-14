@@ -5,6 +5,7 @@ export interface StudentProfile {
   nome: string;
   serie: string;
   objetivo: string;
+  concursoAlvo?: string;
 }
 
 const STORAGE_KEY = "studyai_profile";

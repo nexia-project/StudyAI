@@ -226,6 +226,8 @@ export default function Home() {
   const [formData, setFormData] = useState({
     nome: "",
     serie: "",
+    objetivo: "",
+    concursoAlvo: "",
     tempo: "",
     dificuldades: "",
     texto: "",
@@ -322,11 +324,13 @@ export default function Home() {
     if (!studentProfile) return;
     setFormData(prev => ({
       ...prev,
-      ...(studentProfile.nome && studentProfile.nome !== "Herói" ? { nome: studentProfile.nome } : {}),
+      ...(studentProfile.nome && studentProfile.nome !== "Herói" && studentProfile.nome !== "Estudante" ? { nome: studentProfile.nome } : {}),
       ...(studentProfile.serie ? { serie: studentProfile.serie } : {}),
+      ...(studentProfile.objetivo ? { objetivo: studentProfile.objetivo } : {}),
+      ...(studentProfile.concursoAlvo ? { concursoAlvo: studentProfile.concursoAlvo } : {}),
     }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studentProfile?.nome, studentProfile?.serie]);
+  }, [studentProfile?.nome, studentProfile?.serie, studentProfile?.objetivo, studentProfile?.concursoAlvo]);
 
   // Fetch community feed
   const [feedEvents, setFeedEvents] = useState<Array<{
@@ -462,11 +466,23 @@ export default function Home() {
     const submitData = new FormData();
     if (formData.nome) submitData.append("nome", formData.nome);
     if (formData.serie) submitData.append("serie", formData.serie);
+    if (formData.objetivo || studentProfile?.objetivo) submitData.append("objetivo", formData.objetivo || studentProfile?.objetivo || "");
+    if (formData.concursoAlvo) submitData.append("concursoAlvo", formData.concursoAlvo);
     if (formData.tempo) submitData.append("tempo", formData.tempo);
     if (formData.dificuldades) submitData.append("dificuldades", formData.dificuldades);
     if (formData.texto) submitData.append("texto", formData.texto);
     if (formData.url) submitData.append("url", formData.url);
     files.forEach((f) => submitData.append("files", f));
+
+    // Anti-repetition: include last 8 studied topics so the AI doesn't repeat them
+    if (recentPlans.length > 0) {
+      const topicsStudied = recentPlans
+        .slice(0, 5)
+        .map(p => p.materia)
+        .filter(Boolean)
+        .join(", ");
+      if (topicsStudied) submitData.append("topicosAnteriores", topicsStudied);
+    }
 
     await streamStudyPlan(submitData, {
       onProgress: (chars) => setStreamChars(chars),

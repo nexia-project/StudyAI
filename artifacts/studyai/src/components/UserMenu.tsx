@@ -14,6 +14,7 @@ import {
   Sparkles,
   Shield,
   Lock,
+  UserCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -146,6 +147,16 @@ export function UserMenu() {
                   <span className="ml-auto text-[10px] font-black bg-violet-600 text-white px-2 py-0.5 rounded-full">R$29,90/mês</span>
                 </button>
               )}
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  navigate("/perfil");
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-foreground hover:bg-blue-50 hover:text-blue-600 transition-colors"
+              >
+                <UserCircle className="w-4 h-4 text-blue-500" />
+                Meus Dados
+              </button>
               <button
                 onClick={() => {
                   setOpen(false);

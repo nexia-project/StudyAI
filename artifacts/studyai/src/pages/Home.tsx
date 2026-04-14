@@ -30,6 +30,8 @@ import {
   PlayCircle,
   Download,
   Link,
+  UserCircle,
+  Pencil,
 } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { TutorChat } from "@/components/TutorChat";
@@ -939,41 +941,51 @@ export default function Home() {
               )}
 
               <div className="space-y-10">
-                {/* Section: Profile */}
-                <section>
-                  <h2 className="text-2xl font-bold flex items-center gap-3 mb-6 text-foreground font-display">
-                    <span className="bg-primary/10 text-primary p-2.5 rounded-2xl"><Sparkles className="w-6 h-6" /></span>
-                    Quem é o aventureiro?
-                  </h2>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-foreground ml-1">Nickname / Nome</label>
-                      <input
-                        type="text"
-                        name="nome"
-                        value={formData.nome}
-                        onChange={handleInputChange}
-                        placeholder="Ex: João Silva"
-                        className="w-full px-5 py-4 rounded-2xl bg-secondary/50 border-2 border-transparent focus:border-primary focus:bg-white focus:shadow-[0_0_0_4px_rgba(139,92,246,0.1)] transition-all outline-none font-medium"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-foreground ml-1">Nível atual (Série)</label>
-                      <select
-                        name="serie"
-                        value={formData.serie}
-                        onChange={handleInputChange}
-                        className="w-full px-5 py-4 rounded-2xl bg-secondary/50 border-2 border-transparent focus:border-primary focus:bg-white focus:shadow-[0_0_0_4px_rgba(139,92,246,0.1)] transition-all outline-none text-foreground appearance-none font-medium cursor-pointer"
+                {/* Section: Profile Summary (compact) */}
+                {(studentProfile?.nome || formData.nome) && (
+                  <section>
+                    <div className="flex items-center justify-between p-4 rounded-2xl bg-primary/5 border border-primary/10">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-black text-sm">
+                          {(studentProfile?.nome || formData.nome || "E").slice(0, 1).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-bold text-foreground text-sm">
+                            {studentProfile?.nome || formData.nome}
+                          </p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {(studentProfile?.serie || formData.serie) && (
+                              <span className="text-xs text-muted-foreground">{studentProfile?.serie || formData.serie}</span>
+                            )}
+                            {(studentProfile?.objetivo || formData.objetivo) && (
+                              <>
+                                <span className="text-xs text-muted-foreground">·</span>
+                                <span className="text-xs text-primary font-semibold capitalize">{studentProfile?.objetivo || formData.objetivo}</span>
+                              </>
+                            )}
+                            {(studentProfile?.concursoAlvo || formData.concursoAlvo) && (
+                              <>
+                                <span className="text-xs text-muted-foreground">·</span>
+                                <span className="text-xs text-accent font-semibold">{studentProfile?.concursoAlvo || formData.concursoAlvo}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => navigate("/perfil")}
+                        className="flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary/80 transition-colors px-3 py-1.5 rounded-xl hover:bg-primary/10"
                       >
-                        <option value="">Escolha seu nível...</option>
-                        {GRADES.map(grade => (
-                          <option key={grade} value={grade}>{grade}</option>
-                        ))}
-                      </select>
+                        <Pencil className="w-3.5 h-3.5" />
+                        Editar
+                      </button>
                     </div>
+                  </section>
+                )}
 
+                {/* Plan config: tempo + dificuldades */}
+                <section>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div className="space-y-2">
                       <label className="text-sm font-bold text-foreground flex items-center gap-2 ml-1">
                         <Clock className="w-4 h-4 text-primary" /> Tempo por dia

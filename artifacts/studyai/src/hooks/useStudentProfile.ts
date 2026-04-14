@@ -6,6 +6,9 @@ export interface StudentProfile {
   serie: string;
   objetivo: string;
   concursoAlvo?: string;
+  telefone?: string;
+  email?: string;
+  profileImageUrl?: string;
 }
 
 const STORAGE_KEY = "studyai_profile";
@@ -46,6 +49,10 @@ export function useStudentProfile() {
             nome: data.studentName,
             serie: data.studentGrade ?? "",
             objetivo: data.studentGoal ?? "",
+            concursoAlvo: data.studentConcursoAlvo ?? undefined,
+            telefone: data.studentPhone ?? undefined,
+            email: data.email ?? undefined,
+            profileImageUrl: data.profileImageUrl ?? undefined,
           };
           setProfile(merged);
           writeLocal(merged);
@@ -71,6 +78,8 @@ export function useStudentProfile() {
             studentName: next.nome,
             studentGrade: next.serie,
             studentGoal: next.objetivo,
+            studentConcursoAlvo: next.concursoAlvo ?? null,
+            studentPhone: next.telefone ?? null,
           }),
         });
       } catch {}

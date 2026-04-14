@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
 
-// GET /profile — returns the authenticated user's student profile
+// GET /api/profile — returns the authenticated user's student profile
 router.get("/profile", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ erro: "Não autenticado" });
@@ -17,7 +17,12 @@ router.get("/profile", async (req: Request, res: Response) => {
         studentName: usersTable.studentName,
         studentGrade: usersTable.studentGrade,
         studentGoal: usersTable.studentGoal,
+        studentConcursoAlvo: usersTable.studentConcursoAlvo,
+        studentPhone: usersTable.studentPhone,
         firstName: usersTable.firstName,
+        lastName: usersTable.lastName,
+        email: usersTable.email,
+        profileImageUrl: usersTable.profileImageUrl,
       })
       .from(usersTable)
       .where(eq(usersTable.id, req.user.id))
@@ -27,7 +32,12 @@ router.get("/profile", async (req: Request, res: Response) => {
       studentName: user?.studentName ?? null,
       studentGrade: user?.studentGrade ?? null,
       studentGoal: user?.studentGoal ?? null,
+      studentConcursoAlvo: user?.studentConcursoAlvo ?? null,
+      studentPhone: user?.studentPhone ?? null,
       firstName: user?.firstName ?? null,
+      lastName: user?.lastName ?? null,
+      email: user?.email ?? null,
+      profileImageUrl: user?.profileImageUrl ?? null,
     });
   } catch (err) {
     req.log.error({ err }, "Error fetching profile");
@@ -35,17 +45,19 @@ router.get("/profile", async (req: Request, res: Response) => {
   }
 });
 
-// POST /profile — saves the authenticated user's student profile
+// POST /api/profile — saves the authenticated user's student profile
 router.post("/profile", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ erro: "Não autenticado" });
     return;
   }
 
-  const { studentName, studentGrade, studentGoal } = req.body as {
+  const { studentName, studentGrade, studentGoal, studentConcursoAlvo, studentPhone } = req.body as {
     studentName?: string;
     studentGrade?: string;
     studentGoal?: string;
+    studentConcursoAlvo?: string;
+    studentPhone?: string;
   };
 
   try {
@@ -55,6 +67,8 @@ router.post("/profile", async (req: Request, res: Response) => {
         ...(studentName !== undefined && { studentName: studentName.trim() || null }),
         ...(studentGrade !== undefined && { studentGrade }),
         ...(studentGoal !== undefined && { studentGoal }),
+        ...(studentConcursoAlvo !== undefined && { studentConcursoAlvo: studentConcursoAlvo.trim() || null }),
+        ...(studentPhone !== undefined && { studentPhone: studentPhone.trim() || null }),
       })
       .where(eq(usersTable.id, req.user.id));
 

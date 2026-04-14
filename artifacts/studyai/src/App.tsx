@@ -75,6 +75,12 @@ function FetchInterceptor() {
   return null;
 }
 
+function RedirectTo({ to }: { to: string }) {
+  const [, navigate] = useLocation();
+  useEffect(() => { navigate(to, { replace: true }); }, []);
+  return null;
+}
+
 function Router() {
   return (
     <>
@@ -92,6 +98,12 @@ function Router() {
         <Route path="/mapa" component={MapaPage} />
         <Route path="/admin" component={AdminPage} />
         <Route path="/privacidade" component={PrivacidadePage} />
+        {/* Aliases: Paula/navigation can send users to these paths */}
+        <Route path="/simulado" component={() => <RedirectTo to="/app" />} />
+        <Route path="/simulado-adaptativo" component={() => <RedirectTo to="/app" />} />
+        <Route path="/flashcards" component={() => <RedirectTo to="/app" />} />
+        <Route path="/pomodoro" component={() => <RedirectTo to="/app" />} />
+        <Route path="/plano" component={() => <RedirectTo to="/app" />} />
         <Route component={NotFound} />
       </Switch>
     </>

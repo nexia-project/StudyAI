@@ -32,6 +32,8 @@ import {
   Link,
   UserCircle,
   Pencil,
+  Medal,
+  History,
 } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { TutorChat } from "@/components/TutorChat";
@@ -684,56 +686,88 @@ export default function Home() {
         }}
       />
     )}
-    <div className="min-h-screen pb-20 pt-12 px-4 sm:px-6 lg:px-8 flex flex-col items-center overflow-x-hidden relative">
+    <div className="min-h-screen pb-20 pt-16 px-4 sm:px-6 lg:px-8 flex flex-col items-center overflow-x-hidden relative">
       {/* Background Animated Elements */}
       <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[100px] animate-pulse"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/20 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
 
-      {/* Floating top-right user menu */}
-      <div className="fixed top-3 right-3 z-40 flex items-center gap-1.5 sm:gap-2">
-        <button
-          onClick={() => navigate("/app")}
-          className="flex items-center gap-1.5 px-2 sm:px-3 py-2 rounded-2xl bg-white border-2 border-gray-200 hover:border-gray-400 text-gray-600 font-bold text-sm shadow-sm hover:shadow-md transition-all"
-          title="Início"
-        >
-          <HomeIcon className="w-4 h-4 text-gray-500" />
-          <span className="hidden sm:inline">Início</span>
-        </button>
-        <button
-          onClick={() => navigate("/mapa")}
-          className="flex items-center gap-1.5 px-2 sm:px-3 py-2 rounded-2xl bg-white border-2 border-emerald-200 hover:border-emerald-400 text-emerald-600 font-bold text-sm shadow-sm hover:shadow-md transition-all"
-          title="Mapa de Desempenho"
-        >
-          <Map className="w-4 h-4 text-emerald-500" />
-          <span className="hidden sm:inline">Mapa</span>
-        </button>
-        <button
-          onClick={() => navigate("/redacao")}
-          className="flex items-center gap-1.5 px-2 sm:px-3 py-2 rounded-2xl bg-white border-2 border-indigo-200 hover:border-indigo-400 text-indigo-600 font-bold text-sm shadow-sm hover:shadow-md transition-all"
-          title="Corretor de Redação"
-        >
-          <PenLine className="w-4 h-4 text-indigo-500" />
-          <span className="hidden sm:inline">Redação</span>
-        </button>
-        <button
-          onClick={() => navigate("/dashboard")}
-          className="flex items-center gap-1.5 px-2 sm:px-3 py-2 rounded-2xl bg-white border-2 border-violet-200 hover:border-violet-400 text-violet-600 font-bold text-sm shadow-sm hover:shadow-md transition-all"
-          title="Dashboard"
-        >
-          <BarChart2 className="w-4 h-4 text-violet-500" />
-          <span className="hidden sm:inline">Dashboard</span>
-        </button>
-        <button
-          onClick={() => navigate("/ranking")}
-          className="flex items-center gap-1.5 px-2 sm:px-3 py-2 rounded-2xl bg-white border-2 border-amber-200 hover:border-amber-400 text-amber-600 font-bold text-sm shadow-sm hover:shadow-md transition-all"
-          title="Ranking"
-        >
-          <Trophy className="w-4 h-4 text-amber-500" />
-          <span className="hidden sm:inline">Ranking</span>
-        </button>
-        <UserMenu />
+      {/* Top Navigation Bar */}
+      <div className="fixed top-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm">
+        <div className="flex items-center justify-between px-3 py-2 max-w-screen-2xl mx-auto">
+          {/* Scrollable nav links */}
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-none flex-1 pr-2">
+            <button
+              onClick={() => navigate("/app")}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs whitespace-nowrap transition-all flex-shrink-0"
+              title="Início"
+            >
+              <HomeIcon className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Início</span>
+            </button>
+            <button
+              onClick={() => navigate("/mapa")}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold text-xs whitespace-nowrap transition-all flex-shrink-0"
+              title="Mapa de Desempenho"
+            >
+              <Map className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Mapa</span>
+            </button>
+            <button
+              onClick={() => navigate("/redacao")}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs whitespace-nowrap transition-all flex-shrink-0"
+              title="Corretor de Redação"
+            >
+              <PenLine className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Redação</span>
+            </button>
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 font-semibold text-xs whitespace-nowrap transition-all flex-shrink-0"
+              title="Dashboard"
+            >
+              <BarChart2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Dashboard</span>
+            </button>
+            <button
+              onClick={() => navigate("/ranking")}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold text-xs whitespace-nowrap transition-all flex-shrink-0"
+              title="Ranking Global"
+            >
+              <Trophy className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Ranking</span>
+            </button>
+            <button
+              onClick={() => navigate("/conquistas")}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-yellow-50 hover:bg-yellow-100 text-yellow-700 font-semibold text-xs whitespace-nowrap transition-all flex-shrink-0"
+              title="Conquistas"
+            >
+              <Medal className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Conquistas</span>
+            </button>
+            <button
+              onClick={() => navigate("/historico")}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs whitespace-nowrap transition-all flex-shrink-0"
+              title="Meu Histórico"
+            >
+              <History className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Histórico</span>
+            </button>
+            <button
+              onClick={() => navigate("/mapa-mental")}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-xs whitespace-nowrap transition-all flex-shrink-0"
+              title="Mapa Mental"
+            >
+              <Brain className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Mapa Mental</span>
+            </button>
+          </div>
+          {/* User menu on the right */}
+          <div className="flex-shrink-0">
+            <UserMenu />
+          </div>
+        </div>
       </div>
 
       {/* Login banner after plan is generated (unauthenticated) */}

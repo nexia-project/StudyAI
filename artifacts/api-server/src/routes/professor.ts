@@ -1,8 +1,12 @@
 import { Router, type IRouter } from "express";
 import OpenAI from "openai";
+import multer from "multer";
+import { Readable } from "stream";
 import { db } from "@workspace/db";
 import { simuladoResultsTable, flashcardSessionsTable, studyPlansTable } from "@workspace/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 
 const router: IRouter = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -346,7 +350,7 @@ ${richContext}`;
 // ─── TTS ──────────────────────────────────────────────────────────────────────
 router.post("/voice-tts", async (req, res) => {
   try {
-    const { text } = req.body as { text: string };
+    const { text, base64 } = req.body as { text: string; base64?: boolean };
     if (!text?.trim()) {
       res.status(400).json({ erro: "text é obrigatório" });
       return;
@@ -361,11 +365,42 @@ router.post("/voice-tts", async (req, res) => {
     });
 
     const buffer = Buffer.from(await mp3.arrayBuffer());
-    res.setHeader("Content-Type", "audio/mpeg");
-    res.setHeader("Cache-Control", "no-cache");
-    res.send(buffer);
+
+    if (base64) {
+      res.json({ audio: buffer.toString("base64"), contentType: "audio/mpeg" });
+    } else {
+      res.setHeader("Content-Type", "audio/mpeg");
+      res.setHeader("Cache-Control", "no-cache");
+      res.send(buffer);
+    }
   } catch {
     if (!res.headersSent) res.status(500).json({ erro: "Erro no TTS" });
+  }
+});
+
+// ─── STT (Whisper transcription) ──────────────────────────────────────────────
+router.post("/transcribe", upload.single("audio"), async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({ erro: "Arquivo de áudio é obrigatório" });
+      return;
+    }
+
+    const audioFile = new File([file.buffer], file.originalname || "recording.m4a", {
+      type: file.mimetype || "audio/m4a",
+    });
+
+    const transcription = await openai.audio.transcriptions.create({
+      file: audioFile,
+      model: "whisper-1",
+      language: "pt",
+    });
+
+    res.json({ text: transcription.text });
+  } catch (err) {
+    console.error("Transcription error:", err);
+    if (!res.headersSent) res.status(500).json({ erro: "Erro na transcrição" });
   }
 });
 

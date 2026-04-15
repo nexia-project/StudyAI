@@ -358,7 +358,7 @@ router.post("/voice-tts", async (req, res) => {
 
     const mp3 = await openai.audio.speech.create({
       model: "tts-1-hd",
-      voice: "nova",
+      voice: "onyx",
       input: text.trim().slice(0, 1000),
       response_format: "mp3",
       speed: 1.0,

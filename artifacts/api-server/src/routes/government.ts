@@ -116,7 +116,22 @@ router.get("/government/stats", async (req: Request, res: Response) => {
   });
 });
 
-// ─── Promote user role (admin only) ──────────────────────────────────────────
+// ─── Request government access ────────────────────────────────────────────────
+router.post("/government/request-access", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  const { organ, position, cpf, message } = req.body as { organ?: string; position?: string; cpf?: string; message?: string };
+  if (!organ || !position || !cpf) { res.status(400).json({ error: "Órgão, cargo e CPF são obrigatórios" }); return; }
+
+  try {
+    const [user] = await db.select({ email: usersTable.email, firstName: usersTable.firstName }).from(usersTable).where(eq(usersTable.id, req.userId)).limit(1);
+    req.log.info({ userId: req.userId, email: user?.email, organ, position, cpf, message }, "Government access request received");
+    res.json({ success: true, message: "Solicitação recebida. Nossa equipe irá validar em até 48 horas." });
+  } catch (err) {
+    req.log.error({ err }, "Error processing government access request");
+    res.status(500).json({ error: "Erro ao processar solicitação" });
+  }
+});
+
 router.post("/government/promote", async (req: Request, res: Response) => {
   if (!!!req.userId || req.userId! !== "44063371") {
     res.status(403).json({ error: "Acesso negado" }); return;

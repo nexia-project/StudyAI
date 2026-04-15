@@ -18,9 +18,11 @@ import PerfilPage from "@/pages/Perfil";
 import MapaMentalPage from "@/pages/MapaMental";
 import ConquistasPage from "@/pages/Conquistas";
 import ProfessorPage from "@/pages/Professor";
+import ProfessorLoginPage from "@/pages/ProfessorLogin";
 import ProfessorTurmaPage from "@/pages/ProfessorTurma";
 import InstituicaoPage, { InstituicaoLoginPage, InstituicaoConvitePage } from "@/pages/Instituicao";
 import GovernoPage from "@/pages/Governo";
+import GovernoLoginPage from "@/pages/GovernoLogin";
 import SimuladoEnemPage from "@/pages/SimuladoEnem";
 import SalaEstudosPage from "@/pages/SalaEstudos";
 import NotFound from "@/pages/not-found";
@@ -167,11 +169,13 @@ function Router() {
         <Route path="/perfil" component={PerfilPage} />
         <Route path="/mapa-mental" component={MapaMentalPage} />
         <Route path="/conquistas" component={ConquistasPage} />
-        <Route path="/professor" component={ProfessorPage} />
+        <Route path="/professor/login" component={ProfessorLoginPage} />
         <Route path="/professor/turma/:id" component={ProfessorTurmaPage} />
+        <Route path="/professor" component={ProfessorPage} />
         <Route path="/instituicao/login" component={InstituicaoLoginPage} />
         <Route path="/instituicao/convite/:token" component={InstituicaoConvitePage} />
         <Route path="/instituicao" component={InstituicaoPage} />
+        <Route path="/governo/login" component={GovernoLoginPage} />
         <Route path="/governo" component={GovernoPage} />
         <Route path="/simulado-enem" component={SimuladoEnemPage} />
         <Route path="/sala-estudos" component={SalaEstudosPage} />

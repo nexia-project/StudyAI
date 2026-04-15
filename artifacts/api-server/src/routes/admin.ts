@@ -7,7 +7,7 @@ const router = Router();
 const ADMIN_USER_IDS = new Set(["44063371"]);
 
 function isAdmin(req: Request): boolean {
-  return !!req.userId && ADMIN_USER_IDS.has(String((req.user as any)?.id));
+  return !!req.userId && ADMIN_USER_IDS.has(String(req.userId));
 }
 
 router.get("/admin/users", async (req: Request, res: Response) => {

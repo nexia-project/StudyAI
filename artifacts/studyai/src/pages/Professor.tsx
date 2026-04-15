@@ -106,23 +106,8 @@ export default function ProfessorPage() {
   }
 
   if (error === "acesso_negado") {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          className="bg-slate-800/60 border border-slate-700 rounded-2xl p-8 max-w-md text-center">
-          <Shield className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-white mb-2">Acesso Restrito</h2>
-          <p className="text-slate-400 mb-6">
-            O Módulo Professor é exclusivo para professores cadastrados.
-            Entre em contato com o administrador para solicitar acesso.
-          </p>
-          <Button onClick={() => navigate("/app")}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl">
-            Voltar ao início
-          </Button>
-        </motion.div>
-      </div>
-    );
+    navigate("/professor/login");
+    return null;
   }
 
   return (

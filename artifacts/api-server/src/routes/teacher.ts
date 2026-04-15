@@ -377,4 +377,20 @@ router.get("/turma/my", async (req: Request, res: Response) => {
   res.json({ turmas });
 });
 
+// ─── Request teacher access ───────────────────────────────────────────────────
+router.post("/teacher/request-access", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  const { school, subject, message } = req.body as { school?: string; subject?: string; message?: string };
+  if (!school || !subject) { res.status(400).json({ error: "Escola e disciplina são obrigatórios" }); return; }
+
+  try {
+    const [user] = await db.select({ email: usersTable.email, firstName: usersTable.firstName }).from(usersTable).where(eq(usersTable.id, req.userId)).limit(1);
+    req.log.info({ userId: req.userId, email: user?.email, school, subject, message }, "Professor access request received");
+    res.json({ success: true, message: "Solicitação recebida. O administrador irá revisar em breve." });
+  } catch (err) {
+    req.log.error({ err }, "Error processing teacher access request");
+    res.status(500).json({ error: "Erro ao processar solicitação" });
+  }
+});
+
 export default router;

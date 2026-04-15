@@ -249,6 +249,36 @@ export default function AdminPage() {
   useEffect(() => { if (activeTab === "content") fetchTeacherContent(); }, [activeTab]);
   useEffect(() => { if (activeTab === "knowledge") fetchKbDocs(); }, [activeTab]);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+        <RefreshCw className="w-8 h-8 text-violet-400 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          className="bg-white/5 border border-white/10 rounded-2xl p-8 max-w-md text-center">
+          <Shield className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-white mb-2">Acesso Restrito</h2>
+          <p className="text-white/50 mb-6">{error}</p>
+          <Button onClick={() => {
+            sessionStorage.setItem("auth_return_to", "/admin");
+            navigate("/sign-in");
+          }} className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl mr-3">
+            Fazer Login
+          </Button>
+          <Button variant="outline" className="border-white/10 text-white/70 hover:bg-white/5" onClick={() => navigate("/app")}>
+            Voltar ao App
+          </Button>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white">
       <header className="border-b border-white/5 bg-[#0a0a0f]/80 backdrop-blur-xl sticky top-0 z-50">

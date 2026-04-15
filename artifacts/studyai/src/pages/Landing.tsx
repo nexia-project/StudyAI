@@ -6,6 +6,7 @@ import {
   ArrowRight, BookOpen, Sparkles, Users, GraduationCap,
   PenLine, Map, TrendingUp, Target, CheckCircle,
   ChevronDown, Mic, Volume2, Radio, Cpu, Layers, Shield,
+  Building2, Globe, BookMarked, LayoutDashboard,
 } from "lucide-react";
 import { startCheckout } from "@/hooks/useSubscription";
 
@@ -181,6 +182,20 @@ export default function Landing() {
             <a href="#institucional" className="hover:text-gray-900 transition-colors">Institucional</a>
             <a href="#precos" className="hover:text-gray-900 transition-colors">Preços</a>
             <a href="#faq" className="hover:text-gray-900 transition-colors">FAQ</a>
+            <button
+              onClick={() => navigate("/professor")}
+              className="flex items-center gap-1.5 text-indigo-600 font-semibold hover:text-indigo-800 transition-colors"
+            >
+              <BookMarked className="w-3.5 h-3.5" />
+              Professores
+            </button>
+            <button
+              onClick={() => navigate("/governo")}
+              className="flex items-center gap-1.5 text-emerald-700 font-semibold hover:text-emerald-900 transition-colors"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              Governo
+            </button>
           </div>
           <div className="flex items-center gap-3">
             <button onClick={handleStart} className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
@@ -521,6 +536,109 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ── ÁREAS DEDICADAS: PROFESSOR E GOVERNO ── */}
+      <section id="areas" className="py-20 px-6 bg-gradient-to-br from-indigo-50 via-white to-emerald-50 border-t border-gray-100">
+        <div className="max-w-5xl mx-auto">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
+            className="text-center mb-12">
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-gray-200 text-gray-600 shadow-sm mb-4">
+              <Building2 className="w-3 h-3 text-indigo-500" />
+              Portais exclusivos
+            </span>
+            <h2 className="text-4xl font-black tracking-tight text-gray-900 mb-3">
+              Área do Professor e Área do Governo
+            </h2>
+            <p className="text-gray-500 text-lg max-w-xl mx-auto">
+              O StudyAI vai além do aluno individual — temos portais dedicados para professores gerenciarem turmas e para órgãos públicos acompanharem a educação em escala.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+
+            {/* Card Professor */}
+            <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={0.05}
+              className="group relative bg-white rounded-3xl border border-indigo-100 shadow-sm hover:shadow-xl hover:border-indigo-300 transition-all duration-300 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent pointer-events-none" />
+              <div className="p-8">
+                <div className="w-14 h-14 rounded-2xl bg-indigo-100 flex items-center justify-center mb-5">
+                  <GraduationCap className="w-7 h-7 text-indigo-600" />
+                </div>
+                <span className="inline-block px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-700 mb-3">
+                  Para Educadores
+                </span>
+                <h3 className="text-2xl font-black text-gray-900 mb-3 leading-tight">
+                  Área do Professor 👨‍🏫
+                </h3>
+                <p className="text-gray-500 text-sm leading-relaxed mb-6">
+                  Crie e gerencie turmas, acompanhe o desempenho de cada aluno em tempo real, compartilhe planos de estudo personalizados e identifique quem precisa de atenção — tudo em um só lugar.
+                </p>
+                <ul className="space-y-2.5 mb-8">
+                  {[
+                    "Criação de turmas com código de convite",
+                    "Dashboard de desempenho por aluno",
+                    "Relatórios de evolução e lacunas",
+                    "Atribuição de planos e simulados",
+                    "Alertas de alunos em risco de evasão",
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm text-gray-600">
+                      <CheckCircle className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  onClick={() => navigate("/professor")}
+                  className="group/btn w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-all shadow-md shadow-indigo-200 hover:shadow-lg hover:shadow-indigo-300">
+                  Acessar Área do Professor
+                  <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                </button>
+              </div>
+            </motion.div>
+
+            {/* Card Governo */}
+            <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={0.1}
+              className="group relative bg-white rounded-3xl border border-emerald-100 shadow-sm hover:shadow-xl hover:border-emerald-300 transition-all duration-300 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent pointer-events-none" />
+              <div className="p-8">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-100 flex items-center justify-center mb-5">
+                  <Globe className="w-7 h-7 text-emerald-700" />
+                </div>
+                <span className="inline-block px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700 mb-3">
+                  Para Órgãos Públicos
+                </span>
+                <h3 className="text-2xl font-black text-gray-900 mb-3 leading-tight">
+                  Área do Governo 🏛️
+                </h3>
+                <p className="text-gray-500 text-sm leading-relaxed mb-6">
+                  Painel de dados educacionais para secretarias, ministérios e entidades públicas — monitore o engajamento e desempenho de estudantes em escala municipal, estadual ou federal.
+                </p>
+                <ul className="space-y-2.5 mb-8">
+                  {[
+                    "Visão consolidada de toda a plataforma",
+                    "Estatísticas por cidade, estado e escola",
+                    "Taxa de engajamento e retenção",
+                    "Evolução semanal de simulados e planos",
+                    "Dados para políticas públicas de educação",
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm text-gray-600">
+                      <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  onClick={() => navigate("/governo")}
+                  className="group/btn w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-white bg-emerald-700 hover:bg-emerald-800 transition-all shadow-md shadow-emerald-200 hover:shadow-lg hover:shadow-emerald-300">
+                  Acessar Área do Governo
+                  <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                </button>
+              </div>
+            </motion.div>
+
+          </div>
+        </div>
+      </section>
+
       {/* ── B2B / INSTITUCIONAL ── */}
       <section id="institucional" className="py-20 px-6 bg-gray-900 text-white">
         <div className="max-w-5xl mx-auto">
@@ -853,6 +971,8 @@ export default function Landing() {
           <p className="text-gray-400 text-sm">© 2025 StudyAI · IA exclusiva para estudantes brasileiros</p>
           <div className="flex gap-4 text-sm text-gray-400">
             <a href="#faq" className="hover:text-gray-700 transition-colors">FAQ</a>
+            <button onClick={() => navigate("/professor")} className="hover:text-indigo-600 transition-colors">Área do Professor</button>
+            <button onClick={() => navigate("/governo")} className="hover:text-emerald-700 transition-colors">Área do Governo</button>
             <a href="/privacidade" className="hover:text-gray-700 transition-colors">Privacidade & LGPD</a>
             <button onClick={handleStart} className="hover:text-gray-700 transition-colors">Entrar</button>
           </div>

@@ -21,6 +21,9 @@ import lgpdRouter from "./lgpd";
 import profileRouter from "./profile";
 import leadsRouter from "./leads";
 import teacherContentRouter from "./teacherContent";
+import teacherRouter from "./teacher";
+import institutionRouter from "./institution";
+import governmentRouter from "./government";
 
 const router: IRouter = Router();
 
@@ -46,5 +49,8 @@ router.use(lgpdRouter);
 router.use(profileRouter);
 router.use(leadsRouter);
 router.use(teacherContentRouter);
+router.use(teacherRouter);
+router.use(institutionRouter);
+router.use(governmentRouter);
 
 export default router;

@@ -22,6 +22,7 @@ router.get("/admin/users", async (req: Request, res: Response) => {
         stripeSubscriptionStatus: usersTable.stripeSubscriptionStatus,
         stripeCustomerId: usersTable.stripeCustomerId,
         stripeSubscriptionId: usersTable.stripeSubscriptionId,
+        role: usersTable.role,
         createdAt: usersTable.createdAt,
       })
       .from(usersTable)

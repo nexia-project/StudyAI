@@ -17,6 +17,9 @@ import {
   UserCircle,
   Brain,
   Medal,
+  GraduationCap,
+  Building2,
+  Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -25,8 +28,17 @@ export function UserMenu() {
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
   const { isPremium, freeAiUsesRemaining, freeAiLimit } = useSubscription();
   const [open, setOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string>("student");
   const menuRef = useRef<HTMLDivElement>(null);
   const [, navigate] = useLocation();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetch("/api/profile").then(r => r.json()).then(d => {
+        if (d.role) setUserRole(d.role);
+      }).catch(() => {});
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -219,6 +231,44 @@ export function UserMenu() {
                 <Shield className="w-4 h-4 text-green-600" />
                 Privacidade & LGPD
               </button>
+
+              {/* Role-based module links */}
+              {["teacher", "institution_admin", "admin"].includes(userRole) && (
+                <button
+                  onClick={() => { setOpen(false); navigate("/professor"); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-foreground hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
+                >
+                  <GraduationCap className="w-4 h-4 text-indigo-600" />
+                  Módulo Professor
+                </button>
+              )}
+              {["institution_admin", "admin"].includes(userRole) && (
+                <button
+                  onClick={() => { setOpen(false); navigate("/instituicao"); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-foreground hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+                >
+                  <Building2 className="w-4 h-4 text-emerald-600" />
+                  Módulo Instituição
+                </button>
+              )}
+              {["government", "admin"].includes(userRole) && (
+                <button
+                  onClick={() => { setOpen(false); navigate("/governo"); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-foreground hover:bg-amber-50 hover:text-amber-700 transition-colors"
+                >
+                  <Globe className="w-4 h-4 text-amber-600" />
+                  Módulo Governo
+                </button>
+              )}
+              {userRole === "admin" && (
+                <button
+                  onClick={() => { setOpen(false); navigate("/admin"); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <Shield className="w-4 h-4" />
+                  Painel Admin
+                </button>
+              )}
               <button
                 onClick={() => {
                   setOpen(false);

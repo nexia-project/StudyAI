@@ -16,6 +16,10 @@ import PrivacidadePage from "@/pages/Privacidade";
 import PerfilPage from "@/pages/Perfil";
 import MapaMentalPage from "@/pages/MapaMental";
 import ConquistasPage from "@/pages/Conquistas";
+import ProfessorPage from "@/pages/Professor";
+import ProfessorTurmaPage from "@/pages/ProfessorTurma";
+import InstituicaoPage from "@/pages/Instituicao";
+import GovernoPage from "@/pages/Governo";
 import NotFound from "@/pages/not-found";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useAuth } from "@workspace/replit-auth-web";
@@ -104,6 +108,10 @@ function Router() {
         <Route path="/perfil" component={PerfilPage} />
         <Route path="/mapa-mental" component={MapaMentalPage} />
         <Route path="/conquistas" component={ConquistasPage} />
+        <Route path="/professor" component={ProfessorPage} />
+        <Route path="/professor/turma/:id" component={ProfessorTurmaPage} />
+        <Route path="/instituicao" component={InstituicaoPage} />
+        <Route path="/governo" component={GovernoPage} />
         {/* Aliases: Paula/navigation can send users to these paths */}
         <Route path="/simulado" component={() => <RedirectTo to="/app" />} />
         <Route path="/simulado-adaptativo" component={() => <RedirectTo to="/app" />} />

@@ -24,6 +24,7 @@ router.get("/profile", async (req: Request, res: Response) => {
         lastName: usersTable.lastName,
         email: usersTable.email,
         profileImageUrl: usersTable.profileImageUrl,
+        role: usersTable.role,
       })
       .from(usersTable)
       .where(eq(usersTable.id, req.user.id))
@@ -40,6 +41,7 @@ router.get("/profile", async (req: Request, res: Response) => {
       lastName: user?.lastName ?? null,
       email: user?.email ?? null,
       profileImageUrl: user?.profileImageUrl ?? null,
+      role: user?.role ?? "student",
     });
   } catch (err) {
     req.log.error({ err }, "Error fetching profile");

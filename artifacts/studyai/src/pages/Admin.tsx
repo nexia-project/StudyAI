@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { Brain, Shield, CheckCircle, XCircle, Users, RefreshCw, Crown, UserX, BookOpen, Plus, Trash2, FileText } from "lucide-react";
+import { Brain, Shield, CheckCircle, XCircle, Users, RefreshCw, Crown, UserX, BookOpen, Plus, Trash2, FileText, GraduationCap, Building2, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type User = {
@@ -12,6 +12,7 @@ type User = {
   stripeSubscriptionStatus: string | null;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
+  role: string | null;
   createdAt: string;
 };
 
@@ -39,7 +40,9 @@ export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"users" | "content">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "content" | "roles">("users");
+  const [roleUpdating, setRoleUpdating] = useState<string | null>(null);
+  const [roleMsg, setRoleMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [tcList, setTcList] = useState<TeacherContent[]>([]);
   const [tcLoading, setTcLoading] = useState(false);
   const [tcForm, setTcForm] = useState({ title: "", subject: "", gradeLevel: "", contentText: "", tags: "" });
@@ -138,6 +141,30 @@ export default function AdminPage() {
     fetchTeacherContent();
   }
 
+  async function updateRole(userId: string, role: string) {
+    setRoleUpdating(userId);
+    setRoleMsg(null);
+    try {
+      const res = await fetch("/api/government/promote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, role }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, role } : u));
+        setRoleMsg({ ok: true, text: "Perfil atualizado com sucesso!" });
+      } else {
+        setRoleMsg({ ok: false, text: data.error ?? "Erro ao atualizar." });
+      }
+    } catch {
+      setRoleMsg({ ok: false, text: "Erro de conexão." });
+    } finally {
+      setRoleUpdating(null);
+      setTimeout(() => setRoleMsg(null), 3000);
+    }
+  }
+
   useEffect(() => { fetchUsers(); }, []);
   useEffect(() => { if (activeTab === "content") fetchTeacherContent(); }, [activeTab]);
 
@@ -177,11 +204,12 @@ export default function AdminPage() {
         <div className="flex gap-2 mb-8 border-b border-white/10 pb-0">
           {[
             { key: "users", label: "Usuários", icon: Users },
-            { key: "content", label: "Conteúdo de Professores", icon: BookOpen },
+            { key: "roles", label: "Perfis & Acesso", icon: Shield },
+            { key: "content", label: "Conteúdo", icon: BookOpen },
           ].map(tab => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key as "users" | "content")}
+              onClick={() => setActiveTab(tab.key as "users" | "content" | "roles")}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-bold border-b-2 transition-all ${
                 activeTab === tab.key
                   ? "border-violet-500 text-violet-400"
@@ -257,6 +285,71 @@ export default function AdminPage() {
                 ))
               )}
             </div>
+          </div>
+        )}
+
+        {activeTab === "roles" && (
+          <div className="space-y-4">
+            {roleMsg && (
+              <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-semibold ${roleMsg.ok ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300" : "bg-red-500/10 border-red-500/20 text-red-300"}`}>
+                {roleMsg.ok ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                {roleMsg.text}
+              </div>
+            )}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-2">
+              <p className="text-white/50 text-sm">Atribua perfis especiais aos usuários para liberar acesso ao Módulo Professor, Instituição ou Governo.</p>
+              <div className="flex gap-4 mt-3 flex-wrap">
+                {[
+                  { role: "teacher", label: "Professor", icon: GraduationCap, color: "text-indigo-400" },
+                  { role: "institution_admin", label: "Admin de Instituição", icon: Building2, color: "text-emerald-400" },
+                  { role: "government", label: "Governo", icon: Globe, color: "text-amber-400" },
+                  { role: "admin", label: "Super Admin", icon: Shield, color: "text-red-400" },
+                ].map(r => (
+                  <div key={r.role} className="flex items-center gap-1.5 text-sm">
+                    <r.icon className={`w-4 h-4 ${r.color}`} />
+                    <span className={r.color}>{r.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {loading ? (
+              <div className="flex items-center justify-center py-10">
+                <div className="w-8 h-8 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {users.map(user => {
+                  const currentRole = user.role ?? "student";
+                  const isUpdating = roleUpdating === user.id;
+                  return (
+                    <div key={user.id} className="flex items-center gap-4 bg-white/[0.04] border border-white/8 rounded-2xl px-5 py-3">
+                      <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center font-bold text-sm flex-shrink-0">
+                        {((user.firstName ?? user.email ?? "?")[0]).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm truncate">
+                          {[user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "Sem nome"}
+                        </p>
+                        <p className="text-white/30 text-xs truncate">{user.email}</p>
+                      </div>
+                      <select
+                        value={currentRole}
+                        onChange={e => updateRole(user.id, e.target.value)}
+                        disabled={isUpdating}
+                        className="bg-slate-800 border border-white/10 rounded-xl px-3 py-1.5 text-sm text-white focus:outline-none focus:border-violet-500 disabled:opacity-50"
+                      >
+                        <option value="student">Aluno</option>
+                        <option value="teacher">Professor</option>
+                        <option value="institution_admin">Admin de Instituição</option>
+                        <option value="government">Governo</option>
+                        <option value="admin">Super Admin</option>
+                      </select>
+                      {isUpdating && <div className="w-4 h-4 rounded-full border border-violet-400 border-t-transparent animate-spin flex-shrink-0" />}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

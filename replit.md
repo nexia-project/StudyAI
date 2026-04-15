@@ -168,6 +168,32 @@ Published at `study.ia.br`. ENEM/vestibular/concurso AI tutor platform powered b
 - **Onboarding Wizard** (`artifacts/studyai/src/components/Onboarding.tsx`) — 3-step modal on first visit: Name → Série → Goal; stores to `localStorage.studyai_profile`; pre-fills Home.tsx form on next visits; exports `hasOnboarded()` and `getOnboardingData()` helpers
 - **URL-to-Study-Plan** — Home.tsx form has a URL input field; backend (`/api/analisar`) fetches and strips HTML from the URL, merges content with texto field before GPT-4o call
 
+### Módulo Professor (2026-04)
+- **Routes**: `/professor` (turma list), `/professor/turma/:id` (detail: Alunos/Tarefas/Dashboard/Ranking tabs)
+- **Access**: Users with `role = 'teacher' | 'institution_admin' | 'admin'` in `users.role` column
+- **API**: `GET/POST/PUT/DELETE /api/teacher/turmas`, `GET /api/teacher/turmas/:id/students`, `GET /api/teacher/turmas/:id/tasks`, `POST /api/teacher/turmas/join` (student join by invite code)
+- **DB**: `turmas` table (invite_code, teacher_id, institution_id), `turma_memberships`, `turma_tarefas`
+- **Student stats**: XP, simulado count/accuracy, activity days, status (risco/iniciante/ativo/destaque)
+
+### Módulo Instituição (2026-04)
+- **Route**: `/instituicao` (Overview/Turmas/Professores tabs)
+- **Access**: Users with `role = 'institution_admin' | 'admin'`
+- **API**: `GET/POST /api/institution`, `GET /api/institution/me`, `GET /api/institution/:id`, `POST /api/institution/:id/teachers`
+- **DB**: `instituicoes`, `institution_users`
+
+### Módulo Governo (2026-04)
+- **Route**: `/governo` (Visão Geral/Crescimento/Matérias tabs)
+- **Access**: Users with `role = 'government' | 'admin'`
+- **API**: `GET /api/government/stats` (aggregate metrics, weekly growth, top subjects), `POST /api/government/promote` (admin promotes user roles)
+- **Role management**: Admin panel → "Perfis & Acesso" tab → dropdown select per user
+
+### Role System
+- Column: `users.role` (VARCHAR 50, default 'student')
+- Values: `student | teacher | institution_admin | government | admin`
+- Admin promotes users via Admin panel (`/admin` → Perfis & Acesso tab) or `POST /api/government/promote`
+- UserMenu shows role-based module links: Professor/Instituição/Governo/Admin
+- Profile API (`/api/profile`) returns `role` field
+
 ### Critical Rules
 - NEVER use `exit` animations in Simulado (causes `insertBefore` crash) — only `initial` + `animate`
 - Only ADD features, never break existing behavior

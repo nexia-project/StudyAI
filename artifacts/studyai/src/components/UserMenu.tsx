@@ -15,6 +15,7 @@ import {
   Shield,
   Lock,
   UserCircle,
+  Brain,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -156,6 +157,16 @@ export function UserMenu() {
               >
                 <UserCircle className="w-4 h-4 text-blue-500" />
                 Meus Dados
+              </button>
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  navigate("/mapa-mental");
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-foreground hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+              >
+                <Brain className="w-4 h-4 text-indigo-500" />
+                Mapa Mental
               </button>
               <button
                 onClick={() => {

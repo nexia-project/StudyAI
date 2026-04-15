@@ -29,6 +29,7 @@ export const usersTable = pgTable("users", {
   studentGoal: varchar("student_goal"),
   studentConcursoAlvo: varchar("student_concurso_alvo"),
   studentPhone: varchar("student_phone"),
+  studentSchoolType: varchar("student_school_type"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

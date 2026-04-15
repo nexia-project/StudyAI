@@ -1,5 +1,5 @@
 /**
- * VoiceProfessor — Professora Paula
+ * VoiceProfessor — Professor Tiagão
  *
  * Audio strategy: Web Audio API (AudioContext).
  * CRITICAL FIX: AudioContext.resume() MUST be called synchronously
@@ -48,7 +48,7 @@ function unlockAudioSync(): void {
     src.connect(_ctx.destination);
     src.start(0);
   } catch (e) {
-    console.warn("[Paula] AudioContext unlock failed:", e);
+    console.warn("[Tiagão] AudioContext unlock failed:", e);
   }
 }
 
@@ -74,13 +74,13 @@ async function playTTS(text: string, signal?: AbortSignal): Promise<void> {
   // Context should already be "running" from unlockAudioSync().
   // If somehow still suspended, attempt resume (best-effort).
   if (ctx.state === "suspended") {
-    console.warn("[Paula] AudioContext suspended at playback time — attempting resume");
+    console.warn("[Tiagão] AudioContext suspended at playback time — attempting resume");
     try { await ctx.resume(); } catch (e) {
-      console.warn("[Paula] resume() failed:", e);
+      console.warn("[Tiagão] resume() failed:", e);
     }
   }
   if (ctx.state !== "running") {
-    console.warn("[Paula] AudioContext state:", ctx.state, "— skipping playback");
+    console.warn("[Tiagão] AudioContext state:", ctx.state, "— skipping playback");
     return;
   }
 
@@ -94,14 +94,14 @@ async function playTTS(text: string, signal?: AbortSignal): Promise<void> {
       signal,
     });
   } catch (e: any) {
-    if (e?.name !== "AbortError") console.warn("[Paula] TTS fetch error:", e);
+    if (e?.name !== "AbortError") console.warn("[Tiagão] TTS fetch error:", e);
     return;
   }
 
   if (signal?.aborted) return;
 
   if (!res.ok) {
-    console.warn("[Paula] TTS endpoint error:", res.status, await res.text().catch(() => ""));
+    console.warn("[Tiagão] TTS endpoint error:", res.status, await res.text().catch(() => ""));
     return;
   }
 
@@ -112,7 +112,7 @@ async function playTTS(text: string, signal?: AbortSignal): Promise<void> {
   try {
     audioBuffer = await ctx.decodeAudioData(ab);
   } catch (e) {
-    console.warn("[Paula] decodeAudioData failed:", e);
+    console.warn("[Tiagão] decodeAudioData failed:", e);
     return;
   }
   if (signal?.aborted) return;
@@ -180,7 +180,7 @@ export function VoiceProfessor() {
     setSubtitle("");
   }, []);
 
-  // ── Send message to Paula ─────────────────────────────────────────────────
+  // ── Send message to Tiagão ─────────────────────────────────────────────────
   const sendMessage = useCallback(async (userText: string) => {
     if (!userText.trim()) return;
     abortRef.current?.abort();
@@ -215,7 +215,7 @@ export function VoiceProfessor() {
     }
   }, [speak, navigate]);
 
-  // ── Proactive: Paula calls student on her own ──────────────────────────────
+  // ── Proactive: Tiagão calls student on his own ──────────────────────────────
   const runProactive = useCallback(async (triggerReason?: string) => {
     if (phase !== "idle" || mutedRef.current) return;
     if (Date.now() - lastProactiveRef.current < PROACTIVE_MIN_GAP_MS) return;
@@ -275,11 +275,11 @@ export function VoiceProfessor() {
     window.addEventListener("scroll", recordActivity, { passive: true });
     window.addEventListener("touchstart", recordActivity, { passive: true });
 
-    // Page visibility: when user returns after being away, maybe Paula should comment
+    // Page visibility: when user returns after being away, maybe Tiagão should comment
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
         const away = Date.now() - lastUserActivityRef.current;
-        // If away > 5 minutes and Paula hasn't spoken recently, greet return
+        // If away > 5 minutes and Tiagão hasn't spoken recently, greet return
         if (away > 5 * 60 * 1000) {
           lastUserActivityRef.current = Date.now();
           setTimeout(() => runProactive("page_return"), 2000);
@@ -307,7 +307,7 @@ export function VoiceProfessor() {
   }, [runProactive]);
 
   // ── FIRST PANEL OPEN — unlock audio + greet ──────────────────────────────
-  // Audio is unlocked and Paula greets when user explicitly opens the panel.
+  // Audio is unlocked and Tiagão greets when user explicitly opens the panel.
   // This is intentional: the open button click IS the user gesture.
   const handlePanelToggle = useCallback(() => {
     setShowHint(false);
@@ -319,8 +319,8 @@ export function VoiceProfessor() {
         unlockAudioSync();
         const ctx = collectStudentContext();
         const greeting = ctx.nome
-          ? `Oi, ${ctx.nome}! Aqui é a Paula, sua tutora. Pode me chamar quando quiser estudar qualquer coisa!`
-          : "Oi! Aqui é a Paula, sua tutora de estudos. Pode me chamar a qualquer hora!";
+          ? `Oi, ${ctx.nome}! Aqui é o Tiagão, seu professor. Pode me chamar quando quiser estudar qualquer coisa!`
+          : "Oi! Aqui é o Tiagão, seu professor de estudos. Pode me chamar a qualquer hora!";
         historyRef.current.push({ role: "assistant", content: greeting });
         lastProactiveRef.current = Date.now();
         // Short delay so AudioContext finishes warming up
@@ -368,7 +368,7 @@ export function VoiceProfessor() {
     idle: "#22c55e",
     listening: "#ef4444",
     thinking: "#f59e0b",
-    speaking: "#f97316",
+    speaking: "#6366f1",
   };
   const phaseLabel: Record<Phase, string> = {
     idle: "Online — pode falar",
@@ -391,15 +391,15 @@ export function VoiceProfessor() {
         style={{
           background: open
             ? "#6b7280"
-            : "linear-gradient(135deg,#f97316,#ea580c)",
+            : "linear-gradient(135deg,#6366f1,#4f46e5)",
         }}
-        title="Professora Paula — clique para falar"
+        title="Professor Tiagão — clique para falar"
       >
         {open ? (
           <X className="w-5 h-5 text-white" />
         ) : (
           <div className="relative">
-            <span className="text-2xl leading-none">👩‍🏫</span>
+            <span className="text-2xl leading-none">👨‍🏫</span>
             <motion.span
               animate={phase === "speaking"
                 ? { scale: [1, 1.8, 1], opacity: [1, 0.4, 1] }
@@ -423,14 +423,14 @@ export function VoiceProfessor() {
             className="fixed bottom-8 left-20 z-40 pointer-events-none"
           >
             <div className="bg-gray-900 text-white text-xs font-medium px-3 py-2 rounded-xl shadow-lg whitespace-nowrap">
-              👆 Toque aqui para falar com a Paula
+              👆 Toque aqui para falar com o Tiagão
               <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1.5 w-2.5 h-2.5 bg-gray-900 rotate-45" />
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Mini card — shown when panel closed and Paula is active */}
+      {/* Mini card — shown when panel closed and Tiagão is active */}
       <AnimatePresence>
         {!open && (phase === "speaking" || phase === "thinking") && (
           <motion.div
@@ -438,14 +438,14 @@ export function VoiceProfessor() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.95 }}
             transition={{ type: "spring", damping: 22, stiffness: 280 }}
-            className="fixed bottom-24 left-4 right-4 sm:left-6 sm:right-auto sm:w-80 z-40 bg-white rounded-2xl shadow-xl border border-orange-100 p-3"
+            className="fixed bottom-24 left-4 right-4 sm:left-6 sm:right-auto sm:w-80 z-40 bg-white rounded-2xl shadow-xl border border-indigo-100 p-3"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-xl flex-shrink-0 select-none">
-                👩‍🏫
+              <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-xl flex-shrink-0 select-none">
+                👨‍🏫
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-black text-orange-600 mb-0.5">Professora Paula</p>
+                <p className="text-xs font-black text-indigo-600 mb-0.5">Professor Tiagão</p>
                 {phase === "thinking" ? (
                   <div className="flex gap-1 items-center h-4">
                     {[0, 150, 300].map(d => (
@@ -458,7 +458,7 @@ export function VoiceProfessor() {
                   <div className="flex gap-0.5 items-end h-4">
                     {[3, 7, 10, 7, 4, 9, 5].map((h, i) => (
                       <span key={i}
-                        className="inline-block w-1 bg-orange-400 rounded-full animate-bounce"
+                        className="inline-block w-1 bg-indigo-400 rounded-full animate-bounce"
                         style={{ height: `${h}px`, animationDelay: `${i * 70}ms` }} />
                     ))}
                     <span className="text-xs text-gray-400 ml-1.5 self-center">falando...</span>
@@ -487,14 +487,14 @@ export function VoiceProfessor() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.96 }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className="fixed bottom-24 left-4 right-4 sm:left-6 sm:right-auto sm:w-80 z-40 bg-white rounded-3xl shadow-2xl border border-orange-100 overflow-hidden"
+            className="fixed bottom-24 left-4 right-4 sm:left-6 sm:right-auto sm:w-80 z-40 bg-white rounded-3xl shadow-2xl border border-indigo-100 overflow-hidden"
           >
             {/* Header */}
             <div className="p-4 flex items-center gap-3"
-              style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}>
+              style={{ background: "linear-gradient(135deg,#6366f1,#4f46e5)" }}>
               <div className="relative">
                 <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-2xl select-none">
-                  👩‍🏫
+                  👨‍🏫
                 </div>
                 <motion.span
                   animate={phase === "speaking"
@@ -505,8 +505,8 @@ export function VoiceProfessor() {
                 />
               </div>
               <div className="flex-1">
-                <p className="text-white font-black text-sm">Professora Paula</p>
-                <p className="text-orange-100 text-xs">{phaseLabel[phase]}</p>
+                <p className="text-white font-black text-sm">Professor Tiagão</p>
+                <p className="text-indigo-100 text-xs">{phaseLabel[phase]}</p>
               </div>
               <button onClick={() => setMuted(m => !m)}
                 className="text-white/70 hover:text-white transition-colors"
@@ -548,11 +548,11 @@ export function VoiceProfessor() {
                     background:
                       phase === "listening" ? "linear-gradient(135deg,#ef4444,#dc2626)"
                       : phase === "thinking" ? "linear-gradient(135deg,#f59e0b,#d97706)"
-                      : "linear-gradient(135deg,#f97316,#ea580c)",
+                      : "linear-gradient(135deg,#6366f1,#4f46e5)",
                     boxShadow: `0 8px 32px ${phaseColor[phase]}55`,
                   }}
                 >
-                  👩‍🏫
+                  👨‍🏫
                 </motion.div>
               </div>
 
@@ -563,7 +563,7 @@ export function VoiceProfessor() {
               )}
 
               {subtitle && phase === "speaking" && (
-                <div className="w-full bg-orange-50 rounded-2xl px-4 py-2.5 text-sm text-orange-700 text-center leading-relaxed">
+                <div className="w-full bg-indigo-50 rounded-2xl px-4 py-2.5 text-sm text-indigo-700 text-center leading-relaxed">
                   {subtitle}
                 </div>
               )}
@@ -581,7 +581,7 @@ export function VoiceProfessor() {
               {phase === "speaking" ? (
                 <button onClick={stopSpeaking}
                   className="w-full py-3 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors">
-                  <Square className="w-4 h-4 fill-current" /> Interromper Paula
+                  <Square className="w-4 h-4 fill-current" /> Interromper Tiagão
                 </button>
               ) : phase === "listening" ? (
                 <button onClick={stopListening}
@@ -593,11 +593,11 @@ export function VoiceProfessor() {
                   disabled={phase === "thinking"}
                   className="w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 text-white transition-all"
                   style={{
-                    background: "linear-gradient(135deg,#f97316,#ea580c)",
-                    boxShadow: "0 4px 16px #f9731640",
+                    background: "linear-gradient(135deg,#6366f1,#4f46e5)",
+                    boxShadow: "0 4px 16px #6366f140",
                   }}>
                   <Mic className="w-4 h-4" />
-                  {phase === "thinking" ? "Pensando..." : "Falar com a Paula"}
+                  {phase === "thinking" ? "Pensando..." : "Falar com a Tiagão"}
                 </button>
               )}
 
@@ -609,12 +609,12 @@ export function VoiceProfessor() {
                     onChange={e => setTextInput(e.target.value)}
                     onKeyDown={e => { if (e.key === "Enter") { sendMessage(textInput); setTextInput(""); } }}
                     placeholder="Ou escreva aqui..."
-                    className="flex-1 text-sm px-3 py-2 rounded-xl border border-gray-200 focus:border-orange-400 focus:outline-none"
+                    className="flex-1 text-sm px-3 py-2 rounded-xl border border-gray-200 focus:border-indigo-400 focus:outline-none"
                   />
                   <button
                     onClick={() => { if (textInput.trim()) { sendMessage(textInput); setTextInput(""); } }}
                     disabled={!textInput.trim()}
-                    className="px-3 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold disabled:opacity-40 transition-colors">
+                    className="px-3 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold disabled:opacity-40 transition-colors">
                     →
                   </button>
                 </div>

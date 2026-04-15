@@ -54,6 +54,7 @@ export default function PerfilPage() {
     objetivo: "",
     concursoAlvo: "",
     telefone: "",
+    tipoEscola: "",
   });
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -66,6 +67,7 @@ export default function PerfilPage() {
         objetivo: profile.objetivo || "",
         concursoAlvo: profile.concursoAlvo || "",
         telefone: profile.telefone || "",
+        tipoEscola: profile.tipoEscola || "",
       });
     }
   }, [profile]);
@@ -89,6 +91,7 @@ export default function PerfilPage() {
       objetivo: form.objetivo,
       concursoAlvo: form.concursoAlvo || undefined,
       telefone: form.telefone || undefined,
+      tipoEscola: form.tipoEscola || undefined,
     });
     setSaved(true);
     setSaving(false);
@@ -249,6 +252,37 @@ export default function PerfilPage() {
                     <option key={grade} value={grade}>{grade}</option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className={labelClass}>
+                  <GraduationCap className="w-4 h-4 text-muted-foreground" />
+                  Tipo de escola / instituição
+                </label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {[
+                    { value: "publica", label: "🏫 Escola Pública" },
+                    { value: "particular", label: "🏛️ Escola Particular" },
+                    { value: "cursinho", label: "📚 Cursinho" },
+                    { value: "faculdade", label: "🎓 Faculdade / Universidade" },
+                    { value: "ead", label: "💻 EAD / Online" },
+                    { value: "autonomo", label: "🎯 Estudando por conta" },
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => { setForm(prev => ({ ...prev, tipoEscola: opt.value })); setSaved(false); }}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2.5 rounded-2xl border-2 text-sm font-semibold transition-all text-left",
+                        form.tipoEscola === opt.value
+                          ? "border-accent bg-accent/10 text-accent shadow-sm"
+                          : "border-border bg-secondary/30 text-foreground hover:border-accent/40 hover:bg-accent/5"
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>

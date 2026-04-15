@@ -372,7 +372,7 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Write student context to localStorage so VoiceProfessor (Paula) can read it
+  // Write student context to localStorage so VoiceProfessor (Tiagão) can read it
   useEffect(() => {
     try {
       const completedCount = Object.values(completedTopics).filter(Boolean).length;
@@ -399,7 +399,7 @@ export default function Home() {
     } catch { /* ignore */ }
   }, [studentProfile, planResult, completedTopics, earnedXp, formData.serie, formData.texto]);
 
-  // Listen for Paula's actions: criar_plano means pre-fill and auto-submit the form
+  // Listen for Tiagão's actions: criar_plano means pre-fill and auto-submit the form
   useEffect(() => {
     const handler = (e: Event) => {
       const { type, param } = (e as CustomEvent<{ type: string; param: string }>).detail;

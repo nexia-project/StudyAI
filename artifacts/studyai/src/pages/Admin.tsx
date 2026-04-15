@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { Brain, Shield, CheckCircle, XCircle, Users, RefreshCw, Crown, UserX } from "lucide-react";
+import { Brain, Shield, CheckCircle, XCircle, Users, RefreshCw, Crown, UserX, BookOpen, Plus, Trash2, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type User = {
@@ -23,11 +23,28 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; isPremium: b
   past_due: { label: "Pagamento atrasado", color: "yellow", isPremium: false },
 };
 
+type TeacherContent = {
+  id: number;
+  title: string;
+  subject: string | null;
+  grade_level: string | null;
+  tags: string | null;
+  file_name: string | null;
+  content_preview: string | null;
+  created_at: string;
+};
+
 export default function AdminPage() {
   const [, navigate] = useLocation();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"users" | "content">("users");
+  const [tcList, setTcList] = useState<TeacherContent[]>([]);
+  const [tcLoading, setTcLoading] = useState(false);
+  const [tcForm, setTcForm] = useState({ title: "", subject: "", gradeLevel: "", contentText: "", tags: "" });
+  const [tcSaving, setTcSaving] = useState(false);
+  const [tcMessage, setTcMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
 
@@ -73,7 +90,56 @@ export default function AdminPage() {
     }
   }
 
+  async function fetchTeacherContent() {
+    setTcLoading(true);
+    try {
+      const res = await fetch("/api/teacher-content");
+      const data = await res.json();
+      setTcList(data.content ?? []);
+    } catch { /* ignore */ }
+    finally { setTcLoading(false); }
+  }
+
+  async function saveTeacherContent(e: React.FormEvent) {
+    e.preventDefault();
+    setTcSaving(true);
+    setTcMessage(null);
+    try {
+      const res = await fetch("/api/teacher-content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: tcForm.title,
+          subject: tcForm.subject || null,
+          gradeLevel: tcForm.gradeLevel || null,
+          contentText: tcForm.contentText,
+          tags: tcForm.tags || null,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setTcMessage({ ok: true, text: "Conteúdo salvo com sucesso!" });
+        setTcForm({ title: "", subject: "", gradeLevel: "", contentText: "", tags: "" });
+        fetchTeacherContent();
+      } else {
+        setTcMessage({ ok: false, text: data.error ?? "Erro ao salvar." });
+      }
+    } catch {
+      setTcMessage({ ok: false, text: "Erro de conexão." });
+    } finally {
+      setTcSaving(false);
+      setTimeout(() => setTcMessage(null), 4000);
+    }
+  }
+
+  async function deleteTeacherContent(id: number) {
+    if (!confirm("Remover este conteúdo?")) return;
+    await fetch(`/api/teacher-content/${id}`, { method: "DELETE" });
+    fetchTeacherContent();
+  }
+
   useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => { if (activeTab === "content") fetchTeacherContent(); }, [activeTab]);
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white">
@@ -104,11 +170,97 @@ export default function AdminPage() {
 
       <main className="max-w-5xl mx-auto px-6 py-10">
         <div className="mb-8">
-          <h1 className="text-3xl font-black mb-2">Gerenciar Usuários</h1>
-          <p className="text-white/50">Dê acesso premium ou reverta para gratuito a qualquer momento.</p>
+          <h1 className="text-3xl font-black mb-2">Painel Admin</h1>
+          <p className="text-white/50">Gerencie usuários e conteúdo de professores parceiros.</p>
         </div>
 
-        {message && (
+        <div className="flex gap-2 mb-8 border-b border-white/10 pb-0">
+          {[
+            { key: "users", label: "Usuários", icon: Users },
+            { key: "content", label: "Conteúdo de Professores", icon: BookOpen },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key as "users" | "content")}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-bold border-b-2 transition-all ${
+                activeTab === tab.key
+                  ? "border-violet-500 text-violet-400"
+                  : "border-transparent text-white/40 hover:text-white/70"
+              }`}
+            >
+              <tab.icon className="w-4 h-4" />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === "content" && (
+          <div className="space-y-6">
+            {tcMessage && (
+              <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-semibold ${tcMessage.ok ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300" : "bg-red-500/10 border-red-500/20 text-red-300"}`}>
+                {tcMessage.ok ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                {tcMessage.text}
+              </div>
+            )}
+            <form onSubmit={saveTeacherContent} className="bg-white/5 rounded-2xl p-6 border border-white/10 space-y-4">
+              <h2 className="text-lg font-black flex items-center gap-2"><Plus className="w-5 h-5 text-violet-400" /> Adicionar Conteúdo</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-white/50 font-bold mb-1">Título *</label>
+                  <input required value={tcForm.title} onChange={e => setTcForm(p => ({ ...p, title: e.target.value }))} placeholder="Ex: Funções do 2° grau – Resumão" className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-violet-500/50" />
+                </div>
+                <div>
+                  <label className="block text-xs text-white/50 font-bold mb-1">Matéria</label>
+                  <input value={tcForm.subject} onChange={e => setTcForm(p => ({ ...p, subject: e.target.value }))} placeholder="Ex: Matemática" className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-violet-500/50" />
+                </div>
+                <div>
+                  <label className="block text-xs text-white/50 font-bold mb-1">Série / Nível</label>
+                  <input value={tcForm.gradeLevel} onChange={e => setTcForm(p => ({ ...p, gradeLevel: e.target.value }))} placeholder="Ex: 2° Ano EM / ENEM / Concurso" className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-violet-500/50" />
+                </div>
+                <div>
+                  <label className="block text-xs text-white/50 font-bold mb-1">Tags (separadas por vírgula)</label>
+                  <input value={tcForm.tags} onChange={e => setTcForm(p => ({ ...p, tags: e.target.value }))} placeholder="Ex: equação, bhaskara, vestibular" className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-violet-500/50" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-white/50 font-bold mb-1">Conteúdo / Material didático *</label>
+                <textarea required value={tcForm.contentText} onChange={e => setTcForm(p => ({ ...p, contentText: e.target.value }))} rows={6} placeholder="Cole aqui o texto do material didático, resumo, exercícios, etc." className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-violet-500/50 resize-none" />
+              </div>
+              <Button type="submit" disabled={tcSaving} className="bg-violet-600 hover:bg-violet-700 text-white font-bold">
+                {tcSaving ? "Salvando..." : "Salvar Conteúdo"}
+              </Button>
+            </form>
+
+            <div className="space-y-3">
+              <h2 className="text-lg font-black flex items-center gap-2"><FileText className="w-5 h-5 text-violet-400" /> Conteúdos Cadastrados ({tcList.length})</h2>
+              {tcLoading ? (
+                <div className="text-center py-8 text-white/30">Carregando...</div>
+              ) : tcList.length === 0 ? (
+                <div className="text-center py-8 text-white/30 bg-white/3 rounded-2xl border border-white/5">
+                  <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">Nenhum conteúdo cadastrado ainda.</p>
+                </div>
+              ) : (
+                tcList.map(c => (
+                  <motion.div key={c.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl px-5 py-4">
+                    <div>
+                      <p className="font-bold text-white">{c.title}</p>
+                      <p className="text-xs text-white/40 mt-0.5">
+                        {[c.subject, c.grade_level].filter(Boolean).join(" · ")}
+                        {c.tags && <span className="ml-2 text-violet-400/70"># {c.tags}</span>}
+                      </p>
+                    </div>
+                    <button onClick={() => deleteTeacherContent(c.id)} className="ml-4 p-2 text-white/30 hover:text-red-400 transition-colors rounded-xl hover:bg-red-500/10">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </motion.div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "users" && message && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -123,20 +275,20 @@ export default function AdminPage() {
           </motion.div>
         )}
 
-        {loading && (
+        {activeTab === "users" && loading && (
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
           </div>
         )}
 
-        {error && (
+        {activeTab === "users" && error && (
           <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-8 text-center">
             <XCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
             <p className="text-red-300 font-semibold">{error}</p>
           </div>
         )}
 
-        {!loading && !error && (
+        {activeTab === "users" && !loading && !error && (
           <>
             <div className="flex items-center gap-3 mb-5">
               <Users className="w-5 h-5 text-violet-400" />

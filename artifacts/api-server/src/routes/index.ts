@@ -20,6 +20,7 @@ import professorRouter from "./professor";
 import lgpdRouter from "./lgpd";
 import profileRouter from "./profile";
 import leadsRouter from "./leads";
+import teacherContentRouter from "./teacherContent";
 
 const router: IRouter = Router();
 
@@ -44,5 +45,6 @@ router.use(professorRouter);
 router.use(lgpdRouter);
 router.use(profileRouter);
 router.use(leadsRouter);
+router.use(teacherContentRouter);
 
 export default router;

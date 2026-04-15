@@ -19,6 +19,7 @@ router.get("/profile", async (req: Request, res: Response) => {
         studentGoal: usersTable.studentGoal,
         studentConcursoAlvo: usersTable.studentConcursoAlvo,
         studentPhone: usersTable.studentPhone,
+        studentSchoolType: usersTable.studentSchoolType,
         firstName: usersTable.firstName,
         lastName: usersTable.lastName,
         email: usersTable.email,
@@ -34,6 +35,7 @@ router.get("/profile", async (req: Request, res: Response) => {
       studentGoal: user?.studentGoal ?? null,
       studentConcursoAlvo: user?.studentConcursoAlvo ?? null,
       studentPhone: user?.studentPhone ?? null,
+      studentSchoolType: user?.studentSchoolType ?? null,
       firstName: user?.firstName ?? null,
       lastName: user?.lastName ?? null,
       email: user?.email ?? null,
@@ -52,12 +54,13 @@ router.post("/profile", async (req: Request, res: Response) => {
     return;
   }
 
-  const { studentName, studentGrade, studentGoal, studentConcursoAlvo, studentPhone } = req.body as {
+  const { studentName, studentGrade, studentGoal, studentConcursoAlvo, studentPhone, studentSchoolType } = req.body as {
     studentName?: string;
     studentGrade?: string;
     studentGoal?: string;
     studentConcursoAlvo?: string;
     studentPhone?: string;
+    studentSchoolType?: string;
   };
 
   try {
@@ -69,6 +72,7 @@ router.post("/profile", async (req: Request, res: Response) => {
         ...(studentGoal !== undefined && { studentGoal }),
         ...(studentConcursoAlvo !== undefined && { studentConcursoAlvo: studentConcursoAlvo.trim() || null }),
         ...(studentPhone !== undefined && { studentPhone: studentPhone.trim() || null }),
+        ...(studentSchoolType !== undefined && { studentSchoolType: studentSchoolType || null }),
       })
       .where(eq(usersTable.id, req.user.id));
 

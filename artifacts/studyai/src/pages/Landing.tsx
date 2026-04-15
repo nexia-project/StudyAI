@@ -18,7 +18,7 @@ const fadeUp = {
 };
 
 const features = [
-  { icon: Mic, label: "Professora Paula", desc: "Tutora por voz — fala com você, sabe seu progresso e age proativamente.", color: "text-orange-500", bg: "bg-orange-50" },
+  { icon: Mic, label: "Professor Tiagão", desc: "Tutora por voz — fala com você, sabe seu progresso e age proativamente.", color: "text-orange-500", bg: "bg-orange-50" },
   { icon: Brain, label: "Plano de Estudos IA", desc: "PDF, foto do caderno ou tema digitado. Nossa IA cria um cronograma personalizado.", color: "text-violet-600", bg: "bg-violet-50" },
   { icon: Zap, label: "Simulado Inteligente", desc: "10 questões do seu material, com gabarito comentado em tempo real.", color: "text-blue-500", bg: "bg-blue-50" },
   { icon: BookOpen, label: "Flashcards Anki", desc: "Repetição espaçada inteligente. A IA cria os cards e ajusta o ritmo.", color: "text-emerald-600", bg: "bg-emerald-50" },
@@ -40,7 +40,7 @@ const plans = [
       "1 plano de estudos por mês",
       "2 simulados por mês",
       "5 flashcards por semana",
-      "5 mensagens/dia com a Professora Paula",
+      "5 mensagens/dia com a Professor Tiagão",
       "1 correção de redação por mês",
       "Dashboard de desempenho",
       "Timer Pomodoro",
@@ -57,7 +57,7 @@ const plans = [
       "Planos de estudos ilimitados",
       "Simulados ilimitados",
       "Flashcards ilimitados com IA avançada",
-      "Professora Paula ilimitada + voz proativa",
+      "Professor Tiagão ilimitada + voz proativa",
       "Correções de redação ilimitadas",
       "Resumões estratégicos ilimitados",
       "Dashboard completo + mapa de calor",
@@ -83,15 +83,15 @@ const plans = [
 ];
 
 const testimonials = [
-  { name: "Mariana S.", role: "ENEM 2024 — Medicina", text: "Tirava 580. Depois de 2 meses com o StudyAI, fui para 724. A Paula me chamava quando ficava dias sem estudar. Era como ter uma tutora particular.", before: "580 pts", after: "724 pts", emoji: "🎓" },
+  { name: "Mariana S.", role: "ENEM 2024 — Medicina", text: "Tirava 580. Depois de 2 meses com o StudyAI, fui para 724. A Tiagão me chamava quando ficava dias sem estudar. Era como ter uma professor particular.", before: "580 pts", after: "724 pts", emoji: "🎓" },
   { name: "Carlos M.", role: "Aprovado no TRF", text: "Tentei 3 anos sem aprovação. O Simulado Adaptativo detectou meus pontos cegos e finalmente passei. A IA sabia onde eu precisava melhorar melhor do que eu mesmo.", before: "3 reprovações", after: "Aprovado!", emoji: "📋" },
   { name: "Juliana R.", role: "FUVEST — Direito", text: "Fotografava minha apostila no ônibus e em 30 segundos tinha exercícios sobre o que ia cair. Nunca estudei tão pouco e aprendi tanto.", before: "Sem foco", after: "Aprovada!", emoji: "⚡" },
   { name: "Rafael T.", role: "3ª série Ensino Médio", text: "Minha redação foi de 640 para 880. O corretor identificou que eu não desenvolvia proposta de intervenção. Nenhum professor tinha me dito isso antes.", before: "Redação 640", after: "Redação 880", emoji: "✍️" },
 ];
 
 const faqs = [
-  { q: "O StudyAI é gratuito?", a: "Sim! O plano gratuito inclui plano de estudos personalizado, simulados, flashcards, correção de redação e acesso à Professora Paula. O plano Pro (R$29,90/mês) libera tudo ilimitado: simulado adaptativo avançado, Paula proativa por voz, correções ilimitadas e muito mais." },
-  { q: "O que é a Professora Paula?", a: "Paula é a primeira tutora por voz com IA do Brasil. Ela age de forma proativa — fala com você quando percebe que você ficou dias sem estudar, sabe seu plano de estudos, suas matérias e pontos fracos. É como ter uma tutora particular disponível 24 horas por dia, 7 dias por semana." },
+  { q: "O StudyAI é gratuito?", a: "Sim! O plano gratuito inclui plano de estudos personalizado, simulados, flashcards, correção de redação e acesso à Professor Tiagão. O plano Pro (R$29,90/mês) libera tudo ilimitado: simulado adaptativo avançado, Tiagão proativa por voz, correções ilimitadas e muito mais." },
+  { q: "O que é a Professor Tiagão?", a: "Tiagão é a primeira professor por voz com IA do Brasil. Ela age de forma proativa — fala com você quando percebe que você ficou dias sem estudar, sabe seu plano de estudos, suas matérias e pontos fracos. É como ter uma professor particular disponível 24 horas por dia, 7 dias por semana." },
   { q: "Como o plano de estudos personalizado é gerado?", a: "Você informa sua matéria, nível de conhecimento, tempo disponível e objetivo (ENEM 2025, vestibular ou concurso). Pode também enviar um PDF, DOCX ou foto do caderno. Nossa IA analisa tudo e cria um cronograma personalizado dia a dia, com tópicos, exercícios práticos, flashcards e dicas de memorização específicos para o seu perfil." },
   { q: "Funciona para ENEM 2025, vestibular e concursos públicos?", a: "Sim! O StudyAI foi criado especialmente para estudantes brasileiros. A IA adapta o conteúdo, a linguagem e a dificuldade para o seu objetivo — seja o ENEM 2025, FUVEST, UNICAMP, UEL, ENADE, OAB, Receita Federal, INSS, PRF, concursos militares ou qualquer outra prova federal ou estadual." },
   { q: "Como funciona a correção de redação ENEM?", a: "Você envia sua redação (texto digitado ou foto) e a IA avalia nas 5 competências oficiais do ENEM: domínio da norma culta, compreensão do tema, seleção de argumentos, coesão e proposta de intervenção. Você recebe nota de 0 a 1000 em cada competência e sugestões detalhadas de melhoria — tudo em menos de 30 segundos." },
@@ -177,7 +177,7 @@ export default function Landing() {
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-gray-500">
             <a href="#funcoes" className="hover:text-gray-900 transition-colors">Funções</a>
-            <a href="#paula" className="hover:text-gray-900 transition-colors">Professora Paula</a>
+            <a href="#paula" className="hover:text-gray-900 transition-colors">Professor Tiagão</a>
             <a href="#institucional" className="hover:text-gray-900 transition-colors">Institucional</a>
             <a href="#precos" className="hover:text-gray-900 transition-colors">Preços</a>
             <a href="#faq" className="hover:text-gray-900 transition-colors">FAQ</a>
@@ -199,7 +199,7 @@ export default function Landing() {
         <div className="max-w-4xl mx-auto text-center">
           <motion.div variants={fadeUp} initial="hidden" animate="show" custom={0}>
             <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600 border border-orange-100">
-              <Radio className="w-3 h-3 animate-pulse" /> Novo: Professora Paula — Tutora por Voz com IA
+              <Radio className="w-3 h-3 animate-pulse" /> Novo: Professor Tiagão — Tutora por Voz com IA
             </span>
           </motion.div>
 
@@ -214,7 +214,7 @@ export default function Landing() {
 
           <motion.p variants={fadeUp} initial="hidden" animate="show" custom={2}
             className="mt-5 text-xl text-gray-500 max-w-2xl mx-auto leading-relaxed">
-            A Professora Paula fala com você por voz, sabe seu progresso e age de forma proativa. Planos de estudo, simulados, flashcards e correção de redação — tudo com nossa IA exclusiva.
+            A Professor Tiagão fala com você por voz, sabe seu progresso e age de forma proativa. Planos de estudo, simulados, flashcards e correção de redação — tudo com nossa IA exclusiva.
           </motion.p>
 
           <motion.div variants={fadeUp} initial="hidden" animate="show" custom={3}
@@ -226,7 +226,7 @@ export default function Landing() {
             </button>
             <button onClick={handleStart}
               className="flex items-center gap-2 px-7 py-3.5 rounded-xl font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
-              <Mic className="w-4 h-4" /> Ver a Professora Paula
+              <Mic className="w-4 h-4" /> Ver a Professor Tiagão
             </button>
           </motion.div>
 
@@ -258,14 +258,14 @@ export default function Landing() {
                 <Volume2 className="w-3 h-3" /> Exclusivo StudyAI
               </span>
               <h2 className="text-4xl font-black tracking-tight text-gray-900 mb-4">
-                Conheça a Professora Paula
+                Conheça a Professor Tiagão
               </h2>
               <p className="text-gray-500 text-lg leading-relaxed mb-8">
-                A primeira tutora por voz com IA que age de forma proativa. Ela não espera você perguntar — ela chama você.
+                A primeira professor por voz com IA que age de forma proativa. Ela não espera você perguntar — ela chama você.
               </p>
               <div className="space-y-4">
                 {[
-                  { icon: Radio, title: "Fala primeiro, sem você pedir", desc: "Paula percebe quando você ficou dias sem estudar e chama por voz.", color: "text-orange-500", bg: "bg-orange-50" },
+                  { icon: Radio, title: "Fala primeiro, sem você pedir", desc: "Tiagão percebe quando você ficou dias sem estudar e chama por voz.", color: "text-orange-500", bg: "bg-orange-50" },
                   { icon: Cpu, title: "Sabe tudo sobre seu progresso", desc: "Tem acesso ao seu plano, XP, dias concluídos e matérias em estudo.", color: "text-violet-500", bg: "bg-violet-50" },
                   { icon: Layers, title: "Age no app por você", desc: "Peça para ela criar um plano ou navegar — ela executa diretamente.", color: "text-blue-500", bg: "bg-blue-50" },
                   { icon: Shield, title: "Voz natural, zero robótica", desc: "Voz feminina, calorosa e fluida — 100% exclusiva do StudyAI.", color: "text-emerald-500", bg: "bg-emerald-50" },
@@ -293,7 +293,7 @@ export default function Landing() {
                   <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-4xl mx-auto mb-3">
                     👩‍🏫
                   </div>
-                  <p className="text-white font-black">Professora Paula</p>
+                  <p className="text-white font-black">Professor Tiagão</p>
                   <p className="text-orange-100 text-xs mt-0.5">Tutora de Voz com IA</p>
                 </div>
                 {/* Fake speaking UI */}
@@ -362,7 +362,7 @@ export default function Landing() {
             {[
               { num: "1", title: "Envie o material ou escreva o tema", desc: "PDF, DOCX, foto do caderno ou simplesmente o tema que quer estudar. A IA entende qualquer formato." },
               { num: "2", title: "Nossa IA cria seu plano personalizado", desc: "Cronograma dia a dia, tópicos, exercícios e dicas adaptados para o seu perfil e objetivo." },
-              { num: "3", title: "Paula te acompanha enquanto você evolui", desc: "Flashcards, simulados, Pomodoro e a Paula te chamando quando precisar revisar. Suba no ranking." },
+              { num: "3", title: "Tiagão te acompanha enquanto você evolui", desc: "Flashcards, simulados, Pomodoro e o Tiagão te chamando quando precisar revisar. Suba no ranking." },
             ].map((s, i) => (
               <motion.div key={i} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i * 0.1}
                 className="flex gap-4 p-5 rounded-2xl bg-white border border-gray-100">
@@ -454,11 +454,11 @@ export default function Landing() {
             </div>
             {[
               { aspecto: "Plano de estudos", trad: "Genérico, igual para todos", ai: "100% personalizado para você" },
-              { aspecto: "Tutor disponível", trad: "Horário fixo do professor", ai: "Paula 24h — te chama por voz" },
+              { aspecto: "Tutor disponível", trad: "Horário fixo do professor", ai: "Tiagão 24h — te chama por voz" },
               { aspecto: "Simulados", trad: "Questões antigas de banco fixo", ai: "Gerados do seu conteúdo" },
               { aspecto: "Feedback de redação", trad: "Aguarda dias ou semanas", ai: "Nota completa em 30 segundos" },
               { aspecto: "Identificação de lacunas", trad: "Você tenta adivinhar", ai: "Mapa de Calor + Adaptativo" },
-              { aspecto: "Motivação", trad: "Depende do humor do dia", ai: "XP, ranking e Paula te incentivando" },
+              { aspecto: "Motivação", trad: "Depende do humor do dia", ai: "XP, ranking e Tiagão te incentivando" },
             ].map((row, i) => (
               <div key={i} className={`grid grid-cols-3 px-5 py-3.5 gap-3 text-sm border-b border-gray-50 last:border-0 ${i % 2 === 1 ? "bg-gray-50/50" : ""}`}>
                 <span className="text-gray-700 font-medium text-xs">{row.aspecto}</span>
@@ -766,7 +766,7 @@ export default function Landing() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm text-gray-700">
               {[
                 { title: "Plano do SEU material", desc: "Não usamos banco de questões genérico. Nossa IA cria exercícios do seu próprio conteúdo, adaptados ao seu nível e objetivo." },
-                { title: "Tutora por voz proativa", desc: "A Professora Paula é a única tutora de IA no Brasil que fala primeiro — te chamando quando você precisa estudar, sem você precisar perguntar nada." },
+                { title: "Tutora por voz proativa", desc: "A Professor Tiagão é a única professor de IA no Brasil que fala primeiro — te chamando quando você precisa estudar, sem você precisar perguntar nada." },
                 { title: "Sem mensalidade absurda", desc: "Cursinho presencial cobra R$200–800/mês pelo mesmo conteúdo para todos. O StudyAI é pessoal, ilimitado e custa R$29,90/mês — ou gratuito no básico." },
                 { title: "Tecnologia de ponta", desc: "Nossa IA é treinada para o contexto educacional brasileiro, não é IA genérica de prateleira: é estado da arte aplicado ao ENEM e vestibulares." },
                 { title: "Funciona no celular", desc: "Estude no ônibus, no intervalo do trabalho, ou em qualquer lugar. Sem instalar aplicativo — só acesse study.ia.br no navegador." },
@@ -827,10 +827,10 @@ export default function Landing() {
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}>
             <p className="text-5xl mb-5">👩‍🏫</p>
             <h2 className="text-4xl md:text-5xl font-black tracking-tight text-gray-900 mb-4">
-              A Paula está esperando por você
+              A Tiagão está esperando por você
             </h2>
             <p className="text-gray-500 text-lg mb-8 max-w-lg mx-auto">
-              Crie seu plano, ouça a Paula e comece a evoluir agora. Grátis para sempre no básico.
+              Crie seu plano, ouça o Tiagão e comece a evoluir agora. Grátis para sempre no básico.
             </p>
             <button onClick={handleStart}
               className="group inline-flex items-center gap-2 px-8 py-4 rounded-xl font-bold text-white bg-orange-500 hover:bg-orange-600 transition-all hover:scale-105 active:scale-95 shadow-xl shadow-orange-200 text-lg">

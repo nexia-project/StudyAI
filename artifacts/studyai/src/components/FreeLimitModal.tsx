@@ -65,7 +65,7 @@ export function FreeLimitModal() {
                 { icon: <BookOpen className="w-4 h-4 text-green-400" />, text: "Planos ilimitados" },
                 { icon: <Zap className="w-4 h-4 text-yellow-400" />, text: "Flashcards ilimitados" },
                 { icon: <Star className="w-4 h-4 text-blue-400" />, text: "Simulados ilimitados" },
-                { icon: <Zap className="w-4 h-4 text-pink-400" />, text: "Professora Paula voz" },
+                { icon: <Zap className="w-4 h-4 text-pink-400" />, text: "Professor Tiagão voz" },
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
                   {item.icon}

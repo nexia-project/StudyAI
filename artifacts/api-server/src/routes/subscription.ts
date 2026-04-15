@@ -15,34 +15,18 @@ router.get("/subscription/status", async (req: Request, res: Response) => {
 
   try {
     const [user] = await db
-      .select({
-        stripeSubscriptionStatus: usersTable.stripeSubscriptionStatus,
-        stripeCustomerId: usersTable.stripeCustomerId,
-        freeAiUses: usersTable.freeAiUses,
-        role: usersTable.role,
-      })
+      .select({ role: usersTable.role })
       .from(usersTable)
       .where(eq(usersTable.id, req.userId!))
       .limit(1);
 
     const userRole = user?.role ?? "student";
 
-    // Admins have full premium access with no limits
-    const isAdmin = ["admin", "institution_admin"].includes(userRole);
-    if (isAdmin) {
-      res.json({ status: "active", isPremium: true, freeAiUses: 0, freeAiUsesRemaining: null, freeAiLimit: FREE_AI_LIMIT, isAdmin: true, role: userRole });
-      return;
-    }
-
-    const status = user?.stripeSubscriptionStatus || "free";
-    const isPremium = status === "active" || status === "trialing";
-    const freeAiUses = user?.freeAiUses ?? 0;
-    const freeAiUsesRemaining = isPremium ? null : Math.max(0, FREE_AI_LIMIT - freeAiUses);
-
-    res.json({ status, isPremium, freeAiUses, freeAiUsesRemaining, freeAiLimit: FREE_AI_LIMIT, role: userRole });
+    // MODO TESTE: todos os usuários logados têm acesso premium ilimitado
+    res.json({ status: "active", isPremium: true, freeAiUses: 0, freeAiUsesRemaining: null, freeAiLimit: FREE_AI_LIMIT, role: userRole });
   } catch (err) {
     req.log.error({ err }, "Error fetching subscription status");
-    res.json({ status: "free", isPremium: false });
+    res.json({ status: "active", isPremium: true, freeAiUses: 0, freeAiUsesRemaining: null, freeAiLimit: FREE_AI_LIMIT, role: "student" });
   }
 });
 

@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { Brain, Shield, CheckCircle, XCircle, Users, RefreshCw, Crown, UserX, BookOpen, Plus, Trash2, FileText, GraduationCap, Building2, Globe } from "lucide-react";
+import { Brain, Shield, CheckCircle, XCircle, Users, RefreshCw, Crown, UserX, BookOpen, Plus, Trash2, FileText, GraduationCap, Building2, Globe, Database, Upload, Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type User = {
@@ -40,7 +40,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"users" | "content" | "roles">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "content" | "roles" | "knowledge">("users");
   const [roleUpdating, setRoleUpdating] = useState<string | null>(null);
   const [roleMsg, setRoleMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [tcList, setTcList] = useState<TeacherContent[]>([]);
@@ -50,6 +50,15 @@ export default function AdminPage() {
   const [tcMessage, setTcMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
+
+  // Knowledge base state
+  const [kbDocs, setKbDocs] = useState<Array<{ id: number; title: string; subject: string | null; preview: string; created_at: string }>>([]);
+  const [kbLoading, setKbLoading] = useState(false);
+  const [kbForm, setKbForm] = useState({ title: "", subject: "", contentText: "" });
+  const [kbFile, setKbFile] = useState<File | null>(null);
+  const [kbSaving, setKbSaving] = useState(false);
+  const [kbMsg, setKbMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const kbFileRef = useRef<HTMLInputElement>(null);
 
   async function fetchUsers() {
     setLoading(true);
@@ -165,8 +174,80 @@ export default function AdminPage() {
     }
   }
 
+  async function fetchKbDocs() {
+    setKbLoading(true);
+    try {
+      const res = await fetch("/api/knowledge");
+      const data = await res.json();
+      setKbDocs(data.docs ?? []);
+    } catch { /* ignore */ }
+    finally { setKbLoading(false); }
+  }
+
+  async function saveKbText(e: React.FormEvent) {
+    e.preventDefault();
+    if (!kbForm.title || !kbForm.contentText) return;
+    setKbSaving(true);
+    setKbMsg(null);
+    try {
+      const res = await fetch("/api/knowledge/upload-text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: kbForm.title, subject: kbForm.subject || null, contentText: kbForm.contentText }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setKbMsg({ ok: true, text: "Documento adicionado à base de conhecimento!" });
+        setKbForm({ title: "", subject: "", contentText: "" });
+        fetchKbDocs();
+      } else {
+        setKbMsg({ ok: false, text: data.erro ?? "Erro ao salvar." });
+      }
+    } catch {
+      setKbMsg({ ok: false, text: "Erro de conexão." });
+    } finally {
+      setKbSaving(false);
+      setTimeout(() => setKbMsg(null), 4000);
+    }
+  }
+
+  async function saveKbFile(e: React.FormEvent) {
+    e.preventDefault();
+    if (!kbFile) return;
+    setKbSaving(true);
+    setKbMsg(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", kbFile);
+      if (kbForm.title) fd.append("title", kbForm.title);
+      if (kbForm.subject) fd.append("subject", kbForm.subject);
+      const res = await fetch("/api/knowledge/upload-file", { method: "POST", body: fd });
+      const data = await res.json();
+      if (res.ok) {
+        setKbMsg({ ok: true, text: "Arquivo processado e adicionado à base de conhecimento!" });
+        setKbFile(null);
+        setKbForm({ title: "", subject: "", contentText: "" });
+        fetchKbDocs();
+      } else {
+        setKbMsg({ ok: false, text: data.erro ?? "Erro ao processar arquivo." });
+      }
+    } catch {
+      setKbMsg({ ok: false, text: "Erro de conexão." });
+    } finally {
+      setKbSaving(false);
+      setTimeout(() => setKbMsg(null), 4000);
+    }
+  }
+
+  async function deleteKbDoc(id: number) {
+    if (!confirm("Remover este documento da base de conhecimento?")) return;
+    await fetch(`/api/knowledge/${id}`, { method: "DELETE" });
+    fetchKbDocs();
+  }
+
   useEffect(() => { fetchUsers(); }, []);
   useEffect(() => { if (activeTab === "content") fetchTeacherContent(); }, [activeTab]);
+  useEffect(() => { if (activeTab === "knowledge") fetchKbDocs(); }, [activeTab]);
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white">
@@ -206,10 +287,11 @@ export default function AdminPage() {
             { key: "users", label: "Usuários", icon: Users },
             { key: "roles", label: "Perfis & Acesso", icon: Shield },
             { key: "content", label: "Conteúdo", icon: BookOpen },
+            { key: "knowledge", label: "Base de Conhecimento", icon: Database },
           ].map(tab => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key as "users" | "content" | "roles")}
+              onClick={() => setActiveTab(tab.key as "users" | "content" | "roles" | "knowledge")}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-bold border-b-2 transition-all ${
                 activeTab === tab.key
                   ? "border-violet-500 text-violet-400"
@@ -484,6 +566,159 @@ export default function AdminPage() {
               )}
             </div>
           </>
+        )}
+
+        {/* ── Base de Conhecimento ────────────────────────────────────────── */}
+        {activeTab === "knowledge" && (
+          <div className="space-y-8">
+            <div className="flex items-center gap-3 mb-1">
+              <Database className="w-5 h-5 text-violet-400" />
+              <div>
+                <p className="font-bold">Base de Conhecimento do Sistema</p>
+                <p className="text-white/40 text-xs mt-0.5">Documentos adicionados aqui são consultados pelo Professor Tiagão e pelo Tutor antes de buscar informações externas.</p>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Upload Text */}
+              <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-5">
+                <h3 className="font-bold mb-4 flex items-center gap-2"><FileText className="w-4 h-4 text-violet-400" /> Adicionar por Texto</h3>
+                <form onSubmit={saveKbText} className="space-y-3">
+                  <input
+                    value={kbForm.title}
+                    onChange={e => setKbForm(f => ({ ...f, title: e.target.value }))}
+                    placeholder="Título do documento *"
+                    required
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500"
+                  />
+                  <input
+                    value={kbForm.subject}
+                    onChange={e => setKbForm(f => ({ ...f, subject: e.target.value }))}
+                    placeholder="Matéria (ex: Matemática, Biologia)"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500"
+                  />
+                  <textarea
+                    value={kbForm.contentText}
+                    onChange={e => setKbForm(f => ({ ...f, contentText: e.target.value }))}
+                    placeholder="Cole o conteúdo do documento aqui... *"
+                    required
+                    rows={5}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500 resize-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={kbSaving || !kbForm.title || !kbForm.contentText}
+                    className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors"
+                  >
+                    {kbSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</> : <><Plus className="w-4 h-4" /> Adicionar à Base</>}
+                  </button>
+                </form>
+              </div>
+
+              {/* Upload File */}
+              <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-5">
+                <h3 className="font-bold mb-4 flex items-center gap-2"><Upload className="w-4 h-4 text-violet-400" /> Carregar Arquivo (PDF / TXT)</h3>
+                <form onSubmit={saveKbFile} className="space-y-3">
+                  <input
+                    value={kbForm.title}
+                    onChange={e => setKbForm(f => ({ ...f, title: e.target.value }))}
+                    placeholder="Título (ou usa o nome do arquivo)"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500"
+                  />
+                  <input
+                    value={kbForm.subject}
+                    onChange={e => setKbForm(f => ({ ...f, subject: e.target.value }))}
+                    placeholder="Matéria (ex: Física, História)"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500"
+                  />
+                  <div
+                    onClick={() => kbFileRef.current?.click()}
+                    className="border-2 border-dashed border-white/15 rounded-2xl p-6 text-center cursor-pointer hover:border-violet-500/50 transition-colors"
+                  >
+                    {kbFile ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <FileText className="w-5 h-5 text-violet-400" />
+                        <span className="text-sm font-semibold text-white">{kbFile.name}</span>
+                      </div>
+                    ) : (
+                      <>
+                        <Upload className="w-8 h-8 mx-auto mb-2 text-white/30" />
+                        <p className="text-sm text-white/40">Clique para selecionar PDF ou TXT</p>
+                        <p className="text-xs text-white/25 mt-1">Máximo 25 MB</p>
+                      </>
+                    )}
+                    <input
+                      ref={kbFileRef}
+                      type="file"
+                      accept=".pdf,.txt"
+                      className="hidden"
+                      onChange={e => setKbFile(e.target.files?.[0] ?? null)}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={kbSaving || !kbFile}
+                    className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors"
+                  >
+                    {kbSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Processando...</> : <><Upload className="w-4 h-4" /> Processar e Adicionar</>}
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {kbMsg && (
+              <div className={`px-4 py-3 rounded-xl text-sm font-semibold ${kbMsg.ok ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "bg-red-500/10 text-red-300 border border-red-500/20"}`}>
+                {kbMsg.text}
+              </div>
+            )}
+
+            {/* Doc list */}
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <h3 className="font-bold">Documentos na Base ({kbDocs.length})</h3>
+                <button onClick={fetchKbDocs} className="p-1.5 rounded-lg hover:bg-white/5 transition-colors">
+                  <RefreshCw className="w-3.5 h-3.5 text-white/40" />
+                </button>
+              </div>
+              {kbLoading ? (
+                <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-white/30" /></div>
+              ) : kbDocs.length === 0 ? (
+                <div className="text-center py-12 text-white/30 border border-white/8 rounded-2xl">
+                  <Database className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p>Nenhum documento na base ainda.</p>
+                  <p className="text-xs mt-1">Adicione conteúdo para o Tiagão consultar!</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {kbDocs.map((doc: any) => (
+                    <div key={doc.id} className="rounded-2xl border border-white/8 bg-white/[0.04] p-4 flex gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center flex-shrink-0">
+                        <FileText className="w-5 h-5 text-violet-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-bold text-sm truncate">{doc.title}</p>
+                          {doc.subject && (
+                            <span className="px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 text-xs font-semibold flex-shrink-0">
+                              {doc.subject}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-white/40 text-xs line-clamp-2">{doc.preview}</p>
+                        <p className="text-white/25 text-xs mt-1">Adicionado em {new Date(doc.created_at).toLocaleDateString("pt-BR")}</p>
+                      </div>
+                      <button
+                        onClick={() => deleteKbDoc(doc.id)}
+                        className="p-2 rounded-xl hover:bg-red-500/10 hover:text-red-400 text-white/30 transition-colors flex-shrink-0"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </main>
     </div>

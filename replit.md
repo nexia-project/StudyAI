@@ -168,6 +168,21 @@ Published at `study.ia.br`. ENEM/vestibular/concurso AI tutor platform powered b
 - **Onboarding Wizard** (`artifacts/studyai/src/components/Onboarding.tsx`) — 3-step modal on first visit: Name → Série → Goal; stores to `localStorage.studyai_profile`; pre-fills Home.tsx form on next visits; exports `hasOnboarded()` and `getOnboardingData()` helpers
 - **URL-to-Study-Plan** — Home.tsx form has a URL input field; backend (`/api/analisar`) fetches and strips HTML from the URL, merges content with texto field before GPT-4o call
 
+### Mapa Mental (2026-04 — atualização)
+- **Nós clicáveis**: Nós com conteúdo estudado têm seta e abrerm drawer lateral com stats (planos, simulados, flashcards, score, tópicos)
+- **Nós não clicáveis**: Nós de documentos sem histórico estudado ficam acinzentados com ícone de cadeado
+- **Upload de documento**: Botão "Carregar Doc" no header → modal → API `POST /api/mapa-mental/from-doc` → GPT-4o extrai estrutura → mapa visual integrado
+- **Tabs de documentos**: Switcher entre "Meu Histórico" e cada doc carregado; nós do doc que têm histórico de estudo = clicáveis
+- **DB**: `user_doc_mindmaps` table (user_id, doc_title, mind_map_json JSONB, created_at)
+- **Endpoint**: `GET /api/mapa-mental/my-docs`, `DELETE /api/mapa-mental/my-docs/:id`
+
+### Base de Conhecimento do Sistema (2026-04)
+- **Admin panel** → aba "Base de Conhecimento": upload por texto ou arquivo PDF/TXT
+- **DB**: `knowledge_documents` table (id, title, subject, content_text, uploaded_by, created_at)
+- **API**: `GET /api/knowledge`, `POST /api/knowledge/upload-text`, `POST /api/knowledge/upload-file`, `DELETE /api/knowledge/:id`
+- **Integração AI**: Professor Tiagão (`/api/voice-chat`) e Tutor (`/api/chat`) buscam na KB com ILIKE antes de responder — conteúdo encontrado vai no system prompt como "CONTEÚDO DA BASE DE CONHECIMENTO INTERNA"
+- **Professor Tiagão**: Agora inclui `mindMapTopology` (matérias + tópicos) no system prompt, tem acesso ao mapa mental do aluno
+
 ### Módulo Professor (2026-04)
 - **Routes**: `/professor` (turma list), `/professor/turma/:id` (detail: Alunos/Tarefas/Dashboard/Ranking tabs)
 - **Access**: Users with `role = 'teacher' | 'institution_admin' | 'admin'` in `users.role` column

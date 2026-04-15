@@ -1,0 +1,130 @@
+Principais módulos do StudyAI
+1. Módulo Aluno
+Público:
+Alunos de:
+
+Ensino Fundamental
+Ensino Médio
+Ensino Superior
+Cursinhos preparatórios (ENEM, vestibulares, concursos, OAB etc.)
+Funções principais:
+
+Tutora de IA (ex.: “Paula”)
+
+Acompanha o aluno ao longo da jornada.
+Faz perguntas, envia lembretes, cobra estudos e dá feedback personalizado.
+Pode interagir por texto, áudio e, futuramente, chamadas de voz.
+Simulados e exercícios adaptativos
+
+Questões geradas e corrigidas com IA.
+Dificuldade se adapta automaticamente ao nível do aluno.
+Foco em provas reais (ENEM, vestibulares, concursos).
+Mapa de calor de desempenho
+
+Mostra, de forma visual, em quais matérias/assuntos o aluno:
+Está forte
+Está mediano
+Está fraco
+Ajuda o aluno a enxergar rapidamente onde precisa focar.
+Plano de estudos personalizado
+
+A IA monta e ajusta o cronograma de estudos de acordo com:
+Meta (prova/objetivo)
+Tempo disponível
+Desempenho nos simulados
+Atualização contínua, como um “GPS de estudos”.
+Gamificação completa (XP, níveis e recompensas)
+
+O aluno ganha XP por:
+Resolver questões
+Cumprir metas de estudo
+Manter consistência
+Sistema de níveis, conquistas e recompensas digitais.
+Rankings globais e por nível (Fundamental, Médio, Superior, Cursinho).
+Incentiva estudo constante e saudável, não só “maratonar”.
+Histórico e evolução
+
+Linha do tempo de progresso.
+Estatísticas detalhadas por disciplina, tema e período.
+Comparação da performance ao longo dos meses.
+2. Módulo Professores
+Público: professores particulares, de cursinhos ou de escolas.
+
+Funções principais:
+
+Criação e gestão de turmas
+
+Cadastro de turmas e alunos.
+Atribuição de conteúdos, simulados e tarefas.
+Simulados e tarefas com IA
+
+O professor pode criar listas e provas.
+A IA ajuda a:
+Gerar questões
+Corrigir automaticamente
+Sugerir feedback
+Dashboard de acompanhamento
+
+Visualização clara do desempenho da turma e de cada aluno.
+Alertas de:
+Alunos em risco de evasão
+Queda de desempenho
+Relatórios exportáveis.
+Integração com gamificação
+
+Professores podem criar desafios com XP extra.
+Rankings internos por turma.
+3. Módulo Instituições
+Público: escolas, faculdades, cursinhos, edtechs.
+
+Funções principais:
+
+Gestão centralizada
+
+Cadastro de múltiplas turmas, professores e alunos.
+Controle de permissões e acessos.
+Relatórios institucionais
+
+Indicadores gerais de desempenho por:
+Unidade
+Série/curso
+Disciplina
+Exportação de dados para relatórios e conselhos.
+Customização
+
+Possibilidade de branding (logo, cores).
+Planos específicos por instituição.
+Contratos e planos em massa
+
+Licenças por volume de alunos.
+Integrações com sistemas internos da instituição (via API).
+4. Módulo Governo / Projetos Públicos
+Público: secretarias de educação, programas governamentais, projetos sociais.
+
+Funções principais:
+
+Monitoramento de impacto educacional
+
+Acompanhamento do uso da plataforma em redes públicas.
+Métricas de:
+Acesso
+Engajamento
+Evolução de aprendizagem
+Relatórios para políticas públicas
+
+Dados consolidados por região, escola, série etc.
+Apoio à tomada de decisão na gestão educacional.
+Tecnologias e funcionamento (visão geral)
+Base em IA para:
+
+Geração e correção de questões
+Análise de desempenho
+Criação de planos de estudo
+Interação da tutora virtual
+Gamificação como motor central:
+
+XP, níveis, conquistas e rankings que mantêm o aluno engajado.
+Plataforma multi-dispositivo:
+
+Acesso via navegador (desktop)
+App mobile (Android/iOS) para estudo em qualquer lugar.

@@ -21,8 +21,8 @@ async function isGovernmentOrAdmin(userId: string): Promise<boolean> {
 
 // ─── Global stats ─────────────────────────────────────────────────────────────
 router.get("/government/stats", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ error: "Não autenticado" }); return; }
-  if (!(await isGovernmentOrAdmin(req.user.id))) { res.status(403).json({ error: "Acesso negado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isGovernmentOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   const [totalUsers] = await db.select({ count: sql<number>`count(*)::int` }).from(usersTable);
   const [totalSims] = await db.select({ count: sql<number>`count(*)::int` }).from(simuladoResultsTable);
@@ -118,7 +118,7 @@ router.get("/government/stats", async (req: Request, res: Response) => {
 
 // ─── Promote user role (admin only) ──────────────────────────────────────────
 router.post("/government/promote", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated() || req.user.id !== "44063371") {
+  if (!!!req.userId || req.userId! !== "44063371") {
     res.status(403).json({ error: "Acesso negado" }); return;
   }
   const { userId, role } = req.body as { userId?: string; role?: string };

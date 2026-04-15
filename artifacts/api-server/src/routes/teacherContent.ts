@@ -7,12 +7,12 @@ const router: IRouter = Router();
 const ADMIN_USER_ID = "44063371";
 
 function isAdmin(req: Request): boolean {
-  return req.isAuthenticated() && (req.user as any).id === ADMIN_USER_ID;
+  return !!req.userId && (req.user as any).id === ADMIN_USER_ID;
 }
 
 // GET /api/teacher-content — list all teacher content
 router.get("/teacher-content", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) {
+  if (!!!req.userId) {
     res.status(401).json({ erro: "Não autenticado" });
     return;
   }
@@ -32,7 +32,7 @@ router.get("/teacher-content", async (req: Request, res: Response) => {
 
 // POST /api/teacher-content — add new content (admin only)
 router.post("/teacher-content", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) {
+  if (!!!req.userId) {
     res.status(401).json({ erro: "Não autenticado" });
     return;
   }

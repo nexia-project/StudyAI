@@ -11,12 +11,12 @@ const router: IRouter = Router();
  * Requires authentication.
  */
 router.post("/lgpd/delete-account", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated() || !req.user?.id) {
+  if (!!!req.userId || !req.userId) {
     res.status(401).json({ error: "Não autenticado." });
     return;
   }
 
-  const userId = req.user.id;
+  const userId = req.userId!;
 
   try {
     // 1. Delete all sessions for this user (log out everywhere)
@@ -48,12 +48,12 @@ router.post("/lgpd/delete-account", async (req: Request, res: Response) => {
  * Returns a JSON summary of all data the platform holds about the user.
  */
 router.get("/lgpd/my-data", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated() || !req.user?.id) {
+  if (!!!req.userId || !req.userId) {
     res.status(401).json({ error: "Não autenticado." });
     return;
   }
 
-  const userId = req.user.id;
+  const userId = req.userId!;
 
   try {
     const [user] = await db

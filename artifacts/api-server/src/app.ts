@@ -1,13 +1,14 @@
-import express, { type Express, type Request, type Response, type NextFunction } from "express";
+import express, { type Express } from "express";
 import cors from "cors";
-import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
+import { clerkMiddleware } from "@clerk/express";
 import router from "./routes";
 import subscriptionWebhookRouter from "./routes/subscriptionWebhook";
 import { logger } from "./lib/logger";
-import { authMiddleware } from "./middlewares/authMiddleware";
+import { optionalAuth } from "./middlewares/requireAuth";
+import { clerkProxyMiddleware, CLERK_PROXY_PATH } from "./middlewares/clerkProxyMiddleware";
 
 const app: Express = express();
 
@@ -43,6 +44,12 @@ app.use(
   }),
 );
 
+// ── Clerk proxy (must be BEFORE body parsers) ─────────────────────────────────
+app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
+
+// ── Clerk middleware ─────────────────────────────────────────────────────────
+app.use(clerkMiddleware());
+
 app.use(
   pinoHttp({
     logger,
@@ -62,8 +69,6 @@ app.use(
     },
   }),
 );
-
-app.use(cookieParser());
 
 // ── Stripe webhook: raw body parser ONLY on exact webhook path ───────────────
 app.use("/api/subscription/webhook", express.raw({ type: "*/*" }));
@@ -113,8 +118,8 @@ app.use("/api/voice-tts", aiLimiter);
 app.use("/api/resumao", aiLimiter);
 app.use("/api", generalLimiter);
 
-// ── Auth middleware ───────────────────────────────────────────────────────────
-app.use(authMiddleware);
+// ── Optional auth: sets req.userId for authenticated requests ─────────────────
+app.use(optionalAuth);
 
 app.use("/api", router);
 app.use("/api", subscriptionWebhookRouter);

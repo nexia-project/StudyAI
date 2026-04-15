@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 import { ArrowLeft, Lock, Trophy, Zap, BookOpen, Brain, Target, Flame, Star, Medal, Clock, Crown, GraduationCap, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 

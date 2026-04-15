@@ -10,11 +10,11 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 
 async function requireAdmin(req: Request, res: Response): Promise<boolean> {
-  if (!req.isAuthenticated()) {
+  if (!!!req.userId) {
     res.status(401).json({ erro: "Não autenticado" });
     return false;
   }
-  const [user] = await db.select({ role: usersTable.role }).from(usersTable).where(eq(usersTable.id, req.user.id)).limit(1);
+  const [user] = await db.select({ role: usersTable.role }).from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
   if (user?.role !== "admin") {
     res.status(403).json({ erro: "Apenas administradores podem gerenciar a base de conhecimento" });
     return false;
@@ -102,7 +102,7 @@ router.delete("/knowledge/:id", async (req: Request, res: Response) => {
 
 // ─── Search knowledge base (internal + external) ───────────────────────────────
 router.get("/knowledge/search", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
   const q = String(req.query.q || "").trim();
   if (!q) { res.json({ results: [] }); return; }
   try {
@@ -120,7 +120,7 @@ router.get("/knowledge/search", async (req: Request, res: Response) => {
 
 // ─── Generate mind map from document (for any user) ───────────────────────────
 router.post("/mapa-mental/from-doc", upload.single("file"), async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
   const { title } = req.body;
 
   try {
@@ -201,7 +201,7 @@ Regras:
 
 // ─── Get user document mind maps ──────────────────────────────────────────────
 router.get("/mapa-mental/my-docs", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
   try {
     const rows = await db.execute(sql`
       SELECT id, doc_title, mind_map_json, created_at
@@ -218,7 +218,7 @@ router.get("/mapa-mental/my-docs", async (req: Request, res: Response) => {
 
 // ─── Delete user doc mind map ─────────────────────────────────────────────────
 router.delete("/mapa-mental/my-docs/:id", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ erro: "ID inválido" }); return; }
   try {

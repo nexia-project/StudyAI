@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 
 export interface StudentProfile {
   nome: string;

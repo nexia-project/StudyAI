@@ -19,11 +19,11 @@ const router = Router();
 
 // GET /api/history — full history for the authenticated user
 router.get("/history", async (req, res) => {
-  if (!req.isAuthenticated()) {
+  if (!!!req.userId) {
     res.status(401).json({ erro: "Não autenticado." });
     return;
   }
-  const userId = req.user.id;
+  const userId = req.userId!;
   const [plans, simulados, flashcards] = await Promise.all([
     db.select().from(studyPlansTable).where(eq(studyPlansTable.userId, userId)).orderBy(desc(studyPlansTable.createdAt)).limit(20),
     db.select().from(simuladoResultsTable).where(eq(simuladoResultsTable.userId, userId)).orderBy(desc(simuladoResultsTable.createdAt)).limit(50),
@@ -34,7 +34,7 @@ router.get("/history", async (req, res) => {
 
 // POST /api/history/plan — save a study plan (+25 XP)
 router.post("/history/plan", async (req, res) => {
-  if (!req.isAuthenticated()) {
+  if (!!!req.userId) {
     res.status(401).json({ erro: "Não autenticado." });
     return;
   }
@@ -46,21 +46,21 @@ router.post("/history/plan", async (req, res) => {
   const [inserted] = await db
     .insert(studyPlansTable)
     .values({
-      userId: req.user.id,
+      userId: req.userId!,
       materia,
       serie: serie ?? null,
       diasProva: diasProva ?? null,
       plan,
     })
     .returning();
-  awardXp(req.user.id, 25).catch(() => {});
+  awardXp(req.userId!, 25).catch(() => {});
   res.json({ id: inserted.id, xpAwarded: 25 });
 });
 
 // POST /api/history/simulado — save a simulado result
 // XP formula: 50 base + até 150 de bônus por acertos (total máx 200 por simulado)
 router.post("/history/simulado", async (req, res) => {
-  if (!req.isAuthenticated()) {
+  if (!!!req.userId) {
     res.status(401).json({ erro: "Não autenticado." });
     return;
   }
@@ -72,7 +72,7 @@ router.post("/history/simulado", async (req, res) => {
   const [inserted] = await db
     .insert(simuladoResultsTable)
     .values({
-      userId: req.user.id,
+      userId: req.userId!,
       studyPlanId: studyPlanId ?? null,
       materia,
       titulo: titulo ?? null,
@@ -85,14 +85,14 @@ router.post("/history/simulado", async (req, res) => {
     .returning();
   const accuracy = total > 0 ? score / total : 0;
   const xpAwarded = Math.round(50 + accuracy * 150);
-  awardXp(req.user.id, xpAwarded).catch(() => {});
+  awardXp(req.userId!, xpAwarded).catch(() => {});
   res.json({ id: inserted.id, xpAwarded });
 });
 
 // POST /api/history/flashcard — save a flashcard session
 // XP formula: até 50 XP por sessão baseado na taxa de acerto
 router.post("/history/flashcard", async (req, res) => {
-  if (!req.isAuthenticated()) {
+  if (!!!req.userId) {
     res.status(401).json({ erro: "Não autenticado." });
     return;
   }
@@ -104,7 +104,7 @@ router.post("/history/flashcard", async (req, res) => {
   const [inserted] = await db
     .insert(flashcardSessionsTable)
     .values({
-      userId: req.user.id,
+      userId: req.userId!,
       studyPlanId: studyPlanId ?? null,
       materia,
       diaNumero: diaNumero ?? null,
@@ -115,13 +115,13 @@ router.post("/history/flashcard", async (req, res) => {
     .returning();
   const knownCards = known ?? 0;
   const xpAwarded = totalCards > 0 ? Math.round((knownCards / totalCards) * 50) : 0;
-  if (xpAwarded > 0) awardXp(req.user.id, xpAwarded).catch(() => {});
+  if (xpAwarded > 0) awardXp(req.userId!, xpAwarded).catch(() => {});
   res.json({ id: inserted.id, xpAwarded });
 });
 
 // POST /api/xp/award — award XP for topic completion from frontend (100 XP per topic)
 router.post("/xp/award", async (req, res) => {
-  if (!req.isAuthenticated()) {
+  if (!!!req.userId) {
     res.status(401).json({ erro: "Não autenticado." });
     return;
   }
@@ -131,8 +131,8 @@ router.post("/xp/award", async (req, res) => {
     res.json({ xpAwarded: 0 });
     return;
   }
-  await awardXp(req.user.id, xp);
-  const [user] = await db.select({ xp: usersTable.xp }).from(usersTable).where(eq(usersTable.id, req.user.id)).limit(1);
+  await awardXp(req.userId!, xp);
+  const [user] = await db.select({ xp: usersTable.xp }).from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
   res.json({ xpAwarded: xp, totalXp: user?.xp ?? 0 });
 });
 

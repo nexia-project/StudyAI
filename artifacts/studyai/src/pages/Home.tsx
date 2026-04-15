@@ -46,7 +46,7 @@ import { Onboarding, hasOnboarded } from "@/components/Onboarding";
 import { triggerProfessor } from "@/lib/professor-events";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useStudentProfile } from "@/hooks/useStudentProfile";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";

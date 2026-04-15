@@ -93,7 +93,20 @@ Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHea
 
 ### `lib/replit-auth-web` (`@workspace/replit-auth-web`)
 
-Browser auth package for Replit OIDC. Exports `useAuth()` hook with `user`, `isAuthenticated`, `login`, `logout`.
+DEPRECATED — no longer used by the web or mobile app. Authentication has been migrated to Clerk (see below).
+
+### Authentication — Clerk
+
+StudyAI uses **Clerk** for authentication (migrated from Replit Auth).
+
+- **Clerk app ID**: `app_3CPKlsptR0SyIbSc11ANyiN0wHO`
+- **Env vars**: `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY`, `VITE_CLERK_PUBLISHABLE_KEY` (auto-provisioned)
+- **Server middleware**: `@clerk/express` — `clerkMiddleware()` in `app.ts`; `optionalAuth` sets `req.userId` for all requests; `requireAuth` blocks unauthenticated access in individual route handlers
+- **Frontend**: `@clerk/react` — `ClerkProvider` wraps the app in `App.tsx`; `useStudyAuth` hook in `artifacts/studyai/src/hooks/useStudyAuth.ts` provides compatibility interface (maps Clerk → old `useAuth` API: `isAuthenticated`, `login()` → `/sign-in`, `logout()` → `signOut()`)
+- **User ID mapping**: `users` table has `clerk_id` column (TEXT, UNIQUE). On first Clerk login, we look up the existing user by email (preserving historical data linked to old Replit ID), then store `clerk_id` for fast subsequent lookups. New users get their Clerk ID as the internal ID.
+- **Routes**: `/sign-in` and `/sign-up` use embedded `<SignIn>` / `<SignUp>` Clerk components
+- **Auth pane**: To manage users, enable/disable login providers (Google, GitHub, etc.), or change branding, use the Auth pane in the workspace toolbar
+- **Proxy**: In production, Clerk API is proxied via `/api/__clerk` (Clerk proxy middleware in `artifacts/api-server/src/middlewares/clerkProxyMiddleware.ts`)
 
 ### `scripts` (`@workspace/scripts`)
 

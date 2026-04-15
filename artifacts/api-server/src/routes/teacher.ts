@@ -31,13 +31,13 @@ function genInviteCode(): string {
 
 // ─── List teacher's turmas ────────────────────────────────────────────────────
 router.get("/teacher/turmas", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ error: "Não autenticado" }); return; }
-  if (!(await isTeacherOrAdmin(req.user.id))) { res.status(403).json({ error: "Acesso negado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   const turmas = await db
     .select()
     .from(turmasTable)
-    .where(eq(turmasTable.teacherId, req.user.id))
+    .where(eq(turmasTable.teacherId, req.userId!))
     .orderBy(desc(turmasTable.createdAt));
 
   // Get student counts
@@ -59,8 +59,8 @@ router.get("/teacher/turmas", async (req: Request, res: Response) => {
 
 // ─── Create turma ─────────────────────────────────────────────────────────────
 router.post("/teacher/turmas", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ error: "Não autenticado" }); return; }
-  if (!(await isTeacherOrAdmin(req.user.id))) { res.status(403).json({ error: "Acesso negado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   const { name, serie, subject, description } = req.body as {
     name?: string; serie?: string; subject?: string; description?: string;
@@ -76,7 +76,7 @@ router.post("/teacher/turmas", async (req: Request, res: Response) => {
   }
 
   const [turma] = await db.insert(turmasTable).values({
-    teacherId: req.user.id,
+    teacherId: req.userId!,
     name: name.trim(),
     serie: serie?.trim() || null,
     subject: subject?.trim() || null,
@@ -89,12 +89,12 @@ router.post("/teacher/turmas", async (req: Request, res: Response) => {
 
 // ─── Get turma detail ─────────────────────────────────────────────────────────
 router.get("/teacher/turmas/:id", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ error: "Não autenticado" }); return; }
-  if (!(await isTeacherOrAdmin(req.user.id))) { res.status(403).json({ error: "Acesso negado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   const { id } = req.params;
   const [turma] = await db.select().from(turmasTable).where(eq(turmasTable.id, id)).limit(1);
-  if (!turma || (turma.teacherId !== req.user.id && req.user.id !== "44063371")) {
+  if (!turma || (turma.teacherId !== req.userId! && req.userId! !== "44063371")) {
     res.status(404).json({ error: "Turma não encontrada" }); return;
   }
 
@@ -103,12 +103,12 @@ router.get("/teacher/turmas/:id", async (req: Request, res: Response) => {
 
 // ─── Update turma ─────────────────────────────────────────────────────────────
 router.put("/teacher/turmas/:id", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
   const { id } = req.params;
   const { name, serie, subject, description } = req.body as any;
 
   const [turma] = await db.select().from(turmasTable).where(eq(turmasTable.id, id)).limit(1);
-  if (!turma || turma.teacherId !== req.user.id) { res.status(404).json({ error: "Turma não encontrada" }); return; }
+  if (!turma || turma.teacherId !== req.userId!) { res.status(404).json({ error: "Turma não encontrada" }); return; }
 
   const [updated] = await db.update(turmasTable).set({
     name: name?.trim() || turma.name,
@@ -122,10 +122,10 @@ router.put("/teacher/turmas/:id", async (req: Request, res: Response) => {
 
 // ─── Delete turma ─────────────────────────────────────────────────────────────
 router.delete("/teacher/turmas/:id", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
   const { id } = req.params;
   const [turma] = await db.select().from(turmasTable).where(eq(turmasTable.id, id)).limit(1);
-  if (!turma || turma.teacherId !== req.user.id) { res.status(404).json({ error: "Turma não encontrada" }); return; }
+  if (!turma || turma.teacherId !== req.userId!) { res.status(404).json({ error: "Turma não encontrada" }); return; }
 
   await db.delete(turmasTable).where(eq(turmasTable.id, id));
   res.json({ success: true });
@@ -133,7 +133,7 @@ router.delete("/teacher/turmas/:id", async (req: Request, res: Response) => {
 
 // ─── Join turma (student) ─────────────────────────────────────────────────────
 router.post("/teacher/turmas/join", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
   const { inviteCode } = req.body as { inviteCode?: string };
   if (!inviteCode?.trim()) { res.status(400).json({ error: "Código de convite é obrigatório" }); return; }
 
@@ -145,22 +145,22 @@ router.post("/teacher/turmas/join", async (req: Request, res: Response) => {
 
   // Check if already enrolled
   const existing = await db.select().from(turmaMembershipsTable).where(
-    and(eq(turmaMembershipsTable.turmaId, turma.id), eq(turmaMembershipsTable.studentId, req.user.id))
+    and(eq(turmaMembershipsTable.turmaId, turma.id), eq(turmaMembershipsTable.studentId, req.userId!))
   ).limit(1);
   if (existing.length) { res.status(400).json({ error: "Você já está nessa turma" }); return; }
 
-  await db.insert(turmaMembershipsTable).values({ turmaId: turma.id, studentId: req.user.id });
+  await db.insert(turmaMembershipsTable).values({ turmaId: turma.id, studentId: req.userId! });
   res.json({ success: true, turma: { id: turma.id, name: turma.name } });
 });
 
 // ─── Get turma students with stats ───────────────────────────────────────────
 router.get("/teacher/turmas/:id/students", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ error: "Não autenticado" }); return; }
-  if (!(await isTeacherOrAdmin(req.user.id))) { res.status(403).json({ error: "Acesso negado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   const { id } = req.params;
   const [turma] = await db.select().from(turmasTable).where(eq(turmasTable.id, id)).limit(1);
-  if (!turma || (turma.teacherId !== req.user.id && req.user.id !== "44063371")) {
+  if (!turma || (turma.teacherId !== req.userId! && req.userId! !== "44063371")) {
     res.status(404).json({ error: "Turma não encontrada" }); return;
   }
 
@@ -234,10 +234,10 @@ router.get("/teacher/turmas/:id/students", async (req: Request, res: Response) =
 
 // ─── Kick student from turma ──────────────────────────────────────────────────
 router.delete("/teacher/turmas/:id/students/:studentId", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
   const { id, studentId } = req.params;
   const [turma] = await db.select().from(turmasTable).where(eq(turmasTable.id, id)).limit(1);
-  if (!turma || turma.teacherId !== req.user.id) { res.status(404).json({ error: "Turma não encontrada" }); return; }
+  if (!turma || turma.teacherId !== req.userId!) { res.status(404).json({ error: "Turma não encontrada" }); return; }
 
   await db.delete(turmaMembershipsTable).where(
     and(eq(turmaMembershipsTable.turmaId, id), eq(turmaMembershipsTable.studentId, studentId))
@@ -247,7 +247,7 @@ router.delete("/teacher/turmas/:id/students/:studentId", async (req: Request, re
 
 // ─── Turma tasks CRUD ─────────────────────────────────────────────────────────
 router.get("/teacher/turmas/:id/tasks", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
   const tasks = await db.select().from(turmaTarefasTable)
     .where(eq(turmaTarefasTable.turmaId, req.params.id))
     .orderBy(desc(turmaTarefasTable.createdAt));
@@ -255,8 +255,8 @@ router.get("/teacher/turmas/:id/tasks", async (req: Request, res: Response) => {
 });
 
 router.post("/teacher/turmas/:id/tasks", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ error: "Não autenticado" }); return; }
-  if (!(await isTeacherOrAdmin(req.user.id))) { res.status(403).json({ error: "Acesso negado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   const { type, title, description, materia, dueDate } = req.body as any;
   if (!type || !title) { res.status(400).json({ error: "type e title são obrigatórios" }); return; }
@@ -274,7 +274,7 @@ router.post("/teacher/turmas/:id/tasks", async (req: Request, res: Response) => 
 });
 
 router.delete("/teacher/turmas/:id/tasks/:taskId", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
   await db.delete(turmaTarefasTable).where(
     and(eq(turmaTarefasTable.id, req.params.taskId), eq(turmaTarefasTable.turmaId, req.params.id))
   );
@@ -283,8 +283,8 @@ router.delete("/teacher/turmas/:id/tasks/:taskId", async (req: Request, res: Res
 
 // ─── Turma dashboard aggregate ────────────────────────────────────────────────
 router.get("/teacher/turmas/:id/dashboard", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ error: "Não autenticado" }); return; }
-  if (!(await isTeacherOrAdmin(req.user.id))) { res.status(403).json({ error: "Acesso negado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   const { id } = req.params;
   const memberships = await db
@@ -331,7 +331,7 @@ router.get("/teacher/turmas/:id/dashboard", async (req: Request, res: Response) 
 
 // ─── Turma ranking ────────────────────────────────────────────────────────────
 router.get("/teacher/turmas/:id/ranking", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
   const { id } = req.params;
 
   const memberships = await db.select({ studentId: turmaMembershipsTable.studentId })
@@ -352,7 +352,7 @@ router.get("/teacher/turmas/:id/ranking", async (req: Request, res: Response) =>
       id: u.id,
       name: u.studentName || `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || "Aluno",
       xp: u.xp ?? 0,
-      isMe: u.id === req.user.id,
+      isMe: u.id === req.userId!,
     }));
 
   res.json({ ranking });
@@ -360,11 +360,11 @@ router.get("/teacher/turmas/:id/ranking", async (req: Request, res: Response) =>
 
 // ─── Get teacher's turmas (for student joining) ───────────────────────────────
 router.get("/turma/my", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
   const memberships = await db
     .select({ turmaId: turmaMembershipsTable.turmaId })
     .from(turmaMembershipsTable)
-    .where(eq(turmaMembershipsTable.studentId, req.user.id));
+    .where(eq(turmaMembershipsTable.studentId, req.userId!));
 
   if (!memberships.length) { res.json({ turmas: [] }); return; }
   const turmaIds = memberships.map(m => m.turmaId);

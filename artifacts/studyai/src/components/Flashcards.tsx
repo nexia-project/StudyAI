@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 import { motion, AnimatePresence } from "framer-motion";
 import { triggerProfessorBehavior } from "@/lib/professor-events";
 import {

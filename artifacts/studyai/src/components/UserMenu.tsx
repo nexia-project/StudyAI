@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 import { useLocation } from "wouter";
 import {
   LogIn,

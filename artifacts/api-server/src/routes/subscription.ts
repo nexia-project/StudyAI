@@ -8,7 +8,7 @@ const router: IRouter = Router();
 
 // GET /subscription/status — returns current user's subscription status
 router.get("/subscription/status", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) {
+  if (!!!req.userId) {
     res.json({ status: "free", isPremium: false });
     return;
   }
@@ -21,7 +21,7 @@ router.get("/subscription/status", async (req: Request, res: Response) => {
         freeAiUses: usersTable.freeAiUses,
       })
       .from(usersTable)
-      .where(eq(usersTable.id, req.user.id))
+      .where(eq(usersTable.id, req.userId!))
       .limit(1);
 
     const status = user?.stripeSubscriptionStatus || "free";
@@ -48,7 +48,7 @@ router.get("/subscription/publishable-key", async (_req: Request, res: Response)
 
 // POST /subscription/create-checkout — creates Stripe checkout session
 router.post("/subscription/create-checkout", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) {
+  if (!!!req.userId) {
     res.status(401).json({ error: "Não autenticado" });
     return;
   }
@@ -59,7 +59,7 @@ router.post("/subscription/create-checkout", async (req: Request, res: Response)
     const [user] = await db
       .select()
       .from(usersTable)
-      .where(eq(usersTable.id, req.user.id))
+      .where(eq(usersTable.id, req.userId!))
       .limit(1);
 
     if (!user) {
@@ -107,7 +107,7 @@ router.post("/subscription/create-checkout", async (req: Request, res: Response)
 
 // POST /subscription/create-portal — creates Stripe billing portal session
 router.post("/subscription/create-portal", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) {
+  if (!!!req.userId) {
     res.status(401).json({ error: "Não autenticado" });
     return;
   }
@@ -118,7 +118,7 @@ router.post("/subscription/create-portal", async (req: Request, res: Response) =
     const [user] = await db
       .select({ stripeCustomerId: usersTable.stripeCustomerId })
       .from(usersTable)
-      .where(eq(usersTable.id, req.user.id))
+      .where(eq(usersTable.id, req.userId!))
       .limit(1);
 
     if (!user?.stripeCustomerId) {

@@ -20,8 +20,8 @@ async function isInstitutionAdmin(userId: string): Promise<boolean> {
 
 // ─── Create institution ───────────────────────────────────────────────────────
 router.post("/institution", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ error: "Não autenticado" }); return; }
-  if (req.user.id !== "44063371") { res.status(403).json({ error: "Apenas super-admin pode criar instituições" }); return; }
+  if (!!!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (req.userId! !== "44063371") { res.status(403).json({ error: "Apenas super-admin pode criar instituições" }); return; }
 
   const { name, city, state, cnpj, adminUserId, primaryColor } = req.body as any;
   if (!name?.trim()) { res.status(400).json({ error: "Nome é obrigatório" }); return; }
@@ -43,8 +43,8 @@ router.post("/institution", async (req: Request, res: Response) => {
 
 // ─── Get all institutions (admin only) ───────────────────────────────────────
 router.get("/institution", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ error: "Não autenticado" }); return; }
-  if (req.user.id !== "44063371") { res.status(403).json({ error: "Acesso negado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (req.userId! !== "44063371") { res.status(403).json({ error: "Acesso negado" }); return; }
 
   const institutions = await db.select().from(instituicoesTable).orderBy(desc(instituicoesTable.createdAt));
   res.json({ institutions });
@@ -52,10 +52,10 @@ router.get("/institution", async (req: Request, res: Response) => {
 
 // ─── Get my institution ───────────────────────────────────────────────────────
 router.get("/institution/me", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
 
   const instUser = await db.select({ institutionId: institutionUsersTable.institutionId, role: institutionUsersTable.role })
-    .from(institutionUsersTable).where(eq(institutionUsersTable.userId, req.user.id)).limit(1);
+    .from(institutionUsersTable).where(eq(institutionUsersTable.userId, req.userId!)).limit(1);
 
   if (!instUser.length) { res.json({ institution: null }); return; }
 
@@ -65,17 +65,17 @@ router.get("/institution/me", async (req: Request, res: Response) => {
 
 // ─── Get institution detail ───────────────────────────────────────────────────
 router.get("/institution/:id", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
 
   const { id } = req.params;
   const [inst] = await db.select().from(instituicoesTable).where(eq(instituicoesTable.id, id)).limit(1);
   if (!inst) { res.status(404).json({ error: "Instituição não encontrada" }); return; }
 
   // Check access
-  const isAdmin = req.user.id === "44063371";
+  const isAdmin = req.userId! === "44063371";
   if (!isAdmin) {
     const member = await db.select().from(institutionUsersTable)
-      .where(and(eq(institutionUsersTable.institutionId, id), eq(institutionUsersTable.userId, req.user.id))).limit(1);
+      .where(and(eq(institutionUsersTable.institutionId, id), eq(institutionUsersTable.userId, req.userId!))).limit(1);
     if (!member.length) { res.status(403).json({ error: "Acesso negado" }); return; }
   }
 
@@ -122,8 +122,8 @@ router.get("/institution/:id", async (req: Request, res: Response) => {
 
 // ─── Add teacher to institution ───────────────────────────────────────────────
 router.post("/institution/:id/teachers", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ error: "Não autenticado" }); return; }
-  if (!(await isInstitutionAdmin(req.user.id))) { res.status(403).json({ error: "Acesso negado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isInstitutionAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   const { teacherEmail } = req.body as { teacherEmail?: string };
   if (!teacherEmail) { res.status(400).json({ error: "Email do professor é obrigatório" }); return; }
@@ -146,8 +146,8 @@ router.post("/institution/:id/teachers", async (req: Request, res: Response) => 
 
 // ─── Institution reports ──────────────────────────────────────────────────────
 router.get("/institution/:id/report", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) { res.status(401).json({ error: "Não autenticado" }); return; }
-  if (!(await isInstitutionAdmin(req.user.id))) { res.status(403).json({ error: "Acesso negado" }); return; }
+  if (!!!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isInstitutionAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
 
   const turmas = await db.select().from(turmasTable).where(eq(turmasTable.institutionId, req.params.id));
   const turmaIds = turmas.map(t => t.id);

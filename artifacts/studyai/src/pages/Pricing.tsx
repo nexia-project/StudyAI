@@ -16,7 +16,7 @@ import {
   ArrowLeft,
   Loader2,
 } from "lucide-react";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 import { useSubscription, startCheckout, openBillingPortal } from "@/hooks/useSubscription";
 
 const FREE_FEATURES = [
@@ -60,7 +60,8 @@ export default function PricingPage() {
 
   const handleCheckout = async () => {
     if (!user) {
-      window.location.href = "/api/login?returnTo=/app/pricing";
+      try { sessionStorage.setItem("auth_return_to", "/app/pricing"); } catch {}
+      navigate("/sign-in");
       return;
     }
     setCheckoutLoading(true);

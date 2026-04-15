@@ -17,10 +17,10 @@ function trend(scores: number[]): "improving" | "declining" | "stable" {
 }
 
 router.get("/analytics/heatmap", async (req, res) => {
-  if (!req.isAuthenticated()) {
+  if (!!!req.userId) {
     return res.status(401).json({ error: "Não autenticado" });
   }
-  const userId = req.user.id;
+  const userId = req.userId!;
 
   try {
     // Simulado results ordered oldest → newest

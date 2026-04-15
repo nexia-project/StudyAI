@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 
 export interface SubscriptionStatus {
   status: "free" | "active" | "inactive" | "trialing" | "past_due";

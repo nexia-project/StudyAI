@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 import {
   ArrowLeft, Brain, BookOpen, LogIn, RefreshCw, Sparkles,
   Upload, X, FileText, CheckCircle, Lock, ChevronRight,

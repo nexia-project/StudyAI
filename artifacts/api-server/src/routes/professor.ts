@@ -286,9 +286,9 @@ router.post("/voice-chat", async (req, res) => {
 
     // Fetch real student data if authenticated
     let dbData: Awaited<ReturnType<typeof fetchStudentData>> | null = null;
-    if (req.isAuthenticated()) {
+    if (!!req.userId) {
       try {
-        dbData = await fetchStudentData(req.user.id);
+        dbData = await fetchStudentData(req.userId!);
       } catch (e) {
         // Non-critical — proceed without DB data
       }
@@ -337,9 +337,9 @@ router.post("/voice-proactive", async (req, res) => {
 
     // Fetch real student data if authenticated
     let dbData: Awaited<ReturnType<typeof fetchStudentData>> | null = null;
-    if (req.isAuthenticated()) {
+    if (!!req.userId) {
       try {
-        dbData = await fetchStudentData(req.user.id);
+        dbData = await fetchStudentData(req.userId!);
       } catch {
         // Non-critical
       }

@@ -5,7 +5,7 @@ import {
   GraduationCap, Users, Plus, Copy, Check, Trash2, ChevronRight,
   BookOpen, BarChart2, AlertTriangle, RefreshCw, ArrowLeft, Shield,
 } from "lucide-react";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 import { Button } from "@/components/ui/button";
 
 interface Turma {

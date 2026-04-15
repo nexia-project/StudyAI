@@ -6,7 +6,7 @@ const router: IRouter = Router();
 
 // GET /api/profile — returns the authenticated user's student profile
 router.get("/profile", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) {
+  if (!!!req.userId) {
     res.status(401).json({ erro: "Não autenticado" });
     return;
   }
@@ -27,7 +27,7 @@ router.get("/profile", async (req: Request, res: Response) => {
         role: usersTable.role,
       })
       .from(usersTable)
-      .where(eq(usersTable.id, req.user.id))
+      .where(eq(usersTable.id, req.userId!))
       .limit(1);
 
     res.json({
@@ -51,7 +51,7 @@ router.get("/profile", async (req: Request, res: Response) => {
 
 // POST /api/profile — saves the authenticated user's student profile
 router.post("/profile", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated()) {
+  if (!!!req.userId) {
     res.status(401).json({ erro: "Não autenticado" });
     return;
   }
@@ -76,7 +76,7 @@ router.post("/profile", async (req: Request, res: Response) => {
         ...(studentPhone !== undefined && { studentPhone: studentPhone.trim() || null }),
         ...(studentSchoolType !== undefined && { studentSchoolType: studentSchoolType || null }),
       })
-      .where(eq(usersTable.id, req.user.id));
+      .where(eq(usersTable.id, req.userId!));
 
     res.json({ ok: true });
   } catch (err) {

@@ -5,7 +5,7 @@ import type { Request, Response, NextFunction } from "express";
 export const FREE_AI_LIMIT = 5;
 
 export async function checkFreeUsage(req: Request, res: Response, next: NextFunction) {
-  if (!req.isAuthenticated()) {
+  if (!req.userId) {
     res.status(401).json({ erro: "Não autenticado" });
     return;
   }
@@ -17,7 +17,7 @@ export async function checkFreeUsage(req: Request, res: Response, next: NextFunc
         freeAiUses: usersTable.freeAiUses,
       })
       .from(usersTable)
-      .where(eq(usersTable.id, req.user.id))
+      .where(eq(usersTable.id, req.userId))
       .limit(1);
 
     if (!user) {
@@ -42,7 +42,7 @@ export async function checkFreeUsage(req: Request, res: Response, next: NextFunc
       .set({ freeAiUses: sql`${usersTable.freeAiUses} + 1` })
       .where(
         and(
-          eq(usersTable.id, req.user.id),
+          eq(usersTable.id, req.userId!),
           lt(usersTable.freeAiUses, FREE_AI_LIMIT)
         )
       )

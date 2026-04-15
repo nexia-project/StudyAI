@@ -11,6 +11,25 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 
 const router: IRouter = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// ─── Search knowledge base (consulta interna do sistema) ──────────────────────
+async function searchKnowledgeBase(query: string): Promise<string> {
+  try {
+    const rows = await db.execute(sql`
+      SELECT title, subject, LEFT(content_text, 600) as excerpt
+      FROM knowledge_documents
+      WHERE content_text ILIKE ${"%" + query + "%"} OR title ILIKE ${"%" + query + "%"}
+      LIMIT 3
+    `);
+    if ((rows.rows as any[]).length === 0) return "";
+    const parts = (rows.rows as any[]).map((r: any) =>
+      `[${r.title}${r.subject ? ` — ${r.subject}` : ""}]: ${r.excerpt}`
+    );
+    return `\n\nBASE DE CONHECIMENTO INTERNA (priorize este conteúdo nas respostas):\n${parts.join("\n\n")}`;
+  } catch {
+    return "";
+  }
+}
+
 // ─── Frontend context (localStorage) ─────────────────────────────────────────
 interface FrontendContext {
   nome?: string;
@@ -108,6 +127,30 @@ async function fetchStudentData(userId: string) {
     ? Math.round(flashcards.reduce((a, f) => a + (f.totalCards > 0 ? (f.known / f.totalCards) * 100 : 0), 0) / flashcards.length)
     : null;
 
+  // Build mind map topology: subject → topics studied (from plans)
+  const mindMapBySubject: Record<string, Set<string>> = {};
+  for (const p of plans) {
+    const materia = p.materia || "Geral";
+    if (!mindMapBySubject[materia]) mindMapBySubject[materia] = new Set();
+    const dias = (p as any).plan?.dias ?? [];
+    for (const dia of dias) {
+      for (const t of dia.topicos ?? []) {
+        const nome = typeof t === "object" ? t.nome : t;
+        if (nome) mindMapBySubject[materia].add(String(nome));
+      }
+    }
+  }
+  // Add simulado subjects even if no topics
+  for (const s of simulados) {
+    const materia = s.materia || "Simulados";
+    if (!mindMapBySubject[materia]) mindMapBySubject[materia] = new Set();
+    if (s.titulo) mindMapBySubject[materia].add(s.titulo);
+  }
+  const mindMapTopology = Object.entries(mindMapBySubject).map(([materia, topics]) => ({
+    materia,
+    topicos: Array.from(topics).slice(0, 8),
+  }));
+
   return {
     totalSimulados: simulados.length,
     totalPlanos: plans.length,
@@ -121,6 +164,7 @@ async function fetchStudentData(userId: string) {
     recentPlan: recentPlan ? { materia: recentPlan.materia, serie: recentPlan.serie } : null,
     flashcardAvgRate: fcAvg,
     subjectStats,
+    mindMapTopology,
   };
 }
 
@@ -168,6 +212,16 @@ function buildRichContext(
     }
     if (dbData.subjectStats.length === 0) {
       parts.push("Aluno ainda não fez nenhum simulado ou flashcard — está começando agora.");
+    }
+
+    // Mind map topology: what subjects and topics the student has studied
+    if (dbData.mindMapTopology && dbData.mindMapTopology.length > 0) {
+      const mapLines = dbData.mindMapTopology.map(({ materia, topicos }) =>
+        topicos.length > 0
+          ? `  ${materia}: ${topicos.join(", ")}`
+          : `  ${materia}: (sem tópicos detalhados)`
+      );
+      parts.push(`MAPA MENTAL DO ALUNO — matérias e tópicos já estudados:\n${mapLines.join("\n")}`);
     }
   }
 
@@ -248,7 +302,11 @@ router.post("/voice-chat", async (req, res) => {
         content: String(m.content).slice(0, 2000),
       }));
 
-    const systemContent = BASE_PROMPT + buildRichContext(context, dbData);
+    // Search knowledge base using last user message
+    const lastUserMsg = cleanMessages.filter(m => m.role === "user").slice(-1)[0]?.content ?? "";
+    const kbContext = await searchKnowledgeBase(lastUserMsg);
+
+    const systemContent = BASE_PROMPT + buildRichContext(context, dbData) + kbContext;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",

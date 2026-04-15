@@ -24,6 +24,7 @@ import teacherContentRouter from "./teacherContent";
 import teacherRouter from "./teacher";
 import institutionRouter from "./institution";
 import governmentRouter from "./government";
+import knowledgeRouter from "./knowledge";
 
 const router: IRouter = Router();
 
@@ -52,5 +53,6 @@ router.use(teacherContentRouter);
 router.use(teacherRouter);
 router.use(institutionRouter);
 router.use(governmentRouter);
+router.use(knowledgeRouter);
 
 export default router;

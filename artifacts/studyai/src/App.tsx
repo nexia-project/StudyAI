@@ -19,7 +19,7 @@ import MapaMentalPage from "@/pages/MapaMental";
 import ConquistasPage from "@/pages/Conquistas";
 import ProfessorPage from "@/pages/Professor";
 import ProfessorTurmaPage from "@/pages/ProfessorTurma";
-import InstituicaoPage from "@/pages/Instituicao";
+import InstituicaoPage, { InstituicaoLoginPage, InstituicaoConvitePage } from "@/pages/Instituicao";
 import GovernoPage from "@/pages/Governo";
 import SimuladoEnemPage from "@/pages/SimuladoEnem";
 import SalaEstudosPage from "@/pages/SalaEstudos";
@@ -169,6 +169,8 @@ function Router() {
         <Route path="/conquistas" component={ConquistasPage} />
         <Route path="/professor" component={ProfessorPage} />
         <Route path="/professor/turma/:id" component={ProfessorTurmaPage} />
+        <Route path="/instituicao/login" component={InstituicaoLoginPage} />
+        <Route path="/instituicao/convite/:token" component={InstituicaoConvitePage} />
         <Route path="/instituicao" component={InstituicaoPage} />
         <Route path="/governo" component={GovernoPage} />
         <Route path="/simulado-enem" component={SimuladoEnemPage} />

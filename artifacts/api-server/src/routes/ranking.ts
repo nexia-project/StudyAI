@@ -16,6 +16,8 @@ function getTier(xp: number): { name: string; color: string; emoji: string; minX
 
 router.get("/ranking", async (req: Request, res: Response) => {
   try {
+    const segment = req.query.segment as string | undefined;
+
     const [users, simuladoRows, flashcardRows, planRows] = await Promise.all([
       db.select({
         id: usersTable.id,
@@ -25,6 +27,8 @@ router.get("/ranking", async (req: Request, res: Response) => {
         profileImageUrl: usersTable.profileImageUrl,
         studentName: usersTable.studentName,
         storedXp: usersTable.xp,
+        studentSchoolType: usersTable.studentSchoolType,
+        studentGrade: usersTable.studentGrade,
       }).from(usersTable),
 
       db.select({
@@ -51,7 +55,20 @@ router.get("/ranking", async (req: Request, res: Response) => {
     const flashcardMap = new Map(flashcardRows.map((r) => [r.userId, r]));
     const planMap = new Map(planRows.map((r) => [r.userId, r]));
 
-    const ranked = users
+    // Filter by segment if provided
+    const filteredUsers = segment && segment !== "todos"
+      ? users.filter((u) => {
+          const tipo = u.studentSchoolType?.toLowerCase() ?? "";
+          const serie = u.studentGrade?.toLowerCase() ?? "";
+          if (segment === "fundamental") return serie.includes("fund") || serie.includes("6°") || serie.includes("7°") || serie.includes("8°") || serie.includes("9°") || tipo === "publica" && serie.includes("fund");
+          if (segment === "medio") return serie.includes("1°") || serie.includes("2°") || serie.includes("3°") || serie.includes("médio") || serie.includes("medio") || serie.includes("enem");
+          if (segment === "superior") return tipo === "faculdade" || serie.includes("superior") || serie.includes("faculdade") || serie.includes("univers");
+          if (segment === "cursinho") return tipo === "cursinho" || serie.includes("cursinho") || serie.includes("concurso") || serie.includes("oab") || serie.includes("militar");
+          return true;
+        })
+      : users;
+
+    const ranked = filteredUsers
       .map((u) => {
         const sim = simuladoMap.get(u.id);
         const flash = flashcardMap.get(u.id);
@@ -62,7 +79,6 @@ router.get("/ranking", async (req: Request, res: Response) => {
           ? Math.round((sim.totalScore / sim.totalQuestions) * 100)
           : 0;
 
-        // Use stored XP as the authoritative source (seeded from historical data + awarded going forward)
         const totalXp = u.storedXp ?? 0;
 
         const displayName = u.studentName
@@ -83,6 +99,7 @@ router.get("/ranking", async (req: Request, res: Response) => {
           flashSessions: flash?.sessions ?? 0,
           planCount: plan?.count ?? 0,
           tier: getTier(totalXp),
+          schoolType: u.studentSchoolType,
         };
       })
       .filter((u) => u.xp > 0 || u.simCount > 0 || u.planCount > 0 || u.flashSessions > 0)
@@ -96,7 +113,7 @@ router.get("/ranking", async (req: Request, res: Response) => {
       if (found) {
         currentUserEntry = found;
       } else {
-        const u = users.find((u) => u.id === currentUserId);
+        const u = filteredUsers.find((u) => u.id === currentUserId);
         if (u) {
           const displayName = u.studentName || u.firstName || u.email?.split("@")[0] || "Você";
           currentUserEntry = {
@@ -110,15 +127,17 @@ router.get("/ranking", async (req: Request, res: Response) => {
             planCount: 0,
             tier: getTier(u.storedXp ?? 0),
             rank: ranked.length + 1,
+            schoolType: u.studentSchoolType,
           };
         }
       }
     }
 
     res.json({
-      leaderboard: ranked.slice(0, 20),
+      leaderboard: ranked.slice(0, 50),
       currentUser: currentUserEntry,
       totalPlayers: ranked.length,
+      segment: segment ?? "todos",
     });
   } catch (err) {
     req.log.error({ err }, "Ranking error");

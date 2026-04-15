@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "KeEygRbH0WIbPhntDW-B3"
+uri = "file://artifacts/studyai-mobile/assets/images/icon.png"
+type = "image"
+title = "studyai mobile app icon"

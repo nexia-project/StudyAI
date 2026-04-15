@@ -143,12 +143,15 @@ export default function RankingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [segment, setSegment] = useState<string>("todos");
 
-  const fetchRanking = async () => {
+  const fetchRanking = async (seg?: string) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/ranking", { credentials: "include" });
+      const s = seg ?? segment;
+      const url = `/api/ranking${s && s !== "todos" ? `?segment=${s}` : ""}`;
+      const res = await fetch(url, { credentials: "include" });
       if (!res.ok) throw new Error("Erro ao carregar ranking");
       const json = await res.json();
       setData(json);
@@ -157,6 +160,11 @@ export default function RankingPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSegment = (seg: string) => {
+    setSegment(seg);
+    fetchRanking(seg);
   };
 
   useEffect(() => { fetchRanking(); }, []);
@@ -233,6 +241,30 @@ export default function RankingPage() {
             >
               <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
             </button>
+          </div>
+
+          {/* Segment filter tabs */}
+          <div className="flex gap-1.5 overflow-x-auto pb-1 mb-2 mt-2 scrollbar-none">
+            {[
+              { key: "todos", label: "🌎 Todos" },
+              { key: "medio", label: "📘 Ensino Médio" },
+              { key: "superior", label: "🎓 Superior" },
+              { key: "cursinho", label: "📚 Cursinho" },
+              { key: "fundamental", label: "🏫 Fundamental" },
+            ].map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => handleSegment(tab.key)}
+                className={cn(
+                  "flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all",
+                  segment === tab.key
+                    ? "bg-white text-violet-700 shadow"
+                    : "bg-white/20 text-white hover:bg-white/30"
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
           {/* Current user stats */}

@@ -15,6 +15,7 @@ import AdminPage from "@/pages/Admin";
 import PrivacidadePage from "@/pages/Privacidade";
 import PerfilPage from "@/pages/Perfil";
 import MapaMentalPage from "@/pages/MapaMental";
+import ConquistasPage from "@/pages/Conquistas";
 import NotFound from "@/pages/not-found";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useAuth } from "@workspace/replit-auth-web";
@@ -102,6 +103,7 @@ function Router() {
         <Route path="/privacidade" component={PrivacidadePage} />
         <Route path="/perfil" component={PerfilPage} />
         <Route path="/mapa-mental" component={MapaMentalPage} />
+        <Route path="/conquistas" component={ConquistasPage} />
         {/* Aliases: Paula/navigation can send users to these paths */}
         <Route path="/simulado" component={() => <RedirectTo to="/app" />} />
         <Route path="/simulado-adaptativo" component={() => <RedirectTo to="/app" />} />

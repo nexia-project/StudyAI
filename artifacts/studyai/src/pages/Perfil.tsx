@@ -55,6 +55,9 @@ export default function PerfilPage() {
     concursoAlvo: "",
     telefone: "",
     tipoEscola: "",
+    escola: "",
+    cidade: "",
+    estado: "",
   });
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -68,6 +71,9 @@ export default function PerfilPage() {
         concursoAlvo: profile.concursoAlvo || "",
         telefone: profile.telefone || "",
         tipoEscola: profile.tipoEscola || "",
+        escola: profile.escola || "",
+        cidade: profile.cidade || "",
+        estado: profile.estado || "",
       });
     }
   }, [profile]);
@@ -92,6 +98,9 @@ export default function PerfilPage() {
       concursoAlvo: form.concursoAlvo || undefined,
       telefone: form.telefone || undefined,
       tipoEscola: form.tipoEscola || undefined,
+      escola: form.escola || undefined,
+      cidade: form.cidade || undefined,
+      estado: form.estado || undefined,
     });
     setSaved(true);
     setSaving(false);
@@ -333,6 +342,61 @@ export default function PerfilPage() {
                   />
                 </motion.div>
               )}
+            </div>
+
+            {/* Localização — para ranking por cidade/escola */}
+            <div className="bg-white rounded-3xl border border-border shadow-sm p-6 space-y-5">
+              <div className="flex items-center gap-2 mb-1">
+                <GraduationCap className="w-5 h-5 text-primary" />
+                <h2 className="font-black text-foreground">Localização & Escola</h2>
+                <span className="ml-auto text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">Para o Ranking</span>
+              </div>
+              <div>
+                <label className={labelClass}>
+                  <GraduationCap className="w-4 h-4 text-muted-foreground" />
+                  Nome da escola/instituição
+                </label>
+                <input
+                  type="text"
+                  name="escola"
+                  value={form.escola}
+                  onChange={handleChange}
+                  placeholder="Ex: E.E. João da Silva, IFSP, USP..."
+                  className={inputClass}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={labelClass}>
+                    Cidade
+                  </label>
+                  <input
+                    type="text"
+                    name="cidade"
+                    value={form.cidade}
+                    onChange={handleChange}
+                    placeholder="Ex: São Paulo"
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>
+                    Estado (UF)
+                  </label>
+                  <select
+                    name="estado"
+                    value={form.estado}
+                    onChange={handleChange}
+                    className={cn(inputClass, "appearance-none cursor-pointer")}
+                  >
+                    <option value="">Selecione...</option>
+                    {["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"].map(uf => (
+                      <option key={uf} value={uf}>{uf}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">Esses dados são usados para o ranking por escola/cidade. Não são obrigatórios.</p>
             </div>
 
             {/* Botão salvar */}

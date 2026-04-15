@@ -144,13 +144,18 @@ export default function RankingPage() {
   const [error, setError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [segment, setSegment] = useState<string>("todos");
+  const [estadoFilter, setEstadoFilter] = useState<string>("");
 
-  const fetchRanking = async (seg?: string) => {
+  const fetchRanking = async (seg?: string, estado?: string) => {
     setLoading(true);
     setError(null);
     try {
       const s = seg ?? segment;
-      const url = `/api/ranking${s && s !== "todos" ? `?segment=${s}` : ""}`;
+      const est = estado !== undefined ? estado : estadoFilter;
+      const params = new URLSearchParams();
+      if (s && s !== "todos") params.set("segment", s);
+      if (est && est !== "todos") params.set("estado", est);
+      const url = `/api/ranking${params.toString() ? `?${params.toString()}` : ""}`;
       const res = await fetch(url, { credentials: "include" });
       if (!res.ok) throw new Error("Erro ao carregar ranking");
       const json = await res.json();
@@ -164,7 +169,12 @@ export default function RankingPage() {
 
   const handleSegment = (seg: string) => {
     setSegment(seg);
-    fetchRanking(seg);
+    fetchRanking(seg, estadoFilter);
+  };
+
+  const handleEstado = (est: string) => {
+    setEstadoFilter(est);
+    fetchRanking(segment, est);
   };
 
   useEffect(() => { fetchRanking(); }, []);
@@ -263,6 +273,25 @@ export default function RankingPage() {
                 )}
               >
                 {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Estado filter */}
+          <div className="flex gap-1.5 overflow-x-auto pb-1 mb-2 scrollbar-none items-center">
+            <span className="text-white/60 text-xs font-semibold flex-shrink-0">📍 Estado:</span>
+            {["todos", "SP", "RJ", "MG", "BA", "RS", "PR", "SC", "GO", "CE", "PE"].map(uf => (
+              <button
+                key={uf}
+                onClick={() => handleEstado(uf === "todos" ? "" : uf)}
+                className={cn(
+                  "flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-bold transition-all",
+                  (uf === "todos" ? !estadoFilter || estadoFilter === "" : estadoFilter === uf)
+                    ? "bg-white text-violet-700 shadow"
+                    : "bg-white/20 text-white hover:bg-white/30"
+                )}
+              >
+                {uf === "todos" ? "Todos" : uf}
               </button>
             ))}
           </div>

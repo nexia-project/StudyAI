@@ -17,6 +17,9 @@ function getTier(xp: number): { name: string; color: string; emoji: string; minX
 router.get("/ranking", async (req: Request, res: Response) => {
   try {
     const segment = req.query.segment as string | undefined;
+    const escolaFilter = req.query.escola as string | undefined;
+    const cidadeFilter = req.query.cidade as string | undefined;
+    const estadoFilter = req.query.estado as string | undefined;
 
     const [users, simuladoRows, flashcardRows, planRows] = await Promise.all([
       db.select({
@@ -29,6 +32,9 @@ router.get("/ranking", async (req: Request, res: Response) => {
         storedXp: usersTable.xp,
         studentSchoolType: usersTable.studentSchoolType,
         studentGrade: usersTable.studentGrade,
+        escola: usersTable.escola,
+        cidade: usersTable.cidade,
+        estado: usersTable.estado,
       }).from(usersTable),
 
       db.select({
@@ -56,7 +62,7 @@ router.get("/ranking", async (req: Request, res: Response) => {
     const planMap = new Map(planRows.map((r) => [r.userId, r]));
 
     // Filter by segment if provided
-    const filteredUsers = segment && segment !== "todos"
+    let filteredUsers = segment && segment !== "todos"
       ? users.filter((u) => {
           const tipo = u.studentSchoolType?.toLowerCase() ?? "";
           const serie = u.studentGrade?.toLowerCase() ?? "";
@@ -67,6 +73,19 @@ router.get("/ranking", async (req: Request, res: Response) => {
           return true;
         })
       : users;
+
+    // Filter by escola/cidade/estado if provided
+    if (escolaFilter) {
+      const esc = escolaFilter.toLowerCase();
+      filteredUsers = filteredUsers.filter(u => u.escola?.toLowerCase().includes(esc));
+    }
+    if (cidadeFilter) {
+      const cid = cidadeFilter.toLowerCase();
+      filteredUsers = filteredUsers.filter(u => u.cidade?.toLowerCase().includes(cid));
+    }
+    if (estadoFilter && estadoFilter !== "todos") {
+      filteredUsers = filteredUsers.filter(u => u.estado?.toUpperCase() === estadoFilter.toUpperCase());
+    }
 
     const ranked = filteredUsers
       .map((u) => {

@@ -31,6 +31,9 @@ export const usersTable = pgTable("users", {
   studentPhone: varchar("student_phone"),
   studentSchoolType: varchar("student_school_type"),
   role: varchar("role", { length: 50 }).default("student"),
+  escola: varchar("escola", { length: 255 }),
+  cidade: varchar("cidade", { length: 100 }),
+  estado: varchar("estado", { length: 50 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

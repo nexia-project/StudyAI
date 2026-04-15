@@ -762,6 +762,22 @@ export default function Home() {
               <Brain className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Mapa Mental</span>
             </button>
+            <button
+              onClick={() => navigate("/simulado-enem")}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs whitespace-nowrap transition-all flex-shrink-0"
+              title="Simulado ENEM Completo"
+            >
+              <Target className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Simulado ENEM</span>
+            </button>
+            <button
+              onClick={() => navigate("/sala-estudos")}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs whitespace-nowrap transition-all flex-shrink-0"
+              title="Sala de Estudos Pomodoro"
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Sala de Estudos</span>
+            </button>
           </div>
           {/* User menu on the right */}
           <div className="flex-shrink-0">

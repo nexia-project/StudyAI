@@ -25,6 +25,9 @@ router.get("/profile", async (req: Request, res: Response) => {
         email: usersTable.email,
         profileImageUrl: usersTable.profileImageUrl,
         role: usersTable.role,
+        escola: usersTable.escola,
+        cidade: usersTable.cidade,
+        estado: usersTable.estado,
       })
       .from(usersTable)
       .where(eq(usersTable.id, req.userId!))
@@ -42,6 +45,9 @@ router.get("/profile", async (req: Request, res: Response) => {
       email: user?.email ?? null,
       profileImageUrl: user?.profileImageUrl ?? null,
       role: user?.role ?? "student",
+      escola: user?.escola ?? null,
+      cidade: user?.cidade ?? null,
+      estado: user?.estado ?? null,
     });
   } catch (err) {
     req.log.error({ err }, "Error fetching profile");
@@ -56,13 +62,19 @@ router.post("/profile", async (req: Request, res: Response) => {
     return;
   }
 
-  const { studentName, studentGrade, studentGoal, studentConcursoAlvo, studentPhone, studentSchoolType } = req.body as {
+  const {
+    studentName, studentGrade, studentGoal, studentConcursoAlvo,
+    studentPhone, studentSchoolType, escola, cidade, estado,
+  } = req.body as {
     studentName?: string;
     studentGrade?: string;
     studentGoal?: string;
     studentConcursoAlvo?: string;
     studentPhone?: string;
     studentSchoolType?: string;
+    escola?: string;
+    cidade?: string;
+    estado?: string;
   };
 
   try {
@@ -75,6 +87,9 @@ router.post("/profile", async (req: Request, res: Response) => {
         ...(studentConcursoAlvo !== undefined && { studentConcursoAlvo: studentConcursoAlvo.trim() || null }),
         ...(studentPhone !== undefined && { studentPhone: studentPhone.trim() || null }),
         ...(studentSchoolType !== undefined && { studentSchoolType: studentSchoolType || null }),
+        ...(escola !== undefined && { escola: escola.trim() || null }),
+        ...(cidade !== undefined && { cidade: cidade.trim() || null }),
+        ...(estado !== undefined && { estado: estado.trim() || null }),
       })
       .where(eq(usersTable.id, req.userId!));
 

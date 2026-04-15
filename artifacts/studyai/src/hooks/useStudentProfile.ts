@@ -10,6 +10,9 @@ export interface StudentProfile {
   email?: string;
   profileImageUrl?: string;
   tipoEscola?: string;
+  escola?: string;
+  cidade?: string;
+  estado?: string;
 }
 
 const STORAGE_KEY = "studyai_profile";
@@ -55,6 +58,9 @@ export function useStudentProfile() {
             email: data.email ?? undefined,
             profileImageUrl: data.profileImageUrl ?? undefined,
             tipoEscola: data.studentSchoolType ?? undefined,
+            escola: data.escola ?? undefined,
+            cidade: data.cidade ?? undefined,
+            estado: data.estado ?? undefined,
           };
           setProfile(merged);
           writeLocal(merged);
@@ -83,6 +89,9 @@ export function useStudentProfile() {
             studentConcursoAlvo: next.concursoAlvo ?? null,
             studentPhone: next.telefone ?? null,
             studentSchoolType: next.tipoEscola ?? null,
+            escola: next.escola ?? null,
+            cidade: next.cidade ?? null,
+            estado: next.estado ?? null,
           }),
         });
       } catch {}

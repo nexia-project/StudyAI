@@ -1,4 +1,4 @@
-# Workspace
+# StudyAI — Tutor de IA para ENEM/Vestibular/Concursos (study.ia.br)
 
 ## Overview
 

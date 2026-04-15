@@ -24,6 +24,11 @@ import teacherRouter from "./teacher";
 import institutionRouter from "./institution";
 import governmentRouter from "./government";
 import knowledgeRouter from "./knowledge";
+import simuladoEnemRouter from "./simulado-enem";
+import ocrRouter from "./ocr";
+import notifyRouter from "./notify";
+import salaEstudosRouter from "./sala-estudos";
+import flashcardReviewsRouter from "./flashcard-reviews";
 
 const router: IRouter = Router();
 
@@ -52,5 +57,10 @@ router.use(teacherRouter);
 router.use(institutionRouter);
 router.use(governmentRouter);
 router.use(knowledgeRouter);
+router.use(simuladoEnemRouter);
+router.use(ocrRouter);
+router.use(notifyRouter);
+router.use(salaEstudosRouter);
+router.use(flashcardReviewsRouter);
 
 export default router;

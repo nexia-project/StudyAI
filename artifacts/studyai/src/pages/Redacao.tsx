@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { useSubscription, startCheckout } from "@/hooks/useSubscription";
@@ -14,6 +14,8 @@ import {
   Star,
   ChevronDown,
   ChevronUp,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 
 interface Competencia {
@@ -61,6 +63,44 @@ export default function Redacao() {
   const [result, setResult] = useState<RedacaoResult | null>(null);
   const [openComp, setOpenComp] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
+  const [ttsLoading, setTtsLoading] = useState(false);
+  const [ttsPlaying, setTtsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  async function handleOuvir() {
+    if (!result?.comentarioGeral) return;
+    if (ttsPlaying && audioRef.current) {
+      audioRef.current.pause();
+      setTtsPlaying(false);
+      return;
+    }
+    setTtsLoading(true);
+    try {
+      const res = await fetch("/api/voice-tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ text: `Avaliação geral da sua redação: ${result.comentarioGeral}. Próximos passos: ${result.proximosPasso}` }),
+      });
+      if (!res.ok) throw new Error("TTS indisponível");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        URL.revokeObjectURL(audioRef.current.src);
+      }
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => setTtsPlaying(false);
+      audio.onerror = () => setTtsPlaying(false);
+      await audio.play();
+      setTtsPlaying(true);
+    } catch {
+      // silently fail
+    } finally {
+      setTtsLoading(false);
+    }
+  }
 
   const wordCount = texto.trim() ? texto.trim().split(/\s+/).length : 0;
   const charCount = texto.length;
@@ -186,14 +226,25 @@ export default function Redacao() {
                 </div>
               </div>
 
-              {/* Share button */}
-              <button
-                onClick={handleShare}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 font-black text-sm transition-all"
-              >
-                {copied ? <Check className="w-4 h-4 text-green-500" /> : <Share2 className="w-4 h-4" />}
-                {copied ? "Copiado! Cole no WhatsApp 💬" : "Compartilhar minha nota"}
-              </button>
+              {/* Share + TTS buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={handleShare}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 font-black text-sm transition-all"
+                >
+                  {copied ? <Check className="w-4 h-4 text-green-500" /> : <Share2 className="w-4 h-4" />}
+                  {copied ? "Copiado! 💬" : "Compartilhar"}
+                </button>
+                <button
+                  onClick={handleOuvir}
+                  disabled={ttsLoading}
+                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black text-sm transition-all disabled:opacity-60"
+                  title="Ouvir avaliação em voz"
+                >
+                  {ttsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : ttsPlaying ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                  {ttsPlaying ? "Parar" : "Ouvir"}
+                </button>
+              </div>
 
               {/* Competências Breakdown */}
               <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">

@@ -21,6 +21,8 @@ import ProfessorPage from "@/pages/Professor";
 import ProfessorTurmaPage from "@/pages/ProfessorTurma";
 import InstituicaoPage from "@/pages/Instituicao";
 import GovernoPage from "@/pages/Governo";
+import SimuladoEnemPage from "@/pages/SimuladoEnem";
+import SalaEstudosPage from "@/pages/SalaEstudos";
 import NotFound from "@/pages/not-found";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WhatsAppBanner } from "@/components/WhatsAppBanner";
@@ -169,11 +171,13 @@ function Router() {
         <Route path="/professor/turma/:id" component={ProfessorTurmaPage} />
         <Route path="/instituicao" component={InstituicaoPage} />
         <Route path="/governo" component={GovernoPage} />
+        <Route path="/simulado-enem" component={SimuladoEnemPage} />
+        <Route path="/sala-estudos" component={SalaEstudosPage} />
         {/* Aliases: navigation shortcuts */}
         <Route path="/simulado" component={() => <RedirectTo to="/app" />} />
         <Route path="/simulado-adaptativo" component={() => <RedirectTo to="/app" />} />
         <Route path="/flashcards" component={() => <RedirectTo to="/app" />} />
-        <Route path="/pomodoro" component={() => <RedirectTo to="/app" />} />
+        <Route path="/pomodoro" component={() => <RedirectTo to="/sala-estudos" />} />
         <Route path="/plano" component={() => <RedirectTo to="/app" />} />
         <Route component={NotFound} />
       </Switch>

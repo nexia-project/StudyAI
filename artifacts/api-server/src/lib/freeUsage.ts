@@ -15,6 +15,7 @@ export async function checkFreeUsage(req: Request, res: Response, next: NextFunc
       .select({
         stripeSubscriptionStatus: usersTable.stripeSubscriptionStatus,
         freeAiUses: usersTable.freeAiUses,
+        role: usersTable.role,
       })
       .from(usersTable)
       .where(eq(usersTable.id, req.userId))
@@ -22,6 +23,15 @@ export async function checkFreeUsage(req: Request, res: Response, next: NextFunc
 
     if (!user) {
       res.status(401).json({ erro: "Usuário não encontrado" });
+      return;
+    }
+
+    // Admins always have unlimited premium access
+    const isAdmin = ["admin", "institution_admin"].includes(user.role ?? "");
+    if (isAdmin) {
+      (req as any).isPremium = true;
+      (req as any).isAdmin = true;
+      next();
       return;
     }
 

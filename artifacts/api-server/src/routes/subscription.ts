@@ -19,10 +19,18 @@ router.get("/subscription/status", async (req: Request, res: Response) => {
         stripeSubscriptionStatus: usersTable.stripeSubscriptionStatus,
         stripeCustomerId: usersTable.stripeCustomerId,
         freeAiUses: usersTable.freeAiUses,
+        role: usersTable.role,
       })
       .from(usersTable)
       .where(eq(usersTable.id, req.userId!))
       .limit(1);
+
+    // Admins have full premium access with no limits
+    const isAdmin = ["admin", "institution_admin"].includes(user?.role ?? "");
+    if (isAdmin) {
+      res.json({ status: "active", isPremium: true, freeAiUses: 0, freeAiUsesRemaining: null, freeAiLimit: FREE_AI_LIMIT, isAdmin: true });
+      return;
+    }
 
     const status = user?.stripeSubscriptionStatus || "free";
     const isPremium = status === "active" || status === "trialing";

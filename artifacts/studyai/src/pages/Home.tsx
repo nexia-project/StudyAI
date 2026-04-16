@@ -299,18 +299,39 @@ export default function Home() {
     const materia = params.get("materia");
     const serie = params.get("serie");
     const dias = params.get("dias");
+    const planMateria = params.get("planMateria"); // from mapa mental "Abrir plano"
     if (materia || serie || dias) {
       setFormData(prev => ({
         ...prev,
         ...(materia ? { nome: materia } : {}),
         ...(serie ? { serie } : {}),
       }));
-      // scroll to form smoothly
       setTimeout(() => {
         document.getElementById("main-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 400);
-      // clean URL without reload
       window.history.replaceState({}, "", window.location.pathname);
+    }
+    // Auto-resume most recent plan for a subject (navigated from mapa mental)
+    if (planMateria) {
+      window.history.replaceState({}, "", window.location.pathname);
+      fetch("/api/history", { credentials: "include" })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          if (!d?.plans) return;
+          const match = d.plans.find((p: any) =>
+            p.materia?.toLowerCase() === planMateria.toLowerCase()
+          );
+          if (match?.plan) {
+            handleResumePlan(match.plan);
+          } else {
+            // No plan found — pre-fill the form with the subject instead
+            setFormData(prev => ({ ...prev, nome: planMateria }));
+            setTimeout(() => {
+              document.getElementById("main-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }, 400);
+          }
+        })
+        .catch(() => {});
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

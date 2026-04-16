@@ -257,11 +257,12 @@ EXEMPLOS DE COMO FALAR (natural, não robótico):
 AÇÕES DISPONÍVEIS — use somente quando o aluno pediu ou for claramente útil:
 <ir:/ranking> — abrir Ranking Global
 <ir:/mapa> — abrir Mapa de Desempenho
+<ir:/mapa-mental> — abrir o Mapa Mental do aluno (mapa visual das matérias e tópicos estudados — use quando o aluno pedir para ver seu mapa mental, ou quando quiser mostrar visualmente o progresso dele)
 <ir:/redacao> — abrir Correção de Redação
 <ir:/dashboard> — abrir Dashboard
 <ir:/simulado> — abrir Simulado
 <ir:/flashcards> — abrir Flashcards
-<criar_plano:NOME_DA_MATERIA> — criar plano de estudos
+<criar_plano:NOME_DA_MATERIA> — criar plano de estudos para uma matéria específica
 Nunca use mais de uma ação por resposta. Coloque a ação NO FINAL da mensagem.`;
 
 // ─── Voice Chat ───────────────────────────────────────────────────────────────
@@ -366,7 +367,7 @@ REGRAS ABSOLUTAS:
 - Se genuinamente não tem nada útil: responda exatamente NULL
 - Use dados reais do aluno — nunca finja não saber
 - Não repita o que já foi dito antes
-- Pode incluir UMA ação: <ir:/ranking>, <ir:/mapa>, <ir:/simulado>, <ir:/flashcards>, <criar_plano:MATERIA>
+- Pode incluir UMA ação: <ir:/ranking>, <ir:/mapa>, <ir:/mapa-mental>, <ir:/simulado>, <ir:/flashcards>, <criar_plano:MATERIA>
 ${richContext}`;
 
     const lastMsg = context?.ultimaMensagem

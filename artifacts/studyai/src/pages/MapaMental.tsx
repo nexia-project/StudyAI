@@ -346,6 +346,13 @@ function NodeDrawer({ node, onClose }: { node: MindNode | null; onClose: () => v
     navigate(`/app?q=${encodeURIComponent(query)}`);
   }
 
+  function handleOpenPlan() {
+    if (!node) return;
+    // Navigate to /app with planMateria param — Home.tsx will auto-resume the plan
+    const subject = node.level === 1 ? node.label : (node.contentMeta?.topics?.[0] || node.label);
+    navigate(`/app?planMateria=${encodeURIComponent(subject)}`);
+  }
+
   return (
     <AnimatePresence>
       {node && (
@@ -432,6 +439,18 @@ function NodeDrawer({ node, onClose }: { node: MindNode | null; onClose: () => v
                   <p className="text-sm text-muted-foreground mt-1">Este tópico faz parte do seu histórico de estudos.</p>
                 </div>
               )}
+              {/* Open plan button — only shows if this subject has study plans */}
+              {(node.contentMeta?.plans ?? 0) > 0 && (
+                <button
+                  onClick={handleOpenPlan}
+                  className="w-full py-3 rounded-2xl font-bold text-sm border-2 flex items-center justify-center gap-2 hover:opacity-80 transition-opacity"
+                  style={{ borderColor: node.color, color: node.color, backgroundColor: node.color + "10" }}
+                >
+                  <BookOpen className="w-4 h-4" />
+                  Abrir plano de {node.level === 1 ? node.label : (node.contentMeta?.topics?.[0] || node.label)}
+                </button>
+              )}
+
               <button
                 onClick={handleStudy}
                 className="w-full py-3 rounded-2xl font-bold text-sm text-white flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"

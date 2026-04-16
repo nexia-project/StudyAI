@@ -7,14 +7,18 @@ import { eq, sql } from "drizzle-orm";
 
 const router: IRouter = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+
+// Chunk size: ~4000 chars (~3 pages) for precise retrieval
+const CHUNK_SIZE = 4000;
+const CHUNK_OVERLAP = 400;
 
 async function requireAdmin(req: Request, res: Response): Promise<boolean> {
-  if (!!!req.userId) {
+  if (!req.userId) {
     res.status(401).json({ erro: "Não autenticado" });
     return false;
   }
-  const [user] = await db.select({ role: usersTable.role }).from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
+  const [user] = await db.select({ role: usersTable.role }).from(usersTable).where(eq(usersTable.id, req.userId)).limit(1);
   if (user?.role !== "admin") {
     res.status(403).json({ erro: "Apenas administradores podem gerenciar a base de conhecimento" });
     return false;
@@ -22,14 +26,92 @@ async function requireAdmin(req: Request, res: Response): Promise<boolean> {
   return true;
 }
 
-// ─── List knowledge docs ───────────────────────────────────────────────────────
+function chunkText(text: string, size = CHUNK_SIZE, overlap = CHUNK_OVERLAP): string[] {
+  if (text.length <= size) return [text];
+  const chunks: string[] = [];
+  let start = 0;
+  while (start < text.length) {
+    const end = Math.min(start + size, text.length);
+    chunks.push(text.slice(start, end));
+    if (end === text.length) break;
+    start = end - overlap;
+  }
+  return chunks;
+}
+
+async function saveDocumentWithChunks(params: {
+  title: string;
+  subject: string | null;
+  contentText: string;
+  uploadedBy: string;
+  sourceFile?: string;
+  fileSizeKb?: number;
+  pageCount?: number;
+  tags?: string[];
+}): Promise<{ parentId: number; chunks: number }> {
+  const { title, subject, contentText, uploadedBy, sourceFile, fileSizeKb, pageCount, tags } = params;
+  const tagsArray = tags?.length ? `ARRAY[${tags.map(t => `'${t.replace(/'/g, "''")}'`).join(",")}]::text[]` : "NULL";
+
+  // Insert parent doc with full content
+  const parentResult = await db.execute(sql`
+    INSERT INTO knowledge_documents (
+      title, subject, content_text, uploaded_by,
+      source_file, file_size_kb, page_count, tags, is_chunk, chunk_index
+    )
+    VALUES (
+      ${title}, ${subject ?? null}, ${contentText}, ${uploadedBy},
+      ${sourceFile ?? null}, ${fileSizeKb ?? null}, ${pageCount ?? null},
+      ${tagsArray === "NULL" ? null : sql.raw(tagsArray)},
+      false, 0
+    )
+    RETURNING id
+  `);
+  const parentId = (parentResult.rows[0] as any).id as number;
+
+  // If content is large, also save chunks for better retrieval
+  const chunks = chunkText(contentText);
+  let savedChunks = 0;
+  if (chunks.length > 1) {
+    for (let i = 0; i < chunks.length; i++) {
+      await db.execute(sql`
+        INSERT INTO knowledge_documents (
+          title, subject, content_text, uploaded_by,
+          source_file, parent_doc_id, is_chunk, chunk_index, language
+        )
+        VALUES (
+          ${`${title} [parte ${i + 1}/${chunks.length}]`},
+          ${subject ?? null},
+          ${chunks[i]},
+          ${uploadedBy},
+          ${sourceFile ?? null},
+          ${parentId},
+          true,
+          ${i + 1},
+          'portuguese'
+        )
+      `);
+      savedChunks++;
+    }
+  }
+
+  return { parentId, chunks: savedChunks };
+}
+
+// ─── List knowledge docs (admin) ──────────────────────────────────────────────
 router.get("/knowledge", async (req: Request, res: Response) => {
   if (!await requireAdmin(req, res)) return;
   try {
     const rows = await db.execute(sql`
-      SELECT id, title, subject, LEFT(content_text, 300) as preview, uploaded_by, created_at
+      SELECT 
+        id, title, subject, source_file, file_size_kb, page_count, tags,
+        is_chunk, chunk_index, parent_doc_id,
+        LEFT(content_text, 300) as preview,
+        char_length(content_text) as content_length,
+        uploaded_by, created_at
       FROM knowledge_documents
+      WHERE is_chunk = false OR is_chunk IS NULL
       ORDER BY created_at DESC
+      LIMIT 200
     `);
     res.json({ docs: rows.rows });
   } catch (err) {
@@ -38,20 +120,43 @@ router.get("/knowledge", async (req: Request, res: Response) => {
   }
 });
 
+// ─── Stats (admin) ─────────────────────────────────────────────────────────────
+router.get("/knowledge/stats", async (req: Request, res: Response) => {
+  if (!await requireAdmin(req, res)) return;
+  try {
+    const stats = await db.execute(sql`
+      SELECT
+        COUNT(*) FILTER (WHERE is_chunk = false OR is_chunk IS NULL) as total_docs,
+        COUNT(*) FILTER (WHERE is_chunk = true) as total_chunks,
+        COUNT(DISTINCT subject) FILTER (WHERE subject IS NOT NULL) as total_subjects,
+        SUM(file_size_kb) FILTER (WHERE is_chunk = false OR is_chunk IS NULL) as total_size_kb,
+        SUM(page_count) FILTER (WHERE is_chunk = false OR is_chunk IS NULL) as total_pages,
+        MAX(created_at) as last_upload
+      FROM knowledge_documents
+    `);
+    res.json(stats.rows[0]);
+  } catch (err) {
+    res.status(500).json({ erro: "Erro ao buscar estatísticas" });
+  }
+});
+
 // ─── Upload doc (text form) ────────────────────────────────────────────────────
 router.post("/knowledge/upload-text", async (req: Request, res: Response) => {
   if (!await requireAdmin(req, res)) return;
-  const { title, subject, contentText } = req.body;
+  const { title, subject, contentText, tags } = req.body;
   if (!title || !contentText) {
     res.status(400).json({ erro: "Título e conteúdo são obrigatórios" });
     return;
   }
   try {
-    await db.execute(sql`
-      INSERT INTO knowledge_documents (title, subject, content_text, uploaded_by)
-      VALUES (${title}, ${subject ?? null}, ${contentText}, ${req.userId})
-    `);
-    res.json({ ok: true, message: "Documento adicionado à base de conhecimento" });
+    const tagsArr: string[] = typeof tags === "string"
+      ? tags.split(",").map((t: string) => t.trim()).filter(Boolean)
+      : Array.isArray(tags) ? tags : [];
+    const result = await saveDocumentWithChunks({
+      title, subject: subject ?? null, contentText, uploadedBy: req.userId!,
+      tags: tagsArr,
+    });
+    res.json({ ok: true, message: "Documento salvo na base de conhecimento", ...result });
   } catch (err) {
     req.log.error({ err }, "Error uploading knowledge doc");
     res.status(500).json({ erro: "Erro ao salvar documento" });
@@ -61,66 +166,146 @@ router.post("/knowledge/upload-text", async (req: Request, res: Response) => {
 // ─── Upload doc (PDF/TXT file) ─────────────────────────────────────────────────
 router.post("/knowledge/upload-file", upload.single("file"), async (req: Request, res: Response) => {
   if (!await requireAdmin(req, res)) return;
-  const { title, subject } = req.body;
   if (!req.file) {
     res.status(400).json({ erro: "Arquivo obrigatório" });
     return;
   }
+  const { title, subject, tags } = req.body;
   try {
     let contentText = "";
+    let pageCount: number | undefined;
+
     if (req.file.mimetype === "application/pdf") {
       const pdfParse = (await import("pdf-parse")).default;
       const parsed = await pdfParse(req.file.buffer);
       contentText = parsed.text;
+      pageCount = parsed.numpages;
     } else {
       contentText = req.file.buffer.toString("utf8");
     }
+
     const docTitle = title || req.file.originalname.replace(/\.[^.]+$/, "");
-    await db.execute(sql`
-      INSERT INTO knowledge_documents (title, subject, content_text, uploaded_by)
-      VALUES (${docTitle}, ${subject ?? null}, ${contentText.slice(0, 100000)}, ${req.userId})
-    `);
-    res.json({ ok: true, message: "Arquivo processado e adicionado à base de conhecimento" });
+    const fileSizeKb = Math.round(req.file.size / 1024);
+    const tagsArr: string[] = typeof tags === "string"
+      ? tags.split(",").map((t: string) => t.trim()).filter(Boolean)
+      : Array.isArray(tags) ? tags : [];
+
+    const result = await saveDocumentWithChunks({
+      title: docTitle,
+      subject: subject ?? null,
+      contentText,
+      uploadedBy: req.userId!,
+      sourceFile: req.file.originalname,
+      fileSizeKb,
+      pageCount,
+      tags: tagsArr,
+    });
+
+    res.json({
+      ok: true,
+      message: `Arquivo processado: ${pageCount ? pageCount + " páginas, " : ""}${result.chunks > 0 ? result.chunks + " partes indexadas" : "indexado como documento único"}`,
+      ...result,
+    });
   } catch (err) {
     req.log.error({ err }, "Error uploading knowledge file");
     res.status(500).json({ erro: "Erro ao processar arquivo" });
   }
 });
 
-// ─── Delete doc ────────────────────────────────────────────────────────────────
+// ─── Delete doc (and its chunks) ──────────────────────────────────────────────
 router.delete("/knowledge/:id", async (req: Request, res: Response) => {
   if (!await requireAdmin(req, res)) return;
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ erro: "ID inválido" }); return; }
   try {
-    await db.execute(sql`DELETE FROM knowledge_documents WHERE id = ${id}`);
+    // Cascade deletes chunks (via FK ON DELETE CASCADE)
+    await db.execute(sql`DELETE FROM knowledge_documents WHERE id = ${id} OR parent_doc_id = ${id}`);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ erro: "Erro ao deletar" });
   }
 });
 
-// ─── Search knowledge base (internal + external) ───────────────────────────────
+// ─── Search knowledge base (FTS + fallback ILIKE) ─────────────────────────────
 router.get("/knowledge/search", async (req: Request, res: Response) => {
-  if (!!!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
   const q = String(req.query.q || "").trim();
+  const subject = String(req.query.subject || "").trim();
   if (!q) { res.json({ results: [] }); return; }
   try {
     const rows = await db.execute(sql`
-      SELECT id, title, subject, LEFT(content_text, 500) as excerpt
+      SELECT 
+        id, title, subject, source_file,
+        ts_headline('portuguese', content_text, plainto_tsquery('portuguese', ${q}),
+          'MaxWords=60, MinWords=20, StartSel=<b>, StopSel=</b>') as excerpt,
+        ts_rank(search_vector, plainto_tsquery('portuguese', ${q})) as rank
       FROM knowledge_documents
-      WHERE content_text ILIKE ${"%" + q + "%"} OR title ILIKE ${"%" + q + "%"}
-      LIMIT 5
+      WHERE 
+        (is_chunk = false OR is_chunk IS NULL)
+        AND (
+          search_vector @@ plainto_tsquery('portuguese', ${q})
+          OR search_vector @@ plainto_tsquery('simple', ${q})
+          OR title ILIKE ${"%" + q + "%"}
+        )
+        ${subject ? sql`AND subject ILIKE ${"%" + subject + "%"}` : sql``}
+      ORDER BY rank DESC, created_at DESC
+      LIMIT 8
     `);
-    res.json({ results: rows.rows });
+
+    // If FTS returns nothing, fallback to chunk search for better coverage
+    let results = rows.rows as any[];
+    if (results.length === 0) {
+      const fallback = await db.execute(sql`
+        SELECT id, title, subject, source_file, parent_doc_id,
+          LEFT(content_text, 500) as excerpt
+        FROM knowledge_documents
+        WHERE content_text ILIKE ${"%" + q + "%"}
+          OR title ILIKE ${"%" + q + "%"}
+        ORDER BY created_at DESC
+        LIMIT 8
+      `);
+      results = fallback.rows as any[];
+    }
+
+    res.json({ results });
   } catch (err) {
+    req.log.error({ err }, "Knowledge search error");
     res.status(500).json({ erro: "Erro na busca" });
   }
 });
 
+// ─── Internal search helper (used by chat/professor routes) ───────────────────
+export async function searchKnowledge(query: string, subject?: string, limit = 4): Promise<string> {
+  if (!query.trim()) return "";
+  try {
+    const rows = await db.execute(sql`
+      SELECT title, subject, 
+        LEFT(content_text, 1500) as content
+      FROM knowledge_documents
+      WHERE 
+        search_vector @@ plainto_tsquery('portuguese', ${query})
+        OR search_vector @@ plainto_tsquery('simple', ${query})
+        OR content_text ILIKE ${"%" + query.slice(0, 100) + "%"}
+        ${subject ? sql`OR subject ILIKE ${"%" + subject + "%"}` : sql``}
+      ORDER BY 
+        ts_rank(search_vector, plainto_tsquery('portuguese', ${query})) DESC,
+        created_at DESC
+      LIMIT ${limit}
+    `);
+
+    if (!rows.rows.length) return "";
+    const docs = rows.rows as Array<{ title: string; subject: string; content: string }>;
+    return docs.map(d =>
+      `[Base de Conhecimento — ${d.subject ? d.subject + ": " : ""}${d.title}]\n${d.content}`
+    ).join("\n\n---\n\n");
+  } catch {
+    return "";
+  }
+}
+
 // ─── Generate mind map from document (for any user) ───────────────────────────
 router.post("/mapa-mental/from-doc", upload.single("file"), async (req: Request, res: Response) => {
-  if (!!!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
   const { title } = req.body;
 
   try {
@@ -142,7 +327,6 @@ router.post("/mapa-mental/from-doc", upload.single("file"), async (req: Request,
 
     const docTitle = title || (req.file?.originalname.replace(/\.[^.]+$/, "") ?? "Documento");
 
-    // Use GPT-4o to extract mind map structure from document
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       temperature: 0.3,
@@ -158,10 +342,6 @@ Retorne SOMENTE um JSON válido com esta estrutura exata:
     {
       "name": "Tópico 1",
       "subtopics": ["Subtópico 1.1", "Subtópico 1.2"]
-    },
-    {
-      "name": "Tópico 2",
-      "subtopics": ["Subtópico 2.1"]
     }
   ]
 }
@@ -171,21 +351,20 @@ Regras:
 - Máximo 8 tópicos principais
 - Máximo 5 subtópicos por tópico
 - Nomes curtos (máximo 4 palavras)
-- Sem explicações, apenas o JSON`
+- Sem explicações, apenas o JSON`,
         },
         {
           role: "user",
-          content: `Analise este documento e extraia o mapa mental:\n\n${contentText.slice(0, 8000)}`
-        }
+          content: `Analise este documento e extraia o mapa mental:\n\n${contentText.slice(0, 8000)}`,
+        },
       ],
-      response_format: { type: "json_object" }
+      response_format: { type: "json_object" },
     });
 
     const rawJson = JSON.parse(completion.choices[0].message.content || "{}");
     const subject: string = rawJson.subject || docTitle;
     const topics: Array<{ name: string; subtopics: string[] }> = rawJson.topics || [];
 
-    // Save to user_doc_mindmaps
     const mindMapJson = { subject, topics, docTitle, source: "document" };
     await db.execute(sql`
       INSERT INTO user_doc_mindmaps (user_id, doc_title, mind_map_json)
@@ -201,7 +380,7 @@ Regras:
 
 // ─── Get user document mind maps ──────────────────────────────────────────────
 router.get("/mapa-mental/my-docs", async (req: Request, res: Response) => {
-  if (!!!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
   try {
     const rows = await db.execute(sql`
       SELECT id, doc_title, mind_map_json, created_at
@@ -218,7 +397,7 @@ router.get("/mapa-mental/my-docs", async (req: Request, res: Response) => {
 
 // ─── Delete user doc mind map ─────────────────────────────────────────────────
 router.delete("/mapa-mental/my-docs/:id", async (req: Request, res: Response) => {
-  if (!!!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ erro: "ID inválido" }); return; }
   try {

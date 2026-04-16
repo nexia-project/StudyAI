@@ -1,24 +1,12 @@
 import { Router, type IRouter } from "express";
 import OpenAI from "openai";
 import { checkFreeUsage } from "../lib/freeUsage";
-import { db } from "@workspace/db";
-import { sql } from "drizzle-orm";
+import { searchKnowledge } from "./knowledge";
 
-async function searchKnowledgeBase(query: string): Promise<string> {
-  try {
-    const terms = query.trim().split(/\s+/).slice(0, 5).join("|");
-    const rows = await db.execute(sql`
-      SELECT title, subject, LEFT(content_text, 600) as excerpt
-      FROM knowledge_documents
-      WHERE content_text ILIKE ${"%" + query + "%"} OR title ILIKE ${"%" + query + "%"}
-      LIMIT 3
-    `);
-    if ((rows.rows as any[]).length === 0) return "";
-    const parts = (rows.rows as any[]).map((r: any) => `[${r.title}${r.subject ? ` — ${r.subject}` : ""}]:\n${r.excerpt}`);
-    return `\n\nCONTEÚDO DA BASE DE CONHECIMENTO INTERNA (use como referência prioritária):\n${parts.join("\n\n")}`;
-  } catch {
-    return "";
-  }
+async function searchKnowledgeBase(query: string, subject?: string): Promise<string> {
+  const ctx = await searchKnowledge(query, subject, 3);
+  if (!ctx) return "";
+  return `\n\nCONTEÚDO DA BASE DE CONHECIMENTO INTERNA (use como referência prioritária):\n${ctx}`;
 }
 
 const router: IRouter = Router();
@@ -106,7 +94,7 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
 
     // Search knowledge base using subject + last user message
     const lastUserMsg = messages.filter(m => m.role === "user").slice(-1)[0]?.content ?? "";
-    const kbContext = await searchKnowledgeBase(`${contexto.materia} ${lastUserMsg}`.trim());
+    const kbContext = await searchKnowledgeBase(lastUserMsg, contexto.materia);
 
     let systemPrompt = buildTutorSystemPrompt(contexto);
     if (kbContext) systemPrompt += kbContext;

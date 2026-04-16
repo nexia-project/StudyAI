@@ -14,17 +14,10 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 // ─── Search knowledge base (consulta interna do sistema) ──────────────────────
 async function searchKnowledgeBase(query: string): Promise<string> {
   try {
-    const rows = await db.execute(sql`
-      SELECT title, subject, LEFT(content_text, 600) as excerpt
-      FROM knowledge_documents
-      WHERE content_text ILIKE ${"%" + query + "%"} OR title ILIKE ${"%" + query + "%"}
-      LIMIT 3
-    `);
-    if ((rows.rows as any[]).length === 0) return "";
-    const parts = (rows.rows as any[]).map((r: any) =>
-      `[${r.title}${r.subject ? ` — ${r.subject}` : ""}]: ${r.excerpt}`
-    );
-    return `\n\nBASE DE CONHECIMENTO INTERNA (priorize este conteúdo nas respostas):\n${parts.join("\n\n")}`;
+    const { searchKnowledge } = await import("./knowledge");
+    const ctx = await searchKnowledge(query, undefined, 3);
+    if (!ctx) return "";
+    return `\n\nBASE DE CONHECIMENTO INTERNA (priorize este conteúdo nas respostas):\n${ctx}`;
   } catch {
     return "";
   }

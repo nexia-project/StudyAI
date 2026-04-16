@@ -5,7 +5,9 @@ import { checkFreeUsage } from "../lib/freeUsage";
 const router = Router();
 const openai = new OpenAI();
 
-const SYSTEM_PROMPT = `Você é um corretor especialista em redação do ENEM com mais de 20 anos de experiência. 
+const SYSTEM_PROMPT = `IDIOMA OBRIGATÓRIO: SEMPRE em português brasileiro (pt-BR). NUNCA use inglês ou outro idioma — nem uma palavra. Esta regra é absoluta.
+
+Você é um corretor especialista em redação do ENEM com mais de 20 anos de experiência. 
 Avalie a redação enviada nas 5 competências do ENEM, cada uma valendo de 0 a 200 pontos (em múltiplos de 40: 0, 40, 80, 120, 160 ou 200).
 
 As 5 competências são:

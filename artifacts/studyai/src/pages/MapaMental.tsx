@@ -175,11 +175,20 @@ function layoutTree(root: MindNode, cx: number, cy: number) {
 }
 
 // ─── Generic Mind Map SVG from JSON ───────────────────────────────────────────
-function MindMapSVG({ mapJson, rootLabel }: { mapJson: { subject: string; topics: Array<{ name: string; subtopics: string[] }> }; rootLabel?: string }) {
+function MindMapSVG({
+  mapJson, rootLabel, onStudy,
+}: {
+  mapJson: { subject: string; topics: Array<{ name: string; subtopics: string[] }> };
+  rootLabel?: string;
+  onStudy?: (topic: string) => void;
+}) {
   const [selectedNode, setSelectedNode] = useState<MindNode | null>(null);
+  const [, navigate] = useLocation();
   const color = getColor(mapJson.subject);
   const W = 920; const H = 680;
 
+  // Build tree with parent info
+  const topicsData = mapJson.topics.slice(0, 10);
   const root: MindNode = {
     id: "root",
     label: rootLabel || mapJson.subject,
@@ -187,13 +196,14 @@ function MindMapSVG({ mapJson, rootLabel }: { mapJson: { subject: string; topics
     level: 0,
     hasContent: true,
     source: "document",
-    children: mapJson.topics.slice(0, 10).map((topic, ti) => ({
+    children: topicsData.map((topic, ti) => ({
       id: `t${ti}`,
       label: topic.name,
       color,
       level: 1,
       hasContent: true,
       source: "document" as const,
+      contentMeta: { topics: (topic.subtopics || []).slice(0, 5) },
       children: (topic.subtopics || []).slice(0, 5).map((sub, si) => ({
         id: `t${ti}s${si}`,
         label: sub,
@@ -201,6 +211,7 @@ function MindMapSVG({ mapJson, rootLabel }: { mapJson: { subject: string; topics
         level: 2,
         hasContent: true,
         source: "document" as const,
+        contentMeta: { topics: [topic.name] }, // parent topic
         children: [],
       })),
     })),
@@ -208,12 +219,26 @@ function MindMapSVG({ mapJson, rootLabel }: { mapJson: { subject: string; topics
 
   const positions = layoutTree(root, W / 2, H / 2);
 
+  // Find subtopics for a clicked topic node
+  const topicSubtopics = selectedNode?.level === 1
+    ? (topicsData.find(t => t.name === selectedNode.label)?.subtopics ?? selectedNode.contentMeta?.topics ?? [])
+    : [];
+  // Parent topic for a subtopic node
+  const parentTopic = selectedNode?.level === 2
+    ? (selectedNode.contentMeta?.topics?.[0] ?? "")
+    : "";
+
+  function handleStudy() {
+    const query = selectedNode ? `Explica o tópico "${selectedNode.label}" de ${mapJson.subject}` : "";
+    navigate(`/app?q=${encodeURIComponent(query)}`);
+  }
+
   return (
     <>
       <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
         <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minWidth: 600 }}>
           <defs>
-            <filter id="shadow2" x="-20%" y="-20%" width="140%" height="140%">
+            <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
               <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.12" />
             </filter>
           </defs>
@@ -222,23 +247,85 @@ function MindMapSVG({ mapJson, rootLabel }: { mapJson: { subject: string; topics
           ))}
         </svg>
       </div>
-      {/* Simple drawer for subject SVG nodes */}
+
+      {/* Rich drawer for clicked nodes */}
       <AnimatePresence>
         {selectedNode && (
           <>
-            <motion.div className="fixed inset-0 bg-black/30 z-40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedNode(null)} />
-            <motion.div className="fixed right-0 top-0 h-full w-full max-w-sm bg-white shadow-2xl z-50 flex flex-col" initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", stiffness: 300, damping: 30 }}>
-              <div className="flex items-center justify-between px-5 py-4 border-b border-border" style={{ borderTopColor: selectedNode.color, borderTopWidth: 4 }}>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: selectedNode.color }}>{selectedNode.level === 1 ? "Tópico" : "Subtópico"}</p>
-                  <h2 className="text-lg font-black text-foreground">{selectedNode.label}</h2>
+            <motion.div
+              className="fixed inset-0 bg-black/30 z-40"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setSelectedNode(null)}
+            />
+            <motion.div
+              className="fixed right-0 top-0 h-full w-full max-w-sm bg-white shadow-2xl z-50 flex flex-col"
+              initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            >
+              {/* Header */}
+              <div
+                className="px-5 py-4 border-b border-border"
+                style={{ borderTopColor: selectedNode.color, borderTopWidth: 4 }}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: selectedNode.color }}>
+                      {selectedNode.level === 1 ? "Tópico" : "Subtópico"} · {mapJson.subject}
+                    </p>
+                    <h2 className="text-lg font-black text-foreground leading-tight">{selectedNode.label}</h2>
+                    {selectedNode.level === 2 && parentTopic && (
+                      <p className="text-xs text-muted-foreground mt-1">Parte de: <strong>{parentTopic}</strong></p>
+                    )}
+                  </div>
+                  <button onClick={() => setSelectedNode(null)} className="p-2 rounded-xl hover:bg-secondary shrink-0">
+                    <X className="w-5 h-5 text-muted-foreground" />
+                  </button>
                 </div>
-                <button onClick={() => setSelectedNode(null)} className="p-2 rounded-xl hover:bg-secondary"><X className="w-5 h-5" /></button>
               </div>
-              <div className="flex-1 p-5">
-                <div className="bg-secondary/30 rounded-2xl p-4 text-center">
-                  <CheckCircle className="w-8 h-8 mx-auto mb-2" style={{ color: selectedNode.color }} />
-                  <p className="text-sm font-semibold text-foreground">{selectedNode.level === 1 ? "Tópico do material" : "Subtópico do material"}</p>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                {/* Topic: list its subtopics */}
+                {selectedNode.level === 1 && topicSubtopics.length > 0 && (
+                  <div>
+                    <p className="text-sm font-bold text-foreground mb-2">Subtópicos</p>
+                    <div className="space-y-2">
+                      {topicSubtopics.map((sub, i) => (
+                        <div
+                          key={i}
+                          className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                          style={{ backgroundColor: selectedNode.color + "10" }}
+                        >
+                          <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: selectedNode.color }} />
+                          <span className="text-sm text-foreground font-medium">{sub}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Subtopic: show context */}
+                {selectedNode.level === 2 && (
+                  <div className="rounded-2xl p-4" style={{ backgroundColor: selectedNode.color + "10" }}>
+                    <p className="text-xs text-muted-foreground mb-1">Subtópico dentro de</p>
+                    <p className="text-sm font-bold" style={{ color: selectedNode.color }}>{parentTopic || mapJson.subject}</p>
+                  </div>
+                )}
+
+                {/* Study CTA */}
+                <button
+                  onClick={handleStudy}
+                  className="w-full py-3 rounded-2xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: selectedNode.color }}
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Estudar este {selectedNode.level === 1 ? "tópico" : "subtópico"}
+                </button>
+
+                <div className="bg-secondary/30 rounded-2xl p-3 text-center">
+                  <p className="text-xs text-muted-foreground">
+                    📄 Conteúdo extraído do documento
+                  </p>
                 </div>
               </div>
             </motion.div>
@@ -251,6 +338,14 @@ function MindMapSVG({ mapJson, rootLabel }: { mapJson: { subject: string; topics
 
 // ─── Node Drawer (for student map) ────────────────────────────────────────────
 function NodeDrawer({ node, onClose }: { node: MindNode | null; onClose: () => void }) {
+  const [, navigate] = useLocation();
+
+  function handleStudy() {
+    if (!node) return;
+    const query = `Explica ${node.level === 1 ? "a matéria" : "o tópico"} "${node.label}"`;
+    navigate(`/app?q=${encodeURIComponent(query)}`);
+  }
+
   return (
     <AnimatePresence>
       {node && (
@@ -337,6 +432,15 @@ function NodeDrawer({ node, onClose }: { node: MindNode | null; onClose: () => v
                   <p className="text-sm text-muted-foreground mt-1">Este tópico faz parte do seu histórico de estudos.</p>
                 </div>
               )}
+              <button
+                onClick={handleStudy}
+                className="w-full py-3 rounded-2xl font-bold text-sm text-white flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: node.color }}
+              >
+                <Sparkles className="w-4 h-4" />
+                Estudar {node.level === 1 ? "esta matéria" : "este tópico"} com Tiagão
+              </button>
+
               <div className="bg-secondary/30 rounded-2xl p-4">
                 <p className="text-xs text-muted-foreground">
                   {node.source === "personal"

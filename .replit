@@ -33,7 +33,7 @@ channel = "stable-25_05"
 
 [userenv.shared]
 STRIPE_PREMIUM_PRICE_ID = "price_1TJlcQ89mXjTdwp9ZQjS8stW"
-ADMIN_USER_IDS = "44063371"
+ADMIN_USER_IDS = "user_3CRMRRUAr5yu3EaznIyz01zzyvO,44063371"
 
 [userenv.production]
 VITE_CLERK_PROXY_URL = "https://study.ia.br/api/__clerk"

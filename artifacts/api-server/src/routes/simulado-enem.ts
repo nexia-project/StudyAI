@@ -28,7 +28,7 @@ const ENEM_DIAS: Record<number, { nome: string; materias: string[]; descricao: s
   },
 };
 
-router.post("/api/simulado-enem/gerar", requireAuth, async (req, res) => {
+router.post("/simulado-enem/gerar", requireAuth, async (req, res) => {
   try {
     const { dia, quantidade = 20 } = req.body as { dia: number; quantidade?: number };
 
@@ -101,7 +101,7 @@ Responda SOMENTE com JSON válido:
   }
 });
 
-router.get("/api/simulado-enem/dias", (_req, res) => {
+router.get("/simulado-enem/dias", (_req, res) => {
   res.json({ dias: ENEM_DIAS });
 });
 

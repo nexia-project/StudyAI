@@ -311,11 +311,25 @@ router.post("/mapa-mental/from-doc", upload.single("file"), validateFileUpload, 
 
   try {
     let contentText = "";
+    const docTitle = title || (req.file?.originalname.replace(/\.[^.]+$/, "") ?? "Documento");
+
     if (req.file) {
       if (req.file.mimetype === "application/pdf") {
-        const pdfParse = (await import("pdf-parse")).default;
-        const parsed = await pdfParse(req.file.buffer);
-        contentText = parsed.text;
+        try {
+          const pdfParse = (await import("pdf-parse")).default;
+          const parsed = await pdfParse(req.file.buffer);
+          contentText = parsed.text;
+        } catch (pdfErr) {
+          req.log.error({ pdfErr }, "pdf-parse failed, trying raw text extraction");
+          // Fallback: try to extract readable text from the buffer
+          const rawText = req.file.buffer.toString("latin1");
+          const readable = rawText.replace(/[^\x20-\x7E\n\r\t\xA0-\xFF]/g, " ").replace(/\s{3,}/g, "\n").trim();
+          if (readable.length < 50) {
+            res.status(422).json({ erro: "Não foi possível ler o conteúdo do PDF. Tente um PDF com texto selecionável (não escaneado)." });
+            return;
+          }
+          contentText = readable;
+        }
       } else {
         contentText = req.file.buffer.toString("utf8");
       }
@@ -326,7 +340,10 @@ router.post("/mapa-mental/from-doc", upload.single("file"), validateFileUpload, 
       return;
     }
 
-    const docTitle = title || (req.file?.originalname.replace(/\.[^.]+$/, "") ?? "Documento");
+    if (!contentText || contentText.trim().length < 30) {
+      res.status(422).json({ erro: "O documento não tem conteúdo de texto suficiente para gerar um mapa mental." });
+      return;
+    }
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -362,7 +379,14 @@ Regras:
       response_format: { type: "json_object" },
     });
 
-    const rawJson = JSON.parse(completion.choices[0].message.content || "{}");
+    const rawContent = completion.choices[0].message.content || "{}";
+    let rawJson: { subject?: string; topics?: Array<{ name: string; subtopics: string[] }> } = {};
+    try {
+      rawJson = JSON.parse(rawContent);
+    } catch {
+      req.log.error({ rawContent }, "Failed to parse OpenAI JSON response");
+      rawJson = {};
+    }
     const subject: string = rawJson.subject || docTitle;
     const topics: Array<{ name: string; subtopics: string[] }> = rawJson.topics || [];
 
@@ -375,7 +399,7 @@ Regras:
     res.json({ ok: true, mindMap: mindMapJson });
   } catch (err) {
     req.log.error({ err }, "Error generating mind map from doc");
-    res.status(500).json({ erro: "Erro ao gerar mapa mental" });
+    res.status(500).json({ erro: "Erro ao gerar mapa mental. Tente novamente." });
   }
 });
 

@@ -33,3 +33,4 @@ channel = "stable-25_05"
 
 [userenv.shared]
 STRIPE_PREMIUM_PRICE_ID = "price_1TJlcQ89mXjTdwp9ZQjS8stW"
+VITE_CLERK_PROXY_URL = "https://study.ia.br/api/__clerk"

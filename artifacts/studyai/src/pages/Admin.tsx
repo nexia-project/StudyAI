@@ -85,7 +85,11 @@ export default function AdminPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/users");
+      const res = await fetch("/api/admin/users", { credentials: "include" });
+      if (res.status === 401) {
+        setError("Você precisa estar logado para acessar esta página.");
+        return;
+      }
       if (res.status === 403) {
         setError("Acesso negado. Apenas administradores podem ver esta página.");
         return;
@@ -105,6 +109,7 @@ export default function AdminPage() {
     try {
       const res = await fetch(`/api/admin/users/${userId}/status`, {
         method: "PATCH",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
@@ -126,7 +131,7 @@ export default function AdminPage() {
   async function fetchTeacherContent() {
     setTcLoading(true);
     try {
-      const res = await fetch("/api/teacher-content");
+      const res = await fetch("/api/teacher-content", { credentials: "include" });
       const data = await res.json();
       setTcList(data.content ?? []);
     } catch { /* ignore */ }
@@ -140,6 +145,7 @@ export default function AdminPage() {
     try {
       const res = await fetch("/api/teacher-content", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: tcForm.title,
@@ -167,7 +173,7 @@ export default function AdminPage() {
 
   async function deleteTeacherContent(id: number) {
     if (!confirm("Remover este conteúdo?")) return;
-    await fetch(`/api/teacher-content/${id}`, { method: "DELETE" });
+    await fetch(`/api/teacher-content/${id}`, { method: "DELETE", credentials: "include" });
     fetchTeacherContent();
   }
 
@@ -177,6 +183,7 @@ export default function AdminPage() {
     try {
       const res = await fetch("/api/government/promote", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, role }),
       });
@@ -198,7 +205,7 @@ export default function AdminPage() {
   async function fetchKbDocs() {
     setKbLoading(true);
     try {
-      const res = await fetch("/api/knowledge");
+      const res = await fetch("/api/knowledge", { credentials: "include" });
       const data = await res.json();
       setKbDocs(data.docs ?? []);
     } catch { /* ignore */ }
@@ -213,6 +220,7 @@ export default function AdminPage() {
     try {
       const res = await fetch("/api/knowledge/upload-text", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: kbForm.title, subject: kbForm.subject || null, contentText: kbForm.contentText }),
       });
@@ -242,7 +250,11 @@ export default function AdminPage() {
       fd.append("file", kbFile);
       if (kbForm.title) fd.append("title", kbForm.title);
       if (kbForm.subject) fd.append("subject", kbForm.subject);
-      const res = await fetch("/api/knowledge/upload-file", { method: "POST", body: fd });
+      const res = await fetch("/api/knowledge/upload-file", {
+        method: "POST",
+        credentials: "include",
+        body: fd,
+      });
       const data = await res.json();
       if (res.ok) {
         setKbMsg({ ok: true, text: "Arquivo processado e adicionado à base de conhecimento!" });
@@ -262,14 +274,14 @@ export default function AdminPage() {
 
   async function deleteKbDoc(id: number) {
     if (!confirm("Remover este documento da base de conhecimento?")) return;
-    await fetch(`/api/knowledge/${id}`, { method: "DELETE" });
+    await fetch(`/api/knowledge/${id}`, { method: "DELETE", credentials: "include" });
     fetchKbDocs();
   }
 
   async function fetchRoleRequests() {
     setRrLoading(true);
     try {
-      const res = await fetch("/api/admin/role-requests");
+      const res = await fetch("/api/admin/role-requests", { credentials: "include" });
       const data = await res.json();
       setRoleRequests(data.requests ?? []);
     } catch { /* ignore */ }
@@ -282,6 +294,7 @@ export default function AdminPage() {
     try {
       const res = await fetch(`/api/admin/role-requests/${id}/review`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
       });
@@ -788,7 +801,7 @@ export default function AdminPage() {
 
               {/* Upload File */}
               <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-5">
-                <h3 className="font-bold mb-4 flex items-center gap-2"><Upload className="w-4 h-4 text-violet-400" /> Carregar Arquivo (PDF / TXT)</h3>
+                <h3 className="font-bold mb-4 flex items-center gap-2"><Upload className="w-4 h-4 text-violet-400" /> Carregar Arquivo (PDF / DOCX / TXT)</h3>
                 <form onSubmit={saveKbFile} className="space-y-3">
                   <input
                     value={kbForm.title}
@@ -814,14 +827,14 @@ export default function AdminPage() {
                     ) : (
                       <>
                         <Upload className="w-8 h-8 mx-auto mb-2 text-white/30" />
-                        <p className="text-sm text-white/40">Clique para selecionar PDF ou TXT</p>
+                        <p className="text-sm text-white/40">Clique para selecionar PDF, DOCX ou TXT</p>
                         <p className="text-xs text-white/25 mt-1">Máximo 25 MB</p>
                       </>
                     )}
                     <input
                       ref={kbFileRef}
                       type="file"
-                      accept=".pdf,.txt"
+                      accept=".pdf,.txt,.docx,.doc"
                       className="hidden"
                       onChange={e => setKbFile(e.target.files?.[0] ?? null)}
                     />

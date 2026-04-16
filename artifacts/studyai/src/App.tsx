@@ -79,7 +79,7 @@ function SignInPage() {
   // pane in the workspace toolbar. More information can be found in the Replit docs.
   return (
     <div style={{ display: "flex", justifyContent: "center", marginTop: "4rem" }}>
-      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} afterSignInUrl={`${basePath}/`} />
     </div>
   );
 }
@@ -90,7 +90,7 @@ function SignUpPage() {
   // pane in the workspace toolbar. More information can be found in the Replit docs.
   return (
     <div style={{ display: "flex", justifyContent: "center", marginTop: "4rem" }}>
-      <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
+      <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} afterSignUpUrl={`${basePath}/`} />
     </div>
   );
 }
@@ -200,6 +200,8 @@ function ClerkProviderWithRoutes() {
       proxyUrl={clerkProxyUrl || undefined}
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
+      afterSignInUrl={`${basePath}/`}
+      afterSignUpUrl={`${basePath}/`}
     >
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>

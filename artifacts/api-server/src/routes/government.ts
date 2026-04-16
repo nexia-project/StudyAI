@@ -12,6 +12,7 @@ import {
 } from "@workspace/db/schema";
 import { eq, sql, gte, desc, and } from "drizzle-orm";
 import { roleRequestsTable } from "@workspace/db/schema";
+import { isAdminUser } from "../lib/adminCheck";
 
 const router: IRouter = Router();
 
@@ -141,7 +142,7 @@ router.post("/government/request-access", async (req: Request, res: Response) =>
 });
 
 router.post("/government/promote", async (req: Request, res: Response) => {
-  if (!!!req.userId || req.userId! !== "44063371") {
+  if (!req.userId || !isAdminUser(req.userId)) {
     res.status(403).json({ error: "Acesso negado" }); return;
   }
   const { userId, role } = req.body as { userId?: string; role?: string };

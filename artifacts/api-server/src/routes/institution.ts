@@ -12,12 +12,11 @@ import {
 } from "@workspace/db/schema";
 import { eq, and, desc, sql, inArray, lt } from "drizzle-orm";
 import crypto from "crypto";
+import { isAdminUser } from "../lib/adminCheck";
 
 const router: IRouter = Router();
 
-const SUPER_ADMIN = "44063371";
-
-function isSuperAdmin(userId: string) { return userId === SUPER_ADMIN; }
+function isSuperAdmin(userId: string) { return isAdminUser(userId); }
 
 async function getInstitutionRole(userId: string, institutionId: string) {
   const rows = await db.select().from(institutionUsersTable)

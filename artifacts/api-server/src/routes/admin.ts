@@ -2,13 +2,12 @@ import { Router, type Request, type Response } from "express";
 import { db, usersTable } from "@workspace/db";
 import { roleRequestsTable } from "@workspace/db/schema";
 import { eq, desc, and } from "drizzle-orm";
+import { isAdminUser } from "../lib/adminCheck";
 
 const router = Router();
 
-const ADMIN_USER_IDS = new Set(["44063371"]);
-
 function isAdmin(req: Request): boolean {
-  return !!req.userId && ADMIN_USER_IDS.has(String(req.userId));
+  return isAdminUser(req.userId);
 }
 
 router.get("/admin/users", async (req: Request, res: Response) => {

@@ -2,14 +2,13 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
+import { isAdminUser } from "../lib/adminCheck";
 
 const router: IRouter = Router();
 
-const ADMIN_USER_IDS = new Set(["44063371"]);
-
 async function isAdmin(req: Request): Promise<boolean> {
   if (!req.userId) return false;
-  if (ADMIN_USER_IDS.has(req.userId)) return true;
+  if (isAdminUser(req.userId)) return true;
   const [user] = await db.select({ role: usersTable.role }).from(usersTable).where(eq(usersTable.id, req.userId)).limit(1);
   return user?.role === "admin";
 }

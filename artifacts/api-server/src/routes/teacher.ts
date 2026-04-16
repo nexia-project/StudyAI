@@ -11,6 +11,7 @@ import {
 } from "@workspace/db/schema";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { roleRequestsTable } from "@workspace/db/schema";
+import { isAdminUser } from "../lib/adminCheck";
 
 const router: IRouter = Router();
 
@@ -95,7 +96,7 @@ router.get("/teacher/turmas/:id", async (req: Request, res: Response) => {
 
   const { id } = req.params;
   const [turma] = await db.select().from(turmasTable).where(eq(turmasTable.id, id)).limit(1);
-  if (!turma || (turma.teacherId !== req.userId! && req.userId! !== "44063371")) {
+  if (!turma || (turma.teacherId !== req.userId! && !isAdminUser(req.userId))) {
     res.status(404).json({ error: "Turma não encontrada" }); return;
   }
 
@@ -161,7 +162,7 @@ router.get("/teacher/turmas/:id/students", async (req: Request, res: Response) =
 
   const { id } = req.params;
   const [turma] = await db.select().from(turmasTable).where(eq(turmasTable.id, id)).limit(1);
-  if (!turma || (turma.teacherId !== req.userId! && req.userId! !== "44063371")) {
+  if (!turma || (turma.teacherId !== req.userId! && !isAdminUser(req.userId))) {
     res.status(404).json({ error: "Turma não encontrada" }); return;
   }
 

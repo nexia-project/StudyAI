@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { Brain, Shield, CheckCircle, XCircle, Users, RefreshCw, Crown, UserX, BookOpen, Plus, Trash2, FileText, GraduationCap, Building2, Globe, Database, Upload, Loader2, Search } from "lucide-react";
+import { Brain, Shield, CheckCircle, XCircle, Users, RefreshCw, Crown, UserX, BookOpen, Plus, Trash2, FileText, GraduationCap, Building2, Globe, Database, Upload, Loader2, Search, Bell, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type User = {
@@ -35,12 +35,33 @@ type TeacherContent = {
   created_at: string;
 };
 
+type RoleRequest = {
+  id: string;
+  userId: string;
+  requestedRole: string;
+  status: string;
+  school: string | null;
+  subject: string | null;
+  organ: string | null;
+  position: string | null;
+  cpf: string | null;
+  message: string | null;
+  createdAt: string;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+};
+
 export default function AdminPage() {
   const [, navigate] = useLocation();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"users" | "content" | "roles" | "knowledge">("users");
+  const [activeTab, setActiveTab] = useState<"solicitacoes" | "users" | "content" | "roles" | "knowledge">("solicitacoes");
+  const [roleRequests, setRoleRequests] = useState<RoleRequest[]>([]);
+  const [rrLoading, setRrLoading] = useState(false);
+  const [rrReviewing, setRrReviewing] = useState<string | null>(null);
+  const [rrMsg, setRrMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [roleUpdating, setRoleUpdating] = useState<string | null>(null);
   const [roleMsg, setRoleMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [tcList, setTcList] = useState<TeacherContent[]>([]);
@@ -245,7 +266,41 @@ export default function AdminPage() {
     fetchKbDocs();
   }
 
-  useEffect(() => { fetchUsers(); }, []);
+  async function fetchRoleRequests() {
+    setRrLoading(true);
+    try {
+      const res = await fetch("/api/admin/role-requests");
+      const data = await res.json();
+      setRoleRequests(data.requests ?? []);
+    } catch { /* ignore */ }
+    finally { setRrLoading(false); }
+  }
+
+  async function reviewRequest(id: string, action: "approve" | "reject") {
+    setRrReviewing(id);
+    setRrMsg(null);
+    try {
+      const res = await fetch(`/api/admin/role-requests/${id}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setRrMsg({ ok: true, text: action === "approve" ? "Acesso aprovado! Usuário promovido." : "Solicitação rejeitada." });
+        setRoleRequests(prev => prev.map(r => r.id === id ? { ...r, status: action === "approve" ? "approved" : "rejected" } : r));
+      } else {
+        setRrMsg({ ok: false, text: data.error ?? "Erro ao processar" });
+      }
+    } catch {
+      setRrMsg({ ok: false, text: "Erro de conexão" });
+    } finally {
+      setRrReviewing(null);
+      setTimeout(() => setRrMsg(null), 4000);
+    }
+  }
+
+  useEffect(() => { fetchUsers(); fetchRoleRequests(); }, []);
   useEffect(() => { if (activeTab === "content") fetchTeacherContent(); }, [activeTab]);
   useEffect(() => { if (activeTab === "knowledge") fetchKbDocs(); }, [activeTab]);
 
@@ -312,8 +367,9 @@ export default function AdminPage() {
           <p className="text-white/50">Gerencie usuários e conteúdo de professores parceiros.</p>
         </div>
 
-        <div className="flex gap-2 mb-8 border-b border-white/10 pb-0">
+        <div className="flex gap-2 mb-8 border-b border-white/10 pb-0 overflow-x-auto">
           {[
+            { key: "solicitacoes", label: "Solicitações", icon: Bell, badge: roleRequests.filter(r => r.status === "pending").length },
             { key: "users", label: "Usuários", icon: Users },
             { key: "roles", label: "Perfis & Acesso", icon: Shield },
             { key: "content", label: "Conteúdo", icon: BookOpen },
@@ -321,8 +377,8 @@ export default function AdminPage() {
           ].map(tab => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key as "users" | "content" | "roles" | "knowledge")}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-bold border-b-2 transition-all ${
+              onClick={() => setActiveTab(tab.key as any)}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap flex-shrink-0 ${
                 activeTab === tab.key
                   ? "border-violet-500 text-violet-400"
                   : "border-transparent text-white/40 hover:text-white/70"
@@ -330,9 +386,94 @@ export default function AdminPage() {
             >
               <tab.icon className="w-4 h-4" />
               {tab.label}
+              {"badge" in tab && (tab as any).badge > 0 && (
+                <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-black">
+                  {(tab as any).badge}
+                </span>
+              )}
             </button>
           ))}
         </div>
+
+        {activeTab === "solicitacoes" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-lg font-black flex items-center gap-2">
+                <Bell className="w-5 h-5 text-violet-400" /> Solicitações de Acesso
+              </h2>
+              <button onClick={fetchRoleRequests} className="flex items-center gap-1.5 text-white/40 hover:text-white text-sm">
+                <RefreshCw className={`w-4 h-4 ${rrLoading ? "animate-spin" : ""}`} /> Atualizar
+              </button>
+            </div>
+            {rrMsg && (
+              <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-semibold ${rrMsg.ok ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300" : "bg-red-500/10 border-red-500/20 text-red-300"}`}>
+                {rrMsg.ok ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                {rrMsg.text}
+              </div>
+            )}
+            {rrLoading ? (
+              <div className="flex items-center justify-center py-12"><RefreshCw className="w-6 h-6 text-violet-400 animate-spin" /></div>
+            ) : roleRequests.length === 0 ? (
+              <div className="bg-white/5 rounded-2xl p-10 border border-white/10 text-center">
+                <Bell className="w-10 h-10 text-white/20 mx-auto mb-3" />
+                <p className="text-white/40 text-sm">Nenhuma solicitação no momento</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {roleRequests.map(r => {
+                  const isPending = r.status === "pending";
+                  const isApproved = r.status === "approved";
+                  const roleLabel = r.requestedRole === "teacher" ? "👨‍🏫 Professor" : r.requestedRole === "government" ? "🏛️ Governo" : r.requestedRole;
+                  const name = [r.firstName, r.lastName].filter(Boolean).join(" ") || r.email || r.userId;
+                  return (
+                    <div key={r.id} className={`bg-white/5 rounded-2xl p-5 border transition-all ${isPending ? "border-amber-500/30" : isApproved ? "border-emerald-500/30" : "border-red-500/20 opacity-60"}`}>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="font-bold text-white text-sm">{name}</span>
+                            <span className="text-xs bg-violet-500/20 text-violet-300 px-2 py-0.5 rounded-full border border-violet-500/30">{roleLabel}</span>
+                            {isPending && <span className="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30 flex items-center gap-1"><Clock className="w-3 h-3" />Pendente</span>}
+                            {isApproved && <span className="text-xs bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1"><CheckCircle className="w-3 h-3" />Aprovado</span>}
+                            {r.status === "rejected" && <span className="text-xs bg-red-500/20 text-red-300 px-2 py-0.5 rounded-full border border-red-500/30 flex items-center gap-1"><XCircle className="w-3 h-3" />Rejeitado</span>}
+                          </div>
+                          <p className="text-white/40 text-xs mb-2">{r.email}</p>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-white/60">
+                            {r.school && <span><span className="text-white/30">Escola:</span> {r.school}</span>}
+                            {r.subject && <span><span className="text-white/30">Disciplina:</span> {r.subject}</span>}
+                            {r.organ && <span><span className="text-white/30">Órgão:</span> {r.organ}</span>}
+                            {r.position && <span><span className="text-white/30">Cargo:</span> {r.position}</span>}
+                            {r.cpf && <span><span className="text-white/30">CPF:</span> {r.cpf}</span>}
+                          </div>
+                          {r.message && <p className="text-white/50 text-xs mt-2 italic">"{r.message}"</p>}
+                          <p className="text-white/20 text-xs mt-2">{new Date(r.createdAt).toLocaleString("pt-BR")}</p>
+                        </div>
+                        {isPending && (
+                          <div className="flex flex-col gap-2 flex-shrink-0">
+                            <Button
+                              onClick={() => reviewRequest(r.id, "approve")}
+                              disabled={rrReviewing === r.id}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-4 py-2 rounded-xl h-auto"
+                            >
+                              {rrReviewing === r.id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <><CheckCircle className="w-3 h-3 mr-1" />Aprovar</>}
+                            </Button>
+                            <Button
+                              onClick={() => reviewRequest(r.id, "reject")}
+                              disabled={rrReviewing === r.id}
+                              variant="outline"
+                              className="border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs px-4 py-2 rounded-xl h-auto"
+                            >
+                              {rrReviewing === r.id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <><XCircle className="w-3 h-3 mr-1" />Rejeitar</>}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {activeTab === "content" && (
           <div className="space-y-6">

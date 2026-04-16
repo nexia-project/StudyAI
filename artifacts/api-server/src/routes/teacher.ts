@@ -10,6 +10,7 @@ import {
   userActivityTable,
 } from "@workspace/db/schema";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import { roleRequestsTable } from "@workspace/db/schema";
 
 const router: IRouter = Router();
 
@@ -384,8 +385,16 @@ router.post("/teacher/request-access", async (req: Request, res: Response) => {
   if (!school || !subject) { res.status(400).json({ error: "Escola e disciplina são obrigatórios" }); return; }
 
   try {
-    const [user] = await db.select({ email: usersTable.email, firstName: usersTable.firstName }).from(usersTable).where(eq(usersTable.id, req.userId)).limit(1);
-    req.log.info({ userId: req.userId, email: user?.email, school, subject, message }, "Professor access request received");
+    // Check for existing pending request
+    const existing = await db.select({ id: roleRequestsTable.id })
+      .from(roleRequestsTable)
+      .where(and(eq(roleRequestsTable.userId, req.userId), eq(roleRequestsTable.requestedRole, "teacher"), eq(roleRequestsTable.status, "pending")))
+      .limit(1);
+    if (existing.length > 0) {
+      res.json({ success: true, message: "Você já tem uma solicitação pendente." });
+      return;
+    }
+    await db.insert(roleRequestsTable).values({ userId: req.userId, requestedRole: "teacher", school, subject, message: message ?? null });
     res.json({ success: true, message: "Solicitação recebida. O administrador irá revisar em breve." });
   } catch (err) {
     req.log.error({ err }, "Error processing teacher access request");

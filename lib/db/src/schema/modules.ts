@@ -94,3 +94,25 @@ export const institutionInvitesTable = pgTable("institution_invites", {
 });
 
 export type InstitutionInvite = typeof institutionInvitesTable.$inferSelect;
+
+// ─── Role access requests (professor / government) ────────────────────────────
+export const roleRequestsTable = pgTable("role_requests", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  requestedRole: varchar("requested_role", { length: 50 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  // Professor fields
+  school: varchar("school", { length: 255 }),
+  subject: varchar("subject", { length: 255 }),
+  // Government fields
+  organ: varchar("organ", { length: 255 }),
+  position: varchar("position", { length: 255 }),
+  cpf: varchar("cpf", { length: 20 }),
+  // Common
+  message: varchar("message", { length: 1000 }),
+  reviewedBy: varchar("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type RoleRequest = typeof roleRequestsTable.$inferSelect;

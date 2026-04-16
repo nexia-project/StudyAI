@@ -10,7 +10,8 @@ import {
   turmasTable,
   turmaMembershipsTable,
 } from "@workspace/db/schema";
-import { eq, sql, gte, desc } from "drizzle-orm";
+import { eq, sql, gte, desc, and } from "drizzle-orm";
+import { roleRequestsTable } from "@workspace/db/schema";
 
 const router: IRouter = Router();
 
@@ -123,8 +124,15 @@ router.post("/government/request-access", async (req: Request, res: Response) =>
   if (!organ || !position || !cpf) { res.status(400).json({ error: "Órgão, cargo e CPF são obrigatórios" }); return; }
 
   try {
-    const [user] = await db.select({ email: usersTable.email, firstName: usersTable.firstName }).from(usersTable).where(eq(usersTable.id, req.userId)).limit(1);
-    req.log.info({ userId: req.userId, email: user?.email, organ, position, cpf, message }, "Government access request received");
+    const existing = await db.select({ id: roleRequestsTable.id })
+      .from(roleRequestsTable)
+      .where(and(eq(roleRequestsTable.userId, req.userId!), eq(roleRequestsTable.requestedRole, "government"), eq(roleRequestsTable.status, "pending")))
+      .limit(1);
+    if (existing.length > 0) {
+      res.json({ success: true, message: "Você já tem uma solicitação pendente." });
+      return;
+    }
+    await db.insert(roleRequestsTable).values({ userId: req.userId!, requestedRole: "government", organ, position, cpf, message: message ?? null });
     res.json({ success: true, message: "Solicitação recebida. Nossa equipe irá validar em até 48 horas." });
   } catch (err) {
     req.log.error({ err }, "Error processing government access request");

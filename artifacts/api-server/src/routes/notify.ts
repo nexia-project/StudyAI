@@ -130,7 +130,7 @@ router.post("/api/notify/weekly", requireAuth, async (req, res) => {
     });
 
     await sendEmail(user[0].email, `📊 Seu resumo semanal no StudyAI, ${nome}!`, html);
-    res.json({ sucesso: true, enviado_para: user[0].email });
+    res.json({ sucesso: true });
   } catch (err: any) {
     console.error("notify/weekly:", err);
     res.status(500).json({ erro: err.message || "Erro ao enviar email" });

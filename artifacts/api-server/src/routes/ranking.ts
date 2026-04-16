@@ -26,7 +26,6 @@ router.get("/ranking", async (req: Request, res: Response) => {
         id: usersTable.id,
         firstName: usersTable.firstName,
         lastName: usersTable.lastName,
-        email: usersTable.email,
         profileImageUrl: usersTable.profileImageUrl,
         studentName: usersTable.studentName,
         storedXp: usersTable.xp,
@@ -106,7 +105,7 @@ router.get("/ranking", async (req: Request, res: Response) => {
           ? u.lastName
             ? `${u.firstName} ${u.lastName.charAt(0)}.`
             : u.firstName
-          : u.email?.split("@")[0] ?? "Anônimo";
+          : "Anônimo";
 
         return {
           id: u.id,
@@ -125,7 +124,7 @@ router.get("/ranking", async (req: Request, res: Response) => {
       .sort((a, b) => b.xp - a.xp)
       .map((u, i) => ({ ...u, rank: i + 1 }));
 
-    const currentUserId = req.user?.id;
+    const currentUserId = req.userId;
     let currentUserEntry = null;
     if (currentUserId) {
       const found = ranked.find((r) => r.id === currentUserId);
@@ -134,7 +133,7 @@ router.get("/ranking", async (req: Request, res: Response) => {
       } else {
         const u = filteredUsers.find((u) => u.id === currentUserId);
         if (u) {
-          const displayName = u.studentName || u.firstName || u.email?.split("@")[0] || "Você";
+          const displayName = u.studentName || u.firstName || "Você";
           currentUserEntry = {
             id: u.id,
             displayName,

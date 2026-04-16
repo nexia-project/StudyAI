@@ -49,7 +49,7 @@ router.post("/knowledge/upload-text", async (req: Request, res: Response) => {
   try {
     await db.execute(sql`
       INSERT INTO knowledge_documents (title, subject, content_text, uploaded_by)
-      VALUES (${title}, ${subject ?? null}, ${contentText}, ${req.user!.id})
+      VALUES (${title}, ${subject ?? null}, ${contentText}, ${req.userId})
     `);
     res.json({ ok: true, message: "Documento adicionado à base de conhecimento" });
   } catch (err) {
@@ -78,7 +78,7 @@ router.post("/knowledge/upload-file", upload.single("file"), async (req: Request
     const docTitle = title || req.file.originalname.replace(/\.[^.]+$/, "");
     await db.execute(sql`
       INSERT INTO knowledge_documents (title, subject, content_text, uploaded_by)
-      VALUES (${docTitle}, ${subject ?? null}, ${contentText.slice(0, 100000)}, ${req.user!.id})
+      VALUES (${docTitle}, ${subject ?? null}, ${contentText.slice(0, 100000)}, ${req.userId})
     `);
     res.json({ ok: true, message: "Arquivo processado e adicionado à base de conhecimento" });
   } catch (err) {
@@ -189,7 +189,7 @@ Regras:
     const mindMapJson = { subject, topics, docTitle, source: "document" };
     await db.execute(sql`
       INSERT INTO user_doc_mindmaps (user_id, doc_title, mind_map_json)
-      VALUES (${req.user!.id}, ${docTitle}, ${JSON.stringify(mindMapJson)}::jsonb)
+      VALUES (${req.userId}, ${docTitle}, ${JSON.stringify(mindMapJson)}::jsonb)
     `);
 
     res.json({ ok: true, mindMap: mindMapJson });
@@ -206,7 +206,7 @@ router.get("/mapa-mental/my-docs", async (req: Request, res: Response) => {
     const rows = await db.execute(sql`
       SELECT id, doc_title, mind_map_json, created_at
       FROM user_doc_mindmaps
-      WHERE user_id = ${req.user!.id}
+      WHERE user_id = ${req.userId}
       ORDER BY created_at DESC
       LIMIT 20
     `);
@@ -222,7 +222,7 @@ router.delete("/mapa-mental/my-docs/:id", async (req: Request, res: Response) =>
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ erro: "ID inválido" }); return; }
   try {
-    await db.execute(sql`DELETE FROM user_doc_mindmaps WHERE id = ${id} AND user_id = ${req.user!.id}`);
+    await db.execute(sql`DELETE FROM user_doc_mindmaps WHERE id = ${id} AND user_id = ${req.userId}`);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ erro: "Erro ao deletar mapa" });

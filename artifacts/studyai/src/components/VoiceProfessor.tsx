@@ -399,7 +399,7 @@ export function VoiceProfessor() {
           <X className="w-5 h-5 text-white" />
         ) : (
           <div className="relative">
-            <span className="text-2xl leading-none">👨‍🏫</span>
+            <img src="/tiagao-robot.jpg" alt="Professor Tiagão" className="w-10 h-10 rounded-full object-cover object-top" />
             <motion.span
               animate={phase === "speaking"
                 ? { scale: [1, 1.8, 1], opacity: [1, 0.4, 1] }
@@ -441,8 +441,8 @@ export function VoiceProfessor() {
             className="fixed bottom-24 left-4 right-4 sm:left-6 sm:right-auto sm:w-80 z-40 bg-white rounded-2xl shadow-xl border border-indigo-100 p-3"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-xl flex-shrink-0 select-none">
-                👨‍🏫
+              <div className="w-10 h-10 rounded-full flex-shrink-0 select-none overflow-hidden">
+                <img src="/tiagao-robot.jpg" alt="Professor Tiagão" className="w-full h-full object-cover object-top" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-black text-indigo-600 mb-0.5">Professor Tiagão</p>
@@ -493,8 +493,8 @@ export function VoiceProfessor() {
             <div className="p-4 flex items-center gap-3"
               style={{ background: "linear-gradient(135deg,#6366f1,#4f46e5)" }}>
               <div className="relative">
-                <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-2xl select-none">
-                  👨‍🏫
+                <div className="w-12 h-12 rounded-full overflow-hidden select-none">
+                  <img src="/tiagao-robot.jpg" alt="Professor Tiagão" className="w-full h-full object-cover object-top" />
                 </div>
                 <motion.span
                   animate={phase === "speaking"
@@ -543,16 +543,14 @@ export function VoiceProfessor() {
                     ? { repeat: Infinity, duration: 1.4, ease: "linear" }
                     : phase === "speaking"
                     ? { repeat: Infinity, duration: 0.55 } : {}}
-                  className="w-20 h-20 rounded-full flex items-center justify-center text-4xl select-none shadow-xl"
+                  className="w-20 h-20 rounded-full select-none shadow-xl overflow-hidden"
                   style={{
-                    background:
-                      phase === "listening" ? "linear-gradient(135deg,#ef4444,#dc2626)"
-                      : phase === "thinking" ? "linear-gradient(135deg,#f59e0b,#d97706)"
-                      : "linear-gradient(135deg,#6366f1,#4f46e5)",
                     boxShadow: `0 8px 32px ${phaseColor[phase]}55`,
+                    outline: `3px solid ${phaseColor[phase]}`,
+                    outlineOffset: "2px",
                   }}
                 >
-                  👨‍🏫
+                  <img src="/tiagao-robot.jpg" alt="Professor Tiagão" className="w-full h-full object-cover object-top" />
                 </motion.div>
               </div>
 

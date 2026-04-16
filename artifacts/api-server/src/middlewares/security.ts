@@ -10,6 +10,14 @@ const ALLOWED_MAGIC: Record<string, { magic: Buffer[]; ext: string }> = {
     magic: [], // text has no magic bytes — validated by UTF-8 check
     ext: ".txt",
   },
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+    magic: [Buffer.from([0x50, 0x4b, 0x03, 0x04])], // ZIP/DOCX magic bytes
+    ext: ".docx",
+  },
+  "application/msword": {
+    magic: [Buffer.from([0xd0, 0xcf, 0x11, 0xe0])], // DOC magic bytes
+    ext: ".doc",
+  },
 };
 
 export function validateFileUpload(req: Request, res: Response, next: NextFunction) {
@@ -17,9 +25,8 @@ export function validateFileUpload(req: Request, res: Response, next: NextFuncti
 
   const mime = req.file.mimetype;
 
-  // Only allow PDF and plain text
-  if (!ALLOWED_MAGIC[mime] && mime !== "text/plain") {
-    res.status(400).json({ erro: "Tipo de arquivo não permitido. Envie PDF ou TXT." });
+  if (!ALLOWED_MAGIC[mime]) {
+    res.status(400).json({ erro: "Tipo de arquivo não permitido. Envie PDF, DOCX, DOC ou TXT." });
     return;
   }
 
@@ -28,6 +35,24 @@ export function validateFileUpload(req: Request, res: Response, next: NextFuncti
     const pdfMagic = ALLOWED_MAGIC["application/pdf"].magic[0];
     if (!req.file.buffer.slice(0, 4).equals(pdfMagic)) {
       res.status(400).json({ erro: "Arquivo inválido: não é um PDF real." });
+      return;
+    }
+  }
+
+  // Verify magic bytes for DOCX
+  if (mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    const docxMagic = ALLOWED_MAGIC[mime].magic[0];
+    if (!req.file.buffer.slice(0, 4).equals(docxMagic)) {
+      res.status(400).json({ erro: "Arquivo inválido: não é um DOCX real." });
+      return;
+    }
+  }
+
+  // Verify magic bytes for DOC
+  if (mime === "application/msword") {
+    const docMagic = ALLOWED_MAGIC[mime].magic[0];
+    if (!req.file.buffer.slice(0, 4).equals(docMagic)) {
+      res.status(400).json({ erro: "Arquivo inválido: não é um DOC real." });
       return;
     }
   }

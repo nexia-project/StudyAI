@@ -10,6 +10,97 @@ const router: IRouter = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
+// ─── Extract text from uploaded file (PDF, DOCX, DOC, TXT) ───────────────────
+async function extractTextFromFile(file: Express.Multer.File): Promise<string> {
+  const mime = file.mimetype;
+
+  if (mime === "text/plain") {
+    return file.buffer.toString("utf8");
+  }
+
+  if (mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    const mammoth = await import("mammoth");
+    const result = await mammoth.extractRawText({ buffer: file.buffer });
+    return result.value;
+  }
+
+  if (mime === "application/msword") {
+    // For old .doc files, try mammoth first then fallback
+    try {
+      const mammoth = await import("mammoth");
+      const result = await mammoth.extractRawText({ buffer: file.buffer });
+      if (result.value.length > 30) return result.value;
+    } catch {
+      // fall through
+    }
+    // Raw text fallback
+    const rawText = file.buffer.toString("latin1");
+    return rawText.replace(/[^\x20-\x7E\n\r\t\xA0-\xFF]/g, " ").replace(/\s{3,}/g, "\n").trim();
+  }
+
+  if (mime === "application/pdf") {
+    try {
+      const pdfParse = (await import("pdf-parse")).default;
+      const parsed = await pdfParse(file.buffer);
+      return parsed.text;
+    } catch {
+      const rawText = file.buffer.toString("latin1");
+      return rawText.replace(/[^\x20-\x7E\n\r\t\xA0-\xFF]/g, " ").replace(/\s{3,}/g, "\n").trim();
+    }
+  }
+
+  return "";
+}
+
+// ─── Generate mind map JSON from text via AI ──────────────────────────────────
+async function generateMindMapFromText(contentText: string, docTitle: string): Promise<{ subject: string; topics: Array<{ name: string; subtopics: string[] }> }> {
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o",
+    temperature: 0.3,
+    messages: [
+      {
+        role: "system",
+        content: `Você é um especialista em organização de conhecimento. Analise o documento fornecido e extraia sua estrutura de conhecimento em formato de mapa mental.
+
+Retorne SOMENTE um JSON válido com esta estrutura exata:
+{
+  "subject": "Nome da Matéria Principal",
+  "topics": [
+    {
+      "name": "Tópico 1",
+      "subtopics": ["Subtópico 1.1", "Subtópico 1.2"]
+    }
+  ]
+}
+
+Regras:
+- subject: nome curto da matéria (ex: "Matemática", "Biologia")
+- Máximo 8 tópicos principais
+- Máximo 5 subtópicos por tópico
+- Nomes curtos (máximo 4 palavras)
+- Sem explicações, apenas o JSON`,
+      },
+      {
+        role: "user",
+        content: `Analise este documento chamado "${docTitle}" e extraia o mapa mental:\n\n${contentText.slice(0, 8000)}`,
+      },
+    ],
+    response_format: { type: "json_object" },
+  });
+
+  let rawJson: { subject?: string; topics?: Array<{ name: string; subtopics: string[] }> } = {};
+  try {
+    rawJson = JSON.parse(completion.choices[0].message.content || "{}");
+  } catch {
+    rawJson = {};
+  }
+
+  return {
+    subject: rawJson.subject || docTitle,
+    topics: rawJson.topics || [],
+  };
+}
+
 // Chunk size: ~4000 chars (~3 pages) for precise retrieval
 const CHUNK_SIZE = 4000;
 const CHUNK_OVERLAP = 400;
@@ -304,35 +395,17 @@ export async function searchKnowledge(query: string, subject?: string, limit = 4
   }
 }
 
-// ─── Generate mind map from document (for any user) ───────────────────────────
+// ─── Generate mind map from document (student) ────────────────────────────────
 router.post("/mapa-mental/from-doc", upload.single("file"), validateFileUpload, async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
   const { title } = req.body;
 
   try {
-    let contentText = "";
     const docTitle = title || (req.file?.originalname.replace(/\.[^.]+$/, "") ?? "Documento");
+    let contentText = "";
 
     if (req.file) {
-      if (req.file.mimetype === "application/pdf") {
-        try {
-          const pdfParse = (await import("pdf-parse")).default;
-          const parsed = await pdfParse(req.file.buffer);
-          contentText = parsed.text;
-        } catch (pdfErr) {
-          req.log.error({ pdfErr }, "pdf-parse failed, trying raw text extraction");
-          // Fallback: try to extract readable text from the buffer
-          const rawText = req.file.buffer.toString("latin1");
-          const readable = rawText.replace(/[^\x20-\x7E\n\r\t\xA0-\xFF]/g, " ").replace(/\s{3,}/g, "\n").trim();
-          if (readable.length < 50) {
-            res.status(422).json({ erro: "Não foi possível ler o conteúdo do PDF. Tente um PDF com texto selecionável (não escaneado)." });
-            return;
-          }
-          contentText = readable;
-        }
-      } else {
-        contentText = req.file.buffer.toString("utf8");
-      }
+      contentText = await extractTextFromFile(req.file);
     } else if (req.body.contentText) {
       contentText = req.body.contentText;
     } else {
@@ -341,56 +414,13 @@ router.post("/mapa-mental/from-doc", upload.single("file"), validateFileUpload, 
     }
 
     if (!contentText || contentText.trim().length < 30) {
-      res.status(422).json({ erro: "O documento não tem conteúdo de texto suficiente para gerar um mapa mental." });
+      res.status(422).json({ erro: "O documento não tem conteúdo de texto suficiente. Tente um PDF com texto selecionável (não escaneado)." });
       return;
     }
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      temperature: 0.3,
-      messages: [
-        {
-          role: "system",
-          content: `Você é um especialista em organização de conhecimento. Analise o documento fornecido e extraia sua estrutura de conhecimento em formato de mapa mental.
-
-Retorne SOMENTE um JSON válido com esta estrutura exata:
-{
-  "subject": "Nome da Matéria Principal",
-  "topics": [
-    {
-      "name": "Tópico 1",
-      "subtopics": ["Subtópico 1.1", "Subtópico 1.2"]
-    }
-  ]
-}
-
-Regras:
-- subject: nome curto da matéria (ex: "Matemática", "Biologia")
-- Máximo 8 tópicos principais
-- Máximo 5 subtópicos por tópico
-- Nomes curtos (máximo 4 palavras)
-- Sem explicações, apenas o JSON`,
-        },
-        {
-          role: "user",
-          content: `Analise este documento e extraia o mapa mental:\n\n${contentText.slice(0, 8000)}`,
-        },
-      ],
-      response_format: { type: "json_object" },
-    });
-
-    const rawContent = completion.choices[0].message.content || "{}";
-    let rawJson: { subject?: string; topics?: Array<{ name: string; subtopics: string[] }> } = {};
-    try {
-      rawJson = JSON.parse(rawContent);
-    } catch {
-      req.log.error({ rawContent }, "Failed to parse OpenAI JSON response");
-      rawJson = {};
-    }
-    const subject: string = rawJson.subject || docTitle;
-    const topics: Array<{ name: string; subtopics: string[] }> = rawJson.topics || [];
-
+    const { subject, topics } = await generateMindMapFromText(contentText, docTitle);
     const mindMapJson = { subject, topics, docTitle, source: "document" };
+
     await db.execute(sql`
       INSERT INTO user_doc_mindmaps (user_id, doc_title, mind_map_json)
       VALUES (${req.userId}, ${docTitle}, ${JSON.stringify(mindMapJson)}::jsonb)
@@ -400,6 +430,111 @@ Regras:
   } catch (err) {
     req.log.error({ err }, "Error generating mind map from doc");
     res.status(500).json({ erro: "Erro ao gerar mapa mental. Tente novamente." });
+  }
+});
+
+// ─── Professor: Generate mind map from their document ─────────────────────────
+router.post("/mapa-mental/professor/from-doc", upload.single("file"), validateFileUpload, async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { title, subject } = req.body;
+
+  try {
+    const docTitle = title || (req.file?.originalname.replace(/\.[^.]+$/, "") ?? "Material");
+    let contentText = "";
+
+    if (req.file) {
+      contentText = await extractTextFromFile(req.file);
+    } else if (req.body.contentText) {
+      contentText = req.body.contentText;
+    } else {
+      res.status(400).json({ erro: "Arquivo ou texto obrigatório" });
+      return;
+    }
+
+    if (!contentText || contentText.trim().length < 30) {
+      res.status(422).json({ erro: "O documento não tem conteúdo de texto suficiente. Tente um PDF com texto selecionável (não escaneado)." });
+      return;
+    }
+
+    const { subject: aiSubject, topics } = await generateMindMapFromText(contentText, docTitle);
+    const finalSubject = subject?.trim() || aiSubject;
+    const mindMapJson = { subject: finalSubject, topics, docTitle, source: "professor" };
+
+    await db.execute(sql`
+      INSERT INTO professor_mindmaps (professor_id, doc_title, subject, mind_map_json)
+      VALUES (${req.userId}, ${docTitle}, ${finalSubject}, ${JSON.stringify(mindMapJson)}::jsonb)
+    `);
+
+    res.json({ ok: true, mindMap: mindMapJson });
+  } catch (err) {
+    req.log.error({ err }, "Error generating professor mind map from doc");
+    res.status(500).json({ erro: "Erro ao gerar mapa mental. Tente novamente." });
+  }
+});
+
+// ─── Professor: List their mind maps ──────────────────────────────────────────
+router.get("/mapa-mental/professor/my-maps", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  try {
+    const rows = await db.execute(sql`
+      SELECT id, doc_title, subject, mind_map_json, created_at
+      FROM professor_mindmaps
+      WHERE professor_id = ${req.userId}
+      ORDER BY created_at DESC
+      LIMIT 50
+    `);
+    res.json({ maps: rows.rows });
+  } catch (err) {
+    res.status(500).json({ erro: "Erro ao buscar mapas do professor" });
+  }
+});
+
+// ─── Professor: Delete a mind map ─────────────────────────────────────────────
+router.delete("/mapa-mental/professor/my-maps/:id", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ erro: "ID inválido" }); return; }
+  try {
+    await db.execute(sql`DELETE FROM professor_mindmaps WHERE id = ${id} AND professor_id = ${req.userId}`);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ erro: "Erro ao deletar mapa" });
+  }
+});
+
+// ─── Subject mind maps: generate from teacher_content per subject ──────────────
+router.get("/mapa-mental/materias", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  try {
+    const rows = await db.execute(sql`
+      SELECT subject, title, content_text
+      FROM teacher_content
+      WHERE subject IS NOT NULL AND subject != ''
+      ORDER BY subject, created_at DESC
+    `);
+
+    // Group by subject
+    const grouped: Record<string, { title: string; topics: string[] }[]> = {};
+    for (const row of rows.rows as any[]) {
+      const s = row.subject as string;
+      if (!grouped[s]) grouped[s] = [];
+      // Extract first 3 lines as topic hints
+      const preview = (row.content_text as string).split("\n").filter((l: string) => l.trim().length > 0).slice(0, 3).map((l: string) => l.trim().slice(0, 60));
+      grouped[s].push({ title: row.title, topics: preview });
+    }
+
+    // Build subject mind map list
+    const subjectMaps = Object.entries(grouped).map(([subject, docs]) => ({
+      subject,
+      topics: docs.map(d => ({
+        name: d.title.slice(0, 50),
+        subtopics: d.topics,
+      })),
+    }));
+
+    res.json({ subjects: subjectMaps });
+  } catch (err) {
+    res.status(500).json({ erro: "Erro ao buscar mapas de matérias" });
   }
 });
 

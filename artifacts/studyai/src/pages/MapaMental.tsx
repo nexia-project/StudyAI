@@ -5,7 +5,8 @@ import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 import {
   ArrowLeft, Brain, BookOpen, LogIn, RefreshCw, Sparkles,
   Upload, X, FileText, CheckCircle, Lock, ChevronRight,
-  BarChart2, Layers, Loader2, Trash2,
+  Loader2, Trash2, GraduationCap, BookMarked, User2,
+  FolderOpen, Plus,
 } from "lucide-react";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -34,7 +35,7 @@ interface MindNode {
   color: string;
   level: number;
   hasContent: boolean;
-  source: "personal" | "document";
+  source: "personal" | "document" | "professor";
   contentMeta?: {
     plans?: number;
     simulados?: number;
@@ -53,6 +54,23 @@ interface DocMap {
     docTitle: string;
   };
   created_at: string;
+}
+
+interface ProfMap {
+  id: number;
+  doc_title: string;
+  subject: string;
+  mind_map_json: {
+    subject: string;
+    topics: Array<{ name: string; subtopics: string[] }>;
+    docTitle: string;
+  };
+  created_at: string;
+}
+
+interface SubjectMap {
+  subject: string;
+  topics: Array<{ name: string; subtopics: string[] }>;
 }
 
 // ─── Node component ───────────────────────────────────────────────────────────
@@ -100,13 +118,11 @@ function MindMapNode({
           filter={isRoot || isSubject ? "url(#shadow)" : undefined}
           style={{ transition: "all 0.2s" }}
         />
-        {/* Lock icon for non-clickable doc nodes */}
         {node.source === "document" && !node.hasContent && !isRoot && (
           <g transform={`translate(${w - 14}, ${h / 2 - 5})`}>
             <Lock width={8} height={8} stroke="#9ca3af" strokeWidth={1.5} fill="none" />
           </g>
         )}
-        {/* Check icon for clickable nodes */}
         {clickable && !isRoot && (
           <g transform={`translate(${w - 14}, ${h / 2 - 5})`}>
             <circle cx={4} cy={5} r={4.5} fill={hovered ? "white" : node.color} opacity={hovered ? 0.3 : 0.2} />
@@ -158,7 +174,82 @@ function layoutTree(root: MindNode, cx: number, cy: number) {
   return positions;
 }
 
-// ─── Drawer ───────────────────────────────────────────────────────────────────
+// ─── Generic Mind Map SVG from JSON ───────────────────────────────────────────
+function MindMapSVG({ mapJson, rootLabel }: { mapJson: { subject: string; topics: Array<{ name: string; subtopics: string[] }> }; rootLabel?: string }) {
+  const [selectedNode, setSelectedNode] = useState<MindNode | null>(null);
+  const color = getColor(mapJson.subject);
+  const W = 920; const H = 680;
+
+  const root: MindNode = {
+    id: "root",
+    label: rootLabel || mapJson.subject,
+    color,
+    level: 0,
+    hasContent: true,
+    source: "document",
+    children: mapJson.topics.slice(0, 10).map((topic, ti) => ({
+      id: `t${ti}`,
+      label: topic.name,
+      color,
+      level: 1,
+      hasContent: true,
+      source: "document" as const,
+      children: (topic.subtopics || []).slice(0, 5).map((sub, si) => ({
+        id: `t${ti}s${si}`,
+        label: sub,
+        color,
+        level: 2,
+        hasContent: true,
+        source: "document" as const,
+        children: [],
+      })),
+    })),
+  };
+
+  const positions = layoutTree(root, W / 2, H / 2);
+
+  return (
+    <>
+      <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minWidth: 600 }}>
+          <defs>
+            <filter id="shadow2" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.12" />
+            </filter>
+          </defs>
+          {positions.map(({ node, x, y, parentX, parentY }) => (
+            <MindMapNode key={node.id} node={node} x={x} y={y} parentX={parentX} parentY={parentY} onClick={setSelectedNode} />
+          ))}
+        </svg>
+      </div>
+      {/* Simple drawer for subject SVG nodes */}
+      <AnimatePresence>
+        {selectedNode && (
+          <>
+            <motion.div className="fixed inset-0 bg-black/30 z-40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedNode(null)} />
+            <motion.div className="fixed right-0 top-0 h-full w-full max-w-sm bg-white shadow-2xl z-50 flex flex-col" initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", stiffness: 300, damping: 30 }}>
+              <div className="flex items-center justify-between px-5 py-4 border-b border-border" style={{ borderTopColor: selectedNode.color, borderTopWidth: 4 }}>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: selectedNode.color }}>{selectedNode.level === 1 ? "Tópico" : "Subtópico"}</p>
+                  <h2 className="text-lg font-black text-foreground">{selectedNode.label}</h2>
+                </div>
+                <button onClick={() => setSelectedNode(null)} className="p-2 rounded-xl hover:bg-secondary"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="flex-1 p-5">
+                <div className="bg-secondary/30 rounded-2xl p-4 text-center">
+                  <CheckCircle className="w-8 h-8 mx-auto mb-2" style={{ color: selectedNode.color }} />
+                  <p className="text-sm font-semibold text-foreground">{selectedNode.level === 1 ? "Tópico do material" : "Subtópico do material"}</p>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+// ─── Node Drawer (for student map) ────────────────────────────────────────────
 function NodeDrawer({ node, onClose }: { node: MindNode | null; onClose: () => void }) {
   return (
     <AnimatePresence>
@@ -261,23 +352,32 @@ function NodeDrawer({ node, onClose }: { node: MindNode | null; onClose: () => v
   );
 }
 
-// ─── Upload Modal ─────────────────────────────────────────────────────────────
-function UploadModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+// ─── Upload Modal (student or professor) ──────────────────────────────────────
+function UploadModal({
+  onClose, onSuccess, endpoint, forProfessor,
+}: {
+  onClose: () => void;
+  onSuccess: () => void;
+  endpoint: string;
+  forProfessor?: boolean;
+}) {
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
+  const [subject, setSubject] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!file && !title) return;
+    if (!file) return;
     setUploading(true);
     setError("");
     try {
       const fd = new FormData();
-      if (file) fd.append("file", file);
+      fd.append("file", file);
       if (title) fd.append("title", title);
-      const res = await fetch(`${BASE_URL}/api/mapa-mental/from-doc`, {
+      if (forProfessor && subject) fd.append("subject", subject);
+      const res = await fetch(`${BASE_URL}${endpoint}`, {
         method: "POST",
         credentials: "include",
         body: fd,
@@ -293,75 +393,88 @@ function UploadModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
   }
 
   return (
-    <AnimatePresence>
+    <motion.div
+      className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      onClick={onClose}
+    >
       <motion.div
-        className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        onClick={onClose}
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6"
+        initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+        onClick={e => e.stopPropagation()}
       >
-        <motion.div
-          className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6"
-          initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-          onClick={e => e.stopPropagation()}
-        >
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h3 className="text-lg font-black text-foreground">Carregar Documento</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">O sistema cria um mapa mental automaticamente</p>
-            </div>
-            <button onClick={onClose} className="p-2 rounded-xl hover:bg-secondary">
-              <X className="w-4 h-4" />
-            </button>
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-lg font-black text-foreground">
+              {forProfessor ? "Carregar Material do Professor" : "Carregar Documento"}
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">O sistema cria um mapa mental automaticamente</p>
           </div>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-secondary">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-sm font-semibold text-foreground block mb-1.5">Título (opcional)</label>
+            <input
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder={forProfessor ? "Ex: Plano de Aula — Funções" : "Ex: Resumo de Física Quântica"}
+              className="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          {forProfessor && (
             <div>
-              <label className="text-sm font-semibold text-foreground block mb-1.5">Título (opcional)</label>
+              <label className="text-sm font-semibold text-foreground block mb-1.5">Matéria (opcional)</label>
               <input
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                placeholder="Ex: Resumo de Física Quântica"
+                value={subject}
+                onChange={e => setSubject(e.target.value)}
+                placeholder="Ex: Matemática, Biologia..."
                 className="w-full px-4 py-2.5 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
-            <div>
-              <label className="text-sm font-semibold text-foreground block mb-1.5">Arquivo (PDF ou TXT)</label>
-              <div
-                className="border-2 border-dashed border-border rounded-2xl p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
-                onClick={() => document.getElementById("file-input")?.click()}
-              >
-                {file ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <FileText className="w-5 h-5 text-primary" />
-                    <span className="text-sm font-semibold text-foreground">{file.name}</span>
-                  </div>
-                ) : (
-                  <>
-                    <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">Clique para selecionar PDF ou TXT</p>
-                    <p className="text-xs text-muted-foreground mt-1">Máximo 25 MB</p>
-                  </>
-                )}
-                <input
-                  id="file-input"
-                  type="file"
-                  accept=".pdf,.txt"
-                  className="hidden"
-                  onChange={e => setFile(e.target.files?.[0] ?? null)}
-                />
-              </div>
-            </div>
-            {error && <p className="text-sm text-red-500 bg-red-50 rounded-xl px-3 py-2">{error}</p>}
-            <button
-              type="submit"
-              disabled={!file || uploading}
-              className="w-full py-3 rounded-2xl bg-primary text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+          )}
+          <div>
+            <label className="text-sm font-semibold text-foreground block mb-1.5">
+              Arquivo <span className="text-muted-foreground font-normal">(PDF, DOCX, DOC ou TXT)</span>
+            </label>
+            <div
+              className="border-2 border-dashed border-border rounded-2xl p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+              onClick={() => document.getElementById(`file-input-${forProfessor ? "prof" : "student"}`)?.click()}
             >
-              {uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Processando...</> : <><Sparkles className="w-4 h-4" /> Gerar Mapa Mental</>}
-            </button>
-          </form>
-        </motion.div>
+              {file ? (
+                <div className="flex items-center justify-center gap-2">
+                  <FileText className="w-5 h-5 text-primary" />
+                  <span className="text-sm font-semibold text-foreground">{file.name}</span>
+                </div>
+              ) : (
+                <>
+                  <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">Clique para selecionar</p>
+                  <p className="text-xs text-muted-foreground mt-1">PDF, DOCX, DOC, TXT — máximo 50 MB</p>
+                </>
+              )}
+              <input
+                id={`file-input-${forProfessor ? "prof" : "student"}`}
+                type="file"
+                accept=".pdf,.docx,.doc,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,text/plain"
+                className="hidden"
+                onChange={e => setFile(e.target.files?.[0] ?? null)}
+              />
+            </div>
+          </div>
+          {error && <p className="text-sm text-red-500 bg-red-50 rounded-xl px-3 py-2">{error}</p>}
+          <button
+            type="submit"
+            disabled={!file || uploading}
+            className="w-full py-3 rounded-2xl bg-primary text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Processando...</> : <><Sparkles className="w-4 h-4" /> Gerar Mapa Mental</>}
+          </button>
+        </form>
       </motion.div>
-    </AnimatePresence>
+    </motion.div>
   );
 }
 
@@ -369,17 +482,32 @@ function UploadModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
 export default function MapaMentalPage() {
   const [, navigate] = useLocation();
   const { isAuthenticated, login } = useAuth();
+
+  // Tabs
+  const [tab, setTab] = useState<"aluno" | "materias" | "professor">("aluno");
+
+  // Student state
   const [mindData, setMindData] = useState<MindNode | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadingStudent, setLoadingStudent] = useState(true);
   const [studentName, setStudentName] = useState("Você");
   const [selectedNode, setSelectedNode] = useState<MindNode | null>(null);
-  const [showUpload, setShowUpload] = useState(false);
+  const [showStudentUpload, setShowStudentUpload] = useState(false);
   const [docMaps, setDocMaps] = useState<DocMap[]>([]);
   const [activeDocId, setActiveDocId] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  const W = 920;
-  const H = 720;
+  // Subject state
+  const [subjectMaps, setSubjectMaps] = useState<SubjectMap[]>([]);
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
+  const [selectedSubject, setSelectedSubject] = useState<SubjectMap | null>(null);
+
+  // Professor state
+  const [profMaps, setProfMaps] = useState<ProfMap[]>([]);
+  const [loadingProf, setLoadingProf] = useState(false);
+  const [selectedProfMap, setSelectedProfMap] = useState<ProfMap | null>(null);
+  const [showProfUpload, setShowProfUpload] = useState(false);
+
+  const W = 920; const H = 720;
 
   const buildTree = useCallback((
     hist: any,
@@ -390,154 +518,102 @@ export default function MapaMentalPage() {
     const simulados = hist?.simulados ?? [];
     const flashcards = hist?.flashcards ?? [];
 
-    // Build personal subject map
-    const personalSubjectMap: Record<string, {
-      topics: Set<string>;
-      plans: number;
-      simulados: number;
-      flashcards: number;
-      scores: number[];
+    const subjectData: Record<string, {
+      plans: number; simulados: number; flashcards: number;
+      topics: string[]; scores: number[];
     }> = {};
 
+    function addSubject(subj: string) {
+      const key = subj.toLowerCase().trim();
+      if (!subjectData[key]) subjectData[key] = { plans: 0, simulados: 0, flashcards: 0, topics: [], scores: [] };
+      return key;
+    }
+
     for (const p of plans) {
-      const materia = p.materia || "Geral";
-      if (!personalSubjectMap[materia]) personalSubjectMap[materia] = { topics: new Set(), plans: 0, simulados: 0, flashcards: 0, scores: [] };
-      personalSubjectMap[materia].plans++;
-      for (const dia of p.plan?.dias ?? []) {
-        for (const t of dia.topicos ?? []) {
-          const nome = typeof t === "object" ? t.nome : t;
-          if (nome) personalSubjectMap[materia].topics.add(nome);
-        }
+      if (p.materia) {
+        const k = addSubject(p.materia);
+        subjectData[k].plans++;
+        if (p.topicos && Array.isArray(p.topicos)) subjectData[k].topics.push(...p.topicos.slice(0, 3));
       }
     }
     for (const s of simulados) {
-      const materia = s.materia || "Geral";
-      if (!personalSubjectMap[materia]) personalSubjectMap[materia] = { topics: new Set(), plans: 0, simulados: 0, flashcards: 0, scores: [] };
-      personalSubjectMap[materia].simulados++;
-      if (s.titulo) personalSubjectMap[materia].topics.add(s.titulo);
-      if (s.score != null && s.total > 0) personalSubjectMap[materia].scores.push(Math.round((s.score / s.total) * 100));
+      if (s.materia) {
+        const k = addSubject(s.materia);
+        subjectData[k].simulados++;
+        if (s.score != null) subjectData[k].scores.push(s.score);
+      }
     }
     for (const f of flashcards) {
-      const materia = f.materia || "Geral";
-      if (!personalSubjectMap[materia]) personalSubjectMap[materia] = { topics: new Set(), plans: 0, simulados: 0, flashcards: 0, scores: [] };
-      personalSubjectMap[materia].flashcards++;
+      if (f.materia) {
+        const k = addSubject(f.materia);
+        subjectData[k].flashcards++;
+      }
     }
 
-    let children: MindNode[] = [];
+    let docTopicsMap: Record<string, string[]> = {};
+    if (docMapJson) {
+      for (const topic of docMapJson.topics || []) {
+        const sub = docMapJson.subject.toLowerCase().trim();
+        if (!docTopicsMap[sub]) docTopicsMap[sub] = [];
+        docTopicsMap[sub].push(topic.name);
+        for (const st of topic.subtopics || []) docTopicsMap[sub].push(st);
+      }
+    }
 
-    if (docMapJson && docId !== null) {
-      // Mode: showing a specific doc mind map merged with personal history
-      const color = getColor(docMapJson.subject);
-      const personalData = personalSubjectMap[docMapJson.subject];
+    const allSubjects = new Set([
+      ...Object.keys(subjectData),
+      ...(docMapJson ? Object.keys(docTopicsMap) : []),
+    ]);
+
+    const children: MindNode[] = [];
+    for (const subj of allSubjects) {
+      const data = subjectData[subj];
+      const hasPersonalContent = !!data;
+      const docTopics = docTopicsMap[subj] || [];
+      const color = getColor(subj);
+      const displayName = subj.slice(0, 1).toUpperCase() + subj.slice(1);
 
       const topicNodes: MindNode[] = [];
-      for (const topic of (docMapJson.topics ?? []).slice(0, 8)) {
-        const topicHasContent = personalData?.topics.has(topic.name) ?? false;
 
-        // Add the topic node
-        topicNodes.push({
-          id: `${docMapJson.subject}-${topic.name}`,
-          label: topic.name,
-          children: [],
-          color,
-          level: 2,
-          hasContent: topicHasContent,
-          source: topicHasContent ? "personal" : "document",
-          contentMeta: topicHasContent ? { topics: [topic.name] } : undefined,
-        });
-
-        // Add subtopics as level-3 nodes (won't show in layoutTree but stored)
-        // For now, subtopics are shown in drawer when clicking topic
+      if (hasPersonalContent && data.topics.length > 0) {
+        const uniqueTopics = [...new Set(data.topics)].slice(0, 5);
+        for (const t of uniqueTopics) {
+          topicNodes.push({
+            id: `${subj}-t-${t}`, label: t, children: [], color,
+            level: 2, hasContent: true, source: "personal",
+          });
+        }
       }
 
-      const subjectHasContent = !!personalData && (personalData.plans > 0 || personalData.simulados > 0 || personalData.flashcards > 0);
-      const avgScore = personalData?.scores.length
-        ? Math.round(personalData.scores.reduce((a, b) => a + b, 0) / personalData.scores.length)
+      for (const dt of docTopics.slice(0, Math.max(0, 5 - topicNodes.length))) {
+        if (!topicNodes.find(n => n.label.toLowerCase() === dt.toLowerCase())) {
+          topicNodes.push({
+            id: `${subj}-doc-${dt}`, label: dt, children: [], color,
+            level: 2, hasContent: hasPersonalContent, source: "document",
+          });
+        }
+      }
+
+      const avgScore = data?.scores.length
+        ? Math.round(data.scores.reduce((a, b) => a + b, 0) / data.scores.length)
         : undefined;
 
-      children = [{
-        id: docMapJson.subject,
-        label: docMapJson.subject,
+      children.push({
+        id: `subj-${subj}`,
+        label: displayName,
         children: topicNodes,
         color,
         level: 1,
-        hasContent: subjectHasContent,
-        source: "document",
-        contentMeta: subjectHasContent ? {
-          plans: personalData?.plans,
-          simulados: personalData?.simulados,
-          flashcards: personalData?.flashcards,
-          topics: Array.from(personalData?.topics ?? []).slice(0, 10),
+        hasContent: hasPersonalContent,
+        source: hasPersonalContent ? "personal" : "document",
+        contentMeta: hasPersonalContent ? {
+          plans: data.plans,
+          simulados: data.simulados,
+          flashcards: data.flashcards,
+          topics: [...new Set(data.topics)].slice(0, 8),
           avgScore,
         } : undefined,
-      }];
-
-      // Also add other personal subjects alongside the doc subject
-      for (const [materia, data] of Object.entries(personalSubjectMap)) {
-        if (materia === docMapJson.subject) continue;
-        if (data.plans + data.simulados + data.flashcards === 0) continue;
-        const c2 = getColor(materia);
-        const avg2 = data.scores.length
-          ? Math.round(data.scores.reduce((a, b) => a + b, 0) / data.scores.length)
-          : undefined;
-        const topicNodes2: MindNode[] = Array.from(data.topics).slice(0, 6).map((t, i) => ({
-          id: `${materia}-${i}`,
-          label: t,
-          children: [],
-          color: c2,
-          level: 2,
-          hasContent: true,
-          source: "personal" as const,
-          contentMeta: { topics: [t] },
-        }));
-        children.push({
-          id: materia,
-          label: materia,
-          children: topicNodes2,
-          color: c2,
-          level: 1,
-          hasContent: true,
-          source: "personal",
-          contentMeta: { plans: data.plans, simulados: data.simulados, flashcards: data.flashcards, topics: Array.from(data.topics).slice(0, 10), avgScore: avg2 },
-        });
-      }
-    } else {
-      // Mode: personal history only
-      children = Object.entries(personalSubjectMap)
-        .filter(([, d]) => d.plans + d.simulados + d.flashcards > 0 || d.topics.size > 0)
-        .slice(0, 10)
-        .map(([materia, data]) => {
-          const color = getColor(materia);
-          const avg = data.scores.length
-            ? Math.round(data.scores.reduce((a, b) => a + b, 0) / data.scores.length)
-            : undefined;
-          const topicNodes: MindNode[] = Array.from(data.topics).slice(0, 6).map((t, i) => ({
-            id: `${materia}-${i}`,
-            label: t,
-            children: [],
-            color,
-            level: 2,
-            hasContent: true,
-            source: "personal" as const,
-            contentMeta: { topics: [t] },
-          }));
-          return {
-            id: materia,
-            label: materia,
-            children: topicNodes,
-            color,
-            level: 1,
-            hasContent: true,
-            source: "personal" as const,
-            contentMeta: {
-              plans: data.plans,
-              simulados: data.simulados,
-              flashcards: data.flashcards,
-              topics: Array.from(data.topics).slice(0, 10),
-              avgScore: avg,
-            },
-          };
-        });
+      });
     }
 
     if (children.length === 0) return null;
@@ -552,48 +628,84 @@ export default function MapaMentalPage() {
     };
   }, [studentName]);
 
-  async function loadData(docId?: number | null) {
-    setLoading(true);
+  async function loadStudentData(docId?: number | null) {
+    setLoadingStudent(true);
     try {
       const [hist, prof, docMapsRes] = await Promise.all([
         fetch(`${BASE_URL}/api/history`, { credentials: "include" }).then(r => r.ok ? r.json() : null),
         fetch(`${BASE_URL}/api/profile`, { credentials: "include" }).then(r => r.ok ? r.json() : null),
         fetch(`${BASE_URL}/api/mapa-mental/my-docs`, { credentials: "include" }).then(r => r.ok ? r.json() : { maps: [] }),
       ]);
-
       if (prof?.studentName) setStudentName(prof.studentName);
       const maps: DocMap[] = docMapsRes.maps ?? [];
       setDocMaps(maps);
-
       const targetDocId = docId ?? activeDocId;
       let docMapJson: DocMap["mind_map_json"] | null = null;
       if (targetDocId !== null) {
         const found = maps.find(m => m.id === targetDocId);
         if (found) docMapJson = found.mind_map_json;
       }
-
       setMindData(buildTree(hist, docMapJson, targetDocId ?? null));
     } finally {
-      setLoading(false);
+      setLoadingStudent(false);
+    }
+  }
+
+  async function loadSubjectMaps() {
+    setLoadingSubjects(true);
+    try {
+      const res = await fetch(`${BASE_URL}/api/mapa-mental/materias`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setSubjectMaps(data.subjects ?? []);
+      }
+    } finally {
+      setLoadingSubjects(false);
+    }
+  }
+
+  async function loadProfMaps() {
+    setLoadingProf(true);
+    try {
+      const res = await fetch(`${BASE_URL}/api/mapa-mental/professor/my-maps`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setProfMaps(data.maps ?? []);
+      }
+    } finally {
+      setLoadingProf(false);
     }
   }
 
   useEffect(() => {
-    if (!isAuthenticated) { setLoading(false); return; }
-    loadData();
+    if (!isAuthenticated) { setLoadingStudent(false); return; }
+    loadStudentData();
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (tab === "materias" && subjectMaps.length === 0) loadSubjectMaps();
+    if (tab === "professor" && profMaps.length === 0) loadProfMaps();
+  }, [tab, isAuthenticated]);
 
   function switchDoc(docId: number | null) {
     setActiveDocId(docId);
     setSelectedNode(null);
-    loadData(docId);
+    loadStudentData(docId);
   }
 
   async function deleteDocMap(id: number) {
-    if (!confirm("Remover este mapa de documento?")) return;
+    if (!confirm("Remover este mapa?")) return;
     await fetch(`${BASE_URL}/api/mapa-mental/my-docs/${id}`, { method: "DELETE", credentials: "include" });
     if (activeDocId === id) switchDoc(null);
-    else loadData();
+    else loadStudentData();
+  }
+
+  async function deleteProfMap(id: number) {
+    if (!confirm("Remover este mapa?")) return;
+    await fetch(`${BASE_URL}/api/mapa-mental/professor/my-maps/${id}`, { method: "DELETE", credentials: "include" });
+    if (selectedProfMap?.id === id) setSelectedProfMap(null);
+    loadProfMaps();
   }
 
   if (!isAuthenticated) {
@@ -615,169 +727,368 @@ export default function MapaMentalPage() {
 
   const positions = mindData ? layoutTree(mindData, W / 2, H / 2) : [];
 
+  const TABS = [
+    { id: "aluno" as const, label: "Meus Estudos", icon: GraduationCap },
+    { id: "materias" as const, label: "Por Matéria", icon: BookMarked },
+    { id: "professor" as const, label: "Portal Professor", icon: User2 },
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-pink-50">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-border px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate("/app")} className="p-2 rounded-xl hover:bg-secondary transition-colors">
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-lg font-black text-foreground flex items-center gap-2">
-              <Brain className="w-5 h-5 text-primary" /> Mapa Mental
-            </h1>
-            <p className="text-xs text-muted-foreground">Clique nos nós coloridos para ver detalhes</p>
+      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-border px-4 py-3">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate("/app")} className="p-2 rounded-xl hover:bg-secondary transition-colors">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-lg font-black text-foreground flex items-center gap-2">
+                <Brain className="w-5 h-5 text-primary" /> Mapa Mental
+              </h1>
+              <p className="text-xs text-muted-foreground">Visual do seu conhecimento</p>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowUpload(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-colors"
-          >
-            <Upload className="w-3.5 h-3.5" /> Carregar Doc
-          </button>
-          <button onClick={() => loadData()} className="p-2 rounded-xl hover:bg-secondary transition-colors">
+          <button onClick={() => {
+            if (tab === "aluno") loadStudentData();
+            else if (tab === "materias") loadSubjectMaps();
+            else loadProfMaps();
+          }} className="p-2 rounded-xl hover:bg-secondary transition-colors">
             <RefreshCw className="w-4 h-4 text-muted-foreground" />
           </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1">
+          {TABS.map(t => {
+            const Icon = t.icon;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${tab === t.id ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary"}`}
+              >
+                <Icon className="w-3.5 h-3.5" /> {t.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       <div className="p-4 max-w-6xl mx-auto space-y-4">
-        {/* Doc selector tabs */}
-        {docMaps.length > 0 && (
-          <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={() => switchDoc(null)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${activeDocId === null ? "bg-primary text-white" : "bg-white border border-border text-foreground hover:bg-secondary"}`}
-            >
-              📚 Meu Histórico
-            </button>
-            {docMaps.map(dm => (
-              <div key={dm.id} className="flex items-center gap-1">
-                <button
-                  onClick={() => switchDoc(dm.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${activeDocId === dm.id ? "bg-indigo-600 text-white" : "bg-white border border-border text-foreground hover:bg-secondary"}`}
-                >
-                  📄 {dm.doc_title}
-                </button>
-                <button
-                  onClick={() => deleteDocMap(dm.id)}
-                  className="p-1.5 rounded-lg hover:bg-red-50 hover:text-red-500 transition-colors text-muted-foreground"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
 
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-4">
-            <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin" />
-            <p className="text-muted-foreground text-sm">Montando seu mapa...</p>
-          </div>
-        ) : !mindData ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-              <BookOpen className="w-8 h-8 text-primary" />
-            </div>
-            <h3 className="font-black text-foreground text-lg">Mapa vazio por enquanto</h3>
-            <p className="text-muted-foreground text-sm max-w-xs">
-              Gere planos de estudo e faça simulados para o mapa crescer — ou carregue um documento para ver o mapa do conteúdo.
-            </p>
-            <div className="flex gap-3 flex-wrap justify-center">
+        {/* ─── TAB: ALUNO ────────────────────────────────────────────── */}
+        {tab === "aluno" && (
+          <>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <p className="text-sm text-muted-foreground">Mapa gerado a partir do seu histórico e documentos</p>
               <button
-                onClick={() => navigate("/app")}
-                className="px-5 py-2.5 rounded-2xl bg-primary text-white font-bold flex items-center gap-2 text-sm"
+                onClick={() => setShowStudentUpload(true)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-colors"
               >
-                <Sparkles className="w-4 h-4" /> Gerar plano
-              </button>
-              <button
-                onClick={() => setShowUpload(true)}
-                className="px-5 py-2.5 rounded-2xl border-2 border-primary text-primary font-bold flex items-center gap-2 text-sm"
-              >
-                <Upload className="w-4 h-4" /> Carregar doc
+                <Upload className="w-3.5 h-3.5" /> Carregar Doc
               </button>
             </div>
-          </div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl border border-border shadow-sm overflow-hidden"
-          >
-            {/* Legend */}
-            <div className="px-6 pt-5 pb-3 border-b border-border flex flex-wrap gap-3 items-center justify-between">
-              <div className="flex flex-wrap gap-3">
-                {mindData.children.map(child => (
-                  <div key={child.id} className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: child.color }} />
-                    <span className="text-xs font-semibold text-foreground">{child.label}</span>
-                    {!child.hasContent && <Lock className="w-2.5 h-2.5 text-muted-foreground" />}
+
+            {/* Doc tabs */}
+            {docMaps.length > 0 && (
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => switchDoc(null)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${activeDocId === null ? "bg-primary text-white" : "bg-white border border-border text-foreground hover:bg-secondary"}`}
+                >
+                  📚 Meu Histórico
+                </button>
+                {docMaps.map(dm => (
+                  <div key={dm.id} className="flex items-center gap-1">
+                    <button
+                      onClick={() => switchDoc(dm.id)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${activeDocId === dm.id ? "bg-indigo-600 text-white" : "bg-white border border-border text-foreground hover:bg-secondary"}`}
+                    >
+                      📄 {dm.doc_title}
+                    </button>
+                    <button onClick={() => deleteDocMap(dm.id)} className="p-1.5 rounded-lg hover:bg-red-50 hover:text-red-500 transition-colors text-muted-foreground">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
                   </div>
                 ))}
               </div>
-              <div className="flex items-center gap-4 text-xs text-muted-foreground shrink-0">
-                <span className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-full bg-indigo-500" /> clicável</span>
-                <span className="flex items-center gap-1"><Lock className="w-2.5 h-2.5" /> sem estudo</span>
-              </div>
-            </div>
+            )}
 
-            {/* SVG Mind Map */}
-            <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
-              <svg
-                ref={svgRef}
-                width={W}
-                height={H}
-                viewBox={`0 0 ${W} ${H}`}
-                className="w-full"
-                style={{ minWidth: 600 }}
+            {loadingStudent ? (
+              <div className="flex flex-col items-center justify-center py-24 gap-4">
+                <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+                <p className="text-muted-foreground text-sm">Montando seu mapa...</p>
+              </div>
+            ) : !mindData ? (
+              <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+                  <BookOpen className="w-8 h-8 text-primary" />
+                </div>
+                <h3 className="font-black text-foreground text-lg">Mapa vazio por enquanto</h3>
+                <p className="text-muted-foreground text-sm max-w-xs">
+                  Gere planos de estudo e faça simulados para o mapa crescer — ou carregue um documento.
+                </p>
+                <div className="flex gap-3 flex-wrap justify-center">
+                  <button onClick={() => navigate("/app")} className="px-5 py-2.5 rounded-2xl bg-primary text-white font-bold flex items-center gap-2 text-sm">
+                    <Sparkles className="w-4 h-4" /> Gerar plano
+                  </button>
+                  <button onClick={() => setShowStudentUpload(true)} className="px-5 py-2.5 rounded-2xl border-2 border-primary text-primary font-bold flex items-center gap-2 text-sm">
+                    <Upload className="w-4 h-4" /> Carregar doc
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl border border-border shadow-sm overflow-hidden">
+                <div className="px-6 pt-5 pb-3 border-b border-border flex flex-wrap gap-3 items-center justify-between">
+                  <div className="flex flex-wrap gap-3">
+                    {mindData.children.map(child => (
+                      <div key={child.id} className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: child.color }} />
+                        <span className="text-xs font-semibold text-foreground">{child.label}</span>
+                        {!child.hasContent && <Lock className="w-2.5 h-2.5 text-muted-foreground" />}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground shrink-0">
+                    <span className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-full bg-indigo-500" /> clicável</span>
+                    <span className="flex items-center gap-1"><Lock className="w-2.5 h-2.5" /> sem estudo</span>
+                  </div>
+                </div>
+                <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
+                  <svg ref={svgRef} width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minWidth: 600 }}>
+                    <defs>
+                      <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.12" />
+                      </filter>
+                    </defs>
+                    {positions.map(({ node, x, y, parentX, parentY }) => (
+                      <MindMapNode key={node.id} node={node} x={x} y={y} parentX={parentX} parentY={parentY} onClick={setSelectedNode} />
+                    ))}
+                  </svg>
+                </div>
+                <div className="px-6 py-4 border-t border-border bg-secondary/20 flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                    <span><strong className="text-foreground">{mindData.children.length}</strong> matérias</span>
+                    <span><strong className="text-foreground">{mindData.children.reduce((a, b) => a + b.children.length, 0)}</strong> tópicos</span>
+                    <span><strong className="text-foreground">{mindData.children.filter(c => c.hasContent).length}</strong> com conteúdo</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Nós coloridos = conteúdo estudado</p>
+                </div>
+              </motion.div>
+            )}
+          </>
+        )}
+
+        {/* ─── TAB: POR MATÉRIA ──────────────────────────────────────── */}
+        {tab === "materias" && (
+          <>
+            {loadingSubjects ? (
+              <div className="flex flex-col items-center justify-center py-24 gap-4">
+                <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+                <p className="text-muted-foreground text-sm">Carregando mapas de matérias...</p>
+              </div>
+            ) : subjectMaps.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
+                <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center">
+                  <BookMarked className="w-8 h-8 text-amber-500" />
+                </div>
+                <h3 className="font-black text-foreground text-lg">Nenhum material cadastrado</h3>
+                <p className="text-muted-foreground text-sm max-w-xs">
+                  Quando professores e administradores adicionarem conteúdo à base de conhecimento, os mapas de matérias aparecerão aqui.
+                </p>
+              </div>
+            ) : selectedSubject ? (
+              <div>
+                <button onClick={() => setSelectedSubject(null)} className="flex items-center gap-2 text-sm font-semibold text-primary mb-4 hover:underline">
+                  <ArrowLeft className="w-4 h-4" /> Todas as matérias
+                </button>
+                <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl border border-border shadow-sm overflow-hidden">
+                  <div className="px-6 pt-5 pb-3 border-b border-border">
+                    <h2 className="text-lg font-black text-foreground flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full" style={{ backgroundColor: getColor(selectedSubject.subject) }} />
+                      {selectedSubject.subject}
+                    </h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">{selectedSubject.topics.length} tópicos do material do professor</p>
+                  </div>
+                  <MindMapSVG mapJson={selectedSubject} rootLabel={selectedSubject.subject} />
+                  <div className="px-6 py-4 border-t border-border bg-secondary/20">
+                    <p className="text-xs text-muted-foreground">{selectedSubject.topics.length} tópicos · {selectedSubject.topics.reduce((a, t) => a + (t.subtopics?.length || 0), 0)} subtópicos</p>
+                  </div>
+                </motion.div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {subjectMaps.map((sm, i) => {
+                  const color = getColor(sm.subject);
+                  return (
+                    <motion.button
+                      key={i}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      onClick={() => setSelectedSubject(sm)}
+                      className="bg-white rounded-2xl border border-border shadow-sm p-5 text-left hover:shadow-md hover:border-primary/30 transition-all group"
+                    >
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: color + "20" }}>
+                          <Brain className="w-5 h-5" style={{ color }} />
+                        </div>
+                        <div>
+                          <p className="font-black text-foreground text-sm">{sm.subject}</p>
+                          <p className="text-xs text-muted-foreground">{sm.topics.length} tópicos</p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto group-hover:text-primary transition-colors" />
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {sm.topics.slice(0, 3).map((t, j) => (
+                          <span key={j} className="px-2 py-0.5 rounded-lg text-xs font-semibold" style={{ backgroundColor: color + "15", color }}>
+                            {t.name.slice(0, 25)}{t.name.length > 25 ? "…" : ""}
+                          </span>
+                        ))}
+                        {sm.topics.length > 3 && (
+                          <span className="px-2 py-0.5 rounded-lg text-xs font-semibold text-muted-foreground bg-secondary">
+                            +{sm.topics.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ─── TAB: PORTAL PROFESSOR ─────────────────────────────────── */}
+        {tab === "professor" && (
+          <>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <p className="text-sm text-muted-foreground">Seus mapas mentais de planos de aula, provas e trabalhos</p>
+              <button
+                onClick={() => setShowProfUpload(true)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-colors"
               >
-                <defs>
-                  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-                    <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.12" />
-                  </filter>
-                </defs>
-                {positions.map(({ node, x, y, parentX, parentY }) => (
-                  <MindMapNode
-                    key={node.id}
-                    node={node}
-                    x={x}
-                    y={y}
-                    parentX={parentX}
-                    parentY={parentY}
-                    onClick={setSelectedNode}
-                  />
-                ))}
-              </svg>
+                <Plus className="w-3.5 h-3.5" /> Novo Material
+              </button>
             </div>
 
-            <div className="px-6 py-4 border-t border-border bg-secondary/20 flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                <span><strong className="text-foreground">{mindData.children.length}</strong> matérias</span>
-                <span><strong className="text-foreground">{mindData.children.reduce((a, b) => a + b.children.length, 0)}</strong> tópicos</span>
-                <span><strong className="text-foreground">{mindData.children.filter(c => c.hasContent).length}</strong> com conteúdo</span>
+            {loadingProf ? (
+              <div className="flex flex-col items-center justify-center py-24 gap-4">
+                <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+                <p className="text-muted-foreground text-sm">Carregando seus mapas...</p>
               </div>
-              <p className="text-xs text-muted-foreground">Nós coloridos e clicáveis = conteúdo estudado</p>
-            </div>
-          </motion.div>
+            ) : selectedProfMap ? (
+              <div>
+                <button onClick={() => setSelectedProfMap(null)} className="flex items-center gap-2 text-sm font-semibold text-primary mb-4 hover:underline">
+                  <ArrowLeft className="w-4 h-4" /> Meus materiais
+                </button>
+                <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl border border-border shadow-sm overflow-hidden">
+                  <div className="px-6 pt-5 pb-3 border-b border-border flex items-start justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">{selectedProfMap.subject || "Material"}</p>
+                      <h2 className="text-lg font-black text-foreground">{selectedProfMap.doc_title}</h2>
+                      <p className="text-xs text-muted-foreground mt-0.5">{new Date(selectedProfMap.created_at).toLocaleDateString("pt-BR")}</p>
+                    </div>
+                    <button onClick={() => deleteProfMap(selectedProfMap.id)} className="p-2 rounded-xl hover:bg-red-50 hover:text-red-500 transition-colors text-muted-foreground">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <MindMapSVG mapJson={selectedProfMap.mind_map_json} rootLabel={selectedProfMap.doc_title} />
+                  <div className="px-6 py-4 border-t border-border bg-secondary/20">
+                    <p className="text-xs text-muted-foreground">{selectedProfMap.mind_map_json.topics.length} tópicos gerados pelo documento</p>
+                  </div>
+                </motion.div>
+              </div>
+            ) : profMaps.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
+                <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center">
+                  <FolderOpen className="w-8 h-8 text-indigo-400" />
+                </div>
+                <h3 className="font-black text-foreground text-lg">Nenhum mapa ainda</h3>
+                <p className="text-muted-foreground text-sm max-w-xs">
+                  Carregue planos de aula, provas, trabalhos ou qualquer material em PDF ou DOCX e gere mapas mentais automaticamente.
+                </p>
+                <button
+                  onClick={() => setShowProfUpload(true)}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-indigo-600 text-white font-bold text-sm"
+                >
+                  <Upload className="w-4 h-4" /> Carregar material
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {profMaps.map((pm, i) => {
+                  const color = getColor(pm.subject || pm.doc_title);
+                  return (
+                    <motion.div
+                      key={pm.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="bg-white rounded-2xl border border-border shadow-sm p-5 group"
+                    >
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: color + "20" }}>
+                          <FileText className="w-5 h-5" style={{ color }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-black text-foreground text-sm truncate">{pm.doc_title}</p>
+                          {pm.subject && <p className="text-xs font-semibold" style={{ color }}>{pm.subject}</p>}
+                          <p className="text-xs text-muted-foreground">{new Date(pm.created_at).toLocaleDateString("pt-BR")}</p>
+                        </div>
+                        <button onClick={() => deleteProfMap(pm.id)} className="p-1.5 rounded-lg hover:bg-red-50 hover:text-red-500 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {(pm.mind_map_json.topics || []).slice(0, 3).map((t, j) => (
+                          <span key={j} className="px-2 py-0.5 rounded-lg text-xs font-semibold" style={{ backgroundColor: color + "15", color }}>
+                            {t.name.slice(0, 20)}{t.name.length > 20 ? "…" : ""}
+                          </span>
+                        ))}
+                        {(pm.mind_map_json.topics || []).length > 3 && (
+                          <span className="px-2 py-0.5 rounded-lg text-xs font-semibold text-muted-foreground bg-secondary">
+                            +{pm.mind_map_json.topics.length - 3}
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => setSelectedProfMap(pm)}
+                        className="w-full py-2 rounded-xl text-xs font-bold transition-colors"
+                        style={{ backgroundColor: color + "10", color }}
+                      >
+                        Ver mapa completo →
+                      </button>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* Node Drawer */}
+      {/* Drawers & Modals */}
       <NodeDrawer node={selectedNode} onClose={() => setSelectedNode(null)} />
 
-      {/* Upload Modal */}
-      {showUpload && (
-        <UploadModal
-          onClose={() => setShowUpload(false)}
-          onSuccess={() => {
-            setShowUpload(false);
-            loadData();
-          }}
-        />
-      )}
+      <AnimatePresence>
+        {showStudentUpload && (
+          <UploadModal
+            endpoint="/api/mapa-mental/from-doc"
+            onClose={() => setShowStudentUpload(false)}
+            onSuccess={() => { setShowStudentUpload(false); loadStudentData(); }}
+          />
+        )}
+        {showProfUpload && (
+          <UploadModal
+            endpoint="/api/mapa-mental/professor/from-doc"
+            forProfessor
+            onClose={() => setShowProfUpload(false)}
+            onSuccess={() => { setShowProfUpload(false); loadProfMaps(); }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

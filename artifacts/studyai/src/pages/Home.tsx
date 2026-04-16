@@ -315,13 +315,13 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Show onboarding wizard on first visit, then pre-fill form with profile
+  // Show onboarding wizard on first visit (only when authenticated)
   useEffect(() => {
-    if (!hasOnboarded()) {
+    if (isAuthenticated && !hasOnboarded()) {
       setShowOnboarding(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isAuthenticated]);
 
   // Pre-fill form when student profile is loaded (from DB or localStorage)
   useEffect(() => {

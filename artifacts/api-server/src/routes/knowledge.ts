@@ -69,7 +69,7 @@ router.post("/knowledge/upload-file", upload.single("file"), async (req: Request
   try {
     let contentText = "";
     if (req.file.mimetype === "application/pdf") {
-      const pdfParse = (await import("pdf-parse/lib/pdf-parse.js")).default;
+      const pdfParse = (await import("pdf-parse")).default;
       const parsed = await pdfParse(req.file.buffer);
       contentText = parsed.text;
     } else {
@@ -127,7 +127,7 @@ router.post("/mapa-mental/from-doc", upload.single("file"), async (req: Request,
     let contentText = "";
     if (req.file) {
       if (req.file.mimetype === "application/pdf") {
-        const pdfParse = (await import("pdf-parse/lib/pdf-parse.js")).default;
+        const pdfParse = (await import("pdf-parse")).default;
         const parsed = await pdfParse(req.file.buffer);
         contentText = parsed.text;
       } else {

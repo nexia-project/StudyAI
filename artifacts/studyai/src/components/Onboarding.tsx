@@ -2,16 +2,15 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { GraduationCap, Target, BookOpen, ArrowRight, Sparkles, Trophy } from "lucide-react";
 
-const GRADES = [
-  "1º Ano - Fundamental", "2º Ano - Fundamental", "3º Ano - Fundamental",
-  "4º Ano - Fundamental", "5º Ano - Fundamental", "6º Ano - Fundamental",
-  "7º Ano - Fundamental", "8º Ano - Fundamental", "9º Ano - Fundamental",
-  "1º Ano - Médio", "2º Ano - Médio", "3º Ano - Médio",
-  "Faculdade / Ensino Superior", "Outro / Concurso / Idiomas",
+const NIVEIS = [
+  { id: "fundamental", label: "Ensino Fundamental", emoji: "📚", desc: "6º ao 9º ano" },
+  { id: "medio", label: "Ensino Médio", emoji: "🏫", desc: "1º, 2º e 3º ano" },
+  { id: "superior", label: "Faculdade / Universidade", emoji: "🎓", desc: "Graduação e pós-graduação" },
+  { id: "cursinho", label: "Cursinho / Concurso", emoji: "🏛️", desc: "ENEM, vestibular, concurso público" },
 ];
 
 const GOALS = [
-  { id: "enem", label: "ENEM 2025", emoji: "📚", desc: "Vestibular nacional unificado", needsDetail: false },
+  { id: "enem", label: "ENEM 2025", emoji: "📝", desc: "Vestibular nacional unificado", needsDetail: false },
   { id: "vestibular", label: "Vestibular", emoji: "🎓", desc: "FUVEST, UNICAMP, UNESP e outros", needsDetail: true, placeholder: "Ex: FUVEST – Medicina USP" },
   { id: "concurso", label: "Concurso Público", emoji: "🏛️", desc: "Federal, estadual ou municipal", needsDetail: true, placeholder: "Ex: Receita Federal – Auditor Fiscal" },
   { id: "escola", label: "Escola / Faculdade", emoji: "📖", desc: "Provas, trabalhos e matérias", needsDetail: false },
@@ -55,6 +54,11 @@ export function Onboarding({ onComplete }: OnboardingProps) {
   const [objetivo, setObjetivo] = useState("");
   const [selectedGoal, setSelectedGoal] = useState<typeof GOALS[0] | null>(null);
   const [concursoAlvo, setConcursoAlvo] = useState("");
+
+  const handleSelectNivel = (nivel: typeof NIVEIS[0]) => {
+    setSerie(nivel.label);
+    setStep(2);
+  };
 
   const handleSelectGoal = (goal: typeof GOALS[0]) => {
     setObjetivo(goal.label);
@@ -114,23 +118,25 @@ export function Onboarding({ onComplete }: OnboardingProps) {
       ),
     },
     {
-      title: `Em qual série você está, ${nome || "amigo"}?`,
-      subtitle: "Adapto todo o conteúdo e as questões ao seu nível.",
+      title: `Qual é o seu nível de ensino, ${nome || "amigo"}?`,
+      subtitle: "Adapto todo o conteúdo ao seu momento acadêmico.",
       content: (
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
-            {GRADES.map((g) => (
-              <button
-                key={g}
-                onClick={() => { setSerie(g); setStep(2); }}
-                className={`px-4 py-3 rounded-xl border-2 text-sm font-semibold text-left transition-all hover:border-primary hover:bg-primary/5 ${
-                  serie === g ? "border-primary bg-primary/10 text-primary" : "border-gray-200 text-gray-700"
-                }`}
-              >
-                {g}
-              </button>
-            ))}
-          </div>
+          {NIVEIS.map((n) => (
+            <button
+              key={n.id}
+              onClick={() => handleSelectNivel(n)}
+              className={`w-full px-5 py-4 rounded-2xl border-2 text-left transition-all hover:border-primary hover:bg-primary/5 flex items-center gap-4 ${
+                serie === n.label ? "border-primary bg-primary/10" : "border-gray-200"
+              }`}
+            >
+              <span className="text-3xl">{n.emoji}</span>
+              <div>
+                <p className="font-black text-gray-900">{n.label}</p>
+                <p className="text-sm text-gray-500">{n.desc}</p>
+              </div>
+            </button>
+          ))}
         </div>
       ),
     },
@@ -199,7 +205,6 @@ export function Onboarding({ onComplete }: OnboardingProps) {
   ];
 
   const current = stepsContent[step];
-  const visibleStep = Math.min(step, 2);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">

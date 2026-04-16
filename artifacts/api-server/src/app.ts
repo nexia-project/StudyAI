@@ -9,6 +9,7 @@ import subscriptionWebhookRouter from "./routes/subscriptionWebhook";
 import { logger } from "./lib/logger";
 import { optionalAuth } from "./middlewares/requireAuth";
 import { clerkProxyMiddleware, CLERK_PROXY_PATH } from "./middlewares/clerkProxyMiddleware";
+import { sanitizeInputs } from "./middlewares/security";
 
 const app: Express = express();
 
@@ -76,6 +77,9 @@ app.use("/api/subscription/webhook", express.raw({ type: "*/*" }));
 // ── Body parsers ─────────────────────────────────────────────────────────────
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// ── Input sanitization (strip null bytes, enforce field length limits) ────────
+app.use(sanitizeInputs);
 
 // ── Rate limiters ─────────────────────────────────────────────────────────────
 

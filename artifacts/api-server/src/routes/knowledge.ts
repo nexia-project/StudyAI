@@ -4,6 +4,7 @@ import multer from "multer";
 import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
+import { validateFileUpload } from "../middlewares/security";
 
 const router: IRouter = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -164,7 +165,7 @@ router.post("/knowledge/upload-text", async (req: Request, res: Response) => {
 });
 
 // ─── Upload doc (PDF/TXT file) ─────────────────────────────────────────────────
-router.post("/knowledge/upload-file", upload.single("file"), async (req: Request, res: Response) => {
+router.post("/knowledge/upload-file", upload.single("file"), validateFileUpload, async (req: Request, res: Response) => {
   if (!await requireAdmin(req, res)) return;
   if (!req.file) {
     res.status(400).json({ erro: "Arquivo obrigatório" });
@@ -304,7 +305,7 @@ export async function searchKnowledge(query: string, subject?: string, limit = 4
 }
 
 // ─── Generate mind map from document (for any user) ───────────────────────────
-router.post("/mapa-mental/from-doc", upload.single("file"), async (req: Request, res: Response) => {
+router.post("/mapa-mental/from-doc", upload.single("file"), validateFileUpload, async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
   const { title } = req.body;
 

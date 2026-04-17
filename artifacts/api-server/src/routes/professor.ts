@@ -11,13 +11,14 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 
 const router: IRouter = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// ─── Search knowledge base (consulta interna do sistema) ──────────────────────
+// ─── Search knowledge base + Wikipedia (consulta interna do sistema) ──────────
 async function searchKnowledgeBase(query: string): Promise<string> {
   try {
+    // searchKnowledge already auto-enriches from Wikipedia when local is sparse
     const { searchKnowledge } = await import("./knowledge");
     const ctx = await searchKnowledge(query, undefined, 3);
     if (!ctx) return "";
-    return `\n\nBASE DE CONHECIMENTO INTERNA (priorize este conteúdo nas respostas):\n${ctx}`;
+    return `\n\nBASE DE CONHECIMENTO (priorize este conteúdo nas respostas — inclui Wikipedia PT e base local):\n${ctx}`;
   } catch {
     return "";
   }

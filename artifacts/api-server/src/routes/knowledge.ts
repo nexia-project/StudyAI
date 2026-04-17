@@ -5,6 +5,7 @@ import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { validateFileUpload } from "../middlewares/security";
+import { enrichTopicFromWikipedia } from "./wikipedia";
 
 const router: IRouter = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -388,14 +389,41 @@ export async function searchKnowledge(query: string, subject?: string, limit = 4
       LIMIT ${limit}
     `);
 
-    if (!rows.rows.length) return "";
-    const docs = rows.rows as Array<{ title: string; subject: string; content: string }>;
-    return docs.map(d =>
+    const localDocs = rows.rows as Array<{ title: string; subject: string; content: string }>;
+    const localContent = localDocs.map(d =>
       `[Base de Conhecimento — ${d.subject ? d.subject + ": " : ""}${d.title}]\n${d.content}`
     ).join("\n\n---\n\n");
+
+    // If local knowledge is insufficient (< 300 chars), enrich with Wikipedia PT
+    if (localContent.length < 300 && query.trim().length >= 3) {
+      try {
+        const wikiContent = await enrichTopicFromWikipedia(query, subject);
+        if (wikiContent) {
+          return localContent
+            ? `${localContent}\n\n---\n\n${wikiContent}`
+            : wikiContent;
+        }
+      } catch {
+        // Wikipedia fallback failed silently — return what we have
+      }
+    }
+
+    return localContent;
   } catch {
     return "";
   }
+}
+
+// ─── Search with Wikipedia always enriching ────────────────────────────────────
+export async function searchKnowledgeRich(query: string, subject?: string): Promise<string> {
+  const [local, wiki] = await Promise.allSettled([
+    searchKnowledge(query, subject, 3),
+    enrichTopicFromWikipedia(query, subject),
+  ]);
+  const parts: string[] = [];
+  if (local.status === "fulfilled" && local.value) parts.push(local.value);
+  if (wiki.status === "fulfilled" && wiki.value) parts.push(wiki.value);
+  return parts.join("\n\n---\n\n");
 }
 
 // ─── Generate mind map from document (student) ────────────────────────────────

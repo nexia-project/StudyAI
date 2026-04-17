@@ -31,12 +31,15 @@ export function useStudyAuth() {
     : null;
 
   function login() {
-    // Save current path so we can return after login
+    // Save current path so we can return after login (never save auth pages)
     try {
       const base = import.meta.env.BASE_URL.replace(/\/$/, "");
       const current = window.location.pathname;
       const path = current.startsWith(base) ? current.slice(base.length) : current;
-      sessionStorage.setItem("auth_return_to", path || "/app");
+      const isAuthPage = ["/sign-in", "/sign-up"].some((p) => path.startsWith(p));
+      if (!isAuthPage) {
+        sessionStorage.setItem("auth_return_to", path || "/app");
+      }
     } catch {
       // private browsing
     }

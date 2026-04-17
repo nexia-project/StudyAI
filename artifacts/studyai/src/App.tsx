@@ -104,23 +104,39 @@ function SignUpPage() {
   );
 }
 
+// Auth paths that should never be used as a return destination
+const AUTH_PATHS = ["/sign-in", "/sign-up"];
+
 function PostLoginRedirect() {
   const { isAuthenticated, isLoading } = useStudyAuth();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
 
   useEffect(() => {
     if (isLoading || !isAuthenticated) return;
+
+    // If user is authenticated but still on an auth page, send to /app
+    if (AUTH_PATHS.some((p) => location.startsWith(p))) {
+      navigate("/app", { replace: true });
+      return;
+    }
+
     try {
       const dest = sessionStorage.getItem("auth_return_to");
       sessionStorage.removeItem("auth_return_to");
       if (dest && dest.startsWith("/") && !dest.startsWith("//")) {
-        const path = dest.startsWith(basePath) ? dest.slice(basePath.length) : dest;
-        navigate(path || "/app");
+        // Strip basePath prefix (handles empty basePath safely)
+        const stripped = basePath && dest.startsWith(basePath)
+          ? dest.slice(basePath.length) || "/"
+          : dest;
+        // Never redirect back to an auth page
+        if (!AUTH_PATHS.some((p) => stripped.startsWith(p))) {
+          navigate(stripped || "/app", { replace: true });
+        }
       }
     } catch {
       // ignore (private browsing may block sessionStorage)
     }
-  }, [isAuthenticated, isLoading, navigate]);
+  }, [isAuthenticated, isLoading, location, navigate]);
 
   return null;
 }

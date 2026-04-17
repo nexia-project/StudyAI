@@ -246,19 +246,21 @@ export default function Dashboard() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-6 p-8 bg-gradient-to-br from-violet-50 to-indigo-50">
-        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-violet-200">
-          <BarChart2 className="w-10 h-10 text-white" />
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-indigo-50">
+        <AppNav />
+        <div className="flex flex-col items-center justify-center gap-6 p-8 pt-28">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-violet-200">
+            <BarChart2 className="w-10 h-10 text-white" />
+          </div>
+          <div className="text-center">
+            <h1 className="text-2xl font-black text-slate-800 mb-2">Seu Dashboard</h1>
+            <p className="text-slate-500">Entre para ver seu desempenho, evolução e histórico completo.</p>
+          </div>
+          <button onClick={login}
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-600 text-white font-black shadow-lg hover:opacity-90 transition-opacity">
+            <LogIn className="w-5 h-5" /> Entrar para ver o Dashboard
+          </button>
         </div>
-        <div className="text-center">
-          <h1 className="text-2xl font-black text-slate-800 mb-2">Seu Dashboard</h1>
-          <p className="text-slate-500">Entre para ver seu desempenho, evolução e histórico completo.</p>
-        </div>
-        <button onClick={login}
-          className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-600 text-white font-black shadow-lg hover:opacity-90 transition-opacity">
-          <LogIn className="w-5 h-5" /> Entrar para ver o Dashboard
-        </button>
-        <button onClick={() => navigate("/app")} className="text-sm text-slate-400 hover:text-slate-600">← Voltar</button>
       </div>
     );
   }

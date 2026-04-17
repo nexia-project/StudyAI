@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
+import { AppNav } from "@/components/AppNav";
 import {
   ArrowLeft, BookOpen, Upload, X, FileText, Trash2, Search,
   Link2, Loader2, CheckCircle, AlertCircle, FileImage,
@@ -537,13 +538,16 @@ export default function BaseConhecimento() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
-        <BookOpen className="w-12 h-12 text-indigo-400 mb-4" />
-        <h1 className="text-xl font-black text-foreground mb-2">Base de Conhecimento</h1>
-        <p className="text-muted-foreground mb-4">Faça login para acessar sua base de conhecimento pessoal.</p>
-        <button onClick={() => navigate("/sign-in")} className="px-6 py-3 rounded-2xl font-bold text-white bg-indigo-600 hover:bg-indigo-700">
-          Entrar
-        </button>
+      <div className="min-h-screen">
+        <AppNav />
+        <div className="flex flex-col items-center justify-center p-6 pt-28 text-center">
+          <BookOpen className="w-12 h-12 text-indigo-400 mb-4" />
+          <h1 className="text-xl font-black text-foreground mb-2">Base de Conhecimento</h1>
+          <p className="text-muted-foreground mb-4">Faça login para acessar sua base de conhecimento pessoal.</p>
+          <button onClick={() => navigate("/sign-in")} className="px-6 py-3 rounded-2xl font-bold text-white bg-indigo-600 hover:bg-indigo-700">
+            Entrar
+          </button>
+        </div>
       </div>
     );
   }
@@ -552,11 +556,12 @@ export default function BaseConhecimento() {
 
   return (
     <div className="min-h-screen bg-background">
+      <AppNav />
       {/* Toast */}
       <AnimatePresence>
         {toast && (
           <motion.div
-            className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl shadow-xl text-sm font-semibold flex items-center gap-2 ${toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}
+            className={`fixed top-16 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl shadow-xl text-sm font-semibold flex items-center gap-2 ${toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"}`}
             initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
           >
             {toast.type === "success" ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
@@ -571,17 +576,12 @@ export default function BaseConhecimento() {
         {modal === "url" && <UploadUrlModal onClose={() => setModal(null)} onSuccess={handleUploadSuccess} />}
       </AnimatePresence>
 
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-border">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
-          <button onClick={() => navigate("/app")} className="p-2 rounded-xl hover:bg-secondary transition-colors">
-            <ArrowLeft className="w-5 h-5 text-muted-foreground" />
-          </button>
-          <div className="flex items-center gap-2 flex-1">
-            <Database className="w-5 h-5 text-indigo-600" />
-            <h1 className="text-base font-black text-foreground">Base de Conhecimento</h1>
-          </div>
-          <button onClick={loadDocs} className="p-2 rounded-xl hover:bg-secondary transition-colors" title="Atualizar">
+      {/* Sub-header */}
+      <div className="sticky top-[53px] z-10 bg-white/95 backdrop-blur-sm border-b border-border">
+        <div className="max-w-3xl mx-auto px-4 py-2.5 flex items-center gap-2">
+          <Database className="w-4 h-4 text-indigo-600" />
+          <h1 className="text-sm font-black text-foreground flex-1">Base de Conhecimento</h1>
+          <button onClick={loadDocs} className="p-1.5 rounded-xl hover:bg-secondary transition-colors" title="Atualizar">
             <RefreshCw className={`w-4 h-4 text-muted-foreground ${loadingDocs ? "animate-spin" : ""}`} />
           </button>
         </div>

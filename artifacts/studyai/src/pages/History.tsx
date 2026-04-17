@@ -3,23 +3,12 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 import {
-  History,
-  BookOpen,
-  Trophy,
-  Brain,
-  ArrowLeft,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  AlertCircle,
-  GraduationCap,
-  LogIn,
-  PlayCircle,
-  ChevronRight,
-  Calendar,
+  History, BookOpen, Trophy, Brain, ArrowLeft,
+  Clock, CheckCircle2, XCircle, Loader2, AlertCircle,
+  GraduationCap, LogIn, PlayCircle, ChevronRight, Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AppNav } from "@/components/AppNav";
 
 interface HistoryData {
   plans: Array<{
@@ -163,30 +152,26 @@ export default function HistoryPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-6 px-4">
-        <div className="text-center space-y-3">
-          <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center mx-auto">
-            <History className="w-8 h-8 text-primary" />
+      <div className="min-h-screen">
+        <AppNav />
+        <div className="flex flex-col items-center justify-center gap-6 px-4 pt-28">
+          <div className="text-center space-y-3">
+            <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center mx-auto">
+              <History className="w-8 h-8 text-primary" />
+            </div>
+            <h1 className="text-2xl font-black text-foreground">Meu Histórico</h1>
+            <p className="text-muted-foreground max-w-sm">
+              Entre na sua conta para ver seu histórico de estudos, resultados de simulados e sessões de flashcards.
+            </p>
           </div>
-          <h1 className="text-2xl font-black text-foreground">Meu Histórico</h1>
-          <p className="text-muted-foreground max-w-sm">
-            Entre na sua conta para ver seu histórico de estudos, resultados de simulados e sessões de flashcards.
-          </p>
+          <button
+            onClick={login}
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-white font-bold hover:opacity-90 transition-opacity shadow-lg shadow-primary/25"
+          >
+            <LogIn className="w-5 h-5" />
+            Entrar para ver histórico
+          </button>
         </div>
-        <button
-          onClick={login}
-          className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-white font-bold hover:opacity-90 transition-opacity shadow-lg shadow-primary/25"
-        >
-          <LogIn className="w-5 h-5" />
-          Entrar para ver histórico
-        </button>
-        <button
-          onClick={() => navigate("/app")}
-          className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Voltar para início
-        </button>
       </div>
     );
   }
@@ -205,15 +190,11 @@ export default function HistoryPage() {
     : 0;
 
   return (
-    <div className="min-h-screen pb-20 pt-8 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
+    <div className="min-h-screen pb-20">
+      <AppNav />
+      <div className="pt-6 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3 mb-8">
-        <button
-          onClick={() => navigate("/app")}
-          className="p-2 rounded-xl bg-secondary hover:bg-secondary/70 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
         <div>
           <h1 className="text-2xl font-black flex items-center gap-2">
             <History className="w-6 h-6 text-primary" />
@@ -477,6 +458,7 @@ export default function HistoryPage() {
           )}
         </>
       )}
+      </div>
     </div>
   );
 }

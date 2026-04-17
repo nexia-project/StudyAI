@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 import { ArrowLeft, Lock, Trophy, Zap, BookOpen, Brain, Target, Flame, Star, Medal, Clock, Crown, GraduationCap, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AppNav } from "@/components/AppNav";
 
 interface Stats {
   simCount: number;
@@ -119,16 +120,11 @@ export default function ConquistasPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-indigo-50">
+      <AppNav />
       {/* Header */}
       <div className="bg-gradient-to-r from-violet-600 to-indigo-700 px-4 py-6 shadow-xl shadow-violet-200">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center gap-4 mb-4">
-            <button
-              onClick={() => navigate("/app")}
-              className="w-9 h-9 rounded-xl bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
             <div className="flex-1">
               <h1 className="text-white font-black text-2xl flex items-center gap-2">
                 <Trophy className="w-7 h-7 text-amber-300" />

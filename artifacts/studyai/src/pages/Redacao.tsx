@@ -3,20 +3,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { useSubscription, startCheckout } from "@/hooks/useSubscription";
 import {
-  ArrowLeft,
-  PenLine,
-  Sparkles,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
-  Share2,
-  Check,
-  Star,
-  ChevronDown,
-  ChevronUp,
-  Volume2,
-  VolumeX,
+  ArrowLeft, PenLine, Sparkles, CheckCircle2, AlertCircle,
+  Loader2, Share2, Check, Star, ChevronDown, ChevronUp, Volume2, VolumeX,
 } from "lucide-react";
+import { AppNav } from "@/components/AppNav";
 
 interface Competencia {
   numero: number;
@@ -156,54 +146,46 @@ export default function Redacao() {
 
   if (!isPremium) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-6 p-8 bg-gradient-to-br from-violet-50 to-indigo-50">
-        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-violet-200">
-          <PenLine className="w-10 h-10 text-white" />
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-indigo-50">
+        <AppNav />
+        <div className="flex flex-col items-center justify-center gap-6 p-8 pt-28">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-violet-200">
+            <PenLine className="w-10 h-10 text-white" />
+          </div>
+          <div className="text-center">
+            <h1 className="text-2xl font-black text-slate-800 mb-2">Correção de Redação</h1>
+            <p className="text-slate-500 max-w-sm">Envie sua redação e receba uma avaliação detalhada nas 5 competências do ENEM por IA. Recurso exclusivo Premium.</p>
+          </div>
+          <button
+            onClick={async () => { setCheckoutLoading(true); try { await startCheckout(); } catch { navigate("/pricing"); } finally { setCheckoutLoading(false); } }}
+            disabled={checkoutLoading}
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-black shadow-lg hover:opacity-90 transition-opacity disabled:opacity-60"
+          >
+            <Sparkles className="w-5 h-5" />
+            {checkoutLoading ? "Aguarde..." : "Assinar Premium — R$29,90/mês"}
+          </button>
         </div>
-        <div className="text-center">
-          <h1 className="text-2xl font-black text-slate-800 mb-2">Correção de Redação</h1>
-          <p className="text-slate-500 max-w-sm">Envie sua redação e receba uma avaliação detalhada nas 5 competências do ENEM por IA. Recurso exclusivo Premium.</p>
-        </div>
-        <button
-          onClick={async () => { setCheckoutLoading(true); try { await startCheckout(); } catch { navigate("/pricing"); } finally { setCheckoutLoading(false); } }}
-          disabled={checkoutLoading}
-          className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-black shadow-lg hover:opacity-90 transition-opacity disabled:opacity-60"
-        >
-          <Sparkles className="w-5 h-5" />
-          {checkoutLoading ? "Aguarde..." : "Assinar Premium — R$29,90/mês"}
-        </button>
-        <button onClick={() => navigate("/app")} className="text-sm text-slate-400 hover:text-slate-600 transition-colors">
-          ← Voltar ao início
-        </button>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50/30 to-indigo-50/40">
-      {/* Top Nav */}
-      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-slate-100">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
-          <button
-            onClick={() => navigate("/app")}
-            className="flex items-center gap-2 px-3 py-2 rounded-2xl hover:bg-slate-100 text-slate-600 font-bold text-sm transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Voltar</span>
-          </button>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow">
-              <PenLine className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <h1 className="font-black text-slate-800 text-sm leading-tight">Correção de Redação</h1>
-              <p className="text-xs text-slate-400 font-semibold">Avaliação nas 5 competências ENEM</p>
-            </div>
+      <AppNav />
+      {/* Sub-header */}
+      <div className="sticky top-[53px] z-10 bg-white/80 backdrop-blur-xl border-b border-slate-100">
+        <div className="max-w-3xl mx-auto px-4 py-2.5 flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow">
+            <PenLine className="w-3.5 h-3.5 text-white" />
+          </div>
+          <div>
+            <h1 className="font-black text-slate-800 text-sm leading-tight">Correção de Redação</h1>
+            <p className="text-xs text-slate-400 font-medium">Avaliação nas 5 competências ENEM</p>
           </div>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+      <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
 
         {/* Result Panel */}
         <AnimatePresence mode="wait">

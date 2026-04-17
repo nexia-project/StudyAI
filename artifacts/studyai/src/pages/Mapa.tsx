@@ -4,20 +4,10 @@ import { useLocation } from "wouter";
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 import { useSubscription, startCheckout } from "@/hooks/useSubscription";
 import {
-  ArrowLeft,
-  Map,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  LogIn,
-  BarChart2,
-  Target,
-  Flame,
-  BookOpen,
-  Layers,
-  AlertCircle,
-  Sparkles,
+  ArrowLeft, Map, TrendingUp, TrendingDown, Minus, LogIn,
+  BarChart2, Target, Flame, BookOpen, Layers, AlertCircle, Sparkles,
 } from "lucide-react";
+import { AppNav } from "@/components/AppNav";
 
 interface SubjectData {
   materia: string;
@@ -166,49 +156,49 @@ export default function Mapa() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-6 p-8 bg-gradient-to-br from-violet-50 to-indigo-50">
-        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-violet-200">
-          <Map className="w-10 h-10 text-white" />
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-indigo-50">
+        <AppNav />
+        <div className="flex flex-col items-center justify-center gap-6 p-8 pt-28">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-violet-200">
+            <Map className="w-10 h-10 text-white" />
+          </div>
+          <div className="text-center">
+            <h1 className="text-2xl font-black text-slate-800 mb-2">Mapa de Desempenho</h1>
+            <p className="text-slate-500">Entre para ver seus pontos fortes e fracos por matéria.</p>
+          </div>
+          <button
+            onClick={login}
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-600 text-white font-black shadow-lg shadow-violet-200 hover:opacity-90 transition-opacity"
+          >
+            <LogIn className="w-5 h-5" />
+            Entrar para ver o Mapa
+          </button>
         </div>
-        <div className="text-center">
-          <h1 className="text-2xl font-black text-slate-800 mb-2">Mapa de Desempenho</h1>
-          <p className="text-slate-500">Entre para ver seus pontos fortes e fracos por matéria.</p>
-        </div>
-        <button
-          onClick={login}
-          className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-600 text-white font-black shadow-lg shadow-violet-200 hover:opacity-90 transition-opacity"
-        >
-          <LogIn className="w-5 h-5" />
-          Entrar para ver o Mapa
-        </button>
-        <button onClick={() => navigate("/app")} className="text-sm text-slate-400 hover:text-slate-600 transition-colors">
-          ← Voltar ao início
-        </button>
       </div>
     );
   }
 
   if (!isPremium) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-6 p-8 bg-gradient-to-br from-violet-50 to-indigo-50">
-        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-violet-200">
-          <BarChart2 className="w-10 h-10 text-white" />
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-indigo-50">
+        <AppNav />
+        <div className="flex flex-col items-center justify-center gap-6 p-8 pt-28">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-violet-200">
+            <BarChart2 className="w-10 h-10 text-white" />
+          </div>
+          <div className="text-center">
+            <h1 className="text-2xl font-black text-slate-800 mb-2">Mapa de Calor</h1>
+            <p className="text-slate-500 max-w-sm">Veja seu desempenho por matéria, identifique fraquezas e foque no que mais importa. Recurso exclusivo Premium.</p>
+          </div>
+          <button
+            onClick={async () => { setCheckoutLoading(true); try { await startCheckout(); } catch { navigate("/pricing"); } finally { setCheckoutLoading(false); } }}
+            disabled={checkoutLoading}
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-black shadow-lg hover:opacity-90 transition-opacity disabled:opacity-60"
+          >
+            <Sparkles className="w-5 h-5" />
+            {checkoutLoading ? "Aguarde..." : "Assinar Premium — R$29,90/mês"}
+          </button>
         </div>
-        <div className="text-center">
-          <h1 className="text-2xl font-black text-slate-800 mb-2">Mapa de Calor</h1>
-          <p className="text-slate-500 max-w-sm">Veja seu desempenho por matéria, identifique fraquezas e foque no que mais importa. Recurso exclusivo Premium.</p>
-        </div>
-        <button
-          onClick={async () => { setCheckoutLoading(true); try { await startCheckout(); } catch { navigate("/pricing"); } finally { setCheckoutLoading(false); } }}
-          disabled={checkoutLoading}
-          className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-black shadow-lg hover:opacity-90 transition-opacity disabled:opacity-60"
-        >
-          <Sparkles className="w-5 h-5" />
-          {checkoutLoading ? "Aguarde..." : "Assinar Premium — R$29,90/mês"}
-        </button>
-        <button onClick={() => navigate("/app")} className="text-sm text-slate-400 hover:text-slate-600 transition-colors">
-          ← Voltar ao início
-        </button>
       </div>
     );
   }
@@ -222,24 +212,16 @@ export default function Mapa() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50/30 to-indigo-50/40">
-      {/* Top nav */}
-      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-slate-100">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
-          <button
-            onClick={() => navigate("/app")}
-            className="flex items-center gap-2 px-3 py-2 rounded-2xl hover:bg-slate-100 text-slate-600 font-bold text-sm transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Voltar</span>
-          </button>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow">
-              <Map className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <h1 className="font-black text-slate-800 text-sm leading-tight">Mapa de Desempenho</h1>
-              <p className="text-xs text-slate-400 font-semibold">Pontos fortes e fracos por matéria</p>
-            </div>
+      <AppNav />
+      {/* Sub-header */}
+      <div className="sticky top-[53px] z-10 bg-white/80 backdrop-blur-xl border-b border-slate-100">
+        <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+            <Map className="w-3.5 h-3.5 text-white" />
+          </div>
+          <div>
+            <h1 className="font-black text-slate-800 text-sm leading-tight">Mapa de Desempenho</h1>
+            <p className="text-xs text-slate-400 font-medium">Pontos fortes e fracos por matéria</p>
           </div>
         </div>
       </div>

@@ -3,21 +3,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 import {
-  Trophy,
-  Medal,
-  Star,
-  Target,
-  BookOpen,
-  Zap,
-  Crown,
-  ArrowLeft,
-  TrendingUp,
-  Users,
-  Sparkles,
-  RefreshCw,
+  Trophy, Medal, Star, Target, BookOpen, Zap, Crown, ArrowLeft,
+  TrendingUp, Users, Sparkles, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSubscription, startCheckout } from "@/hooks/useSubscription";
+import { AppNav } from "@/components/AppNav";
 
 interface TierInfo {
   name: string;
@@ -200,41 +191,36 @@ export default function RankingPage() {
 
   if (!isPremium) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-6 p-8 bg-gradient-to-br from-violet-50 to-indigo-50">
-        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center shadow-xl shadow-amber-200">
-          <Trophy className="w-10 h-10 text-white" />
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-indigo-50">
+        <AppNav />
+        <div className="flex flex-col items-center justify-center gap-6 p-8 pt-28">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center shadow-xl shadow-amber-200">
+            <Trophy className="w-10 h-10 text-white" />
+          </div>
+          <div className="text-center">
+            <h1 className="text-2xl font-black text-slate-800 mb-2">Ranking Global</h1>
+            <p className="text-slate-500 max-w-sm">Compita com outros estudantes, suba de tier e mostre quem estuda mais! Recurso exclusivo Premium.</p>
+          </div>
+          <button
+            onClick={async () => { setCheckoutLoading(true); try { await startCheckout(); } catch { navigate("/pricing"); } finally { setCheckoutLoading(false); } }}
+            disabled={checkoutLoading}
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-black shadow-lg hover:opacity-90 transition-opacity disabled:opacity-60"
+          >
+            <Sparkles className="w-5 h-5" />
+            {checkoutLoading ? "Aguarde..." : "Assinar Premium — R$29,90/mês"}
+          </button>
         </div>
-        <div className="text-center">
-          <h1 className="text-2xl font-black text-slate-800 mb-2">Ranking Global</h1>
-          <p className="text-slate-500 max-w-sm">Compita com outros estudantes, suba de tier e mostre quem estuda mais! Recurso exclusivo Premium.</p>
-        </div>
-        <button
-          onClick={async () => { setCheckoutLoading(true); try { await startCheckout(); } catch { navigate("/pricing"); } finally { setCheckoutLoading(false); } }}
-          disabled={checkoutLoading}
-          className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-black shadow-lg hover:opacity-90 transition-opacity disabled:opacity-60"
-        >
-          <Sparkles className="w-5 h-5" />
-          {checkoutLoading ? "Aguarde..." : "Assinar Premium — R$29,90/mês"}
-        </button>
-        <button onClick={() => navigate("/app")} className="text-sm text-slate-400 hover:text-slate-600 transition-colors">
-          ← Voltar ao início
-        </button>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-indigo-50">
+      <AppNav />
       {/* Header */}
       <div className="bg-gradient-to-r from-violet-600 to-indigo-700 px-4 py-6 shadow-xl shadow-violet-200">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center gap-4 mb-4">
-            <button
-              onClick={() => navigate("/app")}
-              className="w-9 h-9 rounded-xl bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
             <div className="flex-1">
               <h1 className="text-white font-black text-2xl flex items-center gap-2">
                 <Trophy className="w-7 h-7 text-amber-300" />

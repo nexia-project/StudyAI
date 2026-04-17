@@ -8,6 +8,7 @@ import {
   Loader2, Trash2, GraduationCap, BookMarked, User2,
   FolderOpen, Plus,
 } from "lucide-react";
+import { AppNav } from "@/components/AppNav";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -979,16 +980,19 @@ export default function MapaMentalPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-pink-50 flex items-center justify-center p-6">
-        <div className="text-center max-w-sm">
-          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Brain className="w-8 h-8 text-primary" />
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-pink-50">
+        <AppNav />
+        <div className="flex items-center justify-center p-6 pt-28">
+          <div className="text-center max-w-sm">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Brain className="w-8 h-8 text-primary" />
+            </div>
+            <h2 className="text-xl font-black text-foreground mb-2">Mapa Mental</h2>
+            <p className="text-muted-foreground mb-6 text-sm">Faça login para ver o mapa visual de tudo que você estudou</p>
+            <button onClick={login} className="flex items-center gap-2 mx-auto px-6 py-3 rounded-2xl bg-primary text-white font-bold">
+              <LogIn className="w-4 h-4" /> Entrar
+            </button>
           </div>
-          <h2 className="text-xl font-black text-foreground mb-2">Mapa Mental</h2>
-          <p className="text-muted-foreground mb-6 text-sm">Faça login para ver o mapa visual de tudo que você estudou</p>
-          <button onClick={login} className="flex items-center gap-2 mx-auto px-6 py-3 rounded-2xl bg-primary text-white font-bold">
-            <LogIn className="w-4 h-4" /> Entrar
-          </button>
         </div>
       </div>
     );
@@ -1004,13 +1008,11 @@ export default function MapaMentalPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-pink-50">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-border px-4 py-3">
+      <AppNav />
+      {/* Sub-header */}
+      <div className="sticky top-[53px] z-10 bg-white/80 backdrop-blur-md border-b border-border px-4 py-3">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate("/app")} className="p-2 rounded-xl hover:bg-secondary transition-colors">
-              <ArrowLeft className="w-5 h-5" />
-            </button>
             <div>
               <h1 className="text-lg font-black text-foreground flex items-center gap-2">
                 <Brain className="w-5 h-5 text-primary" /> Mapa Mental

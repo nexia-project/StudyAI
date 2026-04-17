@@ -42,6 +42,7 @@ import { SimuladoButton, SimuladoAdaptativoButton } from "@/components/Simulado"
 import { FlashcardsButton } from "@/components/Flashcards";
 import { PomodoroWidget } from "@/components/Pomodoro";
 import { UserMenu } from "@/components/UserMenu";
+import { AppNav } from "@/components/AppNav";
 import { PremiumGate } from "@/components/PremiumGate";
 import { streamStudyPlan, StudyPlan, StudyPlanTopic } from "@/hooks/use-study-plan";
 import { exportStudyPlanPDF } from "@/hooks/use-pdf-export";
@@ -715,106 +716,8 @@ export default function Home() {
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/20 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
 
-      {/* Top Navigation Bar */}
-      <div className="fixed top-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm">
-        <div className="flex items-center justify-between px-3 py-2 max-w-screen-2xl mx-auto">
-          {/* Scrollable nav links */}
-          <div className="flex items-center gap-1 overflow-x-auto scrollbar-none flex-1 pr-2">
-            <button
-              onClick={() => { setStep("form"); window.scrollTo({ top: 0, behavior: "smooth" }); navigate("/app"); }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs whitespace-nowrap transition-all flex-shrink-0"
-              title="Início"
-            >
-              <HomeIcon className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Início</span>
-            </button>
-            <button
-              onClick={() => navigate("/mapa")}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold text-xs whitespace-nowrap transition-all flex-shrink-0"
-              title="Mapa de Desempenho"
-            >
-              <Map className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Mapa</span>
-            </button>
-            <button
-              onClick={() => navigate("/redacao")}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs whitespace-nowrap transition-all flex-shrink-0"
-              title="Corretor de Redação"
-            >
-              <PenLine className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Redação</span>
-            </button>
-            <button
-              onClick={() => navigate("/dashboard")}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 font-semibold text-xs whitespace-nowrap transition-all flex-shrink-0"
-              title="Dashboard"
-            >
-              <BarChart2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Dashboard</span>
-            </button>
-            <button
-              onClick={() => navigate("/ranking")}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold text-xs whitespace-nowrap transition-all flex-shrink-0"
-              title="Ranking Global"
-            >
-              <Trophy className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Ranking</span>
-            </button>
-            <button
-              onClick={() => navigate("/conquistas")}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-yellow-50 hover:bg-yellow-100 text-yellow-700 font-semibold text-xs whitespace-nowrap transition-all flex-shrink-0"
-              title="Conquistas"
-            >
-              <Medal className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Conquistas</span>
-            </button>
-            <button
-              onClick={() => navigate("/historico")}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs whitespace-nowrap transition-all flex-shrink-0"
-              title="Meu Histórico"
-            >
-              <History className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Histórico</span>
-            </button>
-            <button
-              onClick={() => navigate("/mapa-mental")}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-xs whitespace-nowrap transition-all flex-shrink-0"
-              title="Mapa Mental"
-            >
-              <Brain className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Mapa Mental</span>
-            </button>
-            <button
-              onClick={() => navigate("/base-conhecimento")}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold text-xs whitespace-nowrap transition-all flex-shrink-0"
-              title="Base de Conhecimento"
-            >
-              <Database className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Minha Base</span>
-            </button>
-            <button
-              onClick={() => navigate("/simulado-enem")}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs whitespace-nowrap transition-all flex-shrink-0"
-              title="Simulado ENEM Completo"
-            >
-              <Target className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Simulado ENEM</span>
-            </button>
-            <button
-              onClick={() => navigate("/sala-estudos")}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs whitespace-nowrap transition-all flex-shrink-0"
-              title="Sala de Estudos Pomodoro"
-            >
-              <Clock className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Sala de Estudos</span>
-            </button>
-          </div>
-          {/* User menu on the right */}
-          <div className="flex-shrink-0">
-            <UserMenu />
-          </div>
-        </div>
-      </div>
+      {/* ── Shared App Navigation ── */}
+      <AppNav onHome={() => { setStep("form"); window.scrollTo({ top: 0, behavior: "smooth" }); }} />
 
       {/* Login banner after plan is generated (unauthenticated) */}
       <AnimatePresence>

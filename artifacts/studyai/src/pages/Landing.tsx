@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import {
@@ -6,9 +6,55 @@ import {
   ArrowRight, BookOpen, Sparkles, Users, GraduationCap,
   PenLine, Map, TrendingUp, Target, CheckCircle,
   ChevronDown, Mic, Volume2, Radio, Cpu, Layers, Shield,
-  Building2, Globe, BookMarked, LayoutDashboard,
+  Building2, Globe, BookMarked, LayoutDashboard, Menu, X,
+  FlaskConical, BarChart, BookMarked as BookIcon, Settings,
 } from "lucide-react";
 import { startCheckout } from "@/hooks/useSubscription";
+
+/* ── Landing Nav Dropdown ──────────────────────────────────────────────── */
+interface LandingDropdownItem { label: string; desc?: string; href?: string; path?: string; icon?: React.ElementType; }
+interface LandingGroup { label: string; items: LandingDropdownItem[]; }
+
+function LandingDropdown({ group, onNavigate }: { group: LandingGroup; onNavigate: (path: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [open]);
+  return (
+    <div ref={ref} className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <button className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors py-2 px-1">
+        {group.label} <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.15 }}
+            className="absolute top-full left-0 mt-1 w-60 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 py-1.5">
+            {group.items.map((item, i) => (
+              <button key={i}
+                onClick={() => { if (item.path) onNavigate(item.path); if (item.href) window.location.href = item.href; setOpen(false); }}
+                className="w-full flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left group">
+                {item.icon && (
+                  <div className="w-7 h-7 rounded-lg bg-gray-100 group-hover:bg-orange-50 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors">
+                    <item.icon className="w-3.5 h-3.5 text-gray-500 group-hover:text-orange-500 transition-colors" />
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">{item.label}</p>
+                  {item.desc && <p className="text-xs text-gray-400 mt-0.5 leading-snug">{item.desc}</p>}
+                </div>
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -170,39 +216,55 @@ export default function Landing() {
     <div className="min-h-screen bg-white text-gray-900">
 
       {/* ── NAV ── */}
-      <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-sm border-b border-gray-100">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-violet-600 flex items-center justify-center text-white font-black text-sm">S</div>
-            <span className="font-black text-lg tracking-tight">StudyAI</span>
+      <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 shadow-sm">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center gap-6">
+          {/* Logo */}
+          <a href="/" className="flex items-center gap-2 flex-shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-violet-600 flex items-center justify-center text-white font-black text-sm shadow-md shadow-orange-200">S</div>
+            <span className="font-black text-lg tracking-tight text-gray-900">StudyAI</span>
+          </a>
+
+          {/* Desktop grouped nav */}
+          <div className="hidden md:flex items-center gap-2 flex-1">
+            <LandingDropdown
+              onNavigate={navigate}
+              group={{
+                label: "Plataforma",
+                items: [
+                  { icon: Sparkles,       label: "Funcionalidades",       desc: "Veja tudo que a plataforma oferece",  href: "#funcoes"     },
+                  { icon: Mic,            label: "Professor Tiagão",      desc: "Tutora por voz com IA em PT-BR",      href: "#paula"       },
+                  { icon: Target,         label: "Simulado ENEM",         desc: "Simulado completo com gabarito",      path: "/simulado-enem" },
+                  { icon: BarChart2,      label: "Dashboard de Estudos",  desc: "Visualize sua evolução por matéria",  path: "/app"         },
+                ],
+              }}
+            />
+            <LandingDropdown
+              onNavigate={navigate}
+              group={{
+                label: "Para Quem",
+                items: [
+                  { icon: GraduationCap, label: "Alunos",      desc: "ENEM, vestibulares e concursos",     path: "/app"       },
+                  { icon: BookOpen,      label: "Professores",  desc: "Portal completo para docentes",      path: "/professor" },
+                  { icon: Building2,     label: "Escolas",      desc: "Gestão de turmas e relatórios",      href: "#institucional" },
+                  { icon: Globe,         label: "Governo",      desc: "Parcerias educacionais e acesso",    path: "/governo"   },
+                ],
+              }}
+            />
+            <a href="#precos" className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors px-1">Preços</a>
+            <a href="#faq"    className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors px-1">FAQ</a>
           </div>
-          <div className="hidden md:flex items-center gap-8 text-sm text-gray-500">
-            <a href="#funcoes" className="hover:text-gray-900 transition-colors">Funções</a>
-            <a href="#paula" className="hover:text-gray-900 transition-colors">Professor Tiagão</a>
-            <a href="#institucional" className="hover:text-gray-900 transition-colors">Institucional</a>
-            <a href="#precos" className="hover:text-gray-900 transition-colors">Preços</a>
-            <a href="#faq" className="hover:text-gray-900 transition-colors">FAQ</a>
-            <button
-              onClick={() => navigate("/professor")}
-              className="flex items-center gap-1.5 text-indigo-600 font-semibold hover:text-indigo-800 transition-colors"
-            >
-              <BookMarked className="w-3.5 h-3.5" />
-              Professores
-            </button>
-            <button
-              onClick={() => navigate("/governo")}
-              className="flex items-center gap-1.5 text-emerald-700 font-semibold hover:text-emerald-900 transition-colors"
-            >
-              <Globe className="w-3.5 h-3.5" />
-              Governo
-            </button>
-          </div>
-          <div className="flex items-center gap-3">
-            <button onClick={handleStart} className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
+
+          {/* Mobile hamburger */}
+          <div className="md:hidden flex-1" />
+
+          {/* CTA buttons */}
+          <div className="flex items-center gap-2.5">
+            <button onClick={handleStart}
+              className="hidden sm:block text-sm text-gray-500 hover:text-gray-900 transition-colors font-medium px-2">
               Entrar
             </button>
             <button onClick={handleStart}
-              className="text-sm font-bold px-4 py-2 rounded-xl text-white bg-gray-900 hover:bg-gray-700 transition-colors">
+              className="text-sm font-bold px-4 py-2 rounded-xl text-white bg-orange-500 hover:bg-orange-600 transition-all shadow-md shadow-orange-200 hover:scale-[1.02] active:scale-[0.98]">
               Começar Grátis
             </button>
           </div>

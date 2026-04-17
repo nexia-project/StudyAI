@@ -1,6 +1,5 @@
 import { db } from "@workspace/db";
-import { usersTable } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 function getAdminIds(): Set<string> {
   const raw = process.env.ADMIN_USER_IDS || "";
@@ -13,7 +12,7 @@ export function isAdminUser(userId: string | null | undefined): boolean {
   return getAdminIds().has(String(userId));
 }
 
-// Async version — checks env var OR role='admin' in DB
+// Async version — checks env var OR role='admin' in DB (by id OR clerk_id)
 export async function isAdminUserAsync(userId: string | null | undefined): Promise<boolean> {
   if (!userId) {
     console.error("[adminCheck] isAdminUserAsync called with null/undefined userId");
@@ -29,11 +28,13 @@ export async function isAdminUserAsync(userId: string | null | undefined): Promi
   }
 
   try {
-    const [row] = await db
-      .select({ role: usersTable.role })
-      .from(usersTable)
-      .where(eq(usersTable.id, userId))
-      .limit(1);
+    // Check by primary id OR by clerk_id column (handles production/dev Clerk ID mismatch)
+    const result = await db.execute(sql`
+      SELECT role FROM users
+      WHERE id = ${userId} OR clerk_id = ${userId}
+      LIMIT 1
+    `);
+    const row = (result.rows as any[])[0];
     console.log("[adminCheck] DB role for", userId, "=", row?.role ?? "not found");
     return row?.role === "admin";
   } catch (err) {

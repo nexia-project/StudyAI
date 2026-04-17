@@ -82,14 +82,30 @@ export async function optionalAuth(req: Request, res: Response, next: NextFuncti
   req.isAuthenticated = function() { return !!req.userId; } as any;
 
   const auth = getAuth(req);
-  const clerkId = (auth?.sessionClaims?.userId as string | undefined) || auth?.userId;
+  // Try all possible locations for the user ID in the Clerk token
+  const clerkId = (auth?.sessionClaims?.userId as string | undefined)
+    || (auth?.sessionClaims?.sub as string | undefined)
+    || auth?.userId;
+
+  // Log on admin routes to diagnose production auth issues
+  if (req.url?.includes("/admin/")) {
+    console.log("[optionalAuth] admin request:", req.url,
+      "| clerkId:", clerkId ?? "NULL",
+      "| auth.userId:", auth?.userId ?? "NULL",
+      "| claims.userId:", auth?.sessionClaims?.userId ?? "NULL",
+      "| claims.sub:", auth?.sessionClaims?.sub ?? "NULL"
+    );
+  }
 
   if (!clerkId) { next(); return; }
 
   try {
     req.userId = await resolveInternalId(clerkId);
-  } catch {
-    // non-critical
+    if (req.url?.includes("/admin/")) {
+      console.log("[optionalAuth] admin resolved userId:", req.userId);
+    }
+  } catch (err) {
+    console.error("[optionalAuth] resolveInternalId error:", err);
   }
   next();
 }

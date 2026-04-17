@@ -6,8 +6,14 @@ import { isAdminUserAsync } from "../lib/adminCheck";
 
 const router = Router();
 
+// Temporary debug endpoint — returns the authenticated userId
+router.get("/admin/whoami", (req: Request, res: Response) => {
+  res.json({ userId: req.userId ?? null, authenticated: !!req.userId });
+});
+
 router.get("/admin/users", async (req: Request, res: Response) => {
-  if (!await isAdminUserAsync(req.userId)) return res.status(403).json({ error: "Acesso negado" });
+  req.log.info({ userId: req.userId }, "admin/users check");
+  if (!await isAdminUserAsync(req.userId)) return res.status(403).json({ error: "Acesso negado", userId: req.userId ?? null });
   try {
     const users = await db
       .select({

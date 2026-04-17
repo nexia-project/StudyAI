@@ -15,16 +15,29 @@ export function isAdminUser(userId: string | null | undefined): boolean {
 
 // Async version — checks env var OR role='admin' in DB
 export async function isAdminUserAsync(userId: string | null | undefined): Promise<boolean> {
-  if (!userId) return false;
-  if (getAdminIds().has(String(userId))) return true;
+  if (!userId) {
+    console.error("[adminCheck] isAdminUserAsync called with null/undefined userId");
+    return false;
+  }
+
+  const adminIds = getAdminIds();
+  console.log("[adminCheck] checking userId:", userId, "| adminIds:", [...adminIds]);
+
+  if (adminIds.has(String(userId))) {
+    console.log("[adminCheck] userId found in ADMIN_USER_IDS — granted");
+    return true;
+  }
+
   try {
     const [row] = await db
       .select({ role: usersTable.role })
       .from(usersTable)
       .where(eq(usersTable.id, userId))
       .limit(1);
+    console.log("[adminCheck] DB role for", userId, "=", row?.role ?? "not found");
     return row?.role === "admin";
-  } catch {
+  } catch (err) {
+    console.error("[adminCheck] DB error:", err);
     return false;
   }
 }

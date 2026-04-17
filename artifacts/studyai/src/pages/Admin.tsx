@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
+import { useAuth } from "@clerk/clerk-react";
 import { Brain, Shield, CheckCircle, XCircle, Users, RefreshCw, Crown, UserX, BookOpen, Plus, Trash2, FileText, GraduationCap, Building2, Globe, Database, Upload, Loader2, Search, Bell, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -54,6 +55,18 @@ type RoleRequest = {
 
 export default function AdminPage() {
   const [, navigate] = useLocation();
+  const { getToken } = useAuth();
+
+  // Helper: fetch with Clerk Bearer token so it works in production with dev Clerk keys
+  const adminFetch = useCallback(async (url: string, options: RequestInit = {}) => {
+    const token = await getToken().catch(() => null);
+    const headers: Record<string, string> = {
+      ...(options.headers as Record<string, string> ?? {}),
+    };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    return fetch(url, { ...options, credentials: "include", headers });
+  }, [getToken]);
+
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +98,7 @@ export default function AdminPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/users", { credentials: "include" });
+      const res = await adminFetch("/api/admin/users");
       if (res.status === 401) {
         setError("Você precisa estar logado para acessar esta página.");
         return;
@@ -107,9 +120,8 @@ export default function AdminPage() {
     setUpdating(userId);
     setMessage(null);
     try {
-      const res = await fetch(`/api/admin/users/${userId}/status`, {
+      const res = await adminFetch(`/api/admin/users/${userId}/status`, {
         method: "PATCH",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
@@ -131,7 +143,7 @@ export default function AdminPage() {
   async function fetchTeacherContent() {
     setTcLoading(true);
     try {
-      const res = await fetch("/api/teacher-content", { credentials: "include" });
+      const res = await adminFetch("/api/teacher-content");
       const data = await res.json();
       setTcList(data.content ?? []);
     } catch { /* ignore */ }
@@ -143,9 +155,8 @@ export default function AdminPage() {
     setTcSaving(true);
     setTcMessage(null);
     try {
-      const res = await fetch("/api/teacher-content", {
+      const res = await adminFetch("/api/teacher-content", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: tcForm.title,
@@ -173,7 +184,7 @@ export default function AdminPage() {
 
   async function deleteTeacherContent(id: number) {
     if (!confirm("Remover este conteúdo?")) return;
-    await fetch(`/api/teacher-content/${id}`, { method: "DELETE", credentials: "include" });
+    await adminFetch(`/api/teacher-content/${id}`, { method: "DELETE" });
     fetchTeacherContent();
   }
 
@@ -181,9 +192,8 @@ export default function AdminPage() {
     setRoleUpdating(userId);
     setRoleMsg(null);
     try {
-      const res = await fetch("/api/government/promote", {
+      const res = await adminFetch("/api/government/promote", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, role }),
       });
@@ -205,7 +215,7 @@ export default function AdminPage() {
   async function fetchKbDocs() {
     setKbLoading(true);
     try {
-      const res = await fetch("/api/knowledge", { credentials: "include" });
+      const res = await adminFetch("/api/knowledge");
       const data = await res.json();
       setKbDocs(data.docs ?? []);
     } catch { /* ignore */ }
@@ -218,9 +228,8 @@ export default function AdminPage() {
     setKbSaving(true);
     setKbMsg(null);
     try {
-      const res = await fetch("/api/knowledge/upload-text", {
+      const res = await adminFetch("/api/knowledge/upload-text", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: kbForm.title, subject: kbForm.subject || null, contentText: kbForm.contentText }),
       });
@@ -250,9 +259,8 @@ export default function AdminPage() {
       fd.append("file", kbFile);
       if (kbForm.title) fd.append("title", kbForm.title);
       if (kbForm.subject) fd.append("subject", kbForm.subject);
-      const res = await fetch("/api/knowledge/upload-file", {
+      const res = await adminFetch("/api/knowledge/upload-file", {
         method: "POST",
-        credentials: "include",
         body: fd,
       });
       const data = await res.json();
@@ -274,14 +282,14 @@ export default function AdminPage() {
 
   async function deleteKbDoc(id: number) {
     if (!confirm("Remover este documento da base de conhecimento?")) return;
-    await fetch(`/api/knowledge/${id}`, { method: "DELETE", credentials: "include" });
+    await adminFetch(`/api/knowledge/${id}`, { method: "DELETE" });
     fetchKbDocs();
   }
 
   async function fetchRoleRequests() {
     setRrLoading(true);
     try {
-      const res = await fetch("/api/admin/role-requests", { credentials: "include" });
+      const res = await adminFetch("/api/admin/role-requests");
       const data = await res.json();
       setRoleRequests(data.requests ?? []);
     } catch { /* ignore */ }
@@ -292,9 +300,8 @@ export default function AdminPage() {
     setRrReviewing(id);
     setRrMsg(null);
     try {
-      const res = await fetch(`/api/admin/role-requests/${id}/review`, {
+      const res = await adminFetch(`/api/admin/role-requests/${id}/review`, {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
       });

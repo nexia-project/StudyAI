@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import OpenAI from "openai";
 import { requireAuth } from "../middlewares/requireAuth";
+import { getKnowledgeContext } from "../utils/knowledge-context";
 
 const router: IRouter = Router();
 const openai = new OpenAI();
@@ -40,6 +41,30 @@ router.post("/simulado-enem/gerar", requireAuth, async (req, res) => {
     const diaInfo = ENEM_DIAS[dia];
     const qtd = Math.min(Math.max(Number(quantidade), 5), 45);
 
+    // ── Consulta automática BNCC + Wikipedia para cada área do ENEM ───────────
+    const materiasPrincipais = diaInfo.materias;
+    const bnccContextBlocks = await Promise.allSettled(
+      materiasPrincipais.slice(0, 2).map(m =>
+        getKnowledgeContext({
+          query: `${diaInfo.nome} ENEM`,
+          materia: m,
+          objetivo: "ENEM",
+          userId: req.userId,
+          maxCharsPerSource: 600,
+          includeLocal: false, // No user docs for ENEM standard questions
+        })
+      )
+    );
+
+    const bnccBlocks = bnccContextBlocks
+      .filter(r => r.status === "fulfilled" && (r as PromiseFulfilledResult<any>).value.hasKnowledge)
+      .map(r => (r as PromiseFulfilledResult<any>).value.contextBlock)
+      .join("\n\n");
+
+    const bnccSystemAddendum = bnccBlocks
+      ? `\n\n${bnccBlocks}\n\nUse as habilidades BNCC acima para garantir que as questões sejam tecnicamente corretas e alinhadas com o currículo oficial.`
+      : "";
+
     const prompt = `Gere exatamente ${qtd} questões no estilo oficial do ENEM para o Dia ${dia}: ${diaInfo.nome}.
 
 Matérias cobradas: ${diaInfo.materias.join(", ")}.
@@ -76,10 +101,14 @@ Responda SOMENTE com JSON válido:
   ]
 }`;
 
+    const enemSystemPrompt = `Você é um especialista em elaboração de questões do ENEM. Gere questões realistas, contextualizadas e no padrão oficial do ENEM. Responda sempre em JSON puro sem markdown.
+
+RIGOR TÉCNICO: Toda questão deve ser tecnicamente irrefutável — fórmulas, datas, nomes, conceitos e definições devem ser exatos. Nenhuma margem para imprecisão acadêmica.${bnccSystemAddendum}`;
+
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
-        { role: "system", content: "Você é um especialista em elaboração de questões do ENEM. Gere questões realistas, contextualizadas e no padrão oficial do ENEM. Responda sempre em JSON puro sem markdown." },
+        { role: "system", content: enemSystemPrompt },
         { role: "user", content: prompt },
       ],
       response_format: { type: "json_object" },

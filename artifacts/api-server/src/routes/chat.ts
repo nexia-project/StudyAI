@@ -2,11 +2,18 @@ import { Router, type IRouter } from "express";
 import OpenAI from "openai";
 import { checkFreeUsage } from "../lib/freeUsage";
 import { searchKnowledge } from "./knowledge";
+import { getBnccContext } from "../data/bncc-data";
 
-async function searchKnowledgeBase(query: string, subject?: string): Promise<string> {
-  const ctx = await searchKnowledge(query, subject, 3);
-  if (!ctx) return "";
-  return `\n\nCONTEÚDO DA BASE DE CONHECIMENTO INTERNA (use como referência prioritária):\n${ctx}`;
+async function searchKnowledgeBase(query: string, subject?: string, userId?: string): Promise<string> {
+  const [localCtx, bnccCtx] = await Promise.all([
+    searchKnowledge(query, subject, 3).catch(() => ""),
+    Promise.resolve(getBnccContext(query, subject)),
+  ]);
+  const parts: string[] = [];
+  if (localCtx) parts.push(`CONTEÚDO DA BASE DE CONHECIMENTO (priorize):\n${localCtx}`);
+  if (bnccCtx) parts.push(bnccCtx);
+  if (!parts.length) return "";
+  return `\n\n${parts.join("\n\n")}`;
 }
 
 const router: IRouter = Router();
@@ -95,9 +102,9 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.flushHeaders();
 
-    // Search knowledge base using subject + last user message
+    // Search knowledge base + BNCC using subject + last user message
     const lastUserMsg = messages.filter(m => m.role === "user").slice(-1)[0]?.content ?? "";
-    const kbContext = await searchKnowledgeBase(lastUserMsg, contexto.materia);
+    const kbContext = await searchKnowledgeBase(lastUserMsg, contexto.materia, req.userId);
 
     let systemPrompt = buildTutorSystemPrompt(contexto);
     if (kbContext) systemPrompt += kbContext;

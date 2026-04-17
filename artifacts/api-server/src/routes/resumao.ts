@@ -1,6 +1,7 @@
 import { Router } from "express";
 import OpenAI from "openai";
 import { checkFreeUsage } from "../lib/freeUsage";
+import { getKnowledgeContext } from "../utils/knowledge-context";
 
 const router = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -63,10 +64,24 @@ router.post("/resumao", checkFreeUsage, async (req, res) => {
       .filter(Boolean)
       .join("\n");
 
+    // ── Consulta automática: BNCC + Wikipedia + base do aluno ─────────────────
+    const queryText = (conteudoTexto || planoResumo || materia || "").slice(0, 150);
+    const knowledgeCtx = await getKnowledgeContext({
+      query: queryText,
+      materia: materia || undefined,
+      serie: serie || undefined,
+      userId: (req as any).userId,
+      maxCharsPerSource: 900,
+    });
+
+    const knowledgeBlock = knowledgeCtx.hasKnowledge
+      ? `\n\n${knowledgeCtx.contextBlock}\n\nBNCC — Habilidades fundamentadas: ${knowledgeCtx.bnccHabilidades.join(", ") || "ver contexto acima"}`
+      : "";
+
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        { role: "system", content: RESUMAO_PROMPT },
+        { role: "system", content: RESUMAO_PROMPT + knowledgeBlock },
         {
           role: "user",
           content: `Crie um resumo estratégico completo para este conteúdo:\n\n${contexto}`,

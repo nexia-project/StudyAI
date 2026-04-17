@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { getKnowledgeContext } from "../utils/knowledge-context";
 import multer from "multer";
 import OpenAI from "openai";
 // Import from lib directly to avoid pdf-parse's startup self-test (reads a file at load time)
@@ -401,9 +402,24 @@ router.post("/analisar", checkFreeUsage, (req, res, next) => {
     const perfil = perfilLines;
 
     // Add premium restriction to system prompt if needed
-    const finalSystemPrompt = isPremium
+    const baseSystemPrompt = isPremium
       ? systemPrompt
       : systemPrompt + "\n\nRESTRIÇÃO OBRIGATÓRIA: Este aluno está no plano gratuito. Crie EXATAMENTE 3 dias de plano, sem exceções.";
+
+    // ── Consulta automática: BNCC + Wikipedia + base do aluno ──────────────────
+    // Build query from the available context — first 150 chars of texto or objetivo
+    const knowledgeQuery = (textoFinal || objetivo || concursoAlvo || "plano de estudos").slice(0, 150);
+    const knowledgeCtx = await getKnowledgeContext({
+      query: knowledgeQuery,
+      serie: serie || undefined,
+      objetivo: objetivo || undefined,
+      userId: (req as any).userId,
+      maxCharsPerSource: 1000,
+    }).catch(() => ({ contextBlock: "", bnccHabilidades: [], hasKnowledge: false, summary: "failed" }));
+
+    const finalSystemPrompt = knowledgeCtx.hasKnowledge
+      ? baseSystemPrompt + knowledgeCtx.contextBlock
+      : baseSystemPrompt;
 
     const files = req.files as Express.Multer.File[] | undefined;
 

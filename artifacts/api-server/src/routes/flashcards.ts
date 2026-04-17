@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import OpenAI from "openai";
 import { checkFreeUsage } from "../lib/freeUsage";
+import { getKnowledgeContext } from "../utils/knowledge-context";
 
 const router: IRouter = Router();
 
@@ -61,12 +62,25 @@ router.post("/flashcards", checkFreeUsage, async (req, res) => {
       ? `Foque nos tópicos do Dia ${diaNumero}: ${diaTopicos}`
       : `Cubra os principais tópicos do conteúdo completo.`;
 
+    // ── Consulta automática: BNCC + Wikipedia + base do aluno ─────────────────
+    const knowledgeCtx = await getKnowledgeContext({
+      query: diaTopicos || resumo.slice(0, 120),
+      materia,
+      serie,
+      userId: (req as any).userId,
+      maxCharsPerSource: 800,
+    });
+
+    const knowledgeBlock = knowledgeCtx.hasKnowledge
+      ? `\n\nFUNDAMENTAÇÃO (use para garantir precisão — nunca invente definições ou fórmulas):\n${knowledgeCtx.contextBlock}`
+      : "";
+
     const userContent = `Matéria: ${materia}
 Série: ${serie}
 Conteúdo estudado: ${resumo}
 ${scopeText}
 
-Semente: #${seed} — gere flashcards originais, com âncoras mnemônicas criativas e únicas.
+Semente: #${seed} — gere flashcards originais, com âncoras mnemônicas criativas e únicas.${knowledgeBlock}
 
 Crie 15 flashcards no formato Anki (Active Recall + Spaced Repetition) para o aluno dominar este conteúdo.`;
 

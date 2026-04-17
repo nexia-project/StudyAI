@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import OpenAI from "openai";
+import { getKnowledgeContext } from "../utils/knowledge-context";
 
 const router: IRouter = Router();
 
@@ -86,6 +87,15 @@ router.post("/simulado", async (req, res) => {
     const shuffledFormats = shuffleArray(QUESTION_FORMATS).slice(0, numQuestoes);
     const targetDistribution = shuffleArray(["A","B","C","D","A","B","C","D","A","B"]).slice(0, numQuestoes);
 
+    // ── Consulta automática: BNCC + Wikipedia + base do aluno ─────────────────
+    const knowledgeCtx = await getKnowledgeContext({
+      query: resumo.slice(0, 150),
+      materia,
+      serie,
+      userId: (req as any).userId,
+      maxCharsPerSource: 800,
+    });
+
     // Trim raw content to 4000 chars — enough for rich question generation,
     // small enough to leave output tokens free for the full JSON response.
     const rawContent = (conteudoTexto || "").trim().slice(0, 4000);
@@ -104,6 +114,11 @@ ${diasConteudo}`;
       contentSection = `Conteúdo detalhado por dia:
 ${diasConteudo}`;
     }
+
+    // Inject BNCC + Wikipedia into the system prompt for grounding
+    const enrichedSystemPrompt = knowledgeCtx.hasKnowledge
+      ? SIMULADO_SYSTEM_PROMPT + knowledgeCtx.contextBlock
+      : SIMULADO_SYSTEM_PROMPT;
 
     const userContent = `Matéria: ${materia}
 Série: ${serie}
@@ -125,7 +140,7 @@ Explicações concisas (máx 2 frases). Enunciados nunca repetidos em formato.`;
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
-        { role: "system", content: SIMULADO_SYSTEM_PROMPT },
+        { role: "system", content: enrichedSystemPrompt },
         { role: "user", content: userContent },
       ],
       max_tokens: 4500,

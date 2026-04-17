@@ -48,6 +48,15 @@ const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 function stripBase(path: string): string {
+  // Handle absolute URLs — Clerk sometimes passes full URLs (e.g. after OAuth)
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    try {
+      const url = new URL(path);
+      path = url.pathname + url.search + url.hash;
+    } catch {
+      // ignore, fall through
+    }
+  }
   return basePath && path.startsWith(basePath)
     ? path.slice(basePath.length) || "/"
     : path;

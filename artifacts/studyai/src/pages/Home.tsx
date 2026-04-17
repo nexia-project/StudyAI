@@ -720,7 +720,7 @@ export default function Home() {
           {/* Scrollable nav links */}
           <div className="flex items-center gap-1 overflow-x-auto scrollbar-none flex-1 pr-2">
             <button
-              onClick={() => navigate("/app")}
+              onClick={() => { setStep("form"); window.scrollTo({ top: 0, behavior: "smooth" }); navigate("/app"); }}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs whitespace-nowrap transition-all flex-shrink-0"
               title="Início"
             >

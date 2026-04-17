@@ -1,9 +1,10 @@
 # StudyAI — Tutor de IA para ENEM/Vestibular/Concursos (study.ia.br)
 
 ## Navigation Architecture (updated)
-- **AppNav** (`artifacts/studyai/src/components/AppNav.tsx`): shared navigation bar used across ALL internal pages. Dropdown groups: Estudar (Plano, Simulado, Redação, Sala Estudos), Acompanhar (Dashboard, Mapa, Histórico, Conquistas, Ranking), Recursos (Mapa Mental, Base Conhecimento). Has mobile hamburger menu + bottom tab bar.
+- **AppNav** (`artifacts/studyai/src/components/AppNav.tsx`): shared navigation bar used across ALL internal pages. Dropdown groups: Estudar (Plano, Simulado, Redação, Sala Estudos), Acompanhar (Dashboard, Radar de Desempenho, Histórico, Conquistas, Ranking), Recursos (Mapa Mental). Has mobile hamburger menu + bottom tab bar.
 - **Landing nav**: Rebuilt with `LandingDropdown` components — "Plataforma" + "Para Quem" + Preços + FAQ + Entrar + Começar Grátis (orange CTA).
-- **All internal pages** now use `<AppNav />` replacing individual back buttons: Home, Dashboard, Ranking, History, Redacao, Mapa, Conquistas, MapaMental, BaseConhecimento.
+- **All internal pages** now use `<AppNav />` replacing individual back buttons.
+- **Admin Panel** (`/admin`): Full sidebar layout — Visão Geral (dashboard with KPIs, logins, financeiro, IA & Custos, conteúdo & BD, performance, sistema, segurança, ações rápidas), Usuários (Alunos/Professores/Instituições), Financeiro, IA & Custos, Conteúdos, Banco de Dados, Integrações, Logs & Segurança, Bugs & Sistema, Configurações, Solicitações, Perfis & Acesso. ADMIN ONLY — uses Bearer token via Clerk.
 
 ## Overview
 

@@ -69,7 +69,7 @@ const NAV = [
   { section: "financeiro" as Section, label: "Financeiro", icon: Wallet },
   { section: "ia-custos" as Section, label: "IA & Custos", icon: Bot },
   { section: "conteudos" as Section, label: "Conteúdos", icon: FileText },
-  { section: "banco-dados" as Section, label: "Banco de Dados", icon: Database },
+  { section: "banco-dados" as Section, label: "Base de Conhecimento", icon: Database },
   { section: "integracoes" as Section, label: "Integrações", icon: Link },
   { section: "logs-seguranca" as Section, label: "Logs & Segurança", icon: Lock },
   { section: "bugs-sistema" as Section, label: "Bugs & Sistema", icon: Bug },
@@ -1035,7 +1035,7 @@ export default function AdminPage() {
           {activeSection === "banco-dados" && (
             <div className="space-y-8">
               <h2 className="text-lg font-black flex items-center gap-2"><Database className="w-5 h-5 text-violet-400" /> Base de Conhecimento</h2>
-              <p className="text-white/40 text-sm -mt-4">Documentos aqui são consultados pelo Professor Tiagão antes de buscar informações externas.</p>
+              <p className="text-white/40 text-sm -mt-4">Documentos aqui são consultados internamente pelo sistema (Professor Tiagão e Tutor) antes de buscar informações externas. Esta seção é exclusiva para administradores.</p>
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="rounded-2xl border border-white/[0.07] bg-[#12121a] p-5">
                   <h3 className="font-bold mb-4 flex items-center gap-2"><FileText className="w-4 h-4 text-violet-400" /> Adicionar por Texto</h3>

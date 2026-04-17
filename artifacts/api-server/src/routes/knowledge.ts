@@ -56,11 +56,11 @@ async function extractTextFromFile(file: Express.Multer.File): Promise<string> {
 async function generateMindMapFromText(contentText: string, docTitle: string): Promise<{ subject: string; topics: Array<{ name: string; subtopics: string[] }> }> {
   const completion = await openai.chat.completions.create({
     model: "gpt-4o",
-    temperature: 0.3,
+    temperature: 0.2,
     messages: [
       {
         role: "system",
-        content: `Você é um especialista em organização de conhecimento. Analise o documento fornecido e extraia sua estrutura de conhecimento em formato de mapa mental.
+        content: `Você é um especialista em organização pedagógica e análise de conteúdo educacional brasileiro. Analise PROFUNDAMENTE o documento fornecido e extraia TODA a estrutura de conhecimento em formato de mapa mental completo e detalhado.
 
 Retorne SOMENTE um JSON válido com esta estrutura exata:
 {
@@ -68,21 +68,24 @@ Retorne SOMENTE um JSON válido com esta estrutura exata:
   "topics": [
     {
       "name": "Tópico 1",
-      "subtopics": ["Subtópico 1.1", "Subtópico 1.2"]
+      "subtopics": ["Subtópico 1.1", "Subtópico 1.2", "Subtópico 1.3"]
     }
   ]
 }
 
-Regras:
-- subject: nome curto da matéria (ex: "Matemática", "Biologia")
-- Máximo 8 tópicos principais
-- Máximo 5 subtópicos por tópico
-- Nomes curtos (máximo 4 palavras)
-- Sem explicações, apenas o JSON`,
+REGRAS OBRIGATÓRIAS:
+- subject: identifique a matéria/área corretamente (ex: "Matemática", "Biologia Celular", "Direito Constitucional")
+- Gere entre 8 e 12 tópicos principais — cubra TODOS os grandes temas do documento
+- Gere entre 4 e 7 subtópicos por tópico — seja específico e detalhado
+- Nomes curtos e diretos (máximo 5 palavras por item)
+- Extraia conceitos, fórmulas, datas, nomes, definições como subtópicos
+- Organize hierarquicamente do mais geral ao mais específico
+- IDIOMA OBRIGATÓRIO: SEMPRE em português brasileiro
+- Sem explicações fora do JSON — retorne APENAS o JSON válido`,
       },
       {
         role: "user",
-        content: `Analise este documento chamado "${docTitle}" e extraia o mapa mental:\n\n${contentText.slice(0, 8000)}`,
+        content: `Analise COMPLETAMENTE este documento chamado "${docTitle}" e gere o mapa mental completo e detalhado:\n\n${contentText.slice(0, 15000)}`,
       },
     ],
     response_format: { type: "json_object" },
@@ -566,6 +569,112 @@ router.delete("/mapa-mental/my-docs/:id", async (req: Request, res: Response) =>
   } catch (err) {
     res.status(500).json({ erro: "Erro ao deletar mapa" });
   }
+});
+
+// ─── User: Upload file (any authenticated user) ───────────────────────────────
+router.post("/knowledge/user-upload", upload.single("file"), validateFileUpload, async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  if (!req.file) { res.status(400).json({ erro: "Arquivo obrigatório" }); return; }
+  const { title, subject, tags } = req.body;
+  try {
+    const contentText = await extractTextFromFile(req.file);
+    if (!contentText || contentText.trim().length < 10) {
+      res.status(422).json({ erro: "Não foi possível extrair texto do arquivo. Use um PDF com texto selecionável (não escaneado)." });
+      return;
+    }
+    let pageCount: number | undefined;
+    if (req.file.mimetype === "application/pdf") {
+      try { const p = (await import("pdf-parse")).default; pageCount = (await p(req.file.buffer)).numpages; } catch { /* ignore */ }
+    }
+    const docTitle = title || req.file.originalname.replace(/\.[^.]+$/, "");
+    const fileSizeKb = Math.round(req.file.size / 1024);
+    const tagsArr: string[] = typeof tags === "string" ? tags.split(",").map((t: string) => t.trim()).filter(Boolean) : [];
+    const result = await saveDocumentWithChunks({
+      title: docTitle, subject: subject ?? null, contentText,
+      uploadedBy: req.userId, sourceFile: req.file.originalname, fileSizeKb, pageCount, tags: tagsArr,
+    });
+    res.json({ ok: true, message: "Documento salvo com sucesso!", ...result });
+  } catch (err) {
+    req.log.error({ err }, "Error uploading user knowledge doc");
+    res.status(500).json({ erro: "Erro ao processar arquivo" });
+  }
+});
+
+// ─── User: Upload URL ─────────────────────────────────────────────────────────
+router.post("/knowledge/user-upload-url", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { url, title, subject, tags } = req.body;
+  if (!url) { res.status(400).json({ erro: "URL obrigatória" }); return; }
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    const response = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 StudyAI/1.0" }, signal: controller.signal });
+    clearTimeout(timer);
+    if (!response.ok) { res.status(422).json({ erro: `Não foi possível acessar a URL (${response.status})` }); return; }
+    const html = await response.text();
+    const text = html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+      .replace(/\s{3,}/g, "\n").trim();
+    if (text.length < 50) { res.status(422).json({ erro: "Não foi possível extrair conteúdo desta URL" }); return; }
+    const docTitle = title || new URL(url).hostname;
+    const tagsArr: string[] = typeof tags === "string" ? tags.split(",").map((t: string) => t.trim()).filter(Boolean) : [];
+    const result = await saveDocumentWithChunks({
+      title: docTitle, subject: subject ?? null, contentText: text.slice(0, 50000),
+      uploadedBy: req.userId, sourceFile: url, tags: tagsArr,
+    });
+    res.json({ ok: true, message: "URL salva com sucesso!", ...result });
+  } catch (err: any) {
+    if (err.name === "AbortError") { res.status(422).json({ erro: "URL demorou muito para responder" }); }
+    else { req.log.error({ err }, "Error uploading URL"); res.status(500).json({ erro: "Erro ao processar URL" }); }
+  }
+});
+
+// ─── User: List their documents ───────────────────────────────────────────────
+router.get("/knowledge/user-docs", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  try {
+    const rows = await db.execute(sql`
+      SELECT id, title, subject, source_file, file_size_kb, page_count, tags,
+        LEFT(content_text, 200) as preview, char_length(content_text) as content_length, created_at
+      FROM knowledge_documents
+      WHERE (is_chunk = false OR is_chunk IS NULL) AND uploaded_by = ${req.userId}
+      ORDER BY created_at DESC LIMIT 100
+    `);
+    res.json({ docs: rows.rows });
+  } catch (err) { res.status(500).json({ erro: "Erro ao listar documentos" }); }
+});
+
+// ─── User: Delete their document ──────────────────────────────────────────────
+router.delete("/knowledge/user-docs/:id", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ erro: "ID inválido" }); return; }
+  try {
+    await db.execute(sql`DELETE FROM knowledge_documents WHERE id = ${id} AND uploaded_by = ${req.userId}`);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ erro: "Erro ao deletar" }); }
+});
+
+// ─── User: Search their documents ─────────────────────────────────────────────
+router.get("/knowledge/user-search", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const q = String(req.query.q || "").trim();
+  if (!q) { res.json({ results: [] }); return; }
+  try {
+    const rows = await db.execute(sql`
+      SELECT id, title, subject, source_file,
+        ts_headline('portuguese', content_text, plainto_tsquery('portuguese', ${q}),
+          'MaxWords=50, MinWords=15, StartSel=**, StopSel=**') as excerpt
+      FROM knowledge_documents
+      WHERE (is_chunk = false OR is_chunk IS NULL) AND uploaded_by = ${req.userId}
+        AND (search_vector @@ plainto_tsquery('portuguese', ${q}) OR title ILIKE ${"%" + q + "%"})
+      ORDER BY created_at DESC LIMIT 10
+    `);
+    res.json({ results: rows.rows });
+  } catch (err) { res.status(500).json({ erro: "Erro na busca" }); }
 });
 
 export default router;

@@ -183,6 +183,7 @@ function MindMapSVG({
   onStudy?: (topic: string) => void;
 }) {
   const [selectedNode, setSelectedNode] = useState<MindNode | null>(null);
+  const [docTab, setDocTab] = useState<"estudar" | "videos" | "buscar">("estudar");
   const [, navigate] = useLocation();
   const color = getColor(mapJson.subject);
   const W = 920; const H = 680;
@@ -283,50 +284,114 @@ function MindMapSVG({
                 </div>
               </div>
 
+              {/* Tabs */}
+              <div className="flex border-b border-border">
+                {([["estudar", "📚 Estudar"], ["videos", "▶️ Vídeos"], ["buscar", "🔍 Buscar"]] as const).map(([id, label]) => (
+                  <button
+                    key={id}
+                    onClick={() => setDocTab(id)}
+                    className={`flex-1 py-2.5 text-xs font-bold transition-colors ${docTab === id ? "border-b-2" : "text-muted-foreground hover:text-foreground"}`}
+                    style={docTab === id ? { borderColor: selectedNode.color, color: selectedNode.color } : {}}
+                  >{label}</button>
+                ))}
+              </div>
+
               {/* Content */}
               <div className="flex-1 overflow-y-auto p-5 space-y-4">
-                {/* Topic: list its subtopics */}
-                {selectedNode.level === 1 && topicSubtopics.length > 0 && (
-                  <div>
-                    <p className="text-sm font-bold text-foreground mb-2">Subtópicos</p>
-                    <div className="space-y-2">
-                      {topicSubtopics.map((sub, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center gap-2 px-3 py-2 rounded-xl"
-                          style={{ backgroundColor: selectedNode.color + "10" }}
-                        >
-                          <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: selectedNode.color }} />
-                          <span className="text-sm text-foreground font-medium">{sub}</span>
+                {/* ESTUDAR */}
+                {docTab === "estudar" && (
+                  <>
+                    {selectedNode.level === 1 && topicSubtopics.length > 0 && (
+                      <div>
+                        <p className="text-sm font-bold text-foreground mb-2">Subtópicos</p>
+                        <div className="space-y-2">
+                          {topicSubtopics.map((sub, i) => (
+                            <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ backgroundColor: selectedNode.color + "10" }}>
+                              <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: selectedNode.color }} />
+                              <span className="text-sm text-foreground font-medium">{sub}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      </div>
+                    )}
+                    {selectedNode.level === 2 && (
+                      <div className="rounded-2xl p-4" style={{ backgroundColor: selectedNode.color + "10" }}>
+                        <p className="text-xs text-muted-foreground mb-1">Subtópico dentro de</p>
+                        <p className="text-sm font-bold" style={{ color: selectedNode.color }}>{parentTopic || mapJson.subject}</p>
+                      </div>
+                    )}
+                    <button
+                      onClick={handleStudy}
+                      className="w-full py-3 rounded-2xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
+                      style={{ backgroundColor: selectedNode.color }}
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      Estudar com Tiagão
+                    </button>
+                    <div className="bg-secondary/30 rounded-2xl p-3 text-center">
+                      <p className="text-xs text-muted-foreground">📄 Conteúdo extraído do documento</p>
+                    </div>
+                  </>
+                )}
+
+                {/* VÍDEOS */}
+                {docTab === "videos" && (
+                  <div className="space-y-3">
+                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Pesquisas no YouTube</p>
+                    {[
+                      { label: `${selectedNode.label} — aula completa`, url: `https://www.youtube.com/results?search_query=${encodeURIComponent(selectedNode.label + " aula")}` },
+                      { label: `${selectedNode.label} para ENEM`, url: `https://www.youtube.com/results?search_query=${encodeURIComponent(selectedNode.label + " ENEM vestibular")}` },
+                      { label: `${selectedNode.label} resumo`, url: `https://www.youtube.com/results?search_query=${encodeURIComponent(selectedNode.label + " resumo concurso")}` },
+                      { label: `${mapJson.subject} exercícios resolvidos`, url: `https://www.youtube.com/results?search_query=${encodeURIComponent(mapJson.subject + " exercícios resolvidos")}` },
+                    ].map((link, i) => (
+                      <a key={i} href={link.url} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-3 p-4 rounded-2xl border-2 hover:shadow-md transition-all group"
+                        style={{ borderColor: selectedNode.color + "40", backgroundColor: selectedNode.color + "08" }}
+                      >
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-red-600">
+                          <span className="text-white text-sm font-black">▶</span>
+                        </div>
+                        <span className="text-sm font-semibold text-foreground group-hover:underline flex-1">{link.label}</span>
+                        <ChevronRight className="w-4 h-4 shrink-0" style={{ color: selectedNode.color }} />
+                      </a>
+                    ))}
+                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-center">
+                      <p className="text-xs text-amber-700 font-medium">🎬 Clique para abrir o YouTube e aprofundar os estudos com vídeos</p>
                     </div>
                   </div>
                 )}
 
-                {/* Subtopic: show context */}
-                {selectedNode.level === 2 && (
-                  <div className="rounded-2xl p-4" style={{ backgroundColor: selectedNode.color + "10" }}>
-                    <p className="text-xs text-muted-foreground mb-1">Subtópico dentro de</p>
-                    <p className="text-sm font-bold" style={{ color: selectedNode.color }}>{parentTopic || mapJson.subject}</p>
+                {/* BUSCAR */}
+                {docTab === "buscar" && (
+                  <div className="space-y-3">
+                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Buscar na internet</p>
+                    {[
+                      { icon: "🔍", label: `${selectedNode.label} — estudo completo`, url: `https://www.google.com/search?q=${encodeURIComponent(selectedNode.label + " resumo estudo")}` },
+                      { icon: "📝", label: `${selectedNode.label} questões ENEM`, url: `https://www.google.com/search?q=${encodeURIComponent(selectedNode.label + " questões ENEM gabarito")}` },
+                      { icon: "📖", label: `${selectedNode.label} Wikipedia`, url: `https://pt.wikipedia.org/w/index.php?search=${encodeURIComponent(selectedNode.label)}` },
+                      { icon: "🧠", label: `${mapJson.subject} mapa mental`, url: `https://www.google.com/search?q=${encodeURIComponent(mapJson.subject + " mapa mental resumo")}` },
+                    ].map((link, i) => (
+                      <a key={i} href={link.url} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-3 p-4 rounded-2xl border-2 hover:shadow-md transition-all group"
+                        style={{ borderColor: selectedNode.color + "40", backgroundColor: selectedNode.color + "08" }}
+                      >
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-lg" style={{ backgroundColor: selectedNode.color + "20" }}>
+                          {link.icon}
+                        </div>
+                        <span className="text-sm font-semibold text-foreground group-hover:underline flex-1">{link.label}</span>
+                        <ChevronRight className="w-4 h-4 shrink-0" style={{ color: selectedNode.color }} />
+                      </a>
+                    ))}
+                    <button
+                      onClick={handleStudy}
+                      className="w-full py-3 rounded-2xl font-bold text-sm text-white flex items-center justify-center gap-2 hover:opacity-90 transition-opacity mt-2"
+                      style={{ backgroundColor: selectedNode.color }}
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      Ou perguntar ao Tiagão
+                    </button>
                   </div>
                 )}
-
-                {/* Study CTA */}
-                <button
-                  onClick={handleStudy}
-                  className="w-full py-3 rounded-2xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: selectedNode.color }}
-                >
-                  <Sparkles className="w-4 h-4" />
-                  Estudar este {selectedNode.level === 1 ? "tópico" : "subtópico"}
-                </button>
-
-                <div className="bg-secondary/30 rounded-2xl p-3 text-center">
-                  <p className="text-xs text-muted-foreground">
-                    📄 Conteúdo extraído do documento
-                  </p>
-                </div>
               </div>
             </motion.div>
           </>
@@ -339,6 +404,24 @@ function MindMapSVG({
 // ─── Node Drawer (for student map) ────────────────────────────────────────────
 function NodeDrawer({ node, onClose }: { node: MindNode | null; onClose: () => void }) {
   const [, navigate] = useLocation();
+  const [tab, setTab] = useState<"estudar" | "videos" | "buscar">("estudar");
+
+  const subject = node?.level === 1 ? node.label : (node?.contentMeta?.topics?.[0] || node?.label || "");
+  const topicLabel = node?.label || "";
+
+  const youtubeLinks = [
+    { label: `${topicLabel} — aula completa`, url: `https://www.youtube.com/results?search_query=${encodeURIComponent(topicLabel + " aula")}` },
+    { label: `${topicLabel} para ENEM`, url: `https://www.youtube.com/results?search_query=${encodeURIComponent(topicLabel + " ENEM vestibular")}` },
+    { label: `${topicLabel} resumo`, url: `https://www.youtube.com/results?search_query=${encodeURIComponent(topicLabel + " resumo concurso")}` },
+    { label: `${subject} exercícios resolvidos`, url: `https://www.youtube.com/results?search_query=${encodeURIComponent(subject + " exercícios resolvidos")}` },
+  ];
+
+  const googleLinks = [
+    { label: `${topicLabel} — estudo completo`, url: `https://www.google.com/search?q=${encodeURIComponent(topicLabel + " resumo estudo")}` },
+    { label: `${topicLabel} questões ENEM`, url: `https://www.google.com/search?q=${encodeURIComponent(topicLabel + " questões ENEM gabarito")}` },
+    { label: `${topicLabel} Wikipedia`, url: `https://pt.wikipedia.org/w/index.php?search=${encodeURIComponent(topicLabel)}` },
+    { label: `${subject} mapa mental`, url: `https://www.google.com/search?q=${encodeURIComponent(subject + " mapa mental resumo")}` },
+  ];
 
   function handleStudy() {
     if (!node) return;
@@ -348,10 +431,15 @@ function NodeDrawer({ node, onClose }: { node: MindNode | null; onClose: () => v
 
   function handleOpenPlan() {
     if (!node) return;
-    // Navigate to /app with planMateria param — Home.tsx will auto-resume the plan
-    const subject = node.level === 1 ? node.label : (node.contentMeta?.topics?.[0] || node.label);
-    navigate(`/app?planMateria=${encodeURIComponent(subject)}`);
+    const s = node.level === 1 ? node.label : (node.contentMeta?.topics?.[0] || node.label);
+    navigate(`/app?planMateria=${encodeURIComponent(s)}`);
   }
+
+  const TABS = [
+    { id: "estudar" as const, label: "📚 Estudar" },
+    { id: "videos" as const, label: "▶️ Vídeos" },
+    { id: "buscar" as const, label: "🔍 Buscar" },
+  ];
 
   return (
     <AnimatePresence>
@@ -378,95 +466,153 @@ function NodeDrawer({ node, onClose }: { node: MindNode | null; onClose: () => v
                 <X className="w-5 h-5 text-muted-foreground" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              {node.contentMeta && (
-                <div className="grid grid-cols-3 gap-3">
-                  {node.contentMeta.plans !== undefined && (
-                    <div className="bg-indigo-50 rounded-2xl p-3 text-center">
-                      <p className="text-2xl font-black text-indigo-600">{node.contentMeta.plans}</p>
-                      <p className="text-xs text-indigo-500 font-semibold mt-0.5">planos</p>
-                    </div>
-                  )}
-                  {node.contentMeta.simulados !== undefined && (
-                    <div className="bg-pink-50 rounded-2xl p-3 text-center">
-                      <p className="text-2xl font-black text-pink-600">{node.contentMeta.simulados}</p>
-                      <p className="text-xs text-pink-500 font-semibold mt-0.5">simulados</p>
-                    </div>
-                  )}
-                  {node.contentMeta.flashcards !== undefined && (
-                    <div className="bg-amber-50 rounded-2xl p-3 text-center">
-                      <p className="text-2xl font-black text-amber-600">{node.contentMeta.flashcards}</p>
-                      <p className="text-xs text-amber-500 font-semibold mt-0.5">flashcards</p>
-                    </div>
-                  )}
-                </div>
-              )}
-              {node.contentMeta?.avgScore !== undefined && (
-                <div className="bg-secondary/40 rounded-2xl p-4">
-                  <p className="text-sm font-semibold text-foreground mb-1">Desempenho em simulados</p>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 h-3 bg-border rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{
-                          width: `${node.contentMeta.avgScore}%`,
-                          backgroundColor: node.contentMeta.avgScore >= 70 ? "#10b981" : node.contentMeta.avgScore >= 50 ? "#f59e0b" : "#ef4444",
-                        }}
-                      />
-                    </div>
-                    <span className="text-sm font-black" style={{ color: node.contentMeta.avgScore >= 70 ? "#10b981" : node.contentMeta.avgScore >= 50 ? "#f59e0b" : "#ef4444" }}>
-                      {node.contentMeta.avgScore}%
-                    </span>
-                  </div>
-                </div>
-              )}
-              {node.contentMeta?.topics && node.contentMeta.topics.length > 0 && (
-                <div>
-                  <p className="text-sm font-semibold text-foreground mb-2">Tópicos estudados</p>
-                  <div className="flex flex-wrap gap-2">
-                    {node.contentMeta.topics.map((t, i) => (
-                      <span key={i} className="px-3 py-1.5 rounded-xl text-xs font-semibold text-white" style={{ backgroundColor: node.color }}>
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {node.level === 2 && node.contentMeta?.topics === undefined && (
-                <div className="text-center py-8">
-                  <CheckCircle className="w-10 h-10 mx-auto mb-3" style={{ color: node.color }} />
-                  <p className="font-bold text-foreground">Tópico estudado!</p>
-                  <p className="text-sm text-muted-foreground mt-1">Este tópico faz parte do seu histórico de estudos.</p>
-                </div>
-              )}
-              {/* Open plan button — only shows if this subject has study plans */}
-              {(node.contentMeta?.plans ?? 0) > 0 && (
+
+            {/* Tabs */}
+            <div className="flex border-b border-border">
+              {TABS.map(t => (
                 <button
-                  onClick={handleOpenPlan}
-                  className="w-full py-3 rounded-2xl font-bold text-sm border-2 flex items-center justify-center gap-2 hover:opacity-80 transition-opacity"
-                  style={{ borderColor: node.color, color: node.color, backgroundColor: node.color + "10" }}
-                >
-                  <BookOpen className="w-4 h-4" />
-                  Abrir plano de {node.level === 1 ? node.label : (node.contentMeta?.topics?.[0] || node.label)}
-                </button>
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  className={`flex-1 py-2.5 text-xs font-bold transition-colors ${tab === t.id ? "border-b-2 text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  style={tab === t.id ? { borderColor: node.color, color: node.color } : {}}
+                >{t.label}</button>
+              ))}
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {/* ESTUDAR TAB */}
+              {tab === "estudar" && (
+                <>
+                  {node.contentMeta && (
+                    <div className="grid grid-cols-3 gap-3">
+                      {node.contentMeta.plans !== undefined && (
+                        <div className="bg-indigo-50 rounded-2xl p-3 text-center">
+                          <p className="text-2xl font-black text-indigo-600">{node.contentMeta.plans}</p>
+                          <p className="text-xs text-indigo-500 font-semibold mt-0.5">planos</p>
+                        </div>
+                      )}
+                      {node.contentMeta.simulados !== undefined && (
+                        <div className="bg-pink-50 rounded-2xl p-3 text-center">
+                          <p className="text-2xl font-black text-pink-600">{node.contentMeta.simulados}</p>
+                          <p className="text-xs text-pink-500 font-semibold mt-0.5">simulados</p>
+                        </div>
+                      )}
+                      {node.contentMeta.flashcards !== undefined && (
+                        <div className="bg-amber-50 rounded-2xl p-3 text-center">
+                          <p className="text-2xl font-black text-amber-600">{node.contentMeta.flashcards}</p>
+                          <p className="text-xs text-amber-500 font-semibold mt-0.5">flashcards</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {node.contentMeta?.avgScore !== undefined && (
+                    <div className="bg-secondary/40 rounded-2xl p-4">
+                      <p className="text-sm font-semibold text-foreground mb-1">Desempenho em simulados</p>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 h-3 bg-border rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all"
+                            style={{ width: `${node.contentMeta.avgScore}%`, backgroundColor: node.contentMeta.avgScore >= 70 ? "#10b981" : node.contentMeta.avgScore >= 50 ? "#f59e0b" : "#ef4444" }}
+                          />
+                        </div>
+                        <span className="text-sm font-black" style={{ color: node.contentMeta.avgScore >= 70 ? "#10b981" : node.contentMeta.avgScore >= 50 ? "#f59e0b" : "#ef4444" }}>
+                          {node.contentMeta.avgScore}%
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {node.contentMeta?.topics && node.contentMeta.topics.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold text-foreground mb-2">Tópicos estudados</p>
+                      <div className="flex flex-wrap gap-2">
+                        {node.contentMeta.topics.map((t, i) => (
+                          <span key={i} className="px-3 py-1.5 rounded-xl text-xs font-semibold text-white" style={{ backgroundColor: node.color }}>{t}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {(node.contentMeta?.plans ?? 0) > 0 && (
+                    <button
+                      onClick={handleOpenPlan}
+                      className="w-full py-3 rounded-2xl font-bold text-sm border-2 flex items-center justify-center gap-2 hover:opacity-80 transition-opacity"
+                      style={{ borderColor: node.color, color: node.color, backgroundColor: node.color + "10" }}
+                    >
+                      <BookOpen className="w-4 h-4" />
+                      Abrir plano de {node.level === 1 ? node.label : (node.contentMeta?.topics?.[0] || node.label)}
+                    </button>
+                  )}
+                  <button
+                    onClick={handleStudy}
+                    className="w-full py-3 rounded-2xl font-bold text-sm text-white flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+                    style={{ backgroundColor: node.color }}
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    Estudar {node.level === 1 ? "esta matéria" : "este tópico"} com Tiagão
+                  </button>
+                  <div className="bg-secondary/30 rounded-2xl p-4">
+                    <p className="text-xs text-muted-foreground">
+                      {node.source === "personal" ? "📚 Conteúdo do seu histórico de estudos" : "📄 Conteúdo de documento carregado"}
+                    </p>
+                  </div>
+                </>
               )}
 
-              <button
-                onClick={handleStudy}
-                className="w-full py-3 rounded-2xl font-bold text-sm text-white flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: node.color }}
-              >
-                <Sparkles className="w-4 h-4" />
-                Estudar {node.level === 1 ? "esta matéria" : "este tópico"} com Tiagão
-              </button>
+              {/* VÍDEOS TAB */}
+              {tab === "videos" && (
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Pesquisas no YouTube</p>
+                  {youtubeLinks.map((link, i) => (
+                    <a
+                      key={i}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-4 rounded-2xl border-2 hover:shadow-md transition-all group"
+                      style={{ borderColor: node.color + "40", backgroundColor: node.color + "08" }}
+                    >
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: "#ff0000" }}>
+                        <span className="text-white text-sm font-black">▶</span>
+                      </div>
+                      <span className="text-sm font-semibold text-foreground group-hover:underline flex-1">{link.label}</span>
+                      <ChevronRight className="w-4 h-4 shrink-0" style={{ color: node.color }} />
+                    </a>
+                  ))}
+                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-center">
+                    <p className="text-xs text-amber-700 font-medium">🎬 Clique para abrir o YouTube e aprofundar seus estudos com vídeos</p>
+                  </div>
+                </div>
+              )}
 
-              <div className="bg-secondary/30 rounded-2xl p-4">
-                <p className="text-xs text-muted-foreground">
-                  {node.source === "personal"
-                    ? "📚 Conteúdo do seu histórico de estudos"
-                    : "📄 Conteúdo de documento carregado (com histórico de estudo)"}
-                </p>
-              </div>
+              {/* BUSCAR TAB */}
+              {tab === "buscar" && (
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Buscar na internet</p>
+                  {googleLinks.map((link, i) => (
+                    <a
+                      key={i}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-4 rounded-2xl border-2 hover:shadow-md transition-all group"
+                      style={{ borderColor: node.color + "40", backgroundColor: node.color + "08" }}
+                    >
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-base"
+                        style={{ backgroundColor: node.color + "20" }}>
+                        {i === 2 ? "📖" : i === 3 ? "🧠" : "🔍"}
+                      </div>
+                      <span className="text-sm font-semibold text-foreground group-hover:underline flex-1">{link.label}</span>
+                      <ChevronRight className="w-4 h-4 shrink-0" style={{ color: node.color }} />
+                    </a>
+                  ))}
+                  <button
+                    onClick={handleStudy}
+                    className="w-full py-3 rounded-2xl font-bold text-sm text-white flex items-center justify-center gap-2 hover:opacity-90 transition-opacity mt-2"
+                    style={{ backgroundColor: node.color }}
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    Ou perguntar ao Tiagão
+                  </button>
+                </div>
+              )}
             </div>
           </motion.div>
         </>

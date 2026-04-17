@@ -34,6 +34,7 @@ import {
   Pencil,
   Medal,
   History,
+  Database,
 } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { TutorChat } from "@/components/TutorChat";
@@ -782,6 +783,14 @@ export default function Home() {
             >
               <Brain className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Mapa Mental</span>
+            </button>
+            <button
+              onClick={() => navigate("/base-conhecimento")}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold text-xs whitespace-nowrap transition-all flex-shrink-0"
+              title="Base de Conhecimento"
+            >
+              <Database className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Minha Base</span>
             </button>
             <button
               onClick={() => navigate("/simulado-enem")}

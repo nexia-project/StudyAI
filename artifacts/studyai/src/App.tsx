@@ -25,6 +25,7 @@ import GovernoPage from "@/pages/Governo";
 import GovernoLoginPage from "@/pages/GovernoLogin";
 import SimuladoEnemPage from "@/pages/SimuladoEnem";
 import SalaEstudosPage from "@/pages/SalaEstudos";
+import BaseConhecimentoPage from "@/pages/BaseConhecimento";
 import NotFound from "@/pages/not-found";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WhatsAppBanner } from "@/components/WhatsAppBanner";
@@ -231,6 +232,7 @@ function Router() {
         <Route path="/governo" component={GovernoPage} />
         <Route path="/simulado-enem" component={SimuladoEnemPage} />
         <Route path="/sala-estudos" component={SalaEstudosPage} />
+        <Route path="/base-conhecimento" component={BaseConhecimentoPage} />
         {/* Clerk OAuth callback — handles Google/GitHub sign-in redirects */}
         <Route path="/v1/oauth_callback" component={OAuthCallbackPage} />
         {/* Aliases: navigation shortcuts */}

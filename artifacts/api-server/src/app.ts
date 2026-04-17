@@ -24,19 +24,27 @@ app.use(
   }),
 );
 
-// ── CORS — only allow the production domain + dev environment ────────────────
-const ALLOWED_ORIGINS = new Set([
-  "https://study.ia.br",
-  "https://www.study.ia.br",
-  ...(process.env.REPLIT_DEV_DOMAIN ? [`https://${process.env.REPLIT_DEV_DOMAIN}`] : []),
-  ...(process.env.NODE_ENV === "development" ? ["http://localhost:3000", "http://localhost:18459", "http://localhost:5173"] : []),
-]);
+// ── CORS — allow production domains + Replit domains + dev environment ────────
+function isAllowedOrigin(origin: string | undefined): boolean {
+  if (!origin) return true;
+  // Custom production domains
+  if (origin === "https://study.ia.br" || origin === "https://www.study.ia.br") return true;
+  // Any Replit-hosted domain (*.replit.app, *.replit.dev, *.janeway.replit.dev)
+  if (origin.endsWith(".replit.app") || origin.endsWith(".replit.dev")) return true;
+  // Dev domain injected by Replit at runtime
+  if (process.env.REPLIT_DEV_DOMAIN && origin === `https://${process.env.REPLIT_DEV_DOMAIN}`) return true;
+  // Local development
+  if (process.env.NODE_ENV === "development") {
+    if (origin.startsWith("http://localhost:")) return true;
+  }
+  return false;
+}
 
 app.use(
   cors({
     credentials: true,
     origin: (origin, callback) => {
-      if (!origin || ALLOWED_ORIGINS.has(origin)) {
+      if (isAllowedOrigin(origin)) {
         callback(null, true);
       } else {
         callback(new Error(`CORS: origin not allowed — ${origin}`));

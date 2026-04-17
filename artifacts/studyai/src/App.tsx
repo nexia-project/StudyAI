@@ -146,6 +146,33 @@ function RedirectTo({ to }: { to: string }) {
   return null;
 }
 
+// Handles Clerk OAuth callback redirects (e.g. after Google sign-in)
+// Clerk redirects to /v1/oauth_callback?err_code=... on failure
+function OAuthCallbackPage() {
+  const [, navigate] = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const errCode = params.get("err_code");
+    if (errCode) {
+      // Store error to show on sign-in page
+      sessionStorage.setItem("oauth_error", errCode);
+      navigate("/sign-in", { replace: true });
+    } else {
+      // Success — Clerk handles session, go to app
+      navigate("/app", { replace: true });
+    }
+  }, []);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100dvh", gap: 16 }}>
+      <div style={{ width: 40, height: 40, border: "4px solid #6366f1", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+      <p style={{ color: "#6366f1", fontFamily: "sans-serif" }}>Autenticando...</p>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
 function Router() {
   return (
     <>
@@ -179,6 +206,8 @@ function Router() {
         <Route path="/governo" component={GovernoPage} />
         <Route path="/simulado-enem" component={SimuladoEnemPage} />
         <Route path="/sala-estudos" component={SalaEstudosPage} />
+        {/* Clerk OAuth callback — handles Google/GitHub sign-in redirects */}
+        <Route path="/v1/oauth_callback" component={OAuthCallbackPage} />
         {/* Aliases: navigation shortcuts */}
         <Route path="/simulado" component={() => <RedirectTo to="/app" />} />
         <Route path="/simulado-adaptativo" component={() => <RedirectTo to="/app" />} />

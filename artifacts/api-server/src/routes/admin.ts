@@ -2,16 +2,12 @@ import { Router, type Request, type Response } from "express";
 import { db, usersTable } from "@workspace/db";
 import { roleRequestsTable } from "@workspace/db/schema";
 import { eq, desc, and } from "drizzle-orm";
-import { isAdminUser } from "../lib/adminCheck";
+import { isAdminUserAsync } from "../lib/adminCheck";
 
 const router = Router();
 
-function isAdmin(req: Request): boolean {
-  return isAdminUser(req.userId);
-}
-
 router.get("/admin/users", async (req: Request, res: Response) => {
-  if (!isAdmin(req)) return res.status(403).json({ error: "Acesso negado" });
+  if (!await isAdminUserAsync(req.userId)) return res.status(403).json({ error: "Acesso negado" });
   try {
     const users = await db
       .select({
@@ -35,7 +31,7 @@ router.get("/admin/users", async (req: Request, res: Response) => {
 });
 
 router.patch("/admin/users/:id/status", async (req: Request, res: Response) => {
-  if (!isAdmin(req)) return res.status(403).json({ error: "Acesso negado" });
+  if (!await isAdminUserAsync(req.userId)) return res.status(403).json({ error: "Acesso negado" });
   const { id } = req.params;
   const { status } = req.body as { status: string };
   const allowed = ["free", "active", "trialing", "canceled", "past_due"];
@@ -56,7 +52,7 @@ router.patch("/admin/users/:id/status", async (req: Request, res: Response) => {
 
 // ─── Role requests: list ──────────────────────────────────────────────────────
 router.get("/admin/role-requests", async (req: Request, res: Response) => {
-  if (!isAdmin(req)) return res.status(403).json({ error: "Acesso negado" });
+  if (!await isAdminUserAsync(req.userId)) return res.status(403).json({ error: "Acesso negado" });
   try {
     const requests = await db
       .select({
@@ -72,7 +68,6 @@ router.get("/admin/role-requests", async (req: Request, res: Response) => {
         message: roleRequestsTable.message,
         createdAt: roleRequestsTable.createdAt,
         reviewedAt: roleRequestsTable.reviewedAt,
-        // user info
         email: usersTable.email,
         firstName: usersTable.firstName,
         lastName: usersTable.lastName,
@@ -89,7 +84,7 @@ router.get("/admin/role-requests", async (req: Request, res: Response) => {
 
 // ─── Role requests: approve or reject ────────────────────────────────────────
 router.post("/admin/role-requests/:id/review", async (req: Request, res: Response) => {
-  if (!isAdmin(req)) return res.status(403).json({ error: "Acesso negado" });
+  if (!await isAdminUserAsync(req.userId)) return res.status(403).json({ error: "Acesso negado" });
   const { id } = req.params;
   const { action } = req.body as { action: "approve" | "reject" };
   if (!["approve", "reject"].includes(action)) {

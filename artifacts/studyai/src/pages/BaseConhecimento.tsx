@@ -23,6 +23,21 @@ interface Doc {
   created_at: string;
 }
 
+interface WikiResult {
+  pageid: number;
+  title: string;
+  snippet: string;
+  url: string;
+}
+
+interface WikiSummary {
+  title: string;
+  description: string;
+  extract: string;
+  url: string;
+  thumbnail?: string;
+}
+
 const SUBJECT_OPTIONS = [
   "Matemática", "Português", "História", "Geografia", "Física",
   "Química", "Biologia", "Inglês", "Literatura", "Filosofia",
@@ -324,6 +339,13 @@ export default function BaseConhecimento() {
   const [searching, setSearching] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
+  // Wikipedia PT integration
+  const [wikiQuery, setWikiQuery] = useState("");
+  const [wikiResults, setWikiResults] = useState<WikiResult[]>([]);
+  const [wikiLoading, setWikiLoading] = useState(false);
+  const [wikiSummary, setWikiSummary] = useState<WikiSummary | null>(null);
+  const [wikiSummaryTitle, setWikiSummaryTitle] = useState("");
+
   function showToast(msg: string, type: "success" | "error" = "success") {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
@@ -384,6 +406,64 @@ export default function BaseConhecimento() {
     setModal(null);
     showToast("✅ Conteúdo salvo com segurança no banco de dados!");
     loadDocs();
+  }
+
+  // ─── Wikipedia PT ─────────────────────────────────────────────────────────────
+  async function handleWikiSearch(q: string) {
+    if (!q.trim()) { setWikiResults([]); return; }
+    setWikiLoading(true);
+    setWikiSummary(null);
+    setWikiSummaryTitle("");
+    try {
+      const res = await fetch(
+        `${BASE_URL}/api/wikipedia/search?q=${encodeURIComponent(q)}&limit=6`,
+        { credentials: "include" }
+      );
+      const data = await res.json();
+      setWikiResults(data.results || []);
+    } catch {
+      showToast("Erro ao buscar na Wikipedia", "error");
+    } finally {
+      setWikiLoading(false);
+    }
+  }
+
+  async function handleWikiSummary(title: string) {
+    setWikiSummaryTitle(title);
+    setWikiSummary(null);
+    try {
+      const res = await fetch(
+        `${BASE_URL}/api/wikipedia/summary?title=${encodeURIComponent(title)}`,
+        { credentials: "include" }
+      );
+      const data = await res.json();
+      if (data.summary) setWikiSummary(data.summary);
+    } catch {
+      showToast("Erro ao carregar artigo", "error");
+    }
+  }
+
+  async function handleSaveWikiToBase(summary: WikiSummary) {
+    try {
+      const body = {
+        url: summary.url,
+        title: summary.title,
+        subject: "",
+        tags: ["Wikipedia", "enciclopédia"],
+      };
+      const res = await fetch(`${BASE_URL}/api/knowledge/user-upload-url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.erro || "Erro ao salvar");
+      showToast("✅ Artigo salvo na sua base de conhecimento!");
+      loadDocs();
+    } catch (err: any) {
+      showToast(err.message || "Erro ao salvar artigo", "error");
+    }
   }
 
   const loadedRef = useRef(false);
@@ -575,16 +655,139 @@ export default function BaseConhecimento() {
           )}
         </div>
 
-        {/* Info about educational databases */}
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 space-y-2">
+        {/* Wikipedia PT integration panel */}
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 space-y-3">
           <div className="flex items-center gap-2">
             <Globe className="w-5 h-5 text-blue-600 shrink-0" />
-            <p className="text-sm font-bold text-blue-800">Integração com bases educacionais</p>
+            <p className="text-sm font-bold text-blue-800">Wikipedia em Português — base de conhecimento pública</p>
           </div>
-          <p className="text-xs text-blue-700">
-            O Tiagão já tem acesso a bases de conhecimento públicas do MEC, INEP (banco de questões ENEM), e conteúdos educacionais brasileiros. 
-            Seus documentos são somados a esse conhecimento para um aprendizado personalizado.
+          <p className="text-xs text-blue-700 leading-relaxed">
+            Busque qualquer assunto diretamente na Wikipedia PT. O Tiagão também usa esses artigos automaticamente quando você faz perguntas. Salve artigos na sua base para estudar depois.
           </p>
+
+          {/* Search bar */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={wikiQuery}
+              onChange={e => setWikiQuery(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleWikiSearch(wikiQuery)}
+              placeholder="Ex: fotossíntese, Segunda Guerra Mundial, álgebra linear..."
+              className="flex-1 px-3 py-2 rounded-xl border border-blue-200 bg-white text-sm placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <button
+              onClick={() => handleWikiSearch(wikiQuery)}
+              disabled={wikiLoading}
+              className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1.5"
+            >
+              {wikiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              Buscar
+            </button>
+          </div>
+
+          {/* Results */}
+          {wikiResults.length > 0 && (
+            <div className="space-y-1.5 mt-1">
+              {wikiResults.map(r => (
+                <div
+                  key={r.pageid}
+                  className="bg-white border border-blue-100 rounded-xl p-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <button
+                        onClick={() => handleWikiSummary(r.title)}
+                        className="text-sm font-bold text-blue-700 hover:underline text-left"
+                      >
+                        {r.title}
+                      </button>
+                      {r.snippet && (
+                        <p className="text-xs text-blue-600/80 mt-0.5 line-clamp-2">{r.snippet}</p>
+                      )}
+                    </div>
+                    <div className="flex gap-1.5 shrink-0">
+                      <a
+                        href={r.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-100"
+                        title="Abrir na Wikipedia"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Expanded summary */}
+                  {wikiSummaryTitle === r.title && (
+                    <div className="mt-2 pt-2 border-t border-blue-100">
+                      {!wikiSummary ? (
+                        <div className="flex items-center gap-2 text-xs text-blue-500">
+                          <Loader2 className="w-3 h-3 animate-spin" /> Carregando artigo...
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {wikiSummary.thumbnail && (
+                            <img
+                              src={wikiSummary.thumbnail}
+                              alt={wikiSummary.title}
+                              className="float-right ml-3 mb-1 w-20 h-16 object-cover rounded-lg"
+                            />
+                          )}
+                          {wikiSummary.description && (
+                            <p className="text-xs font-semibold text-blue-700">{wikiSummary.description}</p>
+                          )}
+                          <p className="text-xs text-blue-800/80 leading-relaxed line-clamp-6">{wikiSummary.extract}</p>
+                          <div className="flex items-center gap-2 pt-1 clear-both">
+                            <button
+                              onClick={() => handleSaveWikiToBase(wikiSummary)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700"
+                            >
+                              <Database className="w-3.5 h-3.5" />
+                              Salvar na minha base
+                            </button>
+                            <a
+                              href={wikiSummary.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-100 text-blue-700 hover:bg-blue-200"
+                            >
+                              <Globe className="w-3.5 h-3.5" />
+                              Ver artigo completo
+                            </a>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* INEP/MEC links */}
+          <div className="pt-1 border-t border-blue-200">
+            <p className="text-xs font-bold text-blue-700 mb-1.5">Fontes educacionais oficiais:</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { label: "INEP / ENEM", url: "https://www.gov.br/inep/pt-br/areas-de-atuacao/avaliacao-e-exames-educacionais/enem" },
+                { label: "MEC / BNCC", url: "http://basenacionalcomum.mec.gov.br" },
+                { label: "Dados ENEM abertos", url: "https://dados.gov.br/dados/conjuntos-dados?q=enem" },
+                { label: "Khan Academy PT", url: "https://pt.khanacademy.org" },
+              ].map(link => (
+                <a
+                  key={link.label}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200"
+                >
+                  <ChevronRight className="w-3 h-3" />
+                  {link.label}
+                </a>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>

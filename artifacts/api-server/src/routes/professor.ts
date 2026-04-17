@@ -297,11 +297,20 @@ router.post("/voice-chat", async (req, res) => {
         content: String(m.content).slice(0, 2000),
       }));
 
-    // Search knowledge base using last user message
+    // Search knowledge base + BNCC + Wikipedia using last user message
     const lastUserMsg = cleanMessages.filter(m => m.role === "user").slice(-1)[0]?.content ?? "";
-    const kbContext = await searchKnowledgeBase(lastUserMsg);
+    const [kbContext, bnccContext] = await Promise.all([
+      searchKnowledgeBase(lastUserMsg),
+      (async () => {
+        try {
+          const { getBnccContext } = await import("../data/bncc-data");
+          const ctx = getBnccContext(lastUserMsg, context?.subject);
+          return ctx ? `\n\n${ctx}` : "";
+        } catch { return ""; }
+      })(),
+    ]);
 
-    const systemContent = BASE_PROMPT + buildRichContext(context, dbData) + kbContext;
+    const systemContent = BASE_PROMPT + buildRichContext(context, dbData) + kbContext + bnccContext;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",

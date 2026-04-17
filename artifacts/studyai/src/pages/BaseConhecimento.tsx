@@ -6,6 +6,7 @@ import {
   ArrowLeft, BookOpen, Upload, X, FileText, Trash2, Search,
   Link2, Loader2, CheckCircle, AlertCircle, FileImage,
   Database, RefreshCw, Globe, ChevronRight, Brain,
+  GraduationCap, BookMarked, ChevronDown, Tag,
 } from "lucide-react";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -37,6 +38,29 @@ interface WikiSummary {
   url: string;
   thumbnail?: string;
 }
+
+interface BnccHabilidade {
+  codigo: string;
+  descricao: string;
+  area: string;
+  componente: string;
+  unidade?: string;
+  tags: string[];
+}
+
+const AREA_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  LGG: { bg: "bg-orange-50", text: "text-orange-700", border: "border-orange-200" },
+  MAT: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
+  CNT: { bg: "bg-green-50", text: "text-green-700", border: "border-green-200" },
+  CHS: { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200" },
+};
+
+const AREA_NAMES: Record<string, string> = {
+  LGG: "Linguagens",
+  MAT: "Matemática",
+  CNT: "Ciências da Natureza",
+  CHS: "Ciências Humanas",
+};
 
 const SUBJECT_OPTIONS = [
   "Matemática", "Português", "História", "Geografia", "Física",
@@ -346,6 +370,16 @@ export default function BaseConhecimento() {
   const [wikiSummary, setWikiSummary] = useState<WikiSummary | null>(null);
   const [wikiSummaryTitle, setWikiSummaryTitle] = useState("");
 
+  // BNCC integration
+  const [bnccOpen, setBnccOpen] = useState(false);
+  const [bnccQuery, setBnccQuery] = useState("");
+  const [bnccArea, setBnccArea] = useState<string>("");
+  const [bnccComp, setBnccComp] = useState<string>("");
+  const [bnccResults, setBnccResults] = useState<BnccHabilidade[]>([]);
+  const [bnccLoading, setBnccLoading] = useState(false);
+  const [bnccExpanded, setBnccExpanded] = useState<string | null>(null);
+  const [bnccSearched, setBnccSearched] = useState(false);
+
   function showToast(msg: string, type: "success" | "error" = "success") {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
@@ -463,6 +497,27 @@ export default function BaseConhecimento() {
       loadDocs();
     } catch (err: any) {
       showToast(err.message || "Erro ao salvar artigo", "error");
+    }
+  }
+
+  // ─── BNCC ────────────────────────────────────────────────────────────────────
+  async function handleBnccSearch() {
+    setBnccLoading(true);
+    setBnccSearched(true);
+    setBnccExpanded(null);
+    try {
+      const params = new URLSearchParams();
+      if (bnccQuery) params.set("q", bnccQuery);
+      if (bnccArea) params.set("area", bnccArea);
+      if (bnccComp) params.set("comp", bnccComp);
+      params.set("limit", "20");
+      const res = await fetch(`${BASE_URL}/api/bncc/buscar?${params}`, { credentials: "include" });
+      const data = await res.json();
+      setBnccResults(data.habilidades || []);
+    } catch {
+      showToast("Erro ao buscar na BNCC", "error");
+    } finally {
+      setBnccLoading(false);
     }
   }
 
@@ -789,6 +844,157 @@ export default function BaseConhecimento() {
             </div>
           </div>
         </div>
+
+        {/* ── BNCC Browser ───────────────────────────────────────────────────── */}
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl overflow-hidden">
+          {/* Header collapsible */}
+          <button
+            onClick={() => setBnccOpen(o => !o)}
+            className="w-full flex items-center justify-between p-4 hover:bg-emerald-100/50 transition-colors text-left"
+          >
+            <div className="flex items-center gap-2">
+              <GraduationCap className="w-5 h-5 text-emerald-600 shrink-0" />
+              <div>
+                <p className="text-sm font-bold text-emerald-800">BNCC — Base Nacional Comum Curricular</p>
+                <p className="text-xs text-emerald-700">MEC · Documento oficial · {Object.keys(AREA_NAMES).length} áreas · Ensino Médio</p>
+              </div>
+            </div>
+            <ChevronDown className={`w-4 h-4 text-emerald-600 transition-transform ${bnccOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          {bnccOpen && (
+            <div className="px-4 pb-4 space-y-3 border-t border-emerald-200">
+              <p className="text-xs text-emerald-700 pt-3 leading-relaxed">
+                Todas as habilidades do Ensino Médio integradas. O Tiagão referencia automaticamente os códigos BNCC nas respostas. Busque por assunto, componente ou área.
+              </p>
+
+              {/* Filters */}
+              <div className="flex flex-wrap gap-2">
+                <select
+                  value={bnccArea}
+                  onChange={e => setBnccArea(e.target.value)}
+                  className="flex-1 min-w-[130px] px-3 py-2 rounded-xl border border-emerald-200 bg-white text-xs text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                >
+                  <option value="">Todas as áreas</option>
+                  <option value="LGG">Linguagens</option>
+                  <option value="MAT">Matemática</option>
+                  <option value="CNT">Ciências da Natureza</option>
+                  <option value="CHS">Ciências Humanas</option>
+                </select>
+                <select
+                  value={bnccComp}
+                  onChange={e => setBnccComp(e.target.value)}
+                  className="flex-1 min-w-[130px] px-3 py-2 rounded-xl border border-emerald-200 bg-white text-xs text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                >
+                  <option value="">Todos os componentes</option>
+                  {["Língua Portuguesa","Língua Inglesa","Arte","Matemática","Física","Química","Biologia","História","Geografia","Filosofia","Sociologia"].map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={bnccQuery}
+                  onChange={e => setBnccQuery(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleBnccSearch()}
+                  placeholder="Ex: fotossíntese, leis de Newton, Revolução Francesa..."
+                  className="flex-1 px-3 py-2 rounded-xl border border-emerald-200 bg-white text-sm placeholder-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                />
+                <button
+                  onClick={handleBnccSearch}
+                  disabled={bnccLoading}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {bnccLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                  Buscar
+                </button>
+              </div>
+
+              {/* Área quick pills */}
+              {!bnccSearched && !bnccArea && (
+                <div className="flex flex-wrap gap-1.5">
+                  {Object.entries(AREA_NAMES).map(([code, name]) => {
+                    const c = AREA_COLORS[code];
+                    return (
+                      <button
+                        key={code}
+                        onClick={() => { setBnccArea(code); setBnccComp(""); setBnccQuery(""); setTimeout(handleBnccSearch, 50); }}
+                        className={`px-3 py-1 rounded-full text-xs font-bold border ${c.bg} ${c.text} ${c.border} hover:opacity-80`}
+                      >
+                        {name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Results */}
+              {bnccResults.length > 0 && (
+                <div className="space-y-1.5 max-h-96 overflow-y-auto pr-1">
+                  {bnccResults.map(h => {
+                    const c = AREA_COLORS[h.area] || { bg: "bg-gray-50", text: "text-gray-700", border: "border-gray-200" };
+                    const isExpanded = bnccExpanded === h.codigo;
+                    return (
+                      <div key={h.codigo} className={`border rounded-xl overflow-hidden ${c.border}`}>
+                        <button
+                          onClick={() => setBnccExpanded(isExpanded ? null : h.codigo)}
+                          className={`w-full text-left px-3 py-2.5 flex items-start gap-2 hover:opacity-80 ${c.bg}`}
+                        >
+                          <div className="shrink-0">
+                            <span className={`text-xs font-black px-2 py-0.5 rounded-md border ${c.bg} ${c.text} ${c.border}`}>
+                              {h.codigo}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-xs font-semibold ${c.text}`}>{h.componente}{h.unidade ? ` · ${h.unidade}` : ""}</p>
+                            <p className="text-xs text-gray-700 mt-0.5 line-clamp-2">{h.descricao}</p>
+                          </div>
+                          <ChevronDown className={`w-4 h-4 shrink-0 ${c.text} transition-transform mt-0.5 ${isExpanded ? "rotate-180" : ""}`} />
+                        </button>
+                        {isExpanded && (
+                          <div className="px-3 pb-3 pt-1 bg-white border-t border-gray-100">
+                            <p className="text-xs text-gray-700 leading-relaxed mb-2">{h.descricao}</p>
+                            <div className="flex flex-wrap gap-1">
+                              <Tag className="w-3 h-3 text-gray-400 mt-0.5" />
+                              {h.tags.slice(0, 6).map(t => (
+                                <span key={t} className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{t}</span>
+                              ))}
+                            </div>
+                            <div className="mt-2 flex gap-2">
+                              <button
+                                onClick={() => { setBnccQuery(h.descricao.slice(0, 60)); handleBnccSearch(); }}
+                                className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold ${c.bg} ${c.text} hover:opacity-80`}
+                              >
+                                <BookMarked className="w-3 h-3" />
+                                Habilidades relacionadas
+                              </button>
+                              <a
+                                href={`http://basenacionalcomum.mec.gov.br/implementar`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                              >
+                                <Globe className="w-3 h-3" />
+                                Ver no MEC
+                              </a>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {bnccSearched && !bnccLoading && bnccResults.length === 0 && (
+                <p className="text-xs text-emerald-600 text-center py-3">Nenhuma habilidade encontrada. Tente outros termos.</p>
+              )}
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );

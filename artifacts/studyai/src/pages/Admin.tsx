@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useAuth } from "@clerk/react";
-import { Brain, Shield, CheckCircle, XCircle, Users, RefreshCw, Crown, UserX, BookOpen, Plus, Trash2, FileText, GraduationCap, Building2, Globe, Database, Upload, Loader2, Search, Bell, Clock } from "lucide-react";
+import { Brain, Shield, CheckCircle, XCircle, Users, RefreshCw, Crown, UserX, BookOpen, Plus, Trash2, FileText, GraduationCap, Building2, Globe, Database, Upload, Loader2, Search, Bell, Clock, TrendingUp, TrendingDown, BarChart3, Activity, Zap, AlertTriangle, Lock, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 type User = {
   id: string;
@@ -53,6 +54,22 @@ type RoleRequest = {
   lastName: string | null;
 };
 
+type AdminStats = {
+  totalUsers: number;
+  todayNewUsers: number;
+  premiumUsers: number;
+  teacherCount: number;
+  govCount: number;
+  todayActive: number;
+  pendingRequests: number;
+  plansPerDay: { day: string; count: number }[];
+  simuladosPerDay: { day: string; count: number }[];
+  newUsersPerDay: { day: string; count: number }[];
+  recentUsers: { id: string; email: string; first_name: string; last_name: string; stripe_subscription_status: string; role: string; created_at: string }[];
+  topMaterias: { materia: string; count: number; avg_score: number }[];
+  activityHeatmap: { study_date: string; active_users: number }[];
+};
+
 export default function AdminPage() {
   const [, navigate] = useLocation();
   const { getToken } = useAuth();
@@ -70,7 +87,9 @@ export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"solicitacoes" | "users" | "content" | "roles" | "knowledge">("solicitacoes");
+  const [activeTab, setActiveTab] = useState<"visao" | "solicitacoes" | "users" | "content" | "roles" | "knowledge">("visao");
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
   const [roleRequests, setRoleRequests] = useState<RoleRequest[]>([]);
   const [rrLoading, setRrLoading] = useState(false);
   const [rrReviewing, setRrReviewing] = useState<string | null>(null);
@@ -320,7 +339,16 @@ export default function AdminPage() {
     }
   }
 
-  useEffect(() => { fetchUsers(); fetchRoleRequests(); }, []);
+  async function fetchStats() {
+    setStatsLoading(true);
+    try {
+      const res = await adminFetch("/api/admin/stats");
+      if (res.ok) setStats(await res.json());
+    } catch { /* ignore */ }
+    finally { setStatsLoading(false); }
+  }
+
+  useEffect(() => { fetchUsers(); fetchRoleRequests(); fetchStats(); }, []);
   useEffect(() => { if (activeTab === "content") fetchTeacherContent(); }, [activeTab]);
   useEffect(() => { if (activeTab === "knowledge") fetchKbDocs(); }, [activeTab]);
 
@@ -389,6 +417,7 @@ export default function AdminPage() {
 
         <div className="flex gap-2 mb-8 border-b border-white/10 pb-0 overflow-x-auto">
           {[
+            { key: "visao", label: "Visão Geral", icon: BarChart3 },
             { key: "solicitacoes", label: "Solicitações", icon: Bell, badge: roleRequests.filter(r => r.status === "pending").length },
             { key: "users", label: "Usuários", icon: Users },
             { key: "roles", label: "Perfis & Acesso", icon: Shield },
@@ -414,6 +443,214 @@ export default function AdminPage() {
             </button>
           ))}
         </div>
+
+        {activeTab === "visao" && (
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-black text-white">Dashboard Operacional</h2>
+                <p className="text-white/40 text-sm mt-0.5">Métricas em tempo real da plataforma</p>
+              </div>
+              <button onClick={fetchStats} className="flex items-center gap-2 text-white/40 hover:text-white text-sm transition-colors">
+                <RefreshCw className={`w-4 h-4 ${statsLoading ? "animate-spin" : ""}`} /> Atualizar
+              </button>
+            </div>
+
+            {statsLoading && !stats && (
+              <div className="flex items-center justify-center py-20">
+                <RefreshCw className="w-8 h-8 text-violet-400 animate-spin" />
+              </div>
+            )}
+
+            {stats && (
+              <>
+                {/* KPI Row */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { label: "Total de Usuários", value: stats.totalUsers.toLocaleString("pt-BR"), icon: Users, color: "from-violet-500 to-purple-600", sub: "cadastrados" },
+                    { label: "Ativos Hoje", value: stats.todayActive.toLocaleString("pt-BR"), icon: Activity, color: "from-emerald-500 to-teal-600", sub: "estudando" },
+                    { label: "Novos Hoje", value: stats.todayNewUsers.toLocaleString("pt-BR"), icon: UserPlus, color: "from-blue-500 to-indigo-600", sub: "cadastros" },
+                    { label: "Premium", value: stats.premiumUsers.toLocaleString("pt-BR"), icon: Crown, color: "from-amber-500 to-orange-600", sub: "assinantes" },
+                  ].map((kpi) => (
+                    <div key={kpi.label} className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-start gap-3">
+                      <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${kpi.color} flex items-center justify-center flex-shrink-0`}>
+                        <kpi.icon className="w-4.5 h-4.5 text-white" style={{ width: 18, height: 18 }} />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-black text-white leading-none">{kpi.value}</p>
+                        <p className="text-xs text-white/40 font-medium mt-0.5">{kpi.label}</p>
+                        <p className="text-[10px] text-white/25">{kpi.sub}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Distribuição de usuários */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {[
+                    { label: "Professores", value: stats.teacherCount, icon: GraduationCap, color: "text-blue-400" },
+                    { label: "Governo", value: stats.govCount, icon: Globe, color: "text-emerald-400" },
+                    { label: "Solicitações Pendentes", value: stats.pendingRequests, icon: Bell, color: "text-amber-400" },
+                  ].map((item) => (
+                    <div key={item.label} className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-3">
+                      <item.icon className={`w-8 h-8 ${item.color}`} />
+                      <div>
+                        <p className="text-xl font-black text-white">{item.value.toLocaleString("pt-BR")}</p>
+                        <p className="text-xs text-white/40">{item.label}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Charts row */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Novos usuários chart */}
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+                    <h3 className="text-sm font-bold text-white/70 mb-4 flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-emerald-400" /> Novos usuários — últimos 7 dias
+                    </h3>
+                    {stats.newUsersPerDay.length === 0 ? (
+                      <p className="text-white/30 text-xs text-center py-8">Sem dados de novos usuários</p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={150}>
+                        <AreaChart data={stats.newUsersPerDay} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="gradUsers" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4} />
+                              <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                          <XAxis dataKey="day" tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 9 }} tickFormatter={(v) => v.slice(5)} />
+                          <YAxis tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 9 }} />
+                          <Tooltip contentStyle={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", fontSize: 11 }} />
+                          <Area type="monotone" dataKey="count" stroke="#8b5cf6" fill="url(#gradUsers)" strokeWidth={2} name="Novos usuários" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+
+                  {/* Planos de estudo chart */}
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+                    <h3 className="text-sm font-bold text-white/70 mb-4 flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-amber-400" /> Planos criados — últimos 7 dias
+                    </h3>
+                    {stats.plansPerDay.length === 0 ? (
+                      <p className="text-white/30 text-xs text-center py-8">Nenhum plano criado ainda</p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={150}>
+                        <BarChart data={stats.plansPerDay} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                          <XAxis dataKey="day" tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 9 }} tickFormatter={(v) => v.slice(5)} />
+                          <YAxis tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 9 }} />
+                          <Tooltip contentStyle={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", fontSize: 11 }} />
+                          <Bar dataKey="count" fill="#f59e0b" radius={[4, 4, 0, 0]} name="Planos" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+                </div>
+
+                {/* Top Matérias + Atividade */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Top matérias */}
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+                    <h3 className="text-sm font-bold text-white/70 mb-4 flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-blue-400" /> Matérias mais estudadas
+                    </h3>
+                    {stats.topMaterias.length === 0 ? (
+                      <p className="text-white/30 text-xs text-center py-8">Nenhum simulado realizado ainda</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {stats.topMaterias.map((m, i) => (
+                          <div key={m.materia} className="flex items-center gap-3">
+                            <span className="text-white/30 text-xs w-4 font-bold">{i + 1}</span>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between mb-0.5">
+                                <p className="text-xs text-white/80 font-semibold truncate">{m.materia}</p>
+                                <span className="text-[10px] text-white/40 ml-2 shrink-0">{m.count} simulado{m.count !== 1 ? "s" : ""}</span>
+                              </div>
+                              <div className="w-full bg-white/10 rounded-full h-1.5">
+                                <div
+                                  className="h-1.5 rounded-full bg-gradient-to-r from-violet-500 to-blue-500"
+                                  style={{ width: `${Math.min(100, m.avg_score)}%` }}
+                                />
+                              </div>
+                            </div>
+                            <span className={`text-xs font-black shrink-0 ${m.avg_score >= 70 ? "text-emerald-400" : m.avg_score >= 50 ? "text-amber-400" : "text-red-400"}`}>
+                              {m.avg_score.toFixed(0)}%
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Usuários recentes */}
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+                    <h3 className="text-sm font-bold text-white/70 mb-4 flex items-center gap-2">
+                      <Users className="w-4 h-4 text-violet-400" /> Cadastros recentes
+                    </h3>
+                    <div className="space-y-2">
+                      {stats.recentUsers.map((u) => {
+                        const name = [u.first_name, u.last_name].filter(Boolean).join(" ") || u.email || u.id.slice(0, 8);
+                        const status = u.stripe_subscription_status;
+                        return (
+                          <div key={u.id} className="flex items-center gap-3 py-1">
+                            <div className="w-7 h-7 rounded-full bg-violet-500/20 flex items-center justify-center flex-shrink-0">
+                              <span className="text-xs font-black text-violet-400">{(name[0] || "?").toUpperCase()}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-white/80 font-semibold truncate">{name}</p>
+                              <p className="text-[10px] text-white/30">{u.email}</p>
+                            </div>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${status === "active" || status === "trialing" ? "bg-emerald-500/20 text-emerald-400" : "bg-white/10 text-white/30"}`}>
+                              {status === "active" ? "Premium" : status === "trialing" ? "Trial" : "Free"}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Ações rápidas */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+                  <h3 className="text-sm font-bold text-white/70 mb-4 flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-amber-400" /> Ações Rápidas
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[
+                      { label: "Gerenciar Usuários", icon: Users, tab: "users", color: "bg-violet-500/10 hover:bg-violet-500/20 border-violet-500/20 text-violet-400" },
+                      { label: "Solicitações Pendentes", icon: Bell, tab: "solicitacoes", color: "bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/20 text-amber-400" },
+                      { label: "Upload Conteúdo", icon: Upload, tab: "content", color: "bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/20 text-blue-400" },
+                      { label: "Base de Conhecimento", icon: Database, tab: "knowledge", color: "bg-teal-500/10 hover:bg-teal-500/20 border-teal-500/20 text-teal-400" },
+                    ].map((action) => (
+                      <button
+                        key={action.label}
+                        onClick={() => setActiveTab(action.tab as any)}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${action.color}`}
+                      >
+                        <action.icon className="w-5 h-5" />
+                        <span className="text-xs font-bold text-center leading-tight">{action.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Sistema status */}
+                <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-4 flex items-center gap-3">
+                  <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />
+                  <div>
+                    <p className="text-sm font-bold text-emerald-400">Status do Sistema: Online</p>
+                    <p className="text-xs text-white/30">API, banco de dados e servidor funcionando normalmente</p>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {activeTab === "solicitacoes" && (
           <div className="space-y-4">

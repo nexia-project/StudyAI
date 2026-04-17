@@ -1,0 +1,123 @@
+🧠 MÓDULO: MAPA MENTAL INTELIGENTE (núcleo do sistema)
+🔥 Ideia central
+O StudyAI não só ensina —
+ele organiza todo o conhecimento do usuário em mapas mentais vivos e evolutivos.
+
+Tudo que o aluno faz vira estrutura visual.
+
+⚙️ COMO FUNCIONA NA PRÁTICA
+1. Entrada de conteúdo (input)
+O sistema aceita:
+
+Texto digitado
+PDFs
+Apostilas
+Anotações
+Prints (futuramente)
+Conteúdo de aula
+Questões resolvidas
+Matérias selecionadas dentro da plataforma
+2. IA destrincha tudo automaticamente
+A IA pega o conteúdo e transforma em:
+
+Tópicos principais
+Subtópicos
+Conceitos-chave
+Relações entre assuntos
+Hierarquia de aprendizado
+3. Geração automática de mapa mental
+O sistema cria:
+
+🧠 Mapa mental visual
+🔀 Fluxograma lógico (quando fizer sentido)
+📚 Estrutura de estudo organizada
+Exemplo:
+
+Matéria: Biologia
+→ Citologia
+→ Membrana plasmática
+→ Transporte ativo/passivo
+→ Difusão / Osmose
+→ Aplicação em questões
+
+4. Mapa vivo (isso aqui é o diferencial forte)
+O mapa NÃO é estático.
+
+Ele evolui com o usuário:
+
+Se o aluno erra → o nó fica “fraco” (ex: vermelho)
+Se acerta → fica “forte” (verde)
+Se nunca viu → neutro
+Ou seja:
+
+👉 vira um mapa de conhecimento real do cérebro do aluno
+
+5. Integração com TODO o sistema
+Esse mapa conecta com:
+
+✅ Simulados
+✅ Plano de estudo
+✅ Histórico
+✅ XP e níveis
+✅ Recomendações da IA
+Exemplo:
+
+"A IA vê que você está fraco em frações → automaticamente joga isso no seu plano"
+
+6. Geração de estudo a partir do mapa
+O mapa vira ação:
+
+Criar lista de exercícios a partir de um nó
+Revisar só pontos fracos
+Fazer simulado só de um tema
+Expandir assunto automaticamente
+7. Criação completa (do zero ao avançado)
+Você falou algo MUITO importante — e sim, isso é ouro:
+
+O usuário pode:
+
+Começar com uma pesquisa simples
+E ir aprofundando
+Até ter um mapa completo de um assunto inteiro
+Tipo:
+
+"Quero aprender Direito Constitucional"
+
+→ começa básico
+→ IA expande
+→ vira estrutura completa
+→ vira plano
+→ vira domínio real
+
+💡 PARA PROFESSORES
+Criar mapas mentais para aulas
+Compartilhar com alunos
+Ver mapa individual de cada aluno
+Identificar onde cada um está travando
+🏫 PARA INSTITUIÇÕES
+Ver mapa de conhecimento por turma
+Ver padrões de dificuldade
+Ajustar ensino com base em dados reais
+🚀 DIFERENCIAL (isso aqui é forte pra copy)
+Nenhuma plataforma faz isso desse jeito.
+
+Você não está só estudando.
+
+Você está:
+
+👉 Visualizando sua mente
+👉 Organizando seu conhecimento
+👉 Evoluindo de forma estruturada
+
+💥 FRASE DE IMPACTO PRA USAR NO SITE
+"Transforme qualquer conteúdo em um mapa mental inteligente em segundos"
+"Veja exatamente como seu cérebro está aprendendo"
+"Do conteúdo bruto ao domínio completo, automaticamente"
+"Seu conhecimento, organizado e evoluindo em tempo real"
+⚠️ VISÃO DE PRODUTO (importante)
+Isso aqui pode virar:
+
+Um dos principais pilares do StudyAI
+Ou até um produto separado no futuro
+Tipo:
+"Notion + IA + educação + mapa mental vivo"

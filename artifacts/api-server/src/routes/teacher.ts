@@ -184,6 +184,7 @@ router.get("/teacher/turmas/:id/students", async (req: Request, res: Response) =
     xp: usersTable.xp,
     studentName: usersTable.studentName,
     studentGrade: usersTable.studentGrade,
+    studentPhone: usersTable.studentPhone,
   }).from(usersTable).where(inArray(usersTable.id, studentIds));
 
   // Fetch simulado count + avg accuracy per student
@@ -221,6 +222,7 @@ router.get("/teacher/turmas/:id/students", async (req: Request, res: Response) =
       id: u.id,
       name: u.studentName || `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || u.email || "Aluno",
       email: u.email,
+      phone: u.studentPhone ?? null,
       xp,
       simCount,
       avgAccuracy,

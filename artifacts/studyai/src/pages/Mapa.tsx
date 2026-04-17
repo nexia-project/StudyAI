@@ -4,8 +4,8 @@ import { useLocation } from "wouter";
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 import { useSubscription, startCheckout } from "@/hooks/useSubscription";
 import {
-  ArrowLeft, Map, TrendingUp, TrendingDown, Minus, LogIn,
-  BarChart2, Target, Flame, BookOpen, Layers, AlertCircle, Sparkles,
+  Map, TrendingUp, TrendingDown, Minus, LogIn,
+  BarChart2, Target, Flame, BookOpen, Layers, AlertCircle, Sparkles, Zap,
 } from "lucide-react";
 import { AppNav } from "@/components/AppNav";
 
@@ -53,17 +53,19 @@ function TrendIcon({ trend }: { trend: "improving" | "declining" | "stable" }) {
   return <Minus className="w-3.5 h-3.5 text-slate-400" />;
 }
 
-function SubjectTile({ s, index }: { s: SubjectData; index: number }) {
+function SubjectTile({ s, index, onClick }: { s: SubjectData; index: number; onClick?: () => void }) {
   const colors = getScoreColor(s.compositeScore);
   const heatBg = getHeatBg(s.compositeScore);
   const hasData = s.compositeScore !== null;
+  const isWeak = s.compositeScore !== null && s.compositeScore < 55;
 
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.92 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: index * 0.04 }}
-      className={`relative rounded-2xl border-2 ${colors.border} ${colors.bg} p-4 flex flex-col gap-2 overflow-hidden`}
+      onClick={onClick}
+      className={`relative rounded-2xl border-2 ${colors.border} ${colors.bg} p-4 flex flex-col gap-2 overflow-hidden ${onClick ? "cursor-pointer hover:shadow-md transition-shadow" : ""}`}
     >
       {/* Heat strip on the left */}
       <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${heatBg} rounded-l-2xl`} />
@@ -163,7 +165,7 @@ export default function Mapa() {
             <Map className="w-10 h-10 text-white" />
           </div>
           <div className="text-center">
-            <h1 className="text-2xl font-black text-slate-800 mb-2">Mapa de Desempenho</h1>
+            <h1 className="text-2xl font-black text-slate-800 mb-2">Radar de Desempenho</h1>
             <p className="text-slate-500">Entre para ver seus pontos fortes e fracos por matéria.</p>
           </div>
           <button
@@ -171,7 +173,7 @@ export default function Mapa() {
             className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-600 text-white font-black shadow-lg shadow-violet-200 hover:opacity-90 transition-opacity"
           >
             <LogIn className="w-5 h-5" />
-            Entrar para ver o Mapa
+            Entrar para ver o Radar
           </button>
         </div>
       </div>
@@ -220,7 +222,7 @@ export default function Mapa() {
             <Map className="w-3.5 h-3.5 text-white" />
           </div>
           <div>
-            <h1 className="font-black text-slate-800 text-sm leading-tight">Mapa de Desempenho</h1>
+            <h1 className="font-black text-slate-800 text-sm leading-tight">Radar de Desempenho</h1>
             <p className="text-xs text-slate-400 font-medium">Pontos fortes e fracos por matéria</p>
           </div>
         </div>
@@ -340,12 +342,18 @@ export default function Mapa() {
                         </span>
                       ))}
                     </div>
-                    <button
-                      onClick={() => navigate("/app")}
-                      className="mt-3 w-full py-2 rounded-xl bg-red-500 text-white font-black text-xs hover:bg-red-600 transition-colors"
-                    >
-                      Gerar plano para área fraca →
-                    </button>
+                    <div className="mt-3 flex flex-col gap-2">
+                      {data.pontosFracos.slice(0, 2).map((m) => (
+                        <button
+                          key={m}
+                          onClick={() => navigate(`/app?materia=${encodeURIComponent(m)}`)}
+                          className="w-full py-2 px-3 rounded-xl bg-red-500 text-white font-black text-xs hover:bg-red-600 transition-colors flex items-center justify-between"
+                        >
+                          <span>Estudar {m}</span>
+                          <Zap className="w-3 h-3" />
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </section>
@@ -371,10 +379,16 @@ export default function Mapa() {
             {/* Heat grid — subjects with data */}
             {withData.length > 0 && (
               <section>
-                <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Mapa de Calor — {withData.length} matéria{withData.length !== 1 ? "s" : ""}</h2>
+                <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Radar de Desempenho — {withData.length} matéria{withData.length !== 1 ? "s" : ""}</h2>
+                <p className="text-xs text-slate-400 mb-4">Clique em uma matéria para gerar um plano de estudos focado.</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {withData.map((s, i) => (
-                    <SubjectTile key={s.materia} s={s} index={i} />
+                    <SubjectTile
+                      key={s.materia}
+                      s={s}
+                      index={i}
+                      onClick={() => navigate(`/app?materia=${encodeURIComponent(s.materia)}`)}
+                    />
                   ))}
                 </div>
               </section>

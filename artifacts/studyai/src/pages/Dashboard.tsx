@@ -129,7 +129,11 @@ export default function Dashboard() {
       fetch("/api/streak", { credentials: "include" }).then(r => r.json()).catch(() => ({})),
     ]).then(([hist, str]) => {
       setData(hist);
-      setStreak(str);
+      setStreak({
+        currentStreak: Number(str?.currentStreak) || 0,
+        longestStreak: Number(str?.longestStreak) || 0,
+        totalDays: Number(str?.totalDays) || 0,
+      });
       setLoading(false);
     }).catch(() => setLoading(false));
     fetch("/api/activity", { method: "POST", credentials: "include" }).catch(() => {});

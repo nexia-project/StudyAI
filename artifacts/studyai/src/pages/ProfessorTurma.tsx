@@ -9,13 +9,13 @@ import {
   ArrowLeft, Users, BookOpen, BarChart2, Trophy, Plus, Trash2, Copy, Check,
   AlertTriangle, TrendingUp, Zap, Calendar, RefreshCw, Star, Target,
   Search, Filter, ChevronDown, ChevronUp, Download, Bell, Eye, Award,
-  CheckCircle2, XCircle, Clock, Flame, Mail, X,
+  CheckCircle2, XCircle, Clock, Flame, Mail, X, MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface Student {
-  id: string; name: string; email: string | null;
+  id: string; name: string; email: string | null; phone?: string | null;
   xp: number; simCount: number; avgAccuracy: number;
   activeDays: number; status: "risco" | "iniciante" | "ativo" | "destaque";
   grade: string | null; joinedAt: string;
@@ -133,12 +133,25 @@ function StudentDetail({ student, onClose }: StudentDetailProps) {
           </p>
         </div>
 
-        {student.email && (
-          <a href={`mailto:${student.email}`}
-            className="mt-4 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-500 transition-colors">
-            <Mail className="w-4 h-4" /> Enviar e-mail
-          </a>
-        )}
+        <div className="mt-4 flex flex-col gap-2">
+          {student.email && (
+            <a href={`mailto:${student.email}`}
+              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-500 transition-colors">
+              <Mail className="w-4 h-4" /> Enviar e-mail
+            </a>
+          )}
+          {student.phone ? (
+            <a
+              href={`https://wa.me/${student.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Olá ${student.name}! Sou seu professor na plataforma StudyAI. Passando para verificar como estão seus estudos. Continue assim! 💪`)}`}
+              target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-[#25D366] text-white text-sm font-bold hover:opacity-90 transition-opacity"
+            >
+              <MessageCircle className="w-4 h-4" /> Enviar WhatsApp
+            </a>
+          ) : (
+            <p className="text-xs text-slate-400 text-center py-1">Aluno não cadastrou telefone/WhatsApp no perfil</p>
+          )}
+        </div>
       </motion.div>
     </motion.div>
   );

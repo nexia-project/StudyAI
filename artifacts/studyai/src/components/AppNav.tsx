@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Home, Map, PenLine, BarChart2, Trophy, Medal, History, Brain,
-  Database, Target, Clock, ChevronDown, Menu, X, GraduationCap,
+  Target, Clock, ChevronDown, Menu, X, GraduationCap,
   BookOpen, Flame, Zap, Users, Globe,
 } from "lucide-react";
 import { UserMenu } from "@/components/UserMenu";
@@ -31,7 +31,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     label: "Acompanhar",
     items: [
       { icon: BarChart2, label: "Dashboard",   path: "/dashboard",  color: "text-blue-600"   },
-      { icon: Map,       label: "Mapa",         path: "/mapa",       color: "text-emerald-600" },
+      { icon: Map,       label: "Radar",        path: "/mapa",       color: "text-emerald-600" },
       { icon: History,   label: "Histórico",    path: "/historico",  color: "text-cyan-600"   },
       { icon: Medal,     label: "Conquistas",   path: "/conquistas", color: "text-yellow-600" },
       { icon: Trophy,    label: "Ranking",      path: "/ranking",    color: "text-orange-600" },
@@ -40,8 +40,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Recursos",
     items: [
-      { icon: Brain,    label: "Mapa Mental",        path: "/mapa-mental",       color: "text-purple-600" },
-      { icon: Database, label: "Base de Conhecimento", path: "/base-conhecimento", color: "text-teal-600"  },
+      { icon: Brain, label: "Mapa Mental", path: "/mapa-mental", color: "text-purple-600" },
     ],
   },
 ];

@@ -65,24 +65,19 @@ function stopCurrentAudio() {
   _currentSource = null;
 }
 
-/** Fetch MP3 from TTS endpoint, decode via AudioContext, and play. */
-async function playTTS(text: string, signal?: AbortSignal): Promise<void> {
+/**
+ * Fetch MP3 from TTS endpoint and play via AudioContext.
+ * onStart() is called right when audio begins — use it to update UI state.
+ */
+async function playTTS(text: string, onStart?: () => void, signal?: AbortSignal): Promise<void> {
   if (!text.trim()) return;
   stopCurrentAudio();
 
   const ctx = getCtx();
-  // Context should already be "running" from unlockAudioSync().
-  // If somehow still suspended, attempt resume (best-effort).
   if (ctx.state === "suspended") {
-    console.warn("[Tiagão] AudioContext suspended at playback time — attempting resume");
-    try { await ctx.resume(); } catch (e) {
-      console.warn("[Tiagão] resume() failed:", e);
-    }
+    try { await ctx.resume(); } catch { /* best-effort */ }
   }
-  if (ctx.state !== "running") {
-    console.warn("[Tiagão] AudioContext state:", ctx.state, "— skipping playback");
-    return;
-  }
+  if (ctx.state !== "running") return;
 
   let res: Response;
   try {
@@ -98,12 +93,7 @@ async function playTTS(text: string, signal?: AbortSignal): Promise<void> {
     return;
   }
 
-  if (signal?.aborted) return;
-
-  if (!res.ok) {
-    console.warn("[Tiagão] TTS endpoint error:", res.status, await res.text().catch(() => ""));
-    return;
-  }
+  if (signal?.aborted || !res.ok) return;
 
   const ab = await res.arrayBuffer();
   if (signal?.aborted) return;
@@ -123,6 +113,8 @@ async function playTTS(text: string, signal?: AbortSignal): Promise<void> {
     src.connect(ctx.destination);
     src.onended = () => resolve();
     _currentSource = src;
+    // Notify caller that audio is actually starting now
+    onStart?.();
     src.start(0);
   });
   _currentSource = null;
@@ -163,10 +155,15 @@ export function VoiceProfessor() {
     if (mutedRef.current || !text.trim()) return;
     abortRef.current?.abort();
     abortRef.current = new AbortController();
-    setPhase("speaking");
-    setSubtitle(text);
+    // Show "thinking" while fetching TTS — text never shown before audio starts
+    setPhase("thinking");
+    setSubtitle("");
     try {
-      await playTTS(text, abortRef.current.signal);
+      await playTTS(
+        text,
+        () => setPhase("speaking"), // called exactly when audio starts
+        abortRef.current.signal,
+      );
     } catch { /* aborted or error */ }
     setPhase("idle");
     setSubtitle("");
@@ -464,9 +461,6 @@ export function VoiceProfessor() {
                     <span className="text-xs text-gray-400 ml-1.5 self-center">falando...</span>
                   </div>
                 )}
-                {subtitle && phase === "speaking" && (
-                  <p className="text-xs text-gray-500 mt-1 line-clamp-2 italic">"{subtitle}"</p>
-                )}
               </div>
               <button
                 onClick={stopSpeaking}
@@ -557,12 +551,6 @@ export function VoiceProfessor() {
               {userTranscript && phase !== "idle" && (
                 <div className="w-full bg-gray-50 rounded-2xl px-4 py-2.5 text-sm text-gray-600 text-center italic">
                   "{userTranscript}"
-                </div>
-              )}
-
-              {subtitle && phase === "speaking" && (
-                <div className="w-full bg-indigo-50 rounded-2xl px-4 py-2.5 text-sm text-indigo-700 text-center leading-relaxed">
-                  {subtitle}
                 </div>
               )}
 

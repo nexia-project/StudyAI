@@ -441,31 +441,38 @@ export function VoiceProfessor() {
     <>
       {/* Floating button */}
       <motion.button
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 1.2, type: "spring" }}
-        whileHover={{ scale: 1.1 }}
+        initial={{ scale: 0, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        transition={{ delay: 1.2, type: "spring", damping: 18, stiffness: 280 }}
+        whileHover={{ scale: 1.08, y: -2 }}
         whileTap={{ scale: 0.92 }}
         onClick={handlePanelToggle}
-        className="fixed bottom-20 md:bottom-6 left-4 md:left-6 z-40 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center select-none"
-        style={{
-          background: open
-            ? "#6b7280"
-            : "linear-gradient(135deg,#6366f1,#4f46e5)",
-        }}
+        className="fixed bottom-20 md:bottom-6 left-4 md:left-6 z-40 select-none"
+        style={{ background: "none", border: "none", padding: 0 }}
         title="Professor Tiagão — clique para falar"
       >
         {open ? (
-          <X className="w-5 h-5 text-white" />
+          <div className="w-12 h-12 rounded-full bg-gray-500 shadow-xl flex items-center justify-center">
+            <X className="w-5 h-5 text-white" />
+          </div>
         ) : (
           <div className="relative">
-            <img src="/tiagao-robot.jpg" alt="Professor Tiagão" className="w-10 h-10 rounded-full object-cover object-top" />
+            <motion.img
+              src="/tiagao-pointing.png"
+              alt="Professor Tiagão"
+              className="w-20 h-20 md:w-24 md:h-24 object-contain"
+              style={{ filter: "drop-shadow(0 4px 16px rgba(99,102,241,0.35))" }}
+              animate={phase === "speaking" ? { y: [0, -4, 0] } : phase === "idle" ? { y: [0, -2, 0] } : {}}
+              transition={phase === "speaking"
+                ? { repeat: Infinity, duration: 0.65 }
+                : { repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+            />
             <motion.span
               animate={phase === "speaking"
                 ? { scale: [1, 1.8, 1], opacity: [1, 0.4, 1] }
                 : { scale: [1, 1.3, 1] }}
               transition={{ repeat: Infinity, duration: phase === "speaking" ? 0.8 : 2 }}
-              className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white"
+              className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full border-2 border-white shadow-sm"
               style={{ backgroundColor: phaseColor[phase] }}
             />
           </div>
@@ -501,8 +508,8 @@ export function VoiceProfessor() {
             className="fixed bottom-24 left-4 right-4 sm:left-6 sm:right-auto sm:w-80 z-40 bg-white rounded-2xl shadow-xl border border-indigo-100 p-3"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full flex-shrink-0 select-none overflow-hidden">
-                <img src="/tiagao-robot.jpg" alt="Professor Tiagão" className="w-full h-full object-cover object-top" />
+              <div className="w-14 h-14 flex-shrink-0 select-none">
+                <img src="/tiagao-pointing.png" alt="Professor Tiagão" className="w-full h-full object-contain" style={{ filter: "drop-shadow(0 2px 8px rgba(99,102,241,0.3))" }} />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-black text-indigo-600 mb-0.5">Professor Tiagão</p>
@@ -590,8 +597,8 @@ export function VoiceProfessor() {
             <div className="p-4 flex items-center gap-3"
               style={{ background: "linear-gradient(135deg,#6366f1,#4f46e5)" }}>
               <div className="relative flex-shrink-0">
-                <div className={`rounded-full overflow-hidden select-none ${focusMode ? "w-14 h-14" : "w-12 h-12"}`}>
-                  <img src="/tiagao-robot.jpg" alt="Professor Tiagão" className="w-full h-full object-cover object-top" />
+                <div className={`select-none ${focusMode ? "w-16 h-16" : "w-14 h-14"}`}>
+                  <img src="/tiagao-pointing.png" alt="Professor Tiagão" className="w-full h-full object-contain" style={{ filter: "drop-shadow(0 2px 10px rgba(255,255,255,0.4))" }} />
                 </div>
                 <motion.span
                   animate={phase === "speaking" ? { scale: [1, 1.7, 1], opacity: [1, 0.5, 1] } : {}}
@@ -646,12 +653,24 @@ export function VoiceProfessor() {
                   </>
                 )}
                 <motion.div
-                  animate={phase === "thinking" ? { rotate: 360 } : phase === "speaking" ? { scale: [1, 1.07, 1] } : { scale: 1 }}
-                  transition={phase === "thinking" ? { repeat: Infinity, duration: 1.4, ease: "linear" } : phase === "speaking" ? { repeat: Infinity, duration: 0.55 } : {}}
-                  className={`rounded-full select-none shadow-xl overflow-hidden ${focusMode ? "w-24 h-24" : "w-16 h-16"}`}
-                  style={{ boxShadow: `0 8px 32px ${phaseColor[phase]}55`, outline: `3px solid ${phaseColor[phase]}`, outlineOffset: "2px" }}
+                  animate={phase === "thinking"
+                    ? { y: [0, -6, 0], rotate: [-2, 2, -2] }
+                    : phase === "speaking"
+                    ? { y: [0, -8, 0], scale: [1, 1.05, 1] }
+                    : { y: [0, -3, 0] }}
+                  transition={phase === "thinking"
+                    ? { repeat: Infinity, duration: 1.4, ease: "easeInOut" }
+                    : phase === "speaking"
+                    ? { repeat: Infinity, duration: 0.55 }
+                    : { repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+                  className={`select-none ${focusMode ? "w-28 h-28" : "w-20 h-20"}`}
                 >
-                  <img src="/tiagao-robot.jpg" alt="Professor Tiagão" className="w-full h-full object-cover object-top" />
+                  <img
+                    src="/tiagao-pointing.png"
+                    alt="Professor Tiagão"
+                    className="w-full h-full object-contain"
+                    style={{ filter: `drop-shadow(0 6px 24px ${phaseColor[phase]}88)` }}
+                  />
                 </motion.div>
               </div>
 

@@ -333,8 +333,8 @@ export default function AulaIA() {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 200 }}
             className="mb-8 relative">
-            <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-indigo-200 shadow-xl">
-              <img src="/tiagao-robot.jpg" alt="Professor Tiagão" className="w-full h-full object-cover object-top" />
+            <div className="w-32 h-32 select-none">
+              <img src="/tiagao-hero.png" alt="Professor Tiagão" className="w-full h-full object-contain" style={{ filter: "drop-shadow(0 4px 20px rgba(99,102,241,0.4))" }} />
             </div>
             <motion.div
               animate={{ scale: [1, 1.15, 1], opacity: [0.8, 1, 0.8] }}
@@ -550,10 +550,10 @@ export default function AulaIA() {
                   animate={isPlaying ? { y: [0, -6, 0] } : {}}
                   transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}>
                   <img
-                    src="/tiagao-robot.jpg"
+                    src="/tiagao-hero.png"
                     alt="Professor Tiagão"
-                    className="w-20 h-20 sm:w-28 sm:h-28 object-cover object-top rounded-tr-3xl opacity-90"
-                    style={{ filter: "drop-shadow(0 4px 12px rgba(99,102,241,0.3))" }}
+                    className="w-24 h-24 sm:w-36 sm:h-36 object-contain"
+                    style={{ filter: "drop-shadow(0 6px 20px rgba(99,102,241,0.45))" }}
                   />
                 </motion.div>
                 {/* Speaking indicator */}
@@ -668,7 +668,7 @@ export default function AulaIA() {
                 exit={{ opacity: 0 }}
                 className="p-4 border-b border-indigo-100 bg-indigo-50">
                 <p className="text-[10px] font-black text-indigo-500 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                  <img src="/tiagao-robot.jpg" alt="" className="w-3.5 h-3.5 rounded-full object-cover" />
+                  <img src="/tiagao-pointing.png" alt="" className="w-5 h-5 object-contain" />
                   Tiagão responde
                 </p>
                 <p className="text-xs text-indigo-800 leading-relaxed">{resposta.texto}</p>
@@ -710,8 +710,8 @@ export default function AulaIA() {
       {/* ── QUESTION INPUT ────────────────────────────────────────────────── */}
       <div className="flex-shrink-0 border-t border-slate-200 bg-white px-3 sm:px-5 py-3">
         <div className="max-w-4xl mx-auto flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
-            <img src="/tiagao-robot.jpg" alt="Tiagão" className="w-full h-full object-cover object-top" />
+          <div className="w-9 h-9 flex-shrink-0 select-none">
+            <img src="/tiagao-pointing.png" alt="Tiagão" className="w-full h-full object-contain" />
           </div>
           <div className="flex-1 relative">
             <input

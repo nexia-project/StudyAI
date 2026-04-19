@@ -273,39 +273,60 @@ export default function Landing() {
 
       {/* ── HERO ── */}
       <section className="pt-20 pb-16 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <motion.div variants={fadeUp} initial="hidden" animate="show" custom={0}>
-            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600 border border-orange-100">
-              <Radio className="w-3 h-3 animate-pulse" /> Novo: Professor Tiagão — Tutora por Voz com IA
-            </span>
-          </motion.div>
+        <div className="max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-8 items-center">
+            {/* Left: text */}
+            <div className="text-center md:text-left">
+              <motion.div variants={fadeUp} initial="hidden" animate="show" custom={0}>
+                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-600 border border-orange-100">
+                  <Radio className="w-3 h-3 animate-pulse" /> Novo: Professor Tiagão — Tutora por Voz com IA
+                </span>
+              </motion.div>
 
-          <motion.h1 variants={fadeUp} initial="hidden" animate="show" custom={1}
-            className="mt-6 text-5xl sm:text-6xl md:text-7xl font-black tracking-tight leading-[1.05] text-gray-900">
-            Estude como se tivesse{" "}
-            <span className="bg-gradient-to-r from-orange-500 to-violet-600 bg-clip-text text-transparent">
-              um tutor particular
-            </span>{" "}
-            ao lado
-          </motion.h1>
+              <motion.h1 variants={fadeUp} initial="hidden" animate="show" custom={1}
+                className="mt-6 text-5xl sm:text-6xl md:text-6xl font-black tracking-tight leading-[1.05] text-gray-900">
+                Estude como se tivesse{" "}
+                <span className="bg-gradient-to-r from-orange-500 to-violet-600 bg-clip-text text-transparent">
+                  um tutor particular
+                </span>{" "}
+                ao lado
+              </motion.h1>
 
-          <motion.p variants={fadeUp} initial="hidden" animate="show" custom={2}
-            className="mt-5 text-xl text-gray-500 max-w-2xl mx-auto leading-relaxed">
-            A Professor Tiagão fala com você por voz, sabe seu progresso e age de forma proativa. Planos de estudo, simulados, flashcards e correção de redação — tudo com nossa IA exclusiva.
-          </motion.p>
+              <motion.p variants={fadeUp} initial="hidden" animate="show" custom={2}
+                className="mt-5 text-xl text-gray-500 leading-relaxed">
+                O Professor Tiagão fala com você por voz, sabe seu progresso e age de forma proativa. Planos de estudo, simulados, flashcards e correção de redação — tudo com nossa IA exclusiva.
+              </motion.p>
 
-          <motion.div variants={fadeUp} initial="hidden" animate="show" custom={3}
-            className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <button onClick={handleStart}
-              className="group flex items-center gap-2 px-7 py-3.5 rounded-xl font-bold text-white bg-orange-500 hover:bg-orange-600 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-orange-200">
-              Começar Grátis
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-            </button>
-            <button onClick={handleStart}
-              className="flex items-center gap-2 px-7 py-3.5 rounded-xl font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
-              <Mic className="w-4 h-4" /> Ver a Professor Tiagão
-            </button>
-          </motion.div>
+              <motion.div variants={fadeUp} initial="hidden" animate="show" custom={3}
+                className="mt-8 flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3">
+                <button onClick={handleStart}
+                  className="group flex items-center gap-2 px-7 py-3.5 rounded-xl font-bold text-white bg-orange-500 hover:bg-orange-600 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-orange-200">
+                  Começar Grátis
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+                <button onClick={handleStart}
+                  className="flex items-center gap-2 px-7 py-3.5 rounded-xl font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
+                  <Mic className="w-4 h-4" /> Ver o Professor Tiagão
+                </button>
+              </motion.div>
+            </div>
+
+            {/* Right: Tiagão character */}
+            <motion.div
+              initial={{ opacity: 0, x: 30, scale: 0.9 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              transition={{ delay: 0.4, type: "spring", damping: 20, stiffness: 200 }}
+              className="flex justify-center md:justify-end">
+              <motion.img
+                src="/tiagao-hero.png"
+                alt="Professor Tiagão"
+                className="w-64 h-64 sm:w-80 sm:h-80 object-contain select-none"
+                style={{ filter: "drop-shadow(0 8px 40px rgba(99,102,241,0.35))" }}
+                animate={{ y: [0, -10, 0] }}
+                transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut" }}
+              />
+            </motion.div>
+          </div>
 
           {/* Stats row */}
           <motion.div variants={fadeUp} initial="hidden" animate="show" custom={4}
@@ -366,12 +387,12 @@ export default function Landing() {
               className="flex justify-center">
               <div className="w-72 bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
                 {/* Header */}
-                <div className="p-5 text-center" style={{ background: "linear-gradient(135deg,#f97316,#ea580c)" }}>
-                  <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-4xl mx-auto mb-3">
-                    👩‍🏫
+                <div className="pt-4 pb-2 text-center" style={{ background: "linear-gradient(135deg,#6366f1,#4f46e5)" }}>
+                  <div className="w-36 h-36 mx-auto select-none">
+                    <img src="/tiagao-hero.png" alt="Professor Tiagão" className="w-full h-full object-contain" style={{ filter: "drop-shadow(0 4px 16px rgba(0,0,0,0.25))" }} />
                   </div>
-                  <p className="text-white font-black">Professor Tiagão</p>
-                  <p className="text-orange-100 text-xs mt-0.5">Tutora de Voz com IA</p>
+                  <p className="text-white font-black pb-3">Professor Tiagão</p>
+                  <p className="text-indigo-100 text-xs pb-4">Tutor de Voz com IA</p>
                 </div>
                 {/* Fake speaking UI */}
                 <div className="p-5 space-y-3">

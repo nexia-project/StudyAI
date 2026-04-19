@@ -131,9 +131,10 @@ export default function AdminPage() {
   const [kbDocs, setKbDocs] = useState<Array<{ id: number; title: string; subject: string | null; preview: string; created_at: string }>>([]);
   const [kbLoading, setKbLoading] = useState(false);
   const [kbForm, setKbForm] = useState({ title: "", subject: "", contentText: "" });
-  const [kbFile, setKbFile] = useState<File | null>(null);
+  const [kbFiles, setKbFiles] = useState<File[]>([]);
   const [kbSaving, setKbSaving] = useState(false);
   const [kbMsg, setKbMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [batchResults, setBatchResults] = useState<Array<{ name: string; status: "pending" | "uploading" | "done" | "error"; message?: string; chunks?: number; wordCount?: number; pageCount?: number }>>([]);
   const kbFileRef = useRef<HTMLInputElement>(null);
   const [searchQ, setSearchQ] = useState("");
 
@@ -219,33 +220,60 @@ export default function AdminPage() {
     } catch { setKbMsg({ ok: false, text: "Erro de conexão." }); }
     finally { setKbSaving(false); setTimeout(() => setKbMsg(null), 4000); }
   }
-  async function saveKbFile(e: React.FormEvent) {
-    e.preventDefault(); if (!kbFile) return;
-    setKbSaving(true); setKbMsg(null);
-    try {
-      const fd = new FormData();
-      fd.append("file", kbFile);
-      if (kbForm.title) fd.append("title", kbForm.title);
-      if (kbForm.subject) fd.append("subject", kbForm.subject);
-      const res = await adminFetch("/api/knowledge/upload-file", { method: "POST", body: fd });
-      const data = await res.json();
-      if (res.ok) {
-        const details = [
-          data.pageCount ? `${data.pageCount} páginas` : null,
-          data.wordCount ? `${data.wordCount.toLocaleString("pt-BR")} palavras` : null,
-          data.chunks > 0 ? `${data.chunks} partes indexadas` : "indexado como documento único",
-          data.charCount ? `${data.charCount.toLocaleString("pt-BR")} caracteres lidos` : null,
-        ].filter(Boolean).join(" · ");
-        const preview = data.preview ? `\nTrecho lido: "${data.preview.slice(0, 200)}..."` : "";
-        setKbMsg({ ok: true, text: `${data.message || "Processado com sucesso!"}\n${details}${preview}` });
-        setKbFile(null);
-        setKbForm({ title: "", subject: "", contentText: "" });
-        fetchKbDocs();
-      } else {
-        setKbMsg({ ok: false, text: data.erro ?? "Erro ao processar." });
+  async function saveBatchFiles(e: React.FormEvent) {
+    e.preventDefault();
+    if (kbFiles.length === 0) return;
+    setKbSaving(true);
+    setKbMsg(null);
+
+    const initial = kbFiles.map(f => ({ name: f.name, status: "pending" as const }));
+    setBatchResults(initial);
+
+    let doneCount = 0;
+    let errorCount = 0;
+
+    for (let i = 0; i < kbFiles.length; i++) {
+      const file = kbFiles[i];
+      setBatchResults(prev => prev.map((r, idx) => idx === i ? { ...r, status: "uploading" } : r));
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+        if (kbForm.subject) fd.append("subject", kbForm.subject);
+        const res = await adminFetch("/api/knowledge/upload-file", { method: "POST", body: fd });
+        const data = await res.json();
+        if (res.ok) {
+          doneCount++;
+          const summary = [
+            data.pageCount ? `${data.pageCount}p` : null,
+            data.wordCount ? `${data.wordCount.toLocaleString("pt-BR")} palavras` : null,
+            data.chunks > 0 ? `${data.chunks} partes` : "1 doc",
+          ].filter(Boolean).join(" · ");
+          setBatchResults(prev => prev.map((r, idx) => idx === i ? {
+            ...r, status: "done", message: summary,
+            chunks: data.chunks, wordCount: data.wordCount, pageCount: data.pageCount,
+          } : r));
+        } else {
+          errorCount++;
+          setBatchResults(prev => prev.map((r, idx) => idx === i ? { ...r, status: "error", message: data.erro ?? "Erro" } : r));
+        }
+      } catch {
+        errorCount++;
+        setBatchResults(prev => prev.map((r, idx) => idx === i ? { ...r, status: "error", message: "Erro de conexão" } : r));
       }
-    } catch { setKbMsg({ ok: false, text: "Erro de conexão." }); }
-    finally { setKbSaving(false); setTimeout(() => setKbMsg(null), 12000); }
+    }
+
+    setKbSaving(false);
+    setKbFiles([]);
+    if (kbFileRef.current) kbFileRef.current.value = "";
+    fetchKbDocs();
+    const total = kbFiles.length;
+    setKbMsg({
+      ok: errorCount === 0,
+      text: errorCount === 0
+        ? `${doneCount} arquivo${doneCount > 1 ? "s" : ""} processado${doneCount > 1 ? "s" : ""} com sucesso!`
+        : `${doneCount} ok · ${errorCount} com erro de ${total} arquivos`,
+    });
+    setTimeout(() => setKbMsg(null), 8000);
   }
   async function deleteKbDoc(id: number) {
     if (!confirm("Remover este documento?")) return;
@@ -1062,20 +1090,65 @@ export default function AdminPage() {
                   </form>
                 </div>
                 <div className="rounded-2xl border border-white/[0.07] bg-[#12121a] p-5">
-                  <h3 className="font-bold mb-4 flex items-center gap-2"><Upload className="w-4 h-4 text-violet-400" /> Carregar Arquivo (PDF / DOCX / TXT)</h3>
-                  <form onSubmit={saveKbFile} className="space-y-3">
-                    <input value={kbForm.title} onChange={e => setKbForm(f => ({ ...f, title: e.target.value }))} placeholder="Título (ou usa o nome do arquivo)" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500" />
-                    <input value={kbForm.subject} onChange={e => setKbForm(f => ({ ...f, subject: e.target.value }))} placeholder="Matéria" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500" />
-                    <div onClick={() => kbFileRef.current?.click()} className="border-2 border-dashed border-white/15 rounded-2xl p-6 text-center cursor-pointer hover:border-violet-500/50 transition-colors">
-                      {kbFile ? (
-                        <div className="flex items-center justify-center gap-2"><FileText className="w-5 h-5 text-violet-400" /><span className="text-sm font-semibold text-white">{kbFile.name}</span></div>
+                  <h3 className="font-bold mb-4 flex items-center gap-2"><Upload className="w-4 h-4 text-violet-400" /> Upload em Massa (PDF / DOCX / TXT)</h3>
+                  <form onSubmit={saveBatchFiles} className="space-y-3">
+                    <input value={kbForm.subject} onChange={e => setKbForm(f => ({ ...f, subject: e.target.value }))} placeholder="Matéria (aplicada a todos)" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500" />
+                    <div
+                      onClick={() => !kbSaving && kbFileRef.current?.click()}
+                      onDragOver={ev => { ev.preventDefault(); }}
+                      onDrop={ev => {
+                        ev.preventDefault();
+                        const dropped = Array.from(ev.dataTransfer.files).filter(f => /\.(pdf|docx?|txt)$/i.test(f.name));
+                        if (dropped.length) { setKbFiles(prev => [...prev, ...dropped]); setBatchResults([]); }
+                      }}
+                      className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-colors ${kbFiles.length > 0 ? "border-violet-500/40 bg-violet-500/5" : "border-white/15 hover:border-violet-500/50"}`}
+                    >
+                      {kbFiles.length === 0 ? (
+                        <>
+                          <Upload className="w-8 h-8 mx-auto mb-2 text-white/30" />
+                          <p className="text-sm text-white/50 font-semibold">Clique ou arraste arquivos aqui</p>
+                          <p className="text-xs text-white/25 mt-1">PDF, DOCX ou TXT · Máx. 25 MB cada · Vários ao mesmo tempo</p>
+                        </>
                       ) : (
-                        <><Upload className="w-8 h-8 mx-auto mb-2 text-white/30" /><p className="text-sm text-white/40">Clique para selecionar PDF, DOCX ou TXT</p><p className="text-xs text-white/25 mt-1">Máximo 25 MB</p></>
+                        <div className="space-y-1.5 text-left max-h-40 overflow-y-auto pr-1">
+                          {kbFiles.map((f, i) => {
+                            const r = batchResults[i];
+                            const statusColor = !r ? "text-white/50" : r.status === "done" ? "text-emerald-400" : r.status === "error" ? "text-red-400" : r.status === "uploading" ? "text-violet-300" : "text-white/40";
+                            const icon = !r ? "⏳" : r.status === "done" ? "✅" : r.status === "error" ? "❌" : r.status === "uploading" ? "⬆️" : "⏳";
+                            return (
+                              <div key={i} className="flex items-center gap-2 bg-white/5 rounded-xl px-3 py-1.5">
+                                <span className="text-base leading-none">{icon}</span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-semibold text-white truncate">{f.name}</p>
+                                  {r?.message && <p className={`text-xs ${statusColor}`}>{r.message}</p>}
+                                </div>
+                                {!kbSaving && !r && (
+                                  <button type="button" onClick={ev => { ev.stopPropagation(); setKbFiles(prev => prev.filter((_, fi) => fi !== i)); }}
+                                    className="text-white/25 hover:text-red-400 transition-colors flex-shrink-0">
+                                    ×
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       )}
-                      <input ref={kbFileRef} type="file" accept=".pdf,.txt,.docx,.doc" className="hidden" onChange={e => setKbFile(e.target.files?.[0] ?? null)} />
+                      <input ref={kbFileRef} type="file" accept=".pdf,.txt,.docx,.doc" multiple className="hidden"
+                        onChange={e => {
+                          const files = Array.from(e.target.files ?? []);
+                          if (files.length) { setKbFiles(prev => [...prev, ...files]); setBatchResults([]); e.target.value = ""; }
+                        }} />
                     </div>
-                    <button type="submit" disabled={kbSaving || !kbFile} className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors">
-                      {kbSaving ? <><Loader2 className="w-4 h-4 animate-spin" />Processando...</> : <><Upload className="w-4 h-4" />Processar e Adicionar</>}
+                    {kbFiles.length > 0 && !kbSaving && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-white/40 flex-1">{kbFiles.length} arquivo{kbFiles.length > 1 ? "s" : ""} selecionado{kbFiles.length > 1 ? "s" : ""}</span>
+                        <button type="button" onClick={() => { setKbFiles([]); setBatchResults([]); }} className="text-xs text-white/30 hover:text-red-400 transition-colors">Limpar tudo</button>
+                      </div>
+                    )}
+                    <button type="submit" disabled={kbSaving || kbFiles.length === 0} className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors">
+                      {kbSaving
+                        ? <><Loader2 className="w-4 h-4 animate-spin" />Processando {batchResults.filter(r => r.status === "done" || r.status === "error").length}/{kbFiles.length}...</>
+                        : <><Upload className="w-4 h-4" />Processar {kbFiles.length > 1 ? `${kbFiles.length} Arquivos` : "Arquivo"}</>}
                     </button>
                   </form>
                 </div>

@@ -33,6 +33,7 @@ import salaEstudosRouter from "./sala-estudos";
 import flashcardReviewsRouter from "./flashcard-reviews";
 import studentRouter from "./student";
 import aulaIaRouter from "./aula-ia";
+import trilhaRouter from "./trilha";
 
 const router: IRouter = Router();
 
@@ -70,5 +71,6 @@ router.use(salaEstudosRouter);
 router.use(flashcardReviewsRouter);
 router.use(studentRouter);
 router.use(aulaIaRouter);
+router.use(trilhaRouter);
 
 export default router;

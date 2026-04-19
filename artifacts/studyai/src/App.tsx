@@ -28,6 +28,7 @@ import CronogramaPage from "@/pages/Cronograma";
 import CadernoPage from "@/pages/Caderno";
 import SalaEstudosPage from "@/pages/SalaEstudos";
 import AulaIAPage from "@/pages/AulaIA";
+import TrilhaPage from "@/pages/Trilha";
 import BaseConhecimentoPage from "@/pages/BaseConhecimento";
 import NotFound from "@/pages/not-found";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -238,6 +239,7 @@ function Router() {
         <Route path="/cronograma" component={CronogramaPage} />
         <Route path="/aula-ia" component={AulaIAPage} />
         <Route path="/caderno" component={CadernoPage} />
+        <Route path="/trilha" component={TrilhaPage} />
         <Route path="/base-conhecimento" component={BaseConhecimentoPage} />
         {/* Clerk OAuth callback — handles Google/GitHub sign-in redirects */}
         <Route path="/v1/oauth_callback" component={OAuthCallbackPage} />

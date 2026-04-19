@@ -62,7 +62,7 @@ const TIAGAO_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         properties: {
           destino: {
             type: "string",
-            enum: ["home", "simulado", "flashcards", "redacao", "cronograma", "aula-ia", "dashboard", "sala-estudos", "ranking"],
+            enum: ["home", "simulado", "flashcards", "redacao", "cronograma", "aula-ia", "trilha", "dashboard", "sala-estudos", "ranking"],
             description: "Destino da navegação",
           },
         },
@@ -133,7 +133,7 @@ async function executeTiagaoTool(
 ): Promise<{ result: string; action?: Record<string, any> }> {
   const DEST_MAP: Record<string, string> = {
     "home": "/app", "simulado": "/simulado-enem", "flashcards": "/app",
-    "redacao": "/redacao", "cronograma": "/cronograma", "aula-ia": "/aula-ia",
+    "redacao": "/redacao", "cronograma": "/cronograma", "aula-ia": "/aula-ia", "trilha": "/trilha",
     "dashboard": "/dashboard", "sala-estudos": "/sala-estudos", "ranking": "/ranking",
   };
 
@@ -623,6 +623,7 @@ Você fala como um professor real — espontâneo, caloroso, com personalidade:
 <ir:/simulado> — abrir Simulado
 <ir:/flashcards> — abrir Flashcards
 <ir:/caderno> — abrir Caderno Digital
+<ir:/trilha> — abrir Trilha Mestre (prática progressiva, Kumon-style, Matemática e Português)
 <ir:/professor> — abrir Painel do Professor
 <ir:/admin> — abrir Painel Admin
 <criar_plano:MATERIA> — criar plano de estudos para a matéria`;

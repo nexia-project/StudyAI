@@ -251,18 +251,18 @@ export default function CronogramaPage() {
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3 mt-4">
-                  <div className="bg-white/5 rounded-xl px-3 py-2.5 text-center">
+                <div className="grid grid-cols-3 gap-2 mt-4">
+                  <div className="bg-white/5 rounded-xl px-2 py-2 text-center">
                     <Target className="w-4 h-4 text-indigo-400 mx-auto mb-1" />
-                    <p className="text-white/60 text-xs">{cronograma.objetivo}</p>
+                    <p className="text-white/60 text-[11px] leading-tight truncate px-1">{cronograma.objetivo}</p>
                   </div>
-                  <div className="bg-white/5 rounded-xl px-3 py-2.5 text-center">
+                  <div className="bg-white/5 rounded-xl px-2 py-2 text-center">
                     <Clock className="w-4 h-4 text-amber-400 mx-auto mb-1" />
-                    <p className="text-white/60 text-xs">{cronograma.hoursPerDay}h por dia</p>
+                    <p className="text-white/60 text-[11px] leading-tight">{cronograma.hoursPerDay}h/dia</p>
                   </div>
-                  <div className="bg-white/5 rounded-xl px-3 py-2.5 text-center">
+                  <div className="bg-white/5 rounded-xl px-2 py-2 text-center">
                     <Calendar className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
-                    <p className="text-white/60 text-xs">{totalWeeks} semanas</p>
+                    <p className="text-white/60 text-[11px] leading-tight">{totalWeeks} sem.</p>
                   </div>
                 </div>
               </div>

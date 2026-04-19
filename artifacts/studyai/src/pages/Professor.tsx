@@ -1003,7 +1003,7 @@ function GerarProvaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
         {/* Visual style */}
         <div className="mb-5">
           <p className="text-white/40 text-xs font-semibold mb-2 uppercase tracking-wider">Estilo Visual</p>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {VISUAL_STYLES.map(s => (
               <button key={s.id} onClick={() => setVisualStyle(s.id)}
                 className={`p-2.5 rounded-xl border text-center transition-all ${visualStyle === s.id ? "bg-indigo-600/25 border-indigo-500/50 text-white" : "bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/8"}`}>
@@ -1609,24 +1609,25 @@ function AtividadesSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
             <p>Nenhum aluno respondeu ainda</p>
           </div>
         ) : (
-          <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] overflow-x-auto">
+            <table className="w-full text-sm min-w-[400px]">
               <thead><tr className="border-b border-white/[0.06]">
-                {["Aluno","Nota","Acertos","Enviado em"].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-white/40 text-xs font-bold">{h}</th>
-                ))}
+                <th className="text-left px-4 py-3 text-white/40 text-xs font-bold">Aluno</th>
+                <th className="text-left px-4 py-3 text-white/40 text-xs font-bold">Nota</th>
+                <th className="text-left px-4 py-3 text-white/40 text-xs font-bold hidden sm:table-cell">Acertos</th>
+                <th className="text-left px-4 py-3 text-white/40 text-xs font-bold hidden sm:table-cell">Enviado em</th>
               </tr></thead>
               <tbody>
                 {submissions.map((s: any) => (
                   <tr key={s.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
-                    <td className="px-4 py-3 text-white font-medium">{s.studentName || s.firstName || s.studentId?.slice(0,8)}</td>
+                    <td className="px-4 py-3 text-white font-medium max-w-[120px] truncate">{s.studentName || s.firstName || s.studentId?.slice(0,8)}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-lg text-xs font-bold ${s.total > 0 && s.score / s.total >= 0.7 ? "bg-emerald-500/20 text-emerald-300" : "bg-red-500/20 text-red-300"}`}>
                         {s.total > 0 ? Math.round((s.score / s.total) * 100) : 0}%
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-white/60">{s.score}/{s.total}</td>
-                    <td className="px-4 py-3 text-white/40 text-xs">{new Date(s.submittedAt).toLocaleDateString("pt-BR")}</td>
+                    <td className="px-4 py-3 text-white/60 hidden sm:table-cell">{s.score}/{s.total}</td>
+                    <td className="px-4 py-3 text-white/40 text-xs hidden sm:table-cell">{new Date(s.submittedAt).toLocaleDateString("pt-BR")}</td>
                   </tr>
                 ))}
               </tbody>

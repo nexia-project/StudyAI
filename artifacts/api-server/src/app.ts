@@ -128,6 +128,10 @@ app.use("/api/voice-chat", aiLimiter);
 app.use("/api/voice-proactive", aiLimiter);
 app.use("/api/voice-tts", aiLimiter);
 app.use("/api/resumao", aiLimiter);
+app.use("/api/student/cronograma", aiLimiter);
+app.use("/api/student/caderno", aiLimiter);
+app.use("/api/student/sisu", aiLimiter);
+app.use("/api/teacher/redacao-correct", aiLimiter);
 app.use("/api", generalLimiter);
 
 // ── Optional auth: sets req.userId for authenticated requests ─────────────────

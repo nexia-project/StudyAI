@@ -410,7 +410,7 @@ export function VoiceProfessor() {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.92 }}
         onClick={handlePanelToggle}
-        className="fixed bottom-6 left-6 z-40 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center select-none"
+        className="fixed bottom-20 md:bottom-6 left-4 md:left-6 z-40 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center select-none"
         style={{
           background: open
             ? "#6b7280"
@@ -443,7 +443,7 @@ export function VoiceProfessor() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -10 }}
             transition={{ delay: 2, duration: 0.4 }}
-            className="fixed bottom-8 left-20 z-40 pointer-events-none"
+            className="fixed bottom-[5.5rem] md:bottom-8 left-20 z-40 pointer-events-none"
           >
             <div className="bg-gray-900 text-white text-xs font-medium px-3 py-2 rounded-xl shadow-lg whitespace-nowrap">
               👆 Toque aqui para falar com o Tiagão
@@ -521,7 +521,7 @@ export function VoiceProfessor() {
             className={`fixed z-50 bg-white rounded-3xl shadow-2xl border border-indigo-100 overflow-hidden transition-all duration-300 ${
               focusMode
                 ? "inset-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[480px] sm:max-h-[85vh]"
-                : "bottom-24 left-4 right-4 sm:left-6 sm:right-auto sm:w-80"
+                : "bottom-[8.5rem] md:bottom-24 left-4 right-4 sm:left-6 sm:right-auto sm:w-80"
             }`}
           >
             {/* Header */}

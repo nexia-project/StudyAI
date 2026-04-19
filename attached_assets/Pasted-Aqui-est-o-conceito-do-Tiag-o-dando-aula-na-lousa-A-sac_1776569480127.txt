@@ -1,0 +1,117 @@
+Aqui está o conceito do “Tiagão dando aula na lousa”.
+
+A sacada forte aqui:
+
+👉 não é só um vídeo
+👉 é uma aula interativa gerada em tempo real
+
+🧠 COMO CRIAR ISSO DE VERDADE (stack real)
+Você vai montar isso combinando 4 camadas:
+
+🎤 1. CÉREBRO (explicação)
+Use múltiplas IAs (não só GPT):
+
+OpenAI (GPT-4/5) → explicação principal
+Claude (Anthropic) → reduzir erros e melhorar didática
+Mistral / Mixtral → custo baixo para tarefas simples
+DeepSeek → ótimo custo pra lógica/matemática
+👉 estratégia inteligente:
+
+simples → modelo barato
+complexo → modelo forte
+✍️ 2. LOUSA (desenho em tempo real)
+Aqui está o segredo técnico:
+
+Você NÃO gera vídeo direto.
+
+Você usa:
+
+Canvas (frontend)
+Ou bibliotecas tipo:
+Excalidraw API
+Fabric.js
+Konva.js
+E a IA gera:
+
+passos de explicação
+instruções de desenho
+Exemplo:
+
+escrever “f(x)=ax+b”
+desenhar gráfico
+destacar partes
+👉 isso simula escrita real
+
+🗣️ 3. VOZ (o “Tiagão” falando)
+Melhores opções hoje:
+
+ElevenLabs (melhor qualidade)
+PlayHT
+Azure Speech
+OpenAI Voice
+👉 você pode criar:
+
+voz “professor calmo”
+voz “ENEM intensivo”
+voz “explicação simples”
+🎭 4. AVATAR (opcional, mas forte)
+D-ID
+HeyGen
+Synthesia
+Ou mais leve:
+
+👉 só mão escrevendo + voz (já funciona MUITO bem)
+
+🌍 OUTRAS IAs PRA INTEGRAR (estratégia completa)
+📚 Conteúdo / estudo
+OpenAI
+Claude
+Perplexity (busca com contexto atual)
+🧠 Mapas mentais (ESSENCIAL PRA VOCÊ)
+Markmap (open source) → transforma texto em mapa mental
+Whimsical API (se tiver acesso)
+Miro AI
+👉 ou melhor:
+criar seu próprio (diferencial gigante)
+
+📄 PDF / slides / cursos
+Gamma AI → cria apresentações lindas
+Tome AI
+Beautiful.ai
+OU:
+
+👉 gerar você mesmo com IA + templates (melhor pra produto)
+
+🖼️ Imagens
+DALL·E (OpenAI)
+Stable Diffusion (mais barato)
+Leonardo AI
+🎧 Inglês / idiomas
+Elsa Speak API (se integrar)
+Speech + IA própria
+Ou fazer você mesmo:
+
+👉 IA conversa + corrige pronúncia + simula diálogo
+
+📊 “NotebookLM style” (isso aqui é MUITO importante)
+Você quer algo tipo:
+
+👉 usuário sobe PDF → sistema entende tudo
+
+Use:
+
+RAG (retrieval augmented generation)
+Vetores (Pinecone, Weaviate, Supabase vector)
+Fluxo:
+
+usuário sobe conteúdo
+você quebra em partes
+indexa
+IA responde com base nisso
+💸 CONTROLE DE CUSTO (ESSENCIAL)
+Você precisa disso desde o começo:
+
+roteamento de modelo (barato vs caro)
+cache de respostas
+limite por usuário
+monitoramento por feature

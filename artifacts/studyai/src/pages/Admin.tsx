@@ -489,7 +489,8 @@ export default function AdminPage() {
         </header>
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto overflow-x-auto p-6">
+          <div className="min-w-[900px]">
 
           {/* ══ VISÃO GERAL ══ */}
           {activeSection === "visao" && (
@@ -506,7 +507,7 @@ export default function AdminPage() {
               </div>
 
               {/* KPI Row */}
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {[
                   { label: "Total de Usuários", value: stats?.totalUsers ?? 0, icon: Users, color: "from-violet-500 to-purple-600", sub: `+${stats?.todayNewUsers ?? 0} hoje`, subUp: true },
                   { label: "Usuários Ativos Hoje", value: stats?.todayActive ?? 0, icon: Activity, color: "from-blue-500 to-cyan-500", sub: "estudando agora" },
@@ -1426,6 +1427,7 @@ export default function AdminPage() {
                 </div>}
             </div>
           )}
+          </div>
         </main>
       </div>
     </div>

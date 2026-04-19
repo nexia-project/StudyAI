@@ -137,14 +137,22 @@ export default function AdminPage() {
   const [batchResults, setBatchResults] = useState<Array<{ name: string; status: "pending" | "uploading" | "done" | "error"; message?: string; chunks?: number; wordCount?: number; pageCount?: number }>>([]);
   const kbFileRef = useRef<HTMLInputElement>(null);
   const [searchQ, setSearchQ] = useState("");
+  const [debugInfo, setDebugInfo] = useState<Record<string, any> | null>(null);
+
+  async function fetchWhoami() {
+    try {
+      const res = await adminFetch("/api/admin/whoami");
+      if (res.ok) setDebugInfo(await res.json());
+    } catch {}
+  }
 
   /* Fetchers */
   async function fetchUsers() {
     setLoading(true); setError(null);
     try {
       const res = await adminFetch("/api/admin/users");
-      if (res.status === 401) { setError("Você precisa estar logado para acessar esta página."); return; }
-      if (res.status === 403) { setError("Acesso negado. Apenas administradores podem ver esta página."); return; }
+      if (res.status === 401) { setError("Você precisa estar logado para acessar esta página."); await fetchWhoami(); return; }
+      if (res.status === 403) { setError("Acesso negado. Apenas administradores podem ver esta página."); await fetchWhoami(); return; }
       const data = await res.json();
       setUsers(data.users ?? []);
     } catch { setError("Erro ao carregar usuários."); }
@@ -312,17 +320,59 @@ export default function AdminPage() {
 
   /* ── Error / Access denied ── */
   if (error) {
+    const is403 = error.includes("negado");
     return (
       <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          className="bg-white/5 border border-white/10 rounded-2xl p-8 max-w-md text-center">
+          className="bg-white/5 border border-white/10 rounded-2xl p-8 max-w-lg w-full text-center">
           <Shield className="w-12 h-12 text-red-400 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-white mb-2">Acesso Restrito</h2>
-          <p className="text-white/50 mb-6">{error}</p>
-          <Button onClick={() => { sessionStorage.setItem("auth_return_to", "/admin"); navigate("/sign-in"); }}
-            className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl mr-3">Fazer Login</Button>
-          <Button variant="outline" className="border-white/10 text-white/70 hover:bg-white/5"
-            onClick={() => navigate("/app")}>Voltar ao App</Button>
+          <p className="text-white/50 mb-4">{error}</p>
+
+          {/* Debug panel — helps diagnose admin auth issues */}
+          {is403 && debugInfo && (
+            <div className="text-left bg-black/40 border border-white/10 rounded-xl p-4 mb-6 text-xs font-mono">
+              <p className="text-yellow-400 font-bold mb-2 flex items-center gap-1"><Bug className="w-3 h-3" /> Diagnóstico de acesso</p>
+              <div className="space-y-1 text-white/60">
+                <div><span className="text-white/40">Autenticado:</span> <span className={debugInfo.authenticated ? "text-emerald-400" : "text-red-400"}>{debugInfo.authenticated ? "Sim" : "Não"}</span></div>
+                <div><span className="text-white/40">É admin:</span> <span className={debugInfo.isAdmin ? "text-emerald-400" : "text-red-400"}>{debugInfo.isAdmin ? "Sim ✓" : "Não ✗"}</span></div>
+                {debugInfo.resolvedUserId && (
+                  <div><span className="text-white/40">ID resolvido:</span> <span className="text-blue-300 break-all">{debugInfo.resolvedUserId}</span></div>
+                )}
+                {debugInfo.dbRecord && (
+                  <>
+                    <div><span className="text-white/40">Email no DB:</span> <span className="text-white/80">{debugInfo.dbRecord.email ?? "—"}</span></div>
+                    <div><span className="text-white/40">Role no DB:</span> <span className={debugInfo.dbRecord.role === "admin" ? "text-emerald-400" : "text-orange-300"}>{debugInfo.dbRecord.role ?? "—"}</span></div>
+                    <div><span className="text-white/40">Clerk ID no DB:</span> <span className="text-blue-300 break-all">{debugInfo.dbRecord.clerk_id ?? "—"}</span></div>
+                  </>
+                )}
+                {!debugInfo.dbRecord && debugInfo.authenticated && (
+                  <div className="text-red-400">Usuário não encontrado no banco de dados!</div>
+                )}
+                <div><span className="text-white/40">Motivo do bloqueio:</span> <span className="text-red-400">
+                  {!debugInfo.authenticated ? "Não autenticado" :
+                   !debugInfo.dbRecord ? "Sem registro no DB" :
+                   !debugInfo.inAdminIds && !debugInfo.inAdminEmails && !debugInfo.dbRoleIsAdmin ? "ID/email não está na lista de admins nem role=admin no DB" :
+                   "Verificar logs do servidor"}
+                </span></div>
+              </div>
+              {debugInfo.dbRecord && !debugInfo.isAdmin && (
+                <div className="mt-3 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                  <p className="text-yellow-400 text-xs">Para liberar acesso, adicione o ID <span className="font-bold">{debugInfo.resolvedUserId}</span> ao env ADMIN_USER_IDS, ou o email <span className="font-bold">{debugInfo.dbRecord?.email}</span> ao env ADMIN_EMAILS.</p>
+                </div>
+              )}
+            </div>
+          )}
+          {is403 && !debugInfo && (
+            <div className="mb-6 text-white/30 text-xs">Carregando diagnóstico...</div>
+          )}
+
+          <div className="flex gap-3 justify-center">
+            <Button onClick={() => { sessionStorage.setItem("auth_return_to", "/admin"); navigate("/sign-in"); }}
+              className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl">Fazer Login</Button>
+            <Button variant="outline" className="border-white/10 text-white/70 hover:bg-white/5"
+              onClick={() => navigate("/app")}>Voltar ao App</Button>
+          </div>
         </motion.div>
       </div>
     );

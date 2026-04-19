@@ -34,5 +34,6 @@ channel = "stable-25_05"
 [userenv.shared]
 STRIPE_PREMIUM_PRICE_ID = "price_1TJlcQ89mXjTdwp9ZQjS8stW"
 ADMIN_USER_IDS = "user_3CRMRRUAr5yu3EaznIyz01zzyvO,44063371,user_3CPRUIQQ6kjPLn5npolHP36sWFW"
+ADMIN_EMAILS = "alex@pimenta.page,nexusatacado@gmail.com"
 
 [userenv.production]

@@ -2,13 +2,15 @@ import { Router, type Request, type Response } from "express";
 import { db, usersTable } from "@workspace/db";
 import { roleRequestsTable } from "@workspace/db/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
-import { isAdminUserAsync } from "../lib/adminCheck";
+import { isAdminUserAsync, getAdminDebugInfo } from "../lib/adminCheck";
 
 const router = Router();
 
-// Temporary debug endpoint — returns the authenticated userId
-router.get("/admin/whoami", (req: Request, res: Response) => {
-  res.json({ userId: req.userId ?? null, authenticated: !!req.userId });
+// Debug endpoint — returns full auth & admin status info
+router.get("/admin/whoami", async (req: Request, res: Response) => {
+  const debug = await getAdminDebugInfo(req.userId);
+  const isAdmin = await isAdminUserAsync(req.userId);
+  res.json({ userId: req.userId ?? null, authenticated: !!req.userId, isAdmin, ...debug });
 });
 
 router.get("/admin/users", async (req: Request, res: Response) => {

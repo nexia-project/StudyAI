@@ -32,6 +32,7 @@ import notifyRouter from "./notify";
 import salaEstudosRouter from "./sala-estudos";
 import flashcardReviewsRouter from "./flashcard-reviews";
 import studentRouter from "./student";
+import aulaIaRouter from "./aula-ia";
 
 const router: IRouter = Router();
 
@@ -68,5 +69,6 @@ router.use(notifyRouter);
 router.use(salaEstudosRouter);
 router.use(flashcardReviewsRouter);
 router.use(studentRouter);
+router.use(aulaIaRouter);
 
 export default router;

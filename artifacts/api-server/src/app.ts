@@ -132,6 +132,7 @@ app.use("/api/student/cronograma", aiLimiter);
 app.use("/api/student/caderno", aiLimiter);
 app.use("/api/student/sisu", aiLimiter);
 app.use("/api/teacher/redacao-correct", aiLimiter);
+app.use("/api/aula-ia", aiLimiter);
 app.use("/api", generalLimiter);
 
 // ── Optional auth: sets req.userId for authenticated requests ─────────────────

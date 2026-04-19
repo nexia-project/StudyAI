@@ -554,56 +554,231 @@ router.get("/teacher/dashboard", async (req: Request, res: Response) => {
   }
 });
 
-// ─── AI Exam Generator ────────────────────────────────────────────────────────
+// ─── AI Exam Generator (upgraded: worldMode, visualStyle, weakness) ───────────
 router.post("/teacher/generate-exam", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
   if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
 
-  const { tema, materia, nivel, quantidade = 5, estilo = "ENEM" } = req.body as {
+  const {
+    tema, materia, nivel, quantidade = 5, estilo = "ENEM",
+    worldMode = false, visualStyle = "enem",
+    weaknesses = [],
+  } = req.body as {
     tema?: string; materia?: string; nivel?: string; quantidade?: number; estilo?: string;
+    worldMode?: boolean; visualStyle?: string; weaknesses?: string[];
   };
   if (!tema || !materia) { res.status(400).json({ error: "Tema e matéria são obrigatórios" }); return; }
 
   try {
     const qtd = Math.min(Math.max(Number(quantidade) || 5, 3), 10);
+    const weaknessCtx = weaknesses.length ? `\nFOCO NAS FRAQUEZAS DO ALUNO: Os erros mais comuns são em: ${weaknesses.join(", ")}. Direcione as questões para esses pontos.` : "";
+
+    let systemContent: string;
+    let userContent: string;
+
+    if (worldMode) {
+      systemContent = `Você é um criador de experiências educativas gamificadas para o ensino brasileiro.
+Crie uma PROVA MODO MUNDO — uma jornada narrativa onde cada questão é um desafio dentro de uma missão.
+${weaknessCtx}
+Retorne SOMENTE JSON válido:
+{
+  "title": "título criativo da jornada",
+  "story": {
+    "cenario": "descrição do mundo/universo da missão (2-3 frases vívidas)",
+    "missao": "a missão que o jogador precisa cumprir",
+    "personagem": "nome e descrição curta do personagem guia",
+    "objetivo": "o objetivo final da jornada",
+    "emoji": "emoji temático"
+  },
+  "questions": [
+    {
+      "number": 1,
+      "desafio": "como este desafio se conecta à história (1 frase narrativa)",
+      "text": "enunciado da questão em si",
+      "context": "situação-problema ou texto de apoio (pode ser vazio)",
+      "alternatives": ["A) texto", "B) texto", "C) texto", "D) texto"],
+      "correct": 0,
+      "explanation": "explicação da resposta correta",
+      "imageDescription": "ilustração ideal para este desafio"
+    }
+  ],
+  "totalQuestions": ${qtd}
+}`;
+      userContent = `Crie uma jornada narrativa com ${qtd} desafios de ${materia} sobre "${tema}", nível ${nivel || "médio"}. Contexto: ${estilo}. A história deve ser envolvente e cada desafio matematicamente/cientificamente correto.`;
+    } else {
+      systemContent = `Você é um professor especialista em criar provas no estilo ${estilo} para o ensino brasileiro.
+Crie questões de múltipla escolha envolventes, com contexto real e situações do cotidiano brasileiro.
+${weaknessCtx}
+Retorne SOMENTE JSON válido:
+{
+  "title": "Prova de ${materia} — ${tema}",
+  "questions": [
+    {
+      "number": 1,
+      "text": "enunciado completo",
+      "context": "texto de apoio ou situação-problema (pode ser vazio)",
+      "alternatives": ["A) texto", "B) texto", "C) texto", "D) texto"],
+      "correct": 0,
+      "explanation": "explicação detalhada da resposta correta",
+      "imageDescription": "ilustração ideal (tipo: gráfico de funções, mapa do Brasil, diagrama de célula, etc)"
+    }
+  ],
+  "totalQuestions": ${qtd}
+}`;
+      userContent = `Crie ${qtd} questões de ${materia} sobre "${tema}", nível ${nivel || "médio"}, estilo ${estilo}. As questões devem ser contextualizadas com situações reais do Brasil.`;
+    }
+
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      temperature: 0.7,
+      temperature: 0.75,
+      response_format: { type: "json_object" },
+      messages: [{ role: "system", content: systemContent }, { role: "user", content: userContent }],
+    });
+
+    const parsed = JSON.parse(completion.choices[0].message.content ?? "{}");
+    res.json({ ok: true, exam: parsed, worldMode, visualStyle });
+  } catch (err) {
+    req.log.error({ err }, "Error generating exam");
+    res.status(500).json({ error: "Erro ao gerar prova" });
+  }
+});
+
+// ─── Content Creator (NotebookLM style) ──────────────────────────────────────
+router.post("/teacher/create-content", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
+
+  const { topico, nivel = "Ensino Médio", tipo = "aula", conteudo = "" } = req.body as {
+    topico?: string; nivel?: string; tipo?: string; conteudo?: string;
+  };
+  if (!topico?.trim()) { res.status(400).json({ error: "Tópico é obrigatório" }); return; }
+
+  try {
+    const inputCtx = conteudo.trim() ? `\nCONTEÚDO DE REFERÊNCIA FORNECIDO PELO USUÁRIO:\n${conteudo.slice(0, 3000)}` : "";
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.6,
       response_format: { type: "json_object" },
       messages: [
         {
           role: "system",
-          content: `Você é um professor especialista em criar provas no estilo ${estilo} para o ensino brasileiro.
-Crie questões de múltipla escolha envolventes, com contexto real e ilustrativo.
-Retorne SOMENTE JSON válido com esta estrutura:
+          content: `Você é um especialista em educação brasileira que cria materiais pedagógicos completos.
+Para o tópico solicitado, gere um pacote completo de aprendizagem.${inputCtx}
+
+Retorne SOMENTE JSON válido com EXATAMENTE esta estrutura:
 {
-  "questions": [
-    {
-      "number": 1,
-      "text": "enunciado completo da questão",
-      "context": "texto ou situação-problema (opcional, pode ser vazio)",
-      "alternatives": ["A) texto", "B) texto", "C) texto", "D) texto"],
-      "correct": 1,
-      "explanation": "explicação da resposta correta",
-      "imageDescription": "descrição de uma ilustração ideal para esta questão (ex: gráfico, diagrama, mapa, cena)"
-    }
+  "titulo": "título didático do conteúdo",
+  "materia": "disciplina principal",
+  "resumo": "resumo completo em 4-6 parágrafos explicativos e didáticos",
+  "keyPoints": ["ponto importante 1", "ponto 2", "ponto 3", "ponto 4", "ponto 5"],
+  "slides": [
+    {"n": 1, "tipo": "titulo", "titulo": "título do slide", "subtitulo": "subtítulo", "emoji": "📐"},
+    {"n": 2, "tipo": "conteudo", "titulo": "título", "items": ["item 1", "item 2", "item 3"], "emoji": "📖"},
+    {"n": 3, "tipo": "exemplo", "titulo": "Exemplo prático", "texto": "explicação com exemplo real brasileiro", "emoji": "💡"},
+    {"n": 4, "tipo": "lista", "titulo": "Pontos-chave", "items": ["item 1", "item 2", "item 3", "item 4"], "emoji": "✅"},
+    {"n": 5, "tipo": "destaque", "titulo": "Saiba mais", "texto": "insight importante ou curiosidade", "emoji": "🔥"},
+    {"n": 6, "tipo": "quiz", "titulo": "Teste rápido", "pergunta": "questão para verificar compreensão", "emoji": "🎯"}
   ],
-  "title": "Prova de ${materia} — ${tema}",
-  "totalQuestions": ${qtd}
+  "mindMap": {
+    "label": "tópico principal",
+    "emoji": "🎯",
+    "children": [
+      {"label": "subtópico 1", "emoji": "📖", "children": [
+        {"label": "conceito A", "emoji": "🔹"},
+        {"label": "conceito B", "emoji": "🔹"}
+      ]},
+      {"label": "subtópico 2", "emoji": "💡", "children": [
+        {"label": "conceito C", "emoji": "🔹"},
+        {"label": "conceito D", "emoji": "🔹"}
+      ]},
+      {"label": "subtópico 3", "emoji": "⚡", "children": [
+        {"label": "aplicação 1", "emoji": "🔹"},
+        {"label": "aplicação 2", "emoji": "🔹"}
+      ]}
+    ]
+  },
+  "questions": [
+    {"text": "questão completa", "alternatives": ["A) opção", "B) opção", "C) opção", "D) opção"], "correct": 0, "explanation": "explicação da resposta"}
+  ]
 }`,
         },
-        {
-          role: "user",
-          content: `Crie ${qtd} questões de ${materia} sobre "${tema}", nível ${nivel || "médio"}, estilo ${estilo}. As questões devem ser contextualizadas, com situações reais do cotidiano brasileiro.`,
-        },
+        { role: "user", content: `Crie um pacote completo sobre "${topico}" para ${nivel} — tipo: ${tipo}.` },
       ],
     });
 
     const parsed = JSON.parse(completion.choices[0].message.content ?? "{}");
-    res.json({ ok: true, exam: parsed });
+    res.json({ ok: true, content: parsed });
   } catch (err) {
-    req.log.error({ err }, "Error generating exam");
-    res.status(500).json({ error: "Erro ao gerar prova" });
+    req.log.error({ err }, "Error creating content");
+    res.status(500).json({ error: "Erro ao criar conteúdo" });
+  }
+});
+
+// ─── Research / Central de Pesquisa ──────────────────────────────────────────
+router.post("/teacher/research", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
+
+  const { query } = req.body as { query?: string };
+  if (!query?.trim()) { res.status(400).json({ error: "Query é obrigatória" }); return; }
+
+  try {
+    // Fetch from knowledge base first
+    let kbContext = "";
+    try {
+      const { searchKnowledge } = await import("./knowledge");
+      const ctx = await searchKnowledge(query, undefined, 5);
+      if (ctx) kbContext = `\nCONTEÚDO DA BASE DE CONHECIMENTO DO STUDYAI (priorize):\n${ctx}`;
+    } catch { /* non-critical */ }
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.5,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: `Você é uma enciclopédia educacional brasileira especializada em ENEM, vestibulares e concursos.${kbContext}
+
+Para o tema pesquisado, crie um pacote completo de aprendizagem.
+Retorne SOMENTE JSON válido com esta estrutura:
+{
+  "titulo": "título do tema",
+  "materia": "disciplina",
+  "resumo": "resumo completo em 4-6 parágrafos",
+  "keyPoints": ["ponto 1", "ponto 2", "ponto 3", "ponto 4", "ponto 5"],
+  "slides": [
+    {"n": 1, "tipo": "titulo", "titulo": "título", "subtitulo": "subtítulo", "emoji": "📚"},
+    {"n": 2, "tipo": "conteudo", "titulo": "Contexto histórico/científico", "items": ["item 1", "item 2"], "emoji": "🕰️"},
+    {"n": 3, "tipo": "exemplo", "titulo": "Exemplo prático", "texto": "exemplo real com contexto brasileiro", "emoji": "💡"},
+    {"n": 4, "tipo": "lista", "titulo": "O que cai no ENEM/vestibular", "items": ["tópico 1", "tópico 2", "tópico 3"], "emoji": "🎯"},
+    {"n": 5, "tipo": "destaque", "titulo": "Curiosidade", "texto": "fato interessante sobre o tema", "emoji": "🔥"}
+  ],
+  "mindMap": {
+    "label": "tema principal",
+    "emoji": "🌟",
+    "children": [
+      {"label": "aspecto 1", "emoji": "📖", "children": [{"label": "detalhe 1", "emoji": "🔹"}, {"label": "detalhe 2", "emoji": "🔹"}]},
+      {"label": "aspecto 2", "emoji": "💡", "children": [{"label": "detalhe 3", "emoji": "🔹"}, {"label": "detalhe 4", "emoji": "🔹"}]},
+      {"label": "aspecto 3", "emoji": "⚡", "children": [{"label": "detalhe 5", "emoji": "🔹"}, {"label": "detalhe 6", "emoji": "🔹"}]}
+    ]
+  },
+  "questions": [
+    {"text": "questão 1 no estilo ENEM", "alternatives": ["A) opção", "B) opção", "C) opção", "D) opção"], "correct": 0, "explanation": "explicação"},
+    {"text": "questão 2", "alternatives": ["A) opção", "B) opção", "C) opção", "D) opção"], "correct": 1, "explanation": "explicação"},
+    {"text": "questão 3", "alternatives": ["A) opção", "B) opção", "C) opção", "D) opção"], "correct": 2, "explanation": "explicação"}
+  ]
+}`,
+        },
+        { role: "user", content: `Pesquisa: "${query}"` },
+      ],
+    });
+
+    const parsed = JSON.parse(completion.choices[0].message.content ?? "{}");
+    res.json({ ok: true, content: parsed, fromKb: !!kbContext });
+  } catch (err) {
+    req.log.error({ err }, "Error in research");
+    res.status(500).json({ error: "Erro ao pesquisar" });
   }
 });
 

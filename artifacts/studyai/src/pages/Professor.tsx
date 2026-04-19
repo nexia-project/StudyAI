@@ -3,26 +3,22 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, UserCircle, BookOpen, FileQuestion, Brain,
-  BarChart3, Settings, Bell, Search, Plus, Copy, Check, Trash2,
-  ChevronRight, GraduationCap, RefreshCw, AlertTriangle, TrendingUp,
-  TrendingDown, Sparkles, Send, Loader2, FileText, Download, Upload,
-  Activity, Zap, Eye, Menu, X, Star, ArrowLeft, Shield, MessageSquare,
-  ClipboardList, CheckCircle2, Clock, Target,
+  BarChart3, Search, Plus, Copy, Check, Trash2, ChevronRight, ChevronLeft,
+  GraduationCap, RefreshCw, AlertTriangle, TrendingUp, TrendingDown,
+  Sparkles, Send, Loader2, Eye, Menu, ArrowLeft, CheckCircle2, Activity,
+  Zap, Target, Bell, Globe, Layers, BookMarked, Map, Star, Shield,
+  Wand2, FileText, LayoutTemplate, Network, Microscope, Download,
 } from "lucide-react";
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer, BarChart, Bar,
-} from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Section = "dashboard" | "turmas" | "alunos" | "provas" | "assistente" | "relatorios";
+type Section = "dashboard" | "turmas" | "alunos" | "conteudos" | "pesquisa" | "provas" | "assistente" | "relatorios";
+type ExamMode = "classica" | "mundo" | "fraquezas";
+type VisualStyle = "enem" | "infantil" | "tecnico" | "aventura";
 
 interface DashData {
-  totalStudents: number;
-  totalTurmas: number;
-  avgPerformance: number;
-  engagementRate: number;
+  totalStudents: number; totalTurmas: number; avgPerformance: number; engagementRate: number;
   weeklyChart: { week: string; acertos: number; erros: number; participacao: number }[];
   heatMap: { materia: string; score: number }[];
   alerts: { type: string; text: string; severity: string }[];
@@ -35,41 +31,277 @@ interface Turma {
   description: string | null; inviteCode: string; isActive: boolean; studentCount: number; createdAt: string;
 }
 
-interface ExamQuestion {
-  number: number; text: string; context?: string;
-  alternatives: string[]; correct: number; explanation: string; imageDescription: string;
+interface SlideData { n: number; tipo: string; titulo: string; subtitulo?: string; items?: string[]; texto?: string; emoji?: string; pergunta?: string; }
+interface MindNode { label: string; emoji?: string; children?: MindNode[]; }
+interface ContentPackage {
+  titulo: string; materia: string; resumo: string; keyPoints: string[];
+  slides: SlideData[]; mindMap: MindNode; questions: { text: string; alternatives: string[]; correct: number; explanation: string }[];
 }
 
-interface ChatMessage { role: "user" | "assistant"; content: string; }
+interface ExamQuestion {
+  number: number; text: string; context?: string; desafio?: string;
+  alternatives: string[]; correct: number; explanation: string; imageDescription: string;
+}
+interface WorldStory { cenario: string; missao: string; personagem: string; objetivo: string; emoji: string; }
+interface ExamData { title: string; story?: WorldStory; questions: ExamQuestion[]; totalQuestions: number; }
 
-// ─── Sidebar nav items ────────────────────────────────────────────────────────
+// ─── Nav items ────────────────────────────────────────────────────────────────
 const NAV = [
   { id: "dashboard" as Section, label: "Dashboard", icon: LayoutDashboard },
   { id: "turmas" as Section, label: "Minhas Turmas", icon: Users },
   { id: "alunos" as Section, label: "Alunos", icon: UserCircle },
+  { id: "conteudos" as Section, label: "Criador de Conteúdo", icon: Wand2 },
+  { id: "pesquisa" as Section, label: "Central de Pesquisa", icon: Microscope },
   { id: "provas" as Section, label: "Gerador de Provas", icon: FileQuestion },
   { id: "assistente" as Section, label: "Assistente IA", icon: Brain },
   { id: "relatorios" as Section, label: "Relatórios", icon: BarChart3 },
 ];
 
-const SCORE_COLOR = (s: number) =>
-  s >= 70 ? "bg-emerald-500/80" : s >= 50 ? "bg-amber-500/80" : s >= 30 ? "bg-orange-500/80" : "bg-red-500/80";
+const SCORE_COLOR = (s: number) => s >= 70 ? "bg-emerald-500/80" : s >= 50 ? "bg-amber-500/80" : s >= 30 ? "bg-orange-500/80" : "bg-red-500/80";
+const MATERIAS = ["Matemática","Português","Física","Química","Biologia","História","Geografia","Filosofia","Sociologia","Inglês","Artes","Educação Física"];
 
-// ─── Main page ────────────────────────────────────────────────────────────────
+// ─── Slide Viewer ─────────────────────────────────────────────────────────────
+function SlideViewer({ slides }: { slides: SlideData[] }) {
+  const [idx, setIdx] = useState(0);
+  if (!slides?.length) return null;
+  const slide = slides[idx];
+
+  const slideStyle: Record<string, string> = {
+    titulo: "from-indigo-900 to-violet-900",
+    conteudo: "from-slate-900 to-slate-800",
+    exemplo: "from-emerald-900/60 to-teal-900/60",
+    lista: "from-blue-900/60 to-indigo-900/60",
+    destaque: "from-amber-900/60 to-orange-900/60",
+    quiz: "from-violet-900/60 to-purple-900/60",
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className={`rounded-2xl bg-gradient-to-br ${slideStyle[slide.tipo] ?? "from-slate-900 to-slate-800"} border border-white/10 p-8 min-h-[260px] flex flex-col justify-center`}>
+        <div className="text-4xl mb-4">{slide.emoji ?? "📄"}</div>
+        {slide.tipo === "titulo" && (
+          <>
+            <h2 className="text-2xl font-black text-white mb-2">{slide.titulo}</h2>
+            {slide.subtitulo && <p className="text-white/60 text-lg">{slide.subtitulo}</p>}
+          </>
+        )}
+        {(slide.tipo === "conteudo" || slide.tipo === "lista") && (
+          <>
+            <h3 className="text-xl font-bold text-white mb-4">{slide.titulo}</h3>
+            <ul className="space-y-2">
+              {slide.items?.map((item, i) => (
+                <li key={i} className="flex items-start gap-2 text-white/80 text-sm">
+                  <span className="text-indigo-400 mt-1">▸</span>{item}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        {(slide.tipo === "exemplo" || slide.tipo === "destaque") && (
+          <>
+            <h3 className="text-xl font-bold text-white mb-3">{slide.titulo}</h3>
+            <p className="text-white/80 leading-relaxed">{slide.texto}</p>
+          </>
+        )}
+        {slide.tipo === "quiz" && (
+          <>
+            <h3 className="text-xl font-bold text-white mb-3">{slide.titulo}</h3>
+            <div className="bg-white/10 rounded-xl p-4">
+              <p className="text-white font-semibold">❓ {slide.pergunta}</p>
+            </div>
+          </>
+        )}
+      </div>
+      <div className="flex items-center justify-between">
+        <button onClick={() => setIdx(i => Math.max(0, i - 1))} disabled={idx === 0}
+          className="p-2 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 text-white transition-colors">
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <div className="flex gap-1">
+          {slides.map((_, i) => (
+            <button key={i} onClick={() => setIdx(i)}
+              className={`w-2 h-2 rounded-full transition-all ${i === idx ? "bg-indigo-400 w-6" : "bg-white/20"}`} />
+          ))}
+        </div>
+        <button onClick={() => setIdx(i => Math.min(slides.length - 1, i + 1))} disabled={idx === slides.length - 1}
+          className="p-2 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 text-white transition-colors">
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      </div>
+      <p className="text-center text-white/30 text-xs">Slide {idx + 1} / {slides.length}</p>
+    </div>
+  );
+}
+
+// ─── Mind Map Viewer ──────────────────────────────────────────────────────────
+function MindMapViewer({ root }: { root: MindNode }) {
+  if (!root) return null;
+  return (
+    <div className="overflow-auto">
+      <div className="flex flex-col items-center gap-4 min-w-max p-4">
+        {/* Root */}
+        <div className="px-6 py-3 rounded-2xl bg-indigo-600 text-white font-black text-sm shadow-lg shadow-indigo-500/30">
+          {root.emoji} {root.label}
+        </div>
+        {/* Children */}
+        {root.children && root.children.length > 0 && (
+          <div className="flex gap-6 relative">
+            {root.children.map((child, ci) => (
+              <div key={ci} className="flex flex-col items-center gap-3">
+                <div className="w-px h-6 bg-white/20" />
+                <div className="px-4 py-2 rounded-xl bg-violet-600/40 border border-violet-500/40 text-white font-bold text-xs">
+                  {child.emoji} {child.label}
+                </div>
+                {child.children && child.children.length > 0 && (
+                  <div className="flex flex-col gap-2">
+                    {child.children.map((sub, si) => (
+                      <div key={si} className="flex items-center gap-2">
+                        <div className="w-4 h-px bg-white/15" />
+                        <div className="px-3 py-1.5 rounded-lg bg-white/8 border border-white/10 text-white/70 text-xs">
+                          {sub.emoji} {sub.label}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Content Package (used in Conteudos + Pesquisa) ───────────────────────────
+function ContentPackageView({ content, fromKb }: { content: ContentPackage; fromKb?: boolean }) {
+  const [tab, setTab] = useState<"resumo" | "slides" | "mapa" | "questoes">("resumo");
+  const [selected, setSelected] = useState<Record<number, number>>({});
+  const [showAnswer, setShowAnswer] = useState<Record<number, boolean>>({});
+
+  const TABS = [
+    { id: "resumo" as const, label: "Resumo", icon: FileText },
+    { id: "slides" as const, label: "Slides", icon: LayoutTemplate },
+    { id: "mapa" as const, label: "Mapa Mental", icon: Network },
+    { id: "questoes" as const, label: "Questões", icon: FileQuestion },
+  ];
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+      {/* Header */}
+      <div className="rounded-2xl border border-white/[0.07] bg-gradient-to-r from-indigo-600/20 to-violet-600/20 p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-xl font-black text-white">{content.titulo}</h3>
+            <p className="text-indigo-300 text-sm mt-1">{content.materia}</p>
+            {fromKb && <span className="text-xs bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full mt-2 inline-block">✓ Usando base de conhecimento</span>}
+          </div>
+        </div>
+        {/* Key points */}
+        {content.keyPoints?.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-4">
+            {content.keyPoints.map((kp, i) => (
+              <span key={i} className="text-xs bg-white/10 text-white/70 px-3 py-1 rounded-full">{kp}</span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {TABS.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all
+              ${tab === t.id ? "bg-indigo-600 text-white" : "bg-white/5 text-white/50 hover:text-white hover:bg-white/10"}`}>
+            <t.icon className="w-4 h-4" />{t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <AnimatePresence mode="wait">
+        <motion.div key={tab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          {tab === "resumo" && (
+            <div className="rounded-2xl border border-white/[0.07] bg-[#0f0f1a] p-6 space-y-4">
+              {content.resumo?.split("\n").filter(Boolean).map((para, i) => (
+                <p key={i} className="text-white/80 leading-relaxed text-sm">{para}</p>
+              ))}
+            </div>
+          )}
+          {tab === "slides" && (
+            <div className="rounded-2xl border border-white/[0.07] bg-[#0f0f1a] p-5">
+              <SlideViewer slides={content.slides ?? []} />
+            </div>
+          )}
+          {tab === "mapa" && (
+            <div className="rounded-2xl border border-white/[0.07] bg-[#0f0f1a] p-5">
+              <h4 className="text-white/50 text-xs mb-4 font-semibold uppercase tracking-wider">Mapa Mental</h4>
+              {content.mindMap ? <MindMapViewer root={content.mindMap} /> : <p className="text-white/30 text-sm text-center py-8">Mapa não disponível</p>}
+            </div>
+          )}
+          {tab === "questoes" && (
+            <div className="space-y-4">
+              {(content.questions ?? []).map((q, qi) => {
+                const sel = selected[qi];
+                const show = showAnswer[qi];
+                return (
+                  <div key={qi} className="rounded-2xl border border-white/[0.07] bg-[#0f0f1a] p-5">
+                    <div className="flex gap-3 mb-4">
+                      <div className="w-7 h-7 rounded-lg bg-indigo-600/30 text-indigo-300 text-xs font-black flex items-center justify-center flex-shrink-0">{qi + 1}</div>
+                      <p className="text-white font-semibold text-sm leading-relaxed">{q.text}</p>
+                    </div>
+                    <div className="grid sm:grid-cols-2 gap-2 mb-3">
+                      {q.alternatives.map((alt, ai) => {
+                        const isSelected = sel === ai;
+                        const isCorrect = show && ai === q.correct;
+                        const isWrong = show && isSelected && ai !== q.correct;
+                        return (
+                          <button key={ai} onClick={() => !show && setSelected(p => ({ ...p, [qi]: ai }))}
+                            className={`text-left px-4 py-2.5 rounded-xl text-xs transition-all border
+                              ${isCorrect ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-300 font-bold"
+                              : isWrong ? "bg-red-500/20 border-red-500/50 text-red-300"
+                              : isSelected ? "bg-indigo-600/30 border-indigo-500/50 text-indigo-300 font-bold"
+                              : "bg-white/5 border-white/10 text-white/70 hover:bg-white/10"}`}>
+                            {alt}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {sel !== undefined && !show && (
+                      <button onClick={() => setShowAnswer(p => ({ ...p, [qi]: true }))}
+                        className="text-xs text-indigo-400 hover:text-indigo-300 font-bold transition-colors">
+                        Ver resposta →
+                      </button>
+                    )}
+                    {show && (
+                      <div className="bg-white/5 rounded-xl px-4 py-3 text-xs text-white/70">
+                        <strong className="text-white">Resposta:</strong> {q.explanation}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function ProfessorPage() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const [section, setSection] = useState<Section>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [hasAccess, setHasAccess] = useState(false);
 
-  // --- Auth fetch helper
   async function apiFetch(url: string, opts: RequestInit = {}) {
     return fetch(url, { ...opts, credentials: "include" });
   }
 
-  // --- Access guard
-  const [authChecked, setAuthChecked] = useState(false);
-  const [hasAccess, setHasAccess] = useState(false);
   useEffect(() => {
     apiFetch("/api/teacher/turmas").then(r => {
       setHasAccess(r.ok);
@@ -87,39 +319,32 @@ export default function ProfessorPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a12] flex">
-      {/* Mobile overlay */}
       {sidebarOpen && <div className="fixed inset-0 bg-black/60 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {/* Sidebar */}
-      <aside className={`fixed left-0 top-0 h-full z-30 flex flex-col bg-[#0f0f1a] border-r border-white/[0.07] transition-all duration-300
-        ${sidebarOpen ? "w-64" : "w-16 lg:w-64"}`}>
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-4 py-5 border-b border-white/[0.07]">
+      <aside className={`fixed left-0 top-0 h-full z-30 flex flex-col bg-[#0f0f1a] border-r border-white/[0.06] transition-all duration-300 ${sidebarOpen ? "w-64" : "w-16 lg:w-64"}`}>
+        <div className="flex items-center gap-3 px-4 py-5 border-b border-white/[0.06]">
           <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center flex-shrink-0">
             <GraduationCap className="w-4 h-4 text-white" />
           </div>
-          <span className={`font-black text-white text-sm transition-opacity duration-200 ${sidebarOpen ? "opacity-100" : "opacity-0 lg:opacity-100"}`}>
-            StudyAI
-            <span className="ml-1.5 text-xs bg-indigo-600/30 text-indigo-300 px-1.5 py-0.5 rounded-full font-semibold">Professor</span>
-          </span>
+          <div className={`transition-opacity duration-200 ${sidebarOpen ? "opacity-100" : "opacity-0 lg:opacity-100"}`}>
+            <p className="font-black text-white text-sm leading-none">StudyAI</p>
+            <p className="text-indigo-400 text-[10px] font-bold mt-0.5">PAINEL DO PROFESSOR</p>
+          </div>
         </div>
-
-        {/* Nav */}
-        <nav className="flex-1 py-4 overflow-y-auto">
+        <nav className="flex-1 py-3 overflow-y-auto space-y-0.5 px-2">
           {NAV.map(item => (
             <button key={item.id} onClick={() => { setSection(item.id); setSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all
-                ${section === item.id ? "bg-indigo-600/20 text-indigo-300 border-r-2 border-indigo-500" : "text-white/50 hover:text-white hover:bg-white/5"}`}>
-              <item.icon className="w-5 h-5 flex-shrink-0" />
-              <span className={`text-sm font-semibold transition-opacity duration-200 ${sidebarOpen ? "opacity-100" : "opacity-0 lg:opacity-100"}`}>{item.label}</span>
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all
+                ${section === item.id ? "bg-indigo-600/20 text-indigo-300" : "text-white/40 hover:text-white hover:bg-white/5"}`}>
+              <item.icon className="w-4 h-4 flex-shrink-0" />
+              <span className={`text-xs font-semibold transition-opacity duration-200 ${sidebarOpen ? "opacity-100" : "opacity-0 lg:opacity-100"}`}>{item.label}</span>
             </button>
           ))}
         </nav>
-
-        {/* Bottom */}
-        <div className="border-t border-white/[0.07] p-4">
+        <div className="border-t border-white/[0.06] p-3">
           <button onClick={() => navigate("/app")}
-            className="w-full flex items-center gap-3 text-white/40 hover:text-white text-sm transition-colors">
+            className="w-full flex items-center gap-3 px-3 py-2 text-white/30 hover:text-white text-xs transition-colors rounded-xl hover:bg-white/5">
             <ArrowLeft className="w-4 h-4 flex-shrink-0" />
             <span className={`transition-opacity duration-200 ${sidebarOpen ? "opacity-100" : "opacity-0 lg:opacity-100"}`}>Voltar ao App</span>
           </button>
@@ -128,30 +353,26 @@ export default function ProfessorPage() {
 
       {/* Main */}
       <main className="flex-1 ml-16 lg:ml-64 flex flex-col min-h-screen">
-        {/* Topbar */}
-        <header className="sticky top-0 z-10 bg-[#0a0a12]/90 backdrop-blur border-b border-white/[0.07] px-6 py-4 flex items-center gap-4">
-          <button className="lg:hidden text-white/50 hover:text-white" onClick={() => setSidebarOpen(true)}>
+        <header className="sticky top-0 z-10 bg-[#0a0a12]/95 backdrop-blur border-b border-white/[0.06] px-6 py-3.5 flex items-center gap-4">
+          <button className="lg:hidden text-white/40 hover:text-white" onClick={() => setSidebarOpen(true)}>
             <Menu className="w-5 h-5" />
           </button>
-          <div className="flex-1 hidden sm:block">
-            <h1 className="text-white font-bold text-lg">{NAV.find(n => n.id === section)?.label}</h1>
-          </div>
+          <h1 className="text-white font-bold text-base hidden sm:block">{NAV.find(n => n.id === section)?.label}</h1>
           <div className="ml-auto flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-indigo-600/30 flex items-center justify-center">
-              <span className="text-indigo-300 text-xs font-bold">
-                {(user as any)?.firstName?.[0] ?? "P"}
-              </span>
+            <div className="w-7 h-7 rounded-full bg-indigo-600/30 flex items-center justify-center">
+              <span className="text-indigo-300 text-xs font-bold">{(user as any)?.firstName?.[0] ?? "P"}</span>
             </div>
           </div>
         </header>
 
-        {/* Content */}
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-4 lg:p-6">
           <AnimatePresence mode="wait">
-            <motion.div key={section} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
+            <motion.div key={section} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
               {section === "dashboard" && <DashboardSection apiFetch={apiFetch} onNavigate={setSection} />}
               {section === "turmas" && <TurmasSection apiFetch={apiFetch} onNavigate={id => navigate(`/professor/turma/${id}`)} />}
               {section === "alunos" && <AlunosSection apiFetch={apiFetch} />}
+              {section === "conteudos" && <ConteudosSection apiFetch={apiFetch} />}
+              {section === "pesquisa" && <PesquisaSection apiFetch={apiFetch} />}
               {section === "provas" && <GerarProvaSection apiFetch={apiFetch} />}
               {section === "assistente" && <AssistenteSection apiFetch={apiFetch} />}
               {section === "relatorios" && <RelatoriosSection apiFetch={apiFetch} />}
@@ -169,53 +390,45 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiFetch("/api/teacher/dashboard")
-      .then(r => r.json()).then(d => setData(d)).catch(() => {}).finally(() => setLoading(false));
+    apiFetch("/api/teacher/dashboard").then(r => r.json()).then(setData).finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-indigo-400 animate-spin" /></div>;
   if (!data) return <div className="text-white/40 text-center py-20">Erro ao carregar dados.</div>;
 
   const kpis = [
-    { label: "Alunos Ativos", value: data.totalStudents, icon: Users, color: "text-blue-400", bg: "bg-blue-500/10", trend: null },
-    { label: "Turmas", value: data.totalTurmas, icon: BookOpen, color: "text-violet-400", bg: "bg-violet-500/10", trend: null },
-    { label: "Média de Desempenho", value: `${data.avgPerformance}%`, icon: TrendingUp, color: "text-emerald-400", bg: "bg-emerald-500/10", trend: data.avgPerformance >= 60 ? "up" : "down" },
-    { label: "Engajamento", value: `${data.engagementRate}%`, icon: Activity, color: "text-amber-400", bg: "bg-amber-500/10", trend: data.engagementRate >= 60 ? "up" : "down" },
+    { label: "Alunos Ativos", value: data.totalStudents, icon: Users, color: "text-blue-400", bg: "bg-blue-500/10" },
+    { label: "Turmas", value: data.totalTurmas, icon: BookOpen, color: "text-violet-400", bg: "bg-violet-500/10" },
+    { label: "Média Desempenho", value: `${data.avgPerformance}%`, icon: TrendingUp, color: "text-emerald-400", bg: "bg-emerald-500/10" },
+    { label: "Engajamento", value: `${data.engagementRate}%`, icon: Activity, color: "text-amber-400", bg: "bg-amber-500/10" },
   ];
 
   return (
-    <div className="space-y-6">
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpis.map((k) => (
-          <div key={k.label} className={`rounded-2xl border border-white/[0.07] ${k.bg} p-5`}>
-            <div className="flex items-center justify-between mb-3">
-              <k.icon className={`w-5 h-5 ${k.color}`} />
-              {k.trend === "up" && <TrendingUp className="w-4 h-4 text-emerald-400" />}
-              {k.trend === "down" && <TrendingDown className="w-4 h-4 text-red-400" />}
-            </div>
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {kpis.map(k => (
+          <div key={k.label} className={`rounded-2xl border border-white/[0.06] ${k.bg} p-4`}>
+            <k.icon className={`w-4 h-4 ${k.color} mb-3`} />
             <p className="text-2xl font-black text-white">{k.value}</p>
-            <p className="text-white/50 text-xs mt-1">{k.label}</p>
+            <p className="text-white/40 text-xs mt-1">{k.label}</p>
           </div>
         ))}
       </div>
 
-      {/* Chart + Insights */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 rounded-2xl border border-white/[0.07] bg-[#0f0f1a] p-5">
-          <h3 className="font-bold text-white mb-4 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-indigo-400" /> Evolução do Desempenho (Semanal)
+      <div className="grid lg:grid-cols-3 gap-5">
+        <div className="lg:col-span-2 rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-5">
+          <h3 className="font-bold text-white text-sm mb-4 flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-indigo-400" /> Evolução Semanal
           </h3>
           {data.weeklyChart.every(w => w.acertos === 0) ? (
             <div className="flex items-center justify-center h-40 text-white/30 text-sm">Sem dados suficientes ainda.</div>
           ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={data.weeklyChart} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="week" tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 11 }} />
-                <YAxis tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 11 }} domain={[0, 100]} />
-                <Tooltip contentStyle={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", color: "white" }} />
-                <Legend wrapperStyle={{ fontSize: "11px", color: "rgba(255,255,255,0.5)" }} />
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={data.weeklyChart} margin={{ top: 5, right: 10, left: -25, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                <XAxis dataKey="week" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} />
+                <YAxis tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} domain={[0, 100]} />
+                <Tooltip contentStyle={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", color: "white", fontSize: "12px" }} />
                 <Line type="monotone" dataKey="acertos" stroke="#34d399" strokeWidth={2} dot={false} name="Acertos %" />
                 <Line type="monotone" dataKey="participacao" stroke="#818cf8" strokeWidth={2} dot={false} name="Participação" />
               </LineChart>
@@ -223,10 +436,9 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
           )}
         </div>
 
-        {/* AI Insights + Alerts */}
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-white/[0.07] bg-[#0f0f1a] p-5">
-            <h3 className="font-bold text-white mb-3 flex items-center gap-2">
+        <div className="space-y-3">
+          <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-4">
+            <h3 className="font-bold text-white text-sm mb-3 flex items-center gap-2">
               <Brain className="w-4 h-4 text-violet-400" /> Insights da IA
             </h3>
             <div className="space-y-2">
@@ -239,21 +451,20 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
             </div>
           </div>
 
-          {/* Quick actions */}
-          <div className="rounded-2xl border border-white/[0.07] bg-[#0f0f1a] p-5">
-            <h3 className="font-bold text-white mb-3 flex items-center gap-2">
+          <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-4">
+            <h3 className="font-bold text-white text-sm mb-3 flex items-center gap-2">
               <Zap className="w-4 h-4 text-amber-400" /> Ações Rápidas
             </h3>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { label: "Gerar prova", icon: FileQuestion, section: "provas" as Section },
-                { label: "Assistente IA", icon: Brain, section: "assistente" as Section },
-                { label: "Ver alunos", icon: UserCircle, section: "alunos" as Section },
-                { label: "Relatórios", icon: BarChart3, section: "relatorios" as Section },
+                { label: "Gerar prova", icon: FileQuestion, s: "provas" as Section },
+                { label: "Criar aula", icon: Wand2, s: "conteudos" as Section },
+                { label: "Pesquisar", icon: Microscope, s: "pesquisa" as Section },
+                { label: "Assistente", icon: Brain, s: "assistente" as Section },
               ].map(a => (
-                <button key={a.label} onClick={() => onNavigate(a.section)}
-                  className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 rounded-xl px-3 py-2 text-xs font-semibold text-white/70 hover:text-white transition-all">
-                  <a.icon className="w-3.5 h-3.5 text-indigo-400" /> {a.label}
+                <button key={a.label} onClick={() => onNavigate(a.s)}
+                  className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 rounded-xl px-3 py-2 text-xs font-semibold text-white/60 hover:text-white transition-all">
+                  <a.icon className="w-3.5 h-3.5 text-indigo-400" />{a.label}
                 </button>
               ))}
             </div>
@@ -261,15 +472,12 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
         </div>
       </div>
 
-      {/* Turmas grid */}
       {data.turmas.length > 0 && (
         <div>
-          <h3 className="font-bold text-white mb-3 flex items-center gap-2">
-            <Users className="w-4 h-4 text-indigo-400" /> Turmas
-          </h3>
+          <h3 className="font-bold text-white text-sm mb-3 flex items-center gap-2"><Users className="w-4 h-4 text-indigo-400" />Turmas</h3>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {data.turmas.map(t => (
-              <div key={t.id} className="rounded-2xl border border-white/[0.07] bg-[#0f0f1a] p-4">
+              <div key={t.id} className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-4">
                 <p className="font-bold text-white text-sm truncate">{t.name}</p>
                 {t.serie && <p className="text-white/40 text-xs mt-0.5">{t.serie}</p>}
                 <p className="text-indigo-300 text-xl font-black mt-2">{t.studentCount}</p>
@@ -280,61 +488,42 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
         </div>
       )}
 
-      {/* Heat map */}
       {data.heatMap.length > 0 && (
-        <div className="rounded-2xl border border-white/[0.07] bg-[#0f0f1a] p-5">
-          <h3 className="font-bold text-white mb-4 flex items-center gap-2">
-            <Target className="w-4 h-4 text-rose-400" /> Mapa de Desempenho por Matéria
-          </h3>
+        <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-5">
+          <h3 className="font-bold text-white text-sm mb-4 flex items-center gap-2"><Target className="w-4 h-4 text-rose-400" />Mapa de Desempenho por Matéria</h3>
           <div className="flex flex-wrap gap-2">
             {data.heatMap.map(h => (
-              <div key={h.materia} className={`rounded-xl px-4 py-2 text-center ${SCORE_COLOR(h.score)}`}>
-                <p className="text-white text-xs font-semibold truncate max-w-[100px]">{h.materia}</p>
+              <div key={h.materia} className={`rounded-xl px-4 py-2.5 text-center ${SCORE_COLOR(h.score)}`}>
+                <p className="text-white text-xs font-semibold">{h.materia}</p>
                 <p className="text-white font-black text-lg">{h.score}%</p>
               </div>
             ))}
           </div>
-          <div className="flex items-center gap-4 mt-4 text-xs text-white/40">
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-red-500/80" /> &lt;30% Crítico</span>
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-500/80" /> 30–50% Atenção</span>
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-500/80" /> &gt;70% Bom</span>
-          </div>
         </div>
       )}
 
-      {/* Students table */}
       {data.students.length > 0 && (
-        <div className="rounded-2xl border border-white/[0.07] bg-[#0f0f1a] p-5 overflow-x-auto">
-          <h3 className="font-bold text-white mb-4 flex items-center gap-2">
-            <UserCircle className="w-4 h-4 text-blue-400" /> Lista de Alunos
-          </h3>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-white/30 text-xs border-b border-white/[0.07]">
-                <th className="text-left pb-2 font-semibold">Nome</th>
-                <th className="text-left pb-2 font-semibold">Turma</th>
-                <th className="text-center pb-2 font-semibold">Desempenho</th>
-                <th className="text-center pb-2 font-semibold">Engajamento</th>
+        <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-5 overflow-x-auto">
+          <h3 className="font-bold text-white text-sm mb-4 flex items-center gap-2"><UserCircle className="w-4 h-4 text-blue-400" />Alunos</h3>
+          <table className="w-full text-xs">
+            <thead><tr className="text-white/30 border-b border-white/[0.06]">
+              <th className="text-left pb-2 font-semibold">Nome</th>
+              <th className="text-left pb-2 font-semibold hidden sm:table-cell">Turma</th>
+              <th className="text-center pb-2 font-semibold">Desempenho</th>
+              <th className="text-center pb-2 font-semibold hidden md:table-cell">Engajamento</th>
+            </tr></thead>
+            <tbody>{data.students.map((s, i) => (
+              <tr key={s.id} className="border-b border-white/[0.03] hover:bg-white/[0.02]">
+                <td className="py-2 font-semibold text-white">{s.name}</td>
+                <td className="py-2 text-white/40 hidden sm:table-cell">{s.turma}</td>
+                <td className="py-2 text-center">
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${s.performance >= 70 ? "bg-emerald-500/20 text-emerald-300" : s.performance >= 40 ? "bg-amber-500/20 text-amber-300" : "bg-red-500/20 text-red-300"}`}>{s.performance}%</span>
+                </td>
+                <td className="py-2 text-center hidden md:table-cell">
+                  <span className={`text-xs font-semibold ${s.engagement === "Alto" ? "text-emerald-400" : s.engagement === "Médio" ? "text-amber-400" : "text-red-400"}`}>{s.engagement}</span>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {data.students.map((s, i) => (
-                <tr key={s.id} className={`border-b border-white/[0.04] ${i % 2 === 0 ? "" : "bg-white/[0.02]"}`}>
-                  <td className="py-2 font-semibold text-white">{s.name}</td>
-                  <td className="py-2 text-white/50 text-xs">{s.turma}</td>
-                  <td className="py-2 text-center">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${s.performance >= 70 ? "bg-emerald-500/20 text-emerald-300" : s.performance >= 40 ? "bg-amber-500/20 text-amber-300" : "bg-red-500/20 text-red-300"}`}>
-                      {s.performance}%
-                    </span>
-                  </td>
-                  <td className="py-2 text-center">
-                    <span className={`text-xs font-semibold ${s.engagement === "Alto" ? "text-emerald-400" : s.engagement === "Médio" ? "text-amber-400" : "text-red-400"}`}>
-                      {s.engagement}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
+            ))}</tbody>
           </table>
         </div>
       )}
@@ -352,15 +541,12 @@ function TurmasSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: Req
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  useEffect(() => { loadTurmas(); }, []);
+  useEffect(() => { load(); }, []);
 
-  async function loadTurmas() {
+  async function load() {
     setLoading(true);
-    try {
-      const r = await apiFetch("/api/teacher/turmas");
-      const d = await r.json();
-      setTurmas(d.turmas ?? []);
-    } finally { setLoading(false); }
+    try { const r = await apiFetch("/api/teacher/turmas"); const d = await r.json(); setTurmas(d.turmas ?? []); }
+    finally { setLoading(false); }
   }
 
   async function createTurma(e: React.FormEvent) {
@@ -368,73 +554,52 @@ function TurmasSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: Req
     setCreating(true);
     try {
       await apiFetch("/api/teacher/turmas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-      await loadTurmas(); setShowCreate(false); setForm({ name: "", serie: "", subject: "", description: "" });
+      await load(); setShowCreate(false); setForm({ name: "", serie: "", subject: "", description: "" });
     } finally { setCreating(false); }
   }
 
   async function deleteTurma(id: string) {
-    if (!confirm("Excluir esta turma? Todos os alunos serão removidos.")) return;
+    if (!confirm("Excluir esta turma?")) return;
     setDeleting(id);
     try { await apiFetch(`/api/teacher/turmas/${id}`, { method: "DELETE" }); setTurmas(p => p.filter(t => t.id !== id)); }
     finally { setDeleting(null); }
   }
 
-  function copyCode(code: string) {
-    navigator.clipboard.writeText(code);
-    setCopiedCode(code);
-    setTimeout(() => setCopiedCode(null), 2000);
-  }
-
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-indigo-400 animate-spin" /></div>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-black text-white">Minhas Turmas</h2>
-          <p className="text-white/40 text-sm mt-0.5">{turmas.length} turma{turmas.length !== 1 ? "s" : ""} cadastrada{turmas.length !== 1 ? "s" : ""}</p>
-        </div>
-        <button onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors">
-          <Plus className="w-4 h-4" /> Nova Turma
+        <div><h2 className="font-black text-white">{turmas.length} turma{turmas.length !== 1 ? "s" : ""}</h2></div>
+        <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors">
+          <Plus className="w-3.5 h-3.5" /> Nova Turma
         </button>
       </div>
-
-      {/* Create form */}
       <AnimatePresence>
         {showCreate && (
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-            className="rounded-2xl border border-indigo-500/30 bg-indigo-600/5 p-6">
-            <h3 className="font-bold text-white mb-4 flex items-center gap-2"><Plus className="w-4 h-4 text-indigo-400" /> Criar nova turma</h3>
-            <form onSubmit={createTurma} className="grid sm:grid-cols-2 gap-4">
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className="rounded-2xl border border-indigo-500/30 bg-indigo-600/5 p-5">
+            <h3 className="font-bold text-white text-sm mb-4">Criar nova turma</h3>
+            <form onSubmit={createTurma} className="grid sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2">
-                <label className="text-white/50 text-xs mb-1 block">Nome da turma *</label>
-                <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required
-                  placeholder="Ex: 3º Ano B — Matemática"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500" />
+                <label className="text-white/40 text-xs mb-1 block">Nome *</label>
+                <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required placeholder="Ex: 3º Ano B — Matemática"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-indigo-500" />
               </div>
               <div>
-                <label className="text-white/50 text-xs mb-1 block">Série / Nível</label>
-                <input value={form.serie} onChange={e => setForm(f => ({ ...f, serie: e.target.value }))} placeholder="Ex: 3º Ano, EJA, Técnico"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500" />
+                <label className="text-white/40 text-xs mb-1 block">Série</label>
+                <input value={form.serie} onChange={e => setForm(f => ({ ...f, serie: e.target.value }))} placeholder="Ex: 3º Ano, EJA"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-indigo-500" />
               </div>
               <div>
-                <label className="text-white/50 text-xs mb-1 block">Disciplina</label>
-                <input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} placeholder="Ex: Matemática, Português"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500" />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="text-white/50 text-xs mb-1 block">Descrição</label>
-                <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2}
-                  placeholder="Descreva a turma..."
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500 resize-none" />
+                <label className="text-white/40 text-xs mb-1 block">Disciplina</label>
+                <input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} placeholder="Ex: Matemática"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-indigo-500" />
               </div>
               <div className="sm:col-span-2 flex gap-3 justify-end">
-                <button type="button" onClick={() => setShowCreate(false)}
-                  className="px-4 py-2.5 rounded-xl bg-white/5 text-white/60 text-sm hover:bg-white/10 transition-colors">Cancelar</button>
-                <button type="submit" disabled={creating}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition-colors disabled:opacity-50">
-                  {creating ? "Criando..." : "Criar Turma"}
+                <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2 rounded-xl bg-white/5 text-white/50 text-sm hover:bg-white/10 transition-colors">Cancelar</button>
+                <button type="submit" disabled={creating} className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition-colors disabled:opacity-50">
+                  {creating ? "Criando..." : "Criar"}
                 </button>
               </div>
             </form>
@@ -443,48 +608,42 @@ function TurmasSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: Req
       </AnimatePresence>
 
       {turmas.length === 0 ? (
-        <div className="text-center py-20 border border-white/[0.07] rounded-2xl">
-          <GraduationCap className="w-12 h-12 text-white/20 mx-auto mb-4" />
-          <p className="text-white/50 mb-1">Nenhuma turma ainda</p>
-          <p className="text-white/30 text-sm mb-6">Crie sua primeira turma e convide seus alunos</p>
-          <button onClick={() => setShowCreate(true)}
-            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors">
+        <div className="text-center py-20 border border-white/[0.06] rounded-2xl">
+          <GraduationCap className="w-12 h-12 text-white/15 mx-auto mb-4" />
+          <p className="text-white/40 mb-4">Nenhuma turma ainda</p>
+          <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 bg-indigo-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl">
             <Plus className="w-4 h-4" /> Criar primeira turma
           </button>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {turmas.map((t, i) => (
-            <motion.div key={t.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-              className="rounded-2xl border border-white/[0.07] bg-[#0f0f1a] p-5 hover:border-indigo-500/30 transition-all">
+            <motion.div key={t.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+              className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-5 hover:border-indigo-500/30 transition-all">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-white truncate">{t.name}</h3>
-                  <div className="flex gap-2 mt-1 flex-wrap">
-                    {t.serie && <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full">{t.serie}</span>}
-                    {t.subject && <span className="text-xs bg-white/10 text-white/60 px-2 py-0.5 rounded-full">{t.subject}</span>}
+                  <h3 className="font-bold text-white text-sm truncate">{t.name}</h3>
+                  <div className="flex gap-1.5 mt-1 flex-wrap">
+                    {t.serie && <span className="text-xs bg-indigo-500/15 text-indigo-300 px-2 py-0.5 rounded-full">{t.serie}</span>}
+                    {t.subject && <span className="text-xs bg-white/8 text-white/50 px-2 py-0.5 rounded-full">{t.subject}</span>}
                   </div>
                 </div>
-                <button onClick={() => deleteTurma(t.id)} disabled={deleting === t.id}
-                  className="p-1.5 text-white/25 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors ml-2">
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <button onClick={() => deleteTurma(t.id)} className="p-1.5 text-white/20 hover:text-red-400 rounded-lg transition-colors ml-2"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
-              <div className="flex items-center gap-1.5 text-white/40 text-sm mb-4">
-                <Users className="w-4 h-4" /> {t.studentCount} aluno{t.studentCount !== 1 ? "s" : ""}
-              </div>
-              <div className="bg-white/5 rounded-xl px-4 py-3 flex items-center justify-between mb-3">
+              <div className="flex items-center gap-1.5 text-white/35 text-xs mb-3"><Users className="w-3.5 h-3.5" />{t.studentCount} alunos</div>
+              <div className="bg-white/5 rounded-xl px-3 py-2.5 flex items-center justify-between mb-3">
                 <div>
-                  <p className="text-white/30 text-xs mb-0.5">Código de convite</p>
-                  <p className="text-indigo-300 font-mono font-black tracking-widest">{t.inviteCode}</p>
+                  <p className="text-white/25 text-[10px] mb-0.5">Código de convite</p>
+                  <p className="text-indigo-300 font-mono font-black tracking-widest text-sm">{t.inviteCode}</p>
                 </div>
-                <button onClick={() => copyCode(t.inviteCode)} className="p-2 text-white/30 hover:text-indigo-300 transition-colors rounded-lg">
-                  {copiedCode === t.inviteCode ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                <button onClick={() => { navigator.clipboard.writeText(t.inviteCode); setCopiedCode(t.inviteCode); setTimeout(() => setCopiedCode(null), 2000); }}
+                  className="p-1.5 text-white/25 hover:text-indigo-300 transition-colors rounded-lg">
+                  {copiedCode === t.inviteCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                 </button>
               </div>
               <button onClick={() => onNavigate(t.id)}
-                className="w-full py-2 rounded-xl bg-indigo-600/15 hover:bg-indigo-600 border border-indigo-500/25 hover:border-indigo-500 text-indigo-300 hover:text-white text-sm font-bold transition-all flex items-center justify-center gap-2">
-                Ver turma <ChevronRight className="w-4 h-4" />
+                className="w-full py-2 rounded-xl bg-indigo-600/12 hover:bg-indigo-600 border border-indigo-500/20 hover:border-indigo-500 text-indigo-300 hover:text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5">
+                Ver turma <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </motion.div>
           ))}
@@ -501,77 +660,53 @@ function AlunosSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) =>
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    apiFetch("/api/teacher/dashboard")
-      .then(r => r.json())
-      .then(d => setStudents(d.students ?? []))
-      .finally(() => setLoading(false));
+    apiFetch("/api/teacher/dashboard").then(r => r.json()).then(d => setStudents(d.students ?? [])).finally(() => setLoading(false));
   }, []);
 
-  const filtered = students.filter(s =>
-    s.name.toLowerCase().includes(search.toLowerCase()) ||
-    s.turma.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = students.filter(s => s.name.toLowerCase().includes(search.toLowerCase()) || s.turma.toLowerCase().includes(search.toLowerCase()));
 
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-indigo-400 animate-spin" /></div>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar aluno ou turma..."
-            className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-indigo-500" />
-        </div>
+    <div className="space-y-4">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25" />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar aluno ou turma..."
+          className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500" />
       </div>
-
       {filtered.length === 0 ? (
-        <div className="text-center py-20 border border-white/[0.07] rounded-2xl">
-          <UserCircle className="w-12 h-12 text-white/20 mx-auto mb-4" />
-          <p className="text-white/50">Nenhum aluno encontrado</p>
-          <p className="text-white/30 text-sm mt-1">Adicione alunos às suas turmas usando o código de convite</p>
+        <div className="text-center py-20 border border-white/[0.06] rounded-2xl">
+          <UserCircle className="w-12 h-12 text-white/15 mx-auto mb-4" />
+          <p className="text-white/40">Nenhum aluno encontrado</p>
         </div>
       ) : (
-        <div className="rounded-2xl border border-white/[0.07] bg-[#0f0f1a] overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-white/[0.07] text-white/30 text-xs">
-                <th className="text-left px-5 py-3 font-semibold">Nome</th>
-                <th className="text-left px-5 py-3 font-semibold hidden sm:table-cell">Turma</th>
-                <th className="text-center px-5 py-3 font-semibold">Desempenho</th>
-                <th className="text-center px-5 py-3 font-semibold hidden md:table-cell">Engajamento</th>
+        <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] overflow-hidden">
+          <table className="w-full text-xs">
+            <thead><tr className="border-b border-white/[0.06] text-white/30">
+              <th className="text-left px-4 py-3 font-semibold">Nome</th>
+              <th className="text-left px-4 py-3 font-semibold hidden sm:table-cell">Turma</th>
+              <th className="text-center px-4 py-3 font-semibold">Desempenho</th>
+              <th className="text-center px-4 py-3 font-semibold hidden md:table-cell">Engajamento</th>
+            </tr></thead>
+            <tbody>{filtered.map((s, i) => (
+              <tr key={s.id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
+                <td className="px-4 py-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-full bg-indigo-600/25 flex items-center justify-center flex-shrink-0">
+                      <span className="text-indigo-300 text-xs font-bold">{s.name[0]?.toUpperCase()}</span>
+                    </div>
+                    <span className="font-semibold text-white">{s.name}</span>
+                  </div>
+                </td>
+                <td className="px-4 py-2.5 text-white/40 hidden sm:table-cell">{s.turma}</td>
+                <td className="px-4 py-2.5 text-center">
+                  <span className={`px-2 py-0.5 rounded-full font-bold ${s.performance >= 70 ? "bg-emerald-500/20 text-emerald-300" : s.performance >= 40 ? "bg-amber-500/20 text-amber-300" : "bg-red-500/20 text-red-300"}`}>{s.performance}%</span>
+                </td>
+                <td className="px-4 py-2.5 text-center hidden md:table-cell">
+                  <span className={`font-semibold ${s.engagement === "Alto" ? "text-emerald-400" : s.engagement === "Médio" ? "text-amber-400" : "text-red-400"}`}>{s.engagement}</span>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {filtered.map((s, i) => (
-                <tr key={s.id} className={`border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors ${i % 2 === 0 ? "" : "bg-white/[0.01]"}`}>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-indigo-600/30 flex items-center justify-center flex-shrink-0">
-                        <span className="text-indigo-300 text-xs font-bold">{s.name[0]?.toUpperCase()}</span>
-                      </div>
-                      <span className="font-semibold text-white">{s.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3 text-white/40 hidden sm:table-cell">{s.turma}</td>
-                  <td className="px-5 py-3 text-center">
-                    <div className="inline-flex items-center gap-2">
-                      <div className="w-16 h-1.5 rounded-full bg-white/10 overflow-hidden hidden sm:block">
-                        <div className={`h-full rounded-full ${s.performance >= 70 ? "bg-emerald-500" : s.performance >= 40 ? "bg-amber-500" : "bg-red-500"}`}
-                          style={{ width: `${s.performance}%` }} />
-                      </div>
-                      <span className={`text-xs font-bold ${s.performance >= 70 ? "text-emerald-400" : s.performance >= 40 ? "text-amber-400" : "text-red-400"}`}>
-                        {s.performance}%
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3 text-center hidden md:table-cell">
-                    <span className={`text-xs font-semibold ${s.engagement === "Alto" ? "text-emerald-400" : s.engagement === "Médio" ? "text-amber-400" : "text-red-400"}`}>
-                      {s.engagement}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
+            ))}</tbody>
           </table>
         </div>
       )}
@@ -579,124 +714,397 @@ function AlunosSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) =>
   );
 }
 
-// ─── Gerador de Provas ────────────────────────────────────────────────────────
+// ─── Criador de Conteúdo (NotebookLM Style) ───────────────────────────────────
+function ConteudosSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) => Promise<Response> }) {
+  const [topico, setTopico] = useState("");
+  const [nivel, setNivel] = useState("Ensino Médio");
+  const [tipo, setTipo] = useState("aula");
+  const [conteudo, setConteudo] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<ContentPackage | null>(null);
+  const [inputTab, setInputTab] = useState<"topico" | "colar">("topico");
+
+  const NIVEIS = ["Ensino Fundamental", "Ensino Médio", "ENEM", "Vestibular", "Pré-Vestibular", "Técnico", "Superior"];
+  const TIPOS = [
+    { id: "aula", label: "📖 Aula completa" },
+    { id: "revisao", label: "🔄 Revisão rápida" },
+    { id: "apostila", label: "📋 Apostila" },
+    { id: "exercicios", label: "✏️ Lista de exercícios" },
+  ];
+
+  async function generate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!topico.trim()) return;
+    setLoading(true); setResult(null);
+    try {
+      const r = await apiFetch("/api/teacher/create-content", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topico, nivel, tipo, conteudo }),
+      });
+      const d = await r.json();
+      if (d.ok) setResult(d.content);
+    } finally { setLoading(false); }
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Input */}
+      <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-9 h-9 rounded-xl bg-violet-600/30 flex items-center justify-center">
+            <Wand2 className="w-5 h-5 text-violet-300" />
+          </div>
+          <div>
+            <h2 className="font-black text-white">Criador de Conteúdo</h2>
+            <p className="text-white/40 text-xs">Gere aulas, slides, mapas mentais e questões automaticamente</p>
+          </div>
+        </div>
+
+        {/* Input mode tabs */}
+        <div className="flex gap-2 mb-4">
+          {[{ id: "topico" as const, label: "💬 Digite um tema" }, { id: "colar" as const, label: "📋 Cole conteúdo" }].map(t => (
+            <button key={t.id} onClick={() => setInputTab(t.id)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${inputTab === t.id ? "bg-violet-600 text-white" : "bg-white/5 text-white/40 hover:text-white hover:bg-white/10"}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={generate} className="space-y-4">
+          <div>
+            <label className="text-white/40 text-xs mb-1.5 block">
+              {inputTab === "topico" ? "Tema / Tópico *" : "Cole seu texto, apostila ou conteúdo *"}
+            </label>
+            {inputTab === "topico" ? (
+              <input value={topico} onChange={e => setTopico(e.target.value)} required
+                placeholder="Ex: Revolução Francesa, Funções do 2º Grau, Mitose e Meiose..."
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-violet-500" />
+            ) : (
+              <>
+                <input value={topico} onChange={e => setTopico(e.target.value)} required placeholder="Nome do tema (para o título)" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-violet-500 mb-2" />
+                <textarea value={conteudo} onChange={e => setConteudo(e.target.value)} rows={5}
+                  placeholder="Cole aqui o texto, apostila, anotações ou qualquer conteúdo para a IA processar..."
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-violet-500 resize-none" />
+              </>
+            )}
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-white/40 text-xs mb-1.5 block">Nível</label>
+              <select value={nivel} onChange={e => setNivel(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500">
+                {NIVEIS.map(n => <option key={n} value={n} className="bg-[#1a1a2e]">{n}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-white/40 text-xs mb-1.5 block">Tipo de Material</label>
+              <select value={tipo} onChange={e => setTipo(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500">
+                {TIPOS.map(t => <option key={t.id} value={t.id} className="bg-[#1a1a2e]">{t.label}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <button type="submit" disabled={loading || !topico.trim()}
+            className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors">
+            {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Criando pacote completo...</> : <><Wand2 className="w-4 h-4" />Gerar Conteúdo Completo</>}
+          </button>
+        </form>
+      </div>
+
+      {loading && (
+        <div className="rounded-2xl border border-violet-500/20 bg-violet-500/5 p-10 text-center">
+          <Loader2 className="w-10 h-10 text-violet-400 animate-spin mx-auto mb-4" />
+          <p className="text-white font-bold">Gerando pacote completo de conteúdo...</p>
+          <p className="text-white/40 text-sm mt-1">Resumo • Slides • Mapa Mental • Questões</p>
+        </div>
+      )}
+
+      {result && <ContentPackageView content={result} />}
+    </div>
+  );
+}
+
+// ─── Central de Pesquisa ──────────────────────────────────────────────────────
+function PesquisaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) => Promise<Response> }) {
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<ContentPackage | null>(null);
+  const [fromKb, setFromKb] = useState(false);
+
+  const SUGGESTIONS = [
+    "Revolução Francesa", "Funções do 1º Grau", "Segunda Guerra Mundial",
+    "Fotossíntese", "Tabela Periódica", "Independência do Brasil",
+    "Equações de 2º Grau", "Iluminismo", "Sistema Solar", "Genética",
+  ];
+
+  async function search(q?: string) {
+    const searchQuery = q ?? query;
+    if (!searchQuery.trim()) return;
+    setQuery(searchQuery);
+    setLoading(true); setResult(null);
+    try {
+      const r = await apiFetch("/api/teacher/research", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: searchQuery }),
+      });
+      const d = await r.json();
+      if (d.ok) { setResult(d.content); setFromKb(d.fromKb ?? false); }
+    } finally { setLoading(false); }
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-9 h-9 rounded-xl bg-blue-600/30 flex items-center justify-center">
+            <Microscope className="w-5 h-5 text-blue-300" />
+          </div>
+          <div>
+            <h2 className="font-black text-white">Central de Pesquisa</h2>
+            <p className="text-white/40 text-xs">Busque qualquer tema e receba um pacote completo de aprendizagem</p>
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+            <input value={query} onChange={e => setQuery(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && search()}
+              placeholder="Ex: Revolução Industrial, Equações diferenciais, Fotossíntese..."
+              className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-blue-500" />
+          </div>
+          <button onClick={() => search()} disabled={loading || !query.trim()}
+            className="px-5 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl font-bold text-sm flex items-center gap-2 transition-colors whitespace-nowrap">
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+            Pesquisar
+          </button>
+        </div>
+
+        {/* Suggestions */}
+        {!result && !loading && (
+          <div className="mt-4">
+            <p className="text-white/30 text-xs mb-3">Sugestões de busca</p>
+            <div className="flex flex-wrap gap-2">
+              {SUGGESTIONS.map(s => (
+                <button key={s} onClick={() => search(s)}
+                  className="text-xs bg-white/5 hover:bg-blue-600/20 border border-white/10 hover:border-blue-500/40 text-white/50 hover:text-blue-300 px-3 py-1.5 rounded-full transition-all">
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {loading && (
+        <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-10 text-center">
+          <Loader2 className="w-10 h-10 text-blue-400 animate-spin mx-auto mb-4" />
+          <p className="text-white font-bold">Pesquisando e gerando conteúdo...</p>
+          <p className="text-white/40 text-sm mt-1">Consultando base de conhecimento + IA</p>
+        </div>
+      )}
+
+      {result && <ContentPackageView content={result} fromKb={fromKb} />}
+    </div>
+  );
+}
+
+// ─── Gerador de Provas AVANÇADO ───────────────────────────────────────────────
 function GerarProvaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) => Promise<Response> }) {
+  const [examMode, setExamMode] = useState<ExamMode>("classica");
+  const [visualStyle, setVisualStyle] = useState<VisualStyle>("enem");
   const [form, setForm] = useState({ tema: "", materia: "Matemática", nivel: "Médio", quantidade: 5, estilo: "ENEM" });
   const [loading, setLoading] = useState(false);
-  const [exam, setExam] = useState<{ title: string; questions: ExamQuestion[] } | null>(null);
+  const [exam, setExam] = useState<ExamData | null>(null);
+  const [worldMode, setWorldMode] = useState(false);
   const [selected, setSelected] = useState<Record<number, number>>({});
   const [showResult, setShowResult] = useState(false);
 
-  const MATERIAS = ["Matemática", "Português", "Física", "Química", "Biologia", "História", "Geografia", "Filosofia", "Sociologia", "Inglês", "Artes", "Educação Física"];
   const NIVEIS = ["Fácil", "Médio", "Difícil", "Avançado (ENEM)"];
   const ESTILOS = ["ENEM", "Vestibular", "Ensino Médio", "Ensino Fundamental", "Técnico"];
+
+  const VISUAL_STYLES: { id: VisualStyle; label: string; emoji: string; desc: string }[] = [
+    { id: "enem", label: "ENEM", emoji: "📋", desc: "Formal, clássico" },
+    { id: "infantil", label: "Infantil", emoji: "🎨", desc: "Colorido e lúdico" },
+    { id: "tecnico", label: "Técnico", emoji: "⚙️", desc: "Sóbrio, profissional" },
+    { id: "aventura", label: "Aventura", emoji: "🗺️", desc: "Jornada narrativa" },
+  ];
+
+  const EXAM_MODES: { id: ExamMode; label: string; emoji: string; desc: string }[] = [
+    { id: "classica", label: "Clássica", emoji: "📋", desc: "Prova tradicional com questões" },
+    { id: "mundo", label: "Modo Mundo", emoji: "🌍", desc: "Jornada narrativa gamificada" },
+    { id: "fraquezas", label: "Por Fraquezas", emoji: "🎯", desc: "Focada nos pontos fracos" },
+  ];
 
   async function generate(e: React.FormEvent) {
     e.preventDefault();
     if (!form.tema.trim()) return;
+    const isWorld = examMode === "mundo" || visualStyle === "aventura";
+    setWorldMode(isWorld);
     setLoading(true); setExam(null); setSelected({}); setShowResult(false);
     try {
       const r = await apiFetch("/api/teacher/generate-exam", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, worldMode: isWorld, visualStyle }),
       });
       const d = await r.json();
       if (d.ok) setExam(d.exam);
     } finally { setLoading(false); }
   }
 
-  function handleSelect(qIdx: number, alt: number) {
-    if (showResult) return;
-    setSelected(prev => ({ ...prev, [qIdx]: alt }));
-  }
-
-  function checkAnswers() { setShowResult(true); }
+  // Visual style themes
+  const theme = {
+    enem: { card: "bg-white/[0.04] border-white/[0.08]", num: "bg-slate-700 text-white", alt: "bg-white/5 border-white/10 hover:bg-white/10 text-white/70" },
+    infantil: { card: "bg-gradient-to-br from-pink-900/30 to-purple-900/30 border-pink-500/20", num: "bg-gradient-to-br from-pink-500 to-purple-500 text-white", alt: "bg-white/8 border-white/15 hover:bg-pink-500/20 text-white/80" },
+    tecnico: { card: "bg-zinc-900/80 border-zinc-700/50", num: "bg-zinc-700 text-zinc-200 font-mono", alt: "bg-zinc-800/60 border-zinc-700/60 hover:bg-zinc-700/60 text-zinc-300 font-mono" },
+    aventura: { card: "bg-gradient-to-br from-amber-900/20 to-orange-900/20 border-amber-600/20", num: "bg-gradient-to-br from-amber-500 to-orange-500 text-white", alt: "bg-amber-900/20 border-amber-600/20 hover:bg-amber-600/30 text-amber-100" },
+  }[visualStyle];
 
   const score = exam ? exam.questions.filter((q, i) => selected[i] === q.correct).length : 0;
 
-  const EXAM_ICONS: Record<string, string> = {
-    Matemática: "📐", Português: "📝", Física: "⚡", Química: "🧪", Biologia: "🧬",
-    História: "📜", Geografia: "🌍", Filosofia: "🤔", Sociologia: "👥", Inglês: "🇬🇧",
-    Artes: "🎨", "Educação Física": "⚽",
-  };
+  const EXAM_ICONS: Record<string, string> = { Matemática:"📐",Português:"📝",Física:"⚡",Química:"🧪",Biologia:"🧬",História:"📜",Geografia:"🌍",Filosofia:"🤔",Sociologia:"👥",Inglês:"🇬🇧",Artes:"🎨","Educação Física":"⚽" };
 
   return (
-    <div className="space-y-6">
-      {/* Config form */}
-      <div className="rounded-2xl border border-white/[0.07] bg-[#0f0f1a] p-6">
-        <h2 className="font-black text-white text-lg mb-1 flex items-center gap-2">
-          <FileQuestion className="w-5 h-5 text-violet-400" /> Gerador de Provas com IA
-        </h2>
-        <p className="text-white/40 text-sm mb-5">Configure e gere provas personalizadas em segundos</p>
-
-        <form onSubmit={generate} className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="sm:col-span-2 lg:col-span-3">
-            <label className="text-white/50 text-xs mb-1 block">Tema / Conteúdo *</label>
-            <input value={form.tema} onChange={e => setForm(f => ({ ...f, tema: e.target.value }))} required
-              placeholder="Ex: Funções do 1º Grau, Revolução Francesa, Ligações Químicas..."
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-violet-500" />
+    <div className="space-y-5">
+      {/* Config */}
+      <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-9 h-9 rounded-xl bg-violet-600/30 flex items-center justify-center">
+            <FileQuestion className="w-5 h-5 text-violet-300" />
           </div>
           <div>
-            <label className="text-white/50 text-xs mb-1 block">Matéria</label>
+            <h2 className="font-black text-white">Gerador de Provas</h2>
+            <p className="text-white/40 text-xs">Provas com IA — Modo Mundo, ilustrações e estilos visuais</p>
+          </div>
+        </div>
+
+        {/* Exam mode */}
+        <div className="mb-5">
+          <p className="text-white/40 text-xs font-semibold mb-2 uppercase tracking-wider">Modo da Prova</p>
+          <div className="grid grid-cols-3 gap-2">
+            {EXAM_MODES.map(m => (
+              <button key={m.id} onClick={() => setExamMode(m.id)}
+                className={`p-3 rounded-xl border text-left transition-all ${examMode === m.id ? "bg-violet-600/25 border-violet-500/50 text-white" : "bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10"}`}>
+                <div className="text-xl mb-1">{m.emoji}</div>
+                <p className="text-xs font-bold">{m.label}</p>
+                <p className="text-[10px] text-white/40 mt-0.5">{m.desc}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Visual style */}
+        <div className="mb-5">
+          <p className="text-white/40 text-xs font-semibold mb-2 uppercase tracking-wider">Estilo Visual</p>
+          <div className="grid grid-cols-4 gap-2">
+            {VISUAL_STYLES.map(s => (
+              <button key={s.id} onClick={() => setVisualStyle(s.id)}
+                className={`p-2.5 rounded-xl border text-center transition-all ${visualStyle === s.id ? "bg-indigo-600/25 border-indigo-500/50 text-white" : "bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/8"}`}>
+                <div className="text-lg mb-0.5">{s.emoji}</div>
+                <p className="text-[10px] font-bold">{s.label}</p>
+                <p className="text-[9px] text-white/30">{s.desc}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <form onSubmit={generate} className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="sm:col-span-2 lg:col-span-3">
+            <label className="text-white/40 text-xs mb-1.5 block">Tema / Conteúdo *</label>
+            <input value={form.tema} onChange={e => setForm(f => ({ ...f, tema: e.target.value }))} required
+              placeholder={examMode === "mundo" ? "Ex: Viagem pelo sistema solar, Aventura na floresta amazônica..." : "Ex: Funções do 1º Grau, Revolução Industrial, Ligações Químicas..."}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-violet-500" />
+          </div>
+          <div>
+            <label className="text-white/40 text-xs mb-1.5 block">Matéria</label>
             <select value={form.materia} onChange={e => setForm(f => ({ ...f, materia: e.target.value }))}
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500">
               {MATERIAS.map(m => <option key={m} value={m} className="bg-[#1a1a2e]">{m}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-white/50 text-xs mb-1 block">Nível de Dificuldade</label>
+            <label className="text-white/40 text-xs mb-1.5 block">Nível</label>
             <select value={form.nivel} onChange={e => setForm(f => ({ ...f, nivel: e.target.value }))}
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500">
               {NIVEIS.map(n => <option key={n} value={n} className="bg-[#1a1a2e]">{n}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-white/50 text-xs mb-1 block">Estilo</label>
+            <label className="text-white/40 text-xs mb-1.5 block">Estilo: {form.estilo}</label>
             <select value={form.estilo} onChange={e => setForm(f => ({ ...f, estilo: e.target.value }))}
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500">
               {ESTILOS.map(s => <option key={s} value={s} className="bg-[#1a1a2e]">{s}</option>)}
             </select>
           </div>
-          <div>
-            <label className="text-white/50 text-xs mb-1 block">Nº de Questões: {form.quantidade}</label>
-            <input type="range" min={3} max={10} value={form.quantidade} onChange={e => setForm(f => ({ ...f, quantidade: Number(e.target.value) }))}
-              className="w-full accent-violet-500" />
+          <div className="sm:col-span-2 lg:col-span-2">
+            <label className="text-white/40 text-xs mb-1.5 block">Questões: {form.quantidade}</label>
+            <input type="range" min={3} max={10} value={form.quantidade} onChange={e => setForm(f => ({ ...f, quantidade: Number(e.target.value) }))} className="w-full accent-violet-500" />
           </div>
-          <div className="sm:col-span-2 lg:col-span-2 flex items-end">
+          <div className="sm:col-span-2 lg:col-span-1">
+            <label className="text-white/40 text-xs mb-1.5 block opacity-0">Gerar</label>
             <button type="submit" disabled={loading || !form.tema.trim()}
-              className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors">
-              {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Gerando prova...</> : <><Sparkles className="w-4 h-4" />Gerar Prova Agora</>}
+              className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors">
+              {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Gerando...</> : <><Sparkles className="w-4 h-4" />Gerar Prova</>}
             </button>
           </div>
         </form>
       </div>
 
-      {/* Generated exam */}
+      {/* Loading */}
       {loading && (
         <div className="rounded-2xl border border-violet-500/20 bg-violet-500/5 p-10 text-center">
           <Loader2 className="w-10 h-10 text-violet-400 animate-spin mx-auto mb-4" />
-          <p className="text-white font-bold">Gerando sua prova personalizada...</p>
-          <p className="text-white/40 text-sm mt-1">A IA está criando {form.quantidade} questões contextualizadas</p>
+          <p className="text-white font-bold">{examMode === "mundo" ? "Criando sua jornada narrativa..." : "Gerando sua prova personalizada..."}</p>
+          <p className="text-white/40 text-sm mt-1">{form.quantidade} questões • {form.materia} • {form.nivel}</p>
         </div>
       )}
 
+      {/* Exam result */}
       {exam && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          {/* Exam header */}
-          <div className="rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-600/10 to-indigo-600/10 p-6 mb-5">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-3xl">{EXAM_ICONS[form.materia] ?? "📋"}</span>
-                  <h3 className="text-xl font-black text-white">{exam.title}</h3>
-                </div>
-                <div className="flex gap-2 flex-wrap">
-                  <span className="text-xs bg-violet-500/30 text-violet-300 px-3 py-1 rounded-full font-semibold">{form.nivel}</span>
-                  <span className="text-xs bg-indigo-500/30 text-indigo-300 px-3 py-1 rounded-full font-semibold">{form.estilo}</span>
-                  <span className="text-xs bg-white/10 text-white/60 px-3 py-1 rounded-full font-semibold">{exam.questions?.length} questões</span>
+          {/* World mode story header */}
+          {worldMode && exam.story && (
+            <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-900/30 to-orange-900/20 p-6 mb-5">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-4xl">{exam.story.emoji ?? "🗺️"}</span>
+                <div>
+                  <h2 className="text-xl font-black text-white">{exam.title}</h2>
+                  <p className="text-amber-300/80 text-sm font-semibold">{exam.story.missao}</p>
                 </div>
               </div>
-              <div className="flex gap-3">
+              <div className="grid sm:grid-cols-3 gap-3 text-xs">
+                <div className="bg-black/20 rounded-xl p-3">
+                  <p className="text-amber-400/60 mb-1 font-semibold">🌍 Cenário</p>
+                  <p className="text-amber-100/80">{exam.story.cenario}</p>
+                </div>
+                <div className="bg-black/20 rounded-xl p-3">
+                  <p className="text-amber-400/60 mb-1 font-semibold">🧙 Guia</p>
+                  <p className="text-amber-100/80">{exam.story.personagem}</p>
+                </div>
+                <div className="bg-black/20 rounded-xl p-3">
+                  <p className="text-amber-400/60 mb-1 font-semibold">🏆 Objetivo</p>
+                  <p className="text-amber-100/80">{exam.story.objetivo}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Classic header */}
+          {!worldMode && (
+            <div className={`rounded-2xl border p-5 mb-5 ${visualStyle === "infantil" ? "bg-gradient-to-br from-pink-800/30 to-purple-800/30 border-pink-500/30" : visualStyle === "tecnico" ? "bg-zinc-900/80 border-zinc-700/50" : "border-white/[0.06] bg-[#0f0f1a]"}`}>
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">{EXAM_ICONS[form.materia] ?? "📋"}</span>
+                  <div>
+                    <h3 className={`font-black ${visualStyle === "tecnico" ? "text-zinc-100 font-mono" : "text-white"} text-lg`}>{exam.title}</h3>
+                    <div className="flex gap-2 mt-1 flex-wrap">
+                      <span className="text-xs bg-violet-500/20 text-violet-300 px-2.5 py-0.5 rounded-full font-semibold">{form.nivel}</span>
+                      <span className="text-xs bg-white/10 text-white/50 px-2.5 py-0.5 rounded-full font-semibold">{exam.questions?.length} questões</span>
+                    </div>
+                  </div>
+                </div>
                 {showResult && (
                   <div className={`text-center px-5 py-2 rounded-xl ${score >= exam.questions.length * 0.7 ? "bg-emerald-500/20 text-emerald-300" : "bg-amber-500/20 text-amber-300"}`}>
                     <p className="text-2xl font-black">{score}/{exam.questions.length}</p>
@@ -704,58 +1112,67 @@ function GerarProvaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
                   </div>
                 )}
                 {!showResult && Object.keys(selected).length === exam.questions?.length && (
-                  <button onClick={checkAnswers} className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-colors flex items-center gap-2">
+                  <button onClick={() => setShowResult(true)} className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4" /> Ver Gabarito
                   </button>
                 )}
               </div>
             </div>
-          </div>
+          )}
 
           {/* Questions */}
-          <div className="space-y-5">
+          <div className="space-y-4">
             {(exam.questions ?? []).map((q, qi) => {
               const sel = selected[qi];
               const isCorrect = showResult && sel === q.correct;
               const isWrong = showResult && sel !== undefined && sel !== q.correct;
               return (
-                <motion.div key={qi} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: qi * 0.07 }}
-                  className={`rounded-2xl border p-5 transition-all ${showResult ? (isCorrect ? "border-emerald-500/40 bg-emerald-500/5" : isWrong ? "border-red-500/40 bg-red-500/5" : "border-white/[0.07] bg-[#0f0f1a]") : "border-white/[0.07] bg-[#0f0f1a]"}`}>
-                  <div className="flex gap-4">
-                    <div className="w-8 h-8 rounded-xl bg-violet-600/30 text-violet-300 text-sm font-black flex items-center justify-center flex-shrink-0">{qi + 1}</div>
+                <motion.div key={qi} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: qi * 0.06 }}
+                  className={`rounded-2xl border p-5 transition-all ${showResult ? (isCorrect ? "border-emerald-500/40 bg-emerald-500/5" : isWrong ? "border-red-500/40 bg-red-500/5" : theme.card) : theme.card}`}>
+                  <div className="flex gap-3">
+                    {/* Quest badge for world mode */}
+                    {worldMode ? (
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white text-xs font-black flex items-center justify-center">⚔️</div>
+                      </div>
+                    ) : (
+                      <div className={`w-7 h-7 rounded-xl text-xs font-black flex items-center justify-center flex-shrink-0 ${theme.num}`}>{qi + 1}</div>
+                    )}
                     <div className="flex-1">
-                      {q.context && <div className="text-white/60 text-sm mb-3 bg-white/5 rounded-xl px-4 py-3 border-l-2 border-indigo-500/50">{q.context}</div>}
-                      <p className="text-white font-semibold mb-4 leading-relaxed">{q.text}</p>
-
-                      {/* Image description pill */}
-                      {q.imageDescription && (
-                        <div className="flex items-start gap-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl px-3 py-2 mb-4 text-xs text-indigo-300">
-                          <Eye className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                          <span><strong>Ilustração sugerida:</strong> {q.imageDescription}</span>
+                      {/* World mode challenge frame */}
+                      {worldMode && q.desafio && (
+                        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2 mb-3 text-xs text-amber-200/80 italic">
+                          ⚡ {q.desafio}
                         </div>
                       )}
-
+                      {q.context && <div className="text-white/55 text-xs mb-3 bg-white/5 rounded-xl px-3 py-2 border-l-2 border-indigo-500/40">{q.context}</div>}
+                      <p className={`font-semibold mb-4 leading-relaxed text-sm ${visualStyle === "tecnico" ? "text-zinc-200 font-mono" : "text-white"}`}>{q.text}</p>
+                      {q.imageDescription && (
+                        <div className="flex items-start gap-2 bg-indigo-500/8 border border-indigo-500/15 rounded-xl px-3 py-2 mb-3 text-xs text-indigo-300">
+                          <Eye className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                          <span><strong>Ilustração:</strong> {q.imageDescription}</span>
+                        </div>
+                      )}
                       <div className="grid sm:grid-cols-2 gap-2">
                         {q.alternatives.map((alt, ai) => {
                           const isSelected = sel === ai;
                           const isCorrectAlt = showResult && ai === q.correct;
                           const isWrongAlt = showResult && isSelected && ai !== q.correct;
                           return (
-                            <button key={ai} onClick={() => handleSelect(qi, ai)}
-                              className={`text-left px-4 py-3 rounded-xl text-sm transition-all border
-                                ${isCorrectAlt ? "bg-emerald-500/20 border-emerald-500/60 text-emerald-300 font-semibold" :
-                                  isWrongAlt ? "bg-red-500/20 border-red-500/60 text-red-300" :
-                                  isSelected ? "bg-indigo-600/30 border-indigo-500/60 text-indigo-300 font-semibold" :
-                                  "bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white hover:border-white/20"
-                                } ${showResult ? "cursor-default" : "cursor-pointer"}`}>
+                            <button key={ai} onClick={() => !showResult && setSelected(p => ({ ...p, [qi]: ai }))}
+                              className={`text-left px-3 py-2.5 rounded-xl text-xs transition-all border
+                                ${isCorrectAlt ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-300 font-bold"
+                                : isWrongAlt ? "bg-red-500/20 border-red-500/50 text-red-300"
+                                : isSelected ? "bg-indigo-600/30 border-indigo-500/50 text-indigo-300 font-bold"
+                                : theme.alt
+                              } ${showResult ? "cursor-default" : "cursor-pointer"}`}>
                               {alt}
                             </button>
                           );
                         })}
                       </div>
-
                       {showResult && (
-                        <div className="mt-4 bg-white/5 rounded-xl px-4 py-3 text-sm text-white/70">
+                        <div className="mt-3 bg-white/5 rounded-xl px-3 py-2.5 text-xs text-white/65">
                           <strong className="text-white">Explicação:</strong> {q.explanation}
                         </div>
                       )}
@@ -765,6 +1182,25 @@ function GerarProvaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
               );
             })}
           </div>
+
+          {/* World mode finish */}
+          {worldMode && !showResult && Object.keys(selected).length === exam.questions?.length && (
+            <div className="text-center pt-4">
+              <button onClick={() => setShowResult(true)}
+                className="px-8 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-sm flex items-center gap-2 mx-auto transition-all hover:scale-105">
+                <Star className="w-4 h-4" /> Concluir Missão!
+              </button>
+            </div>
+          )}
+          {worldMode && showResult && (
+            <div className={`text-center p-6 rounded-2xl border ${score >= exam.questions.length * 0.7 ? "bg-emerald-900/30 border-emerald-500/30" : "bg-amber-900/30 border-amber-500/30"}`}>
+              <div className="text-4xl mb-2">{score >= exam.questions.length * 0.7 ? "🏆" : "⚔️"}</div>
+              <p className="text-white font-black text-xl">{score}/{exam.questions.length} desafios concluídos!</p>
+              <p className={`text-sm mt-1 ${score >= exam.questions.length * 0.7 ? "text-emerald-300" : "text-amber-300"}`}>
+                {score >= exam.questions.length * 0.7 ? "Missão cumprida! Você dominou o conteúdo!" : "Missão incompleta. Revise os pontos fracos e tente novamente!"}
+              </p>
+            </div>
+          )}
         </motion.div>
       )}
     </div>
@@ -773,27 +1209,25 @@ function GerarProvaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
 
 // ─── Assistente IA ────────────────────────────────────────────────────────────
 function AssistenteSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) => Promise<Response> }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const SUGGESTIONS = [
-    "Crie um plano de aula semanal para trigonometria no 3º ano",
+    "Crie um plano de aula semanal de Trigonometria para o 3º ano",
     "Gere 5 exercícios de interpretação de texto nível ENEM",
-    "Explique leis de Newton de forma simples para ensino médio",
-    "Como ajudar alunos com dificuldade em frações?",
-    "Crie uma atividade para alunos com baixo engajamento",
-    "Quais estratégias usar para turmas com níveis mistos?",
+    "Como usar PBL (aprendizagem baseada em projetos) na prática?",
+    "Adapte esse conteúdo para alunos com dificuldade de leitura",
+    "Crie um rubrica de avaliação para redação ENEM",
+    "Quais estratégias para engajar turmas com baixo desempenho?",
   ];
 
   async function send() {
     if (!input.trim() || loading) return;
-    const userMsg: ChatMessage = { role: "user", content: input };
+    const userMsg = { role: "user" as const, content: input };
     const history = [...messages, userMsg];
-    setMessages(history);
-    setInput("");
-    setLoading(true);
+    setMessages(history); setInput(""); setLoading(true);
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
     try {
       const r = await apiFetch("/api/teacher/ai-copilot", {
@@ -811,65 +1245,58 @@ function AssistenteSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-10rem)]">
-      <div className="rounded-2xl border border-white/[0.07] bg-[#0f0f1a] p-5 mb-4">
-        <h2 className="font-black text-white flex items-center gap-2">
+    <div className="flex flex-col" style={{ height: "calc(100vh - 11rem)" }}>
+      <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-5 mb-4">
+        <h2 className="font-black text-white flex items-center gap-2 text-sm">
           <Brain className="w-5 h-5 text-violet-400" /> Assistente do Professor
         </h2>
-        <p className="text-white/40 text-sm mt-1">Copiloto de IA para criar aulas, exercícios, provas e estratégias pedagógicas</p>
+        <p className="text-white/35 text-xs mt-1">Copiloto pedagógico — cria aulas, provas, estratégias e análises</p>
       </div>
 
       {messages.length === 0 && (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 mb-4">
           {SUGGESTIONS.map((s, i) => (
-            <button key={i} onClick={() => { setInput(s); }}
-              className="text-left p-4 rounded-2xl border border-white/[0.07] bg-[#0f0f1a] hover:border-violet-500/40 hover:bg-violet-500/5 transition-all text-white/60 hover:text-white text-sm">
-              <Sparkles className="w-4 h-4 text-violet-400 mb-2" />
-              {s}
+            <button key={i} onClick={() => setInput(s)}
+              className="text-left p-3.5 rounded-2xl border border-white/[0.06] bg-[#0f0f1a] hover:border-violet-500/30 hover:bg-violet-500/5 transition-all text-white/50 hover:text-white text-xs">
+              <Sparkles className="w-3.5 h-3.5 text-violet-400 mb-2" />{s}
             </button>
           ))}
         </div>
       )}
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-1">
+      <div className="flex-1 overflow-y-auto space-y-3 mb-4 pr-1">
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             {m.role === "assistant" && (
-              <div className="w-8 h-8 rounded-xl bg-violet-600/30 flex items-center justify-center flex-shrink-0 mr-3 mt-1">
-                <Brain className="w-4 h-4 text-violet-300" />
+              <div className="w-7 h-7 rounded-xl bg-violet-600/25 flex items-center justify-center flex-shrink-0 mr-2 mt-1">
+                <Brain className="w-3.5 h-3.5 text-violet-300" />
               </div>
             )}
-            <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap
-              ${m.role === "user" ? "bg-indigo-600/30 text-white ml-12" : "bg-[#1a1a2e] border border-white/[0.07] text-white/90"}`}>
+            <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-xs leading-relaxed whitespace-pre-wrap
+              ${m.role === "user" ? "bg-indigo-600/30 text-white" : "bg-[#1a1a2e] border border-white/[0.06] text-white/85"}`}>
               {m.content}
             </div>
           </div>
         ))}
         {loading && (
           <div className="flex justify-start">
-            <div className="w-8 h-8 rounded-xl bg-violet-600/30 flex items-center justify-center flex-shrink-0 mr-3">
-              <Brain className="w-4 h-4 text-violet-300" />
+            <div className="w-7 h-7 rounded-xl bg-violet-600/25 flex items-center justify-center flex-shrink-0 mr-2">
+              <Brain className="w-3.5 h-3.5 text-violet-300" />
             </div>
-            <div className="bg-[#1a1a2e] border border-white/[0.07] rounded-2xl px-4 py-3">
-              <div className="flex gap-1">
-                <div className="w-2 h-2 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: "0ms" }} />
-                <div className="w-2 h-2 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: "150ms" }} />
-                <div className="w-2 h-2 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: "300ms" }} />
-              </div>
+            <div className="bg-[#1a1a2e] border border-white/[0.06] rounded-2xl px-4 py-3 flex gap-1">
+              {[0, 150, 300].map(d => <div key={d} className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: `${d}ms` }} />)}
             </div>
           </div>
         )}
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
       <div className="flex gap-3">
         <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
           placeholder="Pergunte ao assistente ou peça para criar algo..."
-          className="flex-1 bg-[#0f0f1a] border border-white/10 rounded-2xl px-5 py-3.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500" />
+          className="flex-1 bg-[#0f0f1a] border border-white/10 rounded-2xl px-4 py-3 text-sm text-white placeholder-white/25 focus:outline-none focus:border-violet-500" />
         <button onClick={send} disabled={loading || !input.trim()}
-          className="p-3.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-2xl transition-colors">
+          className="p-3 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-2xl transition-colors">
           <Send className="w-5 h-5" />
         </button>
       </div>
@@ -890,66 +1317,60 @@ function RelatoriosSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
   if (!data) return <div className="text-white/40 text-center py-20">Erro ao carregar relatórios.</div>;
 
   return (
-    <div className="space-y-6">
-      <h2 className="font-black text-white text-lg flex items-center gap-2"><BarChart3 className="w-5 h-5 text-indigo-400" /> Relatórios</h2>
-
-      {/* Summary cards */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="space-y-5">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: "Total de Alunos", value: data.totalStudents, icon: Users },
           { label: "Turmas Ativas", value: data.totalTurmas, icon: BookOpen },
           { label: "Média Geral", value: `${data.avgPerformance}%`, icon: TrendingUp },
-          { label: "Taxa de Engajamento", value: `${data.engagementRate}%`, icon: Activity },
+          { label: "Engajamento", value: `${data.engagementRate}%`, icon: Activity },
         ].map(c => (
-          <div key={c.label} className="rounded-2xl border border-white/[0.07] bg-[#0f0f1a] p-5">
-            <c.icon className="w-5 h-5 text-indigo-400 mb-3" />
+          <div key={c.label} className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-4">
+            <c.icon className="w-4 h-4 text-indigo-400 mb-3" />
             <p className="text-2xl font-black text-white">{c.value}</p>
-            <p className="text-white/40 text-xs mt-1">{c.label}</p>
+            <p className="text-white/35 text-xs mt-1">{c.label}</p>
           </div>
         ))}
       </div>
 
-      {/* Performance by materia */}
       {data.heatMap.length > 0 && (
-        <div className="rounded-2xl border border-white/[0.07] bg-[#0f0f1a] p-5">
-          <h3 className="font-bold text-white mb-5">Desempenho por Matéria</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={data.heatMap} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="materia" tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 10 }} />
-              <YAxis domain={[0, 100]} tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 10 }} />
-              <Tooltip contentStyle={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", color: "white" }} />
+        <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-5">
+          <h3 className="font-bold text-white text-sm mb-5">Desempenho por Matéria</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={data.heatMap} margin={{ top: 5, right: 10, left: -25, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+              <XAxis dataKey="materia" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} />
+              <YAxis domain={[0, 100]} tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} />
+              <Tooltip contentStyle={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", color: "white", fontSize: "12px" }} />
               <Bar dataKey="score" name="Desempenho %" fill="#818cf8" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       )}
 
-      {/* Weekly chart */}
-      <div className="rounded-2xl border border-white/[0.07] bg-[#0f0f1a] p-5">
-        <h3 className="font-bold text-white mb-5">Evolução Semanal</h3>
-        <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={data.weeklyChart} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-            <XAxis dataKey="week" tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 11 }} />
-            <YAxis domain={[0, 100]} tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 11 }} />
-            <Tooltip contentStyle={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", color: "white" }} />
-            <Legend wrapperStyle={{ fontSize: "11px", color: "rgba(255,255,255,0.5)" }} />
+      <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-5">
+        <h3 className="font-bold text-white text-sm mb-5">Evolução Semanal</h3>
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={data.weeklyChart} margin={{ top: 5, right: 10, left: -25, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+            <XAxis dataKey="week" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} />
+            <YAxis domain={[0, 100]} tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} />
+            <Tooltip contentStyle={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", color: "white", fontSize: "12px" }} />
+            <Legend wrapperStyle={{ fontSize: "10px", color: "rgba(255,255,255,0.4)" }} />
             <Line type="monotone" dataKey="acertos" stroke="#34d399" strokeWidth={2} dot={false} name="Acertos %" />
             <Line type="monotone" dataKey="participacao" stroke="#818cf8" strokeWidth={2} dot={false} name="Participação" />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Alerts */}
       {data.alerts.length > 0 && (
-        <div className="rounded-2xl border border-white/[0.07] bg-[#0f0f1a] p-5">
-          <h3 className="font-bold text-white mb-4 flex items-center gap-2"><Bell className="w-4 h-4 text-amber-400" /> Alertas do Sistema</h3>
+        <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-5">
+          <h3 className="font-bold text-white text-sm mb-4 flex items-center gap-2"><Bell className="w-4 h-4 text-amber-400" />Alertas do Sistema</h3>
           <div className="space-y-2">
             {data.alerts.map((a, i) => (
-              <div key={i} className={`flex items-start gap-3 rounded-xl p-3 ${a.severity === "warning" ? "bg-amber-500/10 border border-amber-500/20" : "bg-emerald-500/10 border border-emerald-500/20"}`}>
+              <div key={i} className={`flex items-start gap-2.5 rounded-xl p-3 ${a.severity === "warning" ? "bg-amber-500/10 border border-amber-500/20" : "bg-emerald-500/10 border border-emerald-500/20"}`}>
                 {a.severity === "warning" ? <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" /> : <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />}
-                <p className={`text-sm ${a.severity === "warning" ? "text-amber-300" : "text-emerald-300"}`}>{a.text}</p>
+                <p className={`text-xs ${a.severity === "warning" ? "text-amber-300" : "text-emerald-300"}`}>{a.text}</p>
               </div>
             ))}
           </div>

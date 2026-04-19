@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import OpenAI from "openai";
 import { db } from "@workspace/db";
 import {
   usersTable,
@@ -9,9 +10,11 @@ import {
   flashcardSessionsTable,
   userActivityTable,
 } from "@workspace/db/schema";
-import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, gte } from "drizzle-orm";
 import { roleRequestsTable } from "@workspace/db/schema";
 import { isAdminUser } from "../lib/adminCheck";
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const router: IRouter = Router();
 
@@ -402,6 +405,243 @@ router.post("/teacher/request-access", async (req: Request, res: Response) => {
   } catch (err) {
     req.log.error({ err }, "Error processing teacher access request");
     res.status(500).json({ error: "Erro ao processar solicitação" });
+  }
+});
+
+// ─── Global teacher dashboard stats ──────────────────────────────────────────
+router.get("/teacher/dashboard", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
+
+  try {
+    // All this teacher's turmas
+    const turmas = await db.select({ id: turmasTable.id, name: turmasTable.name, serie: turmasTable.serie, subject: turmasTable.subject })
+      .from(turmasTable).where(eq(turmasTable.teacherId, req.userId!));
+
+    const turmaIds = turmas.map(t => t.id);
+
+    // Student counts per turma
+    let memberships: { turmaId: string; studentId: string }[] = [];
+    if (turmaIds.length) {
+      memberships = await db.select({ turmaId: turmaMembershipsTable.turmaId, studentId: turmaMembershipsTable.studentId })
+        .from(turmaMembershipsTable).where(inArray(turmaMembershipsTable.turmaId, turmaIds));
+    }
+    const studentIds = [...new Set(memberships.map(m => m.studentId))];
+    const totalStudents = studentIds.length;
+    const countMap: Record<string, number> = {};
+    memberships.forEach(m => { countMap[m.turmaId] = (countMap[m.turmaId] ?? 0) + 1; });
+
+    // Simulado stats
+    let simStats: { userId: string; score: number; total: number; materia: string | null; createdAt: Date }[] = [];
+    if (studentIds.length) {
+      simStats = await db.select({
+        userId: simuladoResultsTable.userId,
+        score: simuladoResultsTable.score,
+        total: simuladoResultsTable.total,
+        materia: simuladoResultsTable.materia,
+        createdAt: simuladoResultsTable.createdAt,
+      }).from(simuladoResultsTable).where(inArray(simuladoResultsTable.userId, studentIds));
+    }
+
+    const avgPerformance = simStats.length
+      ? Math.round(simStats.reduce((s, r) => s + (r.total > 0 ? (r.score / r.total) * 100 : 0), 0) / simStats.length)
+      : 0;
+
+    // Weekly chart — last 7 weeks
+    const weeks = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i) * 7);
+      const label = `Sem${i + 1}`;
+      return { label, start: new Date(d.getTime() - 7 * 24 * 3600 * 1000), end: d };
+    });
+    const weeklyChart = weeks.map(w => {
+      const inWindow = simStats.filter(s => new Date(s.createdAt) >= w.start && new Date(s.createdAt) < w.end);
+      const acertos = inWindow.length ? Math.round(inWindow.reduce((s, r) => s + (r.total > 0 ? (r.score / r.total) * 100 : 0), 0) / inWindow.length) : 0;
+      const erros = 100 - acertos;
+      const participacao = Math.min(100, inWindow.length * 5);
+      return { week: w.label, acertos, erros, participacao };
+    });
+
+    // Heat map by materia
+    const materiaMap: Record<string, { total: number; count: number }> = {};
+    simStats.forEach(s => {
+      const m = s.materia || "Geral";
+      if (!materiaMap[m]) materiaMap[m] = { total: 0, count: 0 };
+      materiaMap[m].total += s.total > 0 ? (s.score / s.total) * 100 : 0;
+      materiaMap[m].count++;
+    });
+    const heatMap = Object.entries(materiaMap).map(([materia, v]) => ({
+      materia, score: Math.round(v.total / v.count),
+    })).sort((a, b) => a.score - b.score);
+
+    // Engagement: students active in last 7 days
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+    let activeCount = 0;
+    if (studentIds.length) {
+      const active = await db.select({ userId: userActivityTable.userId })
+        .from(userActivityTable)
+        .where(and(inArray(userActivityTable.userId, studentIds), gte(userActivityTable.createdAt, sevenDaysAgo)))
+        .groupBy(userActivityTable.userId);
+      activeCount = active.length;
+    }
+    const engagementRate = totalStudents ? Math.round((activeCount / totalStudents) * 100) : 0;
+
+    // Alerts
+    const alerts: { type: string; text: string; severity: string }[] = [];
+    if (studentIds.length) {
+      // Students not active in 7 days
+      const activeIds = new Set(
+        (await db.select({ userId: userActivityTable.userId })
+          .from(userActivityTable)
+          .where(and(inArray(userActivityTable.userId, studentIds), gte(userActivityTable.createdAt, sevenDaysAgo)))
+          .groupBy(userActivityTable.userId)
+        ).map(a => a.userId)
+      );
+      const inactive = studentIds.filter(id => !activeIds.has(id)).length;
+      if (inactive > 0) alerts.push({ type: "inactivity", text: `${inactive} aluno${inactive > 1 ? "s" : ""} sem acesso há mais de 7 dias.`, severity: "warning" });
+
+      // Materias with low performance
+      const lowMaterias = heatMap.filter(h => h.score < 50);
+      if (lowMaterias.length) alerts.push({ type: "performance", text: `Turma com dificuldade em: ${lowMaterias.map(h => h.materia).slice(0, 3).join(", ")}.`, severity: "warning" });
+    }
+    if (!alerts.length) alerts.push({ type: "ok", text: "Turma com bom desempenho geral! Continue assim.", severity: "info" });
+
+    // Students list
+    let students: any[] = [];
+    if (studentIds.length) {
+      const users = await db.select({ id: usersTable.id, studentName: usersTable.studentName, firstName: usersTable.firstName, lastName: usersTable.lastName, xp: usersTable.xp, createdAt: usersTable.createdAt })
+        .from(usersTable).where(inArray(usersTable.id, studentIds));
+
+      const simByUser = simStats.reduce<Record<string, { total: number; count: number }>>((acc, s) => {
+        if (!acc[s.userId]) acc[s.userId] = { total: 0, count: 0 };
+        acc[s.userId].total += s.total > 0 ? (s.score / s.total) * 100 : 0;
+        acc[s.userId].count++;
+        return acc;
+      }, {});
+
+      const memberTurmaMap: Record<string, string> = {};
+      memberships.forEach(m => { memberTurmaMap[m.studentId] = turmas.find(t => t.id === m.turmaId)?.name ?? ""; });
+
+      students = users.map(u => {
+        const sim = simByUser[u.id];
+        const perf = sim ? Math.round(sim.total / sim.count) : 0;
+        const isActive = activeCount > 0; // simplified
+        return {
+          id: u.id,
+          name: u.studentName || `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || "Aluno",
+          turma: memberTurmaMap[u.id] ?? "",
+          performance: perf,
+          engagement: perf > 70 ? "Alto" : perf > 40 ? "Médio" : "Baixo",
+          lastAccess: "Recente",
+        };
+      }).sort((a, b) => b.performance - a.performance).slice(0, 10);
+    }
+
+    res.json({
+      totalStudents,
+      totalTurmas: turmas.length,
+      avgPerformance,
+      engagementRate,
+      weeklyChart,
+      heatMap,
+      alerts,
+      students,
+      turmas: turmas.map(t => ({ ...t, studentCount: countMap[t.id] ?? 0 })),
+    });
+  } catch (err) {
+    req.log.error({ err }, "Error fetching teacher dashboard");
+    res.status(500).json({ error: "Erro ao carregar dashboard" });
+  }
+});
+
+// ─── AI Exam Generator ────────────────────────────────────────────────────────
+router.post("/teacher/generate-exam", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
+
+  const { tema, materia, nivel, quantidade = 5, estilo = "ENEM" } = req.body as {
+    tema?: string; materia?: string; nivel?: string; quantidade?: number; estilo?: string;
+  };
+  if (!tema || !materia) { res.status(400).json({ error: "Tema e matéria são obrigatórios" }); return; }
+
+  try {
+    const qtd = Math.min(Math.max(Number(quantidade) || 5, 3), 10);
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.7,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: `Você é um professor especialista em criar provas no estilo ${estilo} para o ensino brasileiro.
+Crie questões de múltipla escolha envolventes, com contexto real e ilustrativo.
+Retorne SOMENTE JSON válido com esta estrutura:
+{
+  "questions": [
+    {
+      "number": 1,
+      "text": "enunciado completo da questão",
+      "context": "texto ou situação-problema (opcional, pode ser vazio)",
+      "alternatives": ["A) texto", "B) texto", "C) texto", "D) texto"],
+      "correct": 1,
+      "explanation": "explicação da resposta correta",
+      "imageDescription": "descrição de uma ilustração ideal para esta questão (ex: gráfico, diagrama, mapa, cena)"
+    }
+  ],
+  "title": "Prova de ${materia} — ${tema}",
+  "totalQuestions": ${qtd}
+}`,
+        },
+        {
+          role: "user",
+          content: `Crie ${qtd} questões de ${materia} sobre "${tema}", nível ${nivel || "médio"}, estilo ${estilo}. As questões devem ser contextualizadas, com situações reais do cotidiano brasileiro.`,
+        },
+      ],
+    });
+
+    const parsed = JSON.parse(completion.choices[0].message.content ?? "{}");
+    res.json({ ok: true, exam: parsed });
+  } catch (err) {
+    req.log.error({ err }, "Error generating exam");
+    res.status(500).json({ error: "Erro ao gerar prova" });
+  }
+});
+
+// ─── Teacher AI Copilot ───────────────────────────────────────────────────────
+router.post("/teacher/ai-copilot", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
+
+  const { message, history = [] } = req.body as { message: string; history: { role: string; content: string }[] };
+  if (!message?.trim()) { res.status(400).json({ error: "Mensagem é obrigatória" }); return; }
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.6,
+      messages: [
+        {
+          role: "system",
+          content: `Você é o Assistente do Professor, um copiloto de IA especializado no ensino brasileiro (ENEM, vestibular, ensino médio).
+Você ajuda professores a:
+- Criar aulas, resumos, exercícios e provas
+- Gerar explicações claras para qualquer tema
+- Adaptar conteúdo para diferentes níveis
+- Analisar desempenho de turmas
+- Criar planos de aula semanais e mensais
+- Sugerir estratégias pedagógicas
+Seja objetivo, prático e use linguagem direta. Quando gerar listas ou exercícios, use formato Markdown.`,
+        },
+        ...history.slice(-10).map((h: any) => ({ role: h.role as "user" | "assistant", content: h.content })),
+        { role: "user", content: message },
+      ],
+    });
+
+    const reply = completion.choices[0].message.content ?? "";
+    res.json({ ok: true, reply });
+  } catch (err) {
+    req.log.error({ err }, "Error in teacher AI copilot");
+    res.status(500).json({ error: "Erro ao processar mensagem" });
   }
 });
 

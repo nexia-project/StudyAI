@@ -1,0 +1,110 @@
+🔥 DOR REAL DO PROFESSOR (base do produto)
+Falta de tempo pra preparar aula
+Trabalho manual gigante (prova, correção, planejamento)
+Dificuldade de acompanhar cada aluno
+Falta de dados claros de desempenho
+Turmas desníveis (cada aluno num nível)
+Baixo engajamento dos alunos
+👉 Tudo isso você resolve com automação + IA + dados
+
+⚙️ FUNCIONALIDADES PRINCIPAIS
+🧠 1. GERADOR DE CONTEÚDO COM IA
+O professor pode:
+
+Criar aulas completas (resumo + explicação + exemplos)
+Gerar listas de exercícios automaticamente
+Criar provas no estilo ENEM / vestibular / personalizado
+Gerar variações da mesma prova (anti-cola)
+Diferencial forte:
+👉 A IA adapta o conteúdo por nível da turma
+
+📝 2. CRIAÇÃO DE PROVAS INTELIGENTES
+Montar prova em segundos
+Escolher:
+tema
+dificuldade
+quantidade de questões
+Correção automática
+Gabarito comentado
+💥 Extra forte:
+👉 gerar prova baseada nos erros da turma
+
+📊 3. DASHBOARD COMPLETO DA TURMA
+O professor vê:
+
+Desempenho geral da turma
+Ranking de alunos
+Mapa de calor por matéria
+Evolução ao longo do tempo
+E o mais importante:
+
+👉 quem está ficando para trás (alerta automático)
+
+👤 4. PERFIL INDIVIDUAL DO ALUNO
+Cada aluno tem:
+
+Mapa mental próprio
+Mapa de calor
+Histórico de erros e acertos
+Tempo de estudo
+Evolução por tema
+💡 Isso resolve uma das maiores dores:
+“não consigo acompanhar aluno por aluno”
+
+🔔 5. ALERTAS INTELIGENTES (IA)
+O sistema avisa o professor:
+
+“3 alunos estão com queda em matemática”
+“Turma está com dificuldade em frações”
+“Aluno X está 5 dias sem estudar”
+👉 vira um professor com “super visão”
+
+📚 6. PLANEJAMENTO AUTOMÁTICO DE AULA
+Criar plano de aula semanal/mensal
+Baseado em:
+desempenho da turma
+calendário (ENEM, provas)
+dificuldades reais
+🎯 7. ENVIO DE ATIVIDADES INTELIGENTES
+O professor pode:
+
+Mandar tarefa personalizada por aluno
+Ou por grupo (ex: alunos fracos em física)
+E o sistema já:
+
+corrige
+analisa
+atualiza os mapas automaticamente
+💬 8. ASSISTENTE DO PROFESSOR (tipo copiloto)
+Uma IA interna que ajuda:
+
+“Cria uma prova de funções nível médio”
+“Explica esse conteúdo de forma simples”
+“Gera atividade para alunos com dificuldade em leitura”
+🏫 9. VISÃO PARA ESCOLAS (nível acima)
+Para coordenação/direção:
+
+Desempenho por turma
+Desempenho por professor
+Comparativo entre classes
+Relatórios completos (exportáveis)
+🔗 10. INTEGRAÇÃO COM O MAPA MENTAL
+Aqui fica absurdo:
+
+O professor consegue:
+
+Ver o mapa mental da turma inteira
+Ver padrão de erro coletivo
+Criar aula baseada nesses “buracos”
+👉 ensino baseado em dados reais, não achismo
+
+💥 DIFERENCIAL (pra vender isso)
+Outras plataformas ajudam a dar aula.
+
+O StudyAI ajuda o professor a:
+
+👉 ensinar melhor
+👉 economizar tempo
+👉 entender cada aluno
+👉 tomar decisões com dados
+

@@ -20,37 +20,36 @@ async function extractTextFromFile(file: Express.Multer.File): Promise<string> {
   const mime = file.mimetype;
 
   if (mime === "text/plain") {
-    return file.buffer.toString("utf8");
+    return sanitizeText(file.buffer.toString("utf8"));
   }
 
   if (mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
     const mammoth = await import("mammoth");
     const result = await mammoth.extractRawText({ buffer: file.buffer });
-    return result.value;
+    return sanitizeText(result.value);
   }
 
   if (mime === "application/msword") {
-    // For old .doc files, try mammoth first then fallback
     try {
       const mammoth = await import("mammoth");
       const result = await mammoth.extractRawText({ buffer: file.buffer });
-      if (result.value.length > 30) return result.value;
+      if (result.value.length > 30) return sanitizeText(result.value);
     } catch {
       // fall through
     }
-    // Raw text fallback
     const rawText = file.buffer.toString("latin1");
-    return rawText.replace(/[^\x20-\x7E\n\r\t\xA0-\xFF]/g, " ").replace(/\s{3,}/g, "\n").trim();
+    return sanitizeText(rawText.replace(/[^\x20-\x7E\n\r\t\xA0-\xFF]/g, " ").replace(/\s{3,}/g, "\n").trim());
   }
 
   if (mime === "application/pdf") {
     try {
-      const pdfParse = (await import("pdf-parse")).default;
-      const parsed = await pdfParse(file.buffer);
-      return parsed.text;
+      // Use createRequire (safe) instead of dynamic import (triggers ENOENT bug)
+      const pdfParser = _require("pdf-parse/lib/pdf-parse");
+      const parsed = await pdfParser(file.buffer);
+      return sanitizeText(parsed.text);
     } catch {
       const rawText = file.buffer.toString("latin1");
-      return rawText.replace(/[^\x20-\x7E\n\r\t\xA0-\xFF]/g, " ").replace(/\s{3,}/g, "\n").trim();
+      return sanitizeText(rawText.replace(/[^\x20-\x7E\n\r\t\xA0-\xFF]/g, " ").replace(/\s{3,}/g, "\n").trim());
     }
   }
 
@@ -267,6 +266,19 @@ router.post("/knowledge/upload-text", async (req: Request, res: Response) => {
   }
 });
 
+/** Remove characters PostgreSQL cannot store in TEXT columns.
+ *  - Null bytes (\u0000) cause "invalid byte sequence" errors
+ *  - Other C0 control chars except \t \n \r are stripped
+ *  - Excess whitespace is collapsed */
+function sanitizeText(text: string): string {
+  return text
+    .replace(/\u0000/g, "")              // null bytes — PostgreSQL rejects these
+    .replace(/[\x01-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ")  // other control chars except \t\n\r
+    .replace(/[ \t]+/g, " ")             // collapse horizontal whitespace
+    .replace(/\n{4,}/g, "\n\n\n")        // collapse excessive blank lines
+    .trim();
+}
+
 /** Parse PDF buffer safely — avoids pdf-parse@1.1.1 module-level ENOENT bug.
  *  Uses createRequire to load the internal CJS parser directly, skipping the
  *  wrapper index.js that reads a test file at module load time. */
@@ -297,14 +309,14 @@ router.post("/knowledge/upload-file", upload.single("file"), validateFileUpload,
 
     if (mime === "application/pdf") {
       const parsed = await parsePdfBuffer(req.file.buffer);
-      contentText = parsed.text;
+      contentText = sanitizeText(parsed.text);
       pageCount = parsed.numpages || undefined;
     } else if (mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
       const mammoth = await import("mammoth");
       const result = await mammoth.extractRawText({ buffer: req.file.buffer });
-      contentText = result.value;
+      contentText = sanitizeText(result.value);
     } else {
-      contentText = req.file.buffer.toString("utf8");
+      contentText = sanitizeText(req.file.buffer.toString("utf8"));
     }
 
     if (!contentText || contentText.trim().length < 20) {

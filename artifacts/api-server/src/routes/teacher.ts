@@ -2,13 +2,9 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import OpenAI from "openai";
 import { db } from "@workspace/db";
 import {
-  usersTable,
-  turmasTable,
-  turmaMembershipsTable,
-  turmaTarefasTable,
-  simuladoResultsTable,
-  flashcardSessionsTable,
-  userActivityTable,
+  usersTable, turmasTable, turmaMembershipsTable, turmaTarefasTable,
+  simuladoResultsTable, flashcardSessionsTable, userActivityTable,
+  questionBankTable, activitiesTable, activitySubmissionsTable, redacoesTable,
 } from "@workspace/db/schema";
 import { eq, and, desc, sql, inArray, gte } from "drizzle-orm";
 import { roleRequestsTable } from "@workspace/db/schema";
@@ -817,6 +813,213 @@ Seja objetivo, prático e use linguagem direta. Quando gerar listas ou exercíci
   } catch (err) {
     req.log.error({ err }, "Error in teacher AI copilot");
     res.status(500).json({ error: "Erro ao processar mensagem" });
+  }
+});
+
+// ─── Banco de Questões ────────────────────────────────────────────────────────
+router.get("/teacher/question-bank", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
+  try {
+    const questions = await db.select().from(questionBankTable)
+      .where(eq(questionBankTable.teacherId, req.userId!))
+      .orderBy(desc(questionBankTable.createdAt)).limit(200);
+    res.json({ questions });
+  } catch {
+    res.status(500).json({ error: "Erro ao buscar banco de questões" });
+  }
+});
+
+router.post("/teacher/question-bank", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
+  const { materia, tema, nivel, text, context, alternatives, correct, explanation, imageDescription, tags } = req.body;
+  if (!materia || !tema || !text || !alternatives) { res.status(400).json({ error: "Campos obrigatórios ausentes" }); return; }
+  try {
+    const [q] = await db.insert(questionBankTable).values({
+      teacherId: req.userId!, materia, tema, nivel, text, context, alternatives, correct: correct ?? 0, explanation, imageDescription, tags,
+    }).returning();
+    res.json({ ok: true, question: q });
+  } catch {
+    res.status(500).json({ error: "Erro ao salvar questão" });
+  }
+});
+
+router.delete("/teacher/question-bank/:id", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
+  try {
+    await db.delete(questionBankTable)
+      .where(and(eq(questionBankTable.id, req.params.id), eq(questionBankTable.teacherId, req.userId!)));
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: "Erro ao excluir questão" });
+  }
+});
+
+// ─── Atividades (envio para turmas) ──────────────────────────────────────────
+router.get("/teacher/activities", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
+  try {
+    const activities = await db.select().from(activitiesTable)
+      .where(eq(activitiesTable.teacherId, req.userId!))
+      .orderBy(desc(activitiesTable.createdAt)).limit(50);
+
+    // Count submissions per activity
+    const activityIds = activities.map(a => a.id);
+    const submissionCounts: Record<string, number> = {};
+    if (activityIds.length) {
+      const counts = await db.select({
+        activityId: activitySubmissionsTable.activityId,
+        count: sql<number>`COUNT(*)::int`,
+      }).from(activitySubmissionsTable).where(inArray(activitySubmissionsTable.activityId, activityIds))
+        .groupBy(activitySubmissionsTable.activityId);
+      counts.forEach(c => { submissionCounts[c.activityId] = c.count; });
+    }
+
+    res.json({ activities: activities.map(a => ({ ...a, submissionCount: submissionCounts[a.id] ?? 0 })) });
+  } catch {
+    res.status(500).json({ error: "Erro ao buscar atividades" });
+  }
+});
+
+router.post("/teacher/activities", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
+  const { turmaId, title, description, type, content, dueDate } = req.body;
+  if (!title || !content) { res.status(400).json({ error: "Título e conteúdo são obrigatórios" }); return; }
+  try {
+    const [activity] = await db.insert(activitiesTable).values({
+      teacherId: req.userId!, turmaId, title, description, type: type ?? "prova", content,
+      dueDate: dueDate ? new Date(dueDate) : undefined,
+    }).returning();
+    res.json({ ok: true, activity });
+  } catch {
+    res.status(500).json({ error: "Erro ao criar atividade" });
+  }
+});
+
+router.get("/teacher/activities/:id/submissions", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
+  try {
+    const [activity] = await db.select().from(activitiesTable)
+      .where(and(eq(activitiesTable.id, req.params.id), eq(activitiesTable.teacherId, req.userId!))).limit(1);
+    if (!activity) { res.status(404).json({ error: "Atividade não encontrada" }); return; }
+
+    const submissions = await db.select({
+      id: activitySubmissionsTable.id,
+      studentId: activitySubmissionsTable.studentId,
+      score: activitySubmissionsTable.score,
+      total: activitySubmissionsTable.total,
+      submittedAt: activitySubmissionsTable.submittedAt,
+      studentName: usersTable.studentName,
+      firstName: usersTable.firstName,
+    }).from(activitySubmissionsTable)
+      .leftJoin(usersTable, eq(activitySubmissionsTable.studentId, usersTable.id))
+      .where(eq(activitySubmissionsTable.activityId, req.params.id))
+      .orderBy(desc(activitySubmissionsTable.submittedAt));
+
+    res.json({ activity, submissions });
+  } catch {
+    res.status(500).json({ error: "Erro ao buscar submissões" });
+  }
+});
+
+// ─── Correção de Redação (teacher) ────────────────────────────────────────────
+router.post("/teacher/redacao-correct", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
+  const { tema, texto, tipo = "enem" } = req.body as { tema?: string; texto?: string; tipo?: string };
+  if (!tema || !texto) { res.status(400).json({ error: "Tema e texto são obrigatórios" }); return; }
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini", temperature: 0.3,
+      response_format: { type: "json_object" },
+      messages: [{
+        role: "system",
+        content: `Você é um corretor experiente de redações do ENEM. Corrija com rigor e precisão, como um corretor oficial.
+Retorne JSON:
+{
+  "competencias": [
+    {"numero": 1, "nome": "Domínio da norma culta", "nota": 160, "feedback": "...", "pontosFortes": "...", "pontosMelhorar": "..."},
+    {"numero": 2, "nome": "Compreensão do tema", "nota": 160, "feedback": "...", "pontosFortes": "...", "pontosMelhorar": "..."},
+    {"numero": 3, "nome": "Seleção e organização de informações", "nota": 160, "feedback": "...", "pontosFortes": "...", "pontosMelhorar": "..."},
+    {"numero": 4, "nome": "Conhecimento dos mecanismos linguísticos", "nota": 160, "feedback": "...", "pontosFortes": "...", "pontosMelhorar": "..."},
+    {"numero": 5, "nome": "Proposta de intervenção", "nota": 160, "feedback": "...", "pontosFortes": "...", "pontosMelhorar": "..."}
+  ],
+  "notaTotal": 800,
+  "comentarioGeral": "parecer geral do corretor (3-4 frases)",
+  "nivelGeral": "Bom / Muito Bom / Excelente / Regular",
+  "proximosPasso": "3 ações prioritárias para melhorar"
+}
+Notas por competência: 0, 40, 80, 120, 160, 200. Total máximo: 1000.`,
+      }, { role: "user", content: `Tema: "${tema}"\n\nRedação:\n${texto}` }],
+    });
+
+    const correction = JSON.parse(completion.choices[0].message.content ?? "{}");
+    res.json({ ok: true, correction });
+  } catch {
+    res.status(500).json({ error: "Erro ao corrigir redação" });
+  }
+});
+
+// ─── Detalhe Individual do Aluno ──────────────────────────────────────────────
+router.get("/teacher/student/:studentId/detail", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
+  try {
+    const { studentId } = req.params;
+
+    const [student] = await db.select({
+      id: usersTable.id, firstName: usersTable.firstName, lastName: usersTable.lastName,
+      studentName: usersTable.studentName, email: usersTable.email, xp: usersTable.xp,
+      studentGrade: usersTable.studentGrade, studentGoal: usersTable.studentGoal, createdAt: usersTable.createdAt,
+    }).from(usersTable).where(eq(usersTable.id, studentId)).limit(1);
+
+    if (!student) { res.status(404).json({ error: "Aluno não encontrado" }); return; }
+
+    const [simulados, flashcards] = await Promise.all([
+      db.select({ materia: simuladoResultsTable.materia, score: simuladoResultsTable.score, total: simuladoResultsTable.total, createdAt: simuladoResultsTable.createdAt })
+        .from(simuladoResultsTable).where(eq(simuladoResultsTable.userId, studentId))
+        .orderBy(desc(simuladoResultsTable.createdAt)).limit(30),
+      db.select({ materia: flashcardSessionsTable.materia, known: flashcardSessionsTable.known, totalCards: flashcardSessionsTable.totalCards })
+        .from(flashcardSessionsTable).where(eq(flashcardSessionsTable.userId, studentId)).limit(30),
+    ]);
+
+    const byMateria: Record<string, number[]> = {};
+    for (const s of simulados) {
+      const key = s.materia ?? "Geral";
+      if (!byMateria[key]) byMateria[key] = [];
+      byMateria[key].push(s.total > 0 ? Math.round((s.score / s.total) * 100) : 0);
+    }
+    const desempenhoMateria = Object.entries(byMateria).map(([materia, scores]) => ({
+      materia, avg: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length),
+    })).sort((a, b) => a.avg - b.avg);
+
+    const avgOverall = desempenhoMateria.length ? Math.round(desempenhoMateria.reduce((s, m) => s + m.avg, 0) / desempenhoMateria.length) : 0;
+    const weakSubjects = desempenhoMateria.filter(m => m.avg < 60);
+    const strongSubjects = desempenhoMateria.filter(m => m.avg >= 75);
+
+    const weeklyActivity = simulados.reduce((acc: Record<string, number>, s) => {
+      const weekKey = `Sem${Math.ceil((Date.now() - new Date(s.createdAt).getTime()) / (7 * 24 * 3600 * 1000))}`;
+      acc[weekKey] = (acc[weekKey] ?? 0) + 1;
+      return acc;
+    }, {});
+
+    res.json({
+      student: {
+        name: student.studentName || `${student.firstName ?? ""} ${student.lastName ?? ""}`.trim(),
+        email: student.email, xp: student.xp, studentGrade: student.studentGrade, studentGoal: student.studentGoal,
+        joinedAt: student.createdAt,
+      },
+      stats: { totalSimulados: simulados.length, avgOverall, totalFlashcards: flashcards.length },
+      desempenhoMateria, weakSubjects, strongSubjects, weeklyActivity,
+      recentSimulados: simulados.slice(0, 5),
+    });
+  } catch {
+    res.status(500).json({ error: "Erro ao buscar detalhe do aluno" });
   }
 });
 

@@ -8,12 +8,13 @@ import {
   Sparkles, Send, Loader2, Eye, Menu, ArrowLeft, CheckCircle2, Activity,
   Zap, Target, Bell, Globe, Layers, BookMarked, Map, Star, Shield,
   Wand2, FileText, LayoutTemplate, Network, Microscope, Download,
+  Database, ClipboardList, Filter, Calendar, ChevronDown as ChevronDownIcon, X,
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Section = "dashboard" | "turmas" | "alunos" | "conteudos" | "pesquisa" | "provas" | "assistente" | "relatorios";
+type Section = "dashboard" | "turmas" | "alunos" | "conteudos" | "pesquisa" | "provas" | "banco" | "atividades" | "assistente" | "relatorios";
 type ExamMode = "classica" | "mundo" | "fraquezas";
 type VisualStyle = "enem" | "infantil" | "tecnico" | "aventura";
 
@@ -53,6 +54,8 @@ const NAV = [
   { id: "conteudos" as Section, label: "Criador de Conteúdo", icon: Wand2 },
   { id: "pesquisa" as Section, label: "Central de Pesquisa", icon: Microscope },
   { id: "provas" as Section, label: "Gerador de Provas", icon: FileQuestion },
+  { id: "banco" as Section, label: "Banco de Questões", icon: Database },
+  { id: "atividades" as Section, label: "Atividades", icon: ClipboardList },
   { id: "assistente" as Section, label: "Assistente IA", icon: Brain },
   { id: "relatorios" as Section, label: "Relatórios", icon: BarChart3 },
 ];
@@ -374,6 +377,8 @@ export default function ProfessorPage() {
               {section === "conteudos" && <ConteudosSection apiFetch={apiFetch} />}
               {section === "pesquisa" && <PesquisaSection apiFetch={apiFetch} />}
               {section === "provas" && <GerarProvaSection apiFetch={apiFetch} />}
+              {section === "banco" && <BancoSection apiFetch={apiFetch} />}
+              {section === "atividades" && <AtividadesSection apiFetch={apiFetch} />}
               {section === "assistente" && <AssistenteSection apiFetch={apiFetch} />}
               {section === "relatorios" && <RelatoriosSection apiFetch={apiFetch} />}
             </motion.div>
@@ -1376,6 +1381,386 @@ function RelatoriosSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Banco de Questões ─────────────────────────────────────────────────────────
+const MATERIAS_BQ = ["Matemática","Português","Física","Química","Biologia","História","Geografia","Filosofia","Sociologia","Inglês","Redação"];
+const NIVEIS = ["Fácil","Médio","Difícil","ENEM","Vestibular"];
+
+function BancoSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) => Promise<Response> }) {
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [filterMateria, setFilterMateria] = useState("");
+  const [form, setForm] = useState({
+    materia: "Matemática", tema: "", nivel: "Médio", text: "", context: "", explanation: "", tags: "",
+    alternatives: ["","","","",""], correct: 0,
+  });
+
+  useEffect(() => { loadQ(); }, []);
+
+  async function loadQ() {
+    setLoading(true);
+    try { const r = await apiFetch("/api/teacher/question-bank"); const d = await r.json(); setQuestions(d.questions ?? []); }
+    finally { setLoading(false); }
+  }
+
+  async function saveQuestion(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      await apiFetch("/api/teacher/question-bank", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, tags: form.tags.split(",").map((t: string) => t.trim()).filter(Boolean) }),
+      });
+      setShowForm(false); await loadQ();
+    } catch { alert("Erro ao salvar questão"); }
+  }
+
+  async function deleteQuestion(id: string) {
+    if (!confirm("Excluir esta questão?")) return;
+    await apiFetch(`/api/teacher/question-bank/${id}`, { method: "DELETE" });
+    setQuestions(q => q.filter(x => x.id !== id));
+  }
+
+  const filtered = filterMateria ? questions.filter(q => q.materia === filterMateria) : questions;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="font-black text-white text-lg">Banco de Questões</h2>
+          <p className="text-white/40 text-xs">{questions.length} questão(ões) cadastrada(s)</p>
+        </div>
+        <button onClick={() => { setShowForm(true); setForm({ materia: "Matemática", tema: "", nivel: "Médio", text: "", context: "", explanation: "", tags: "", alternatives: ["","","","",""], correct: 0 }); }}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-colors">
+          <Plus className="w-4 h-4" /> Nova Questão
+        </button>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {["", ...MATERIAS_BQ].map(m => (
+          <button key={m} onClick={() => setFilterMateria(m)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${filterMateria === m ? "bg-indigo-600 border-indigo-500 text-white" : "bg-white/5 border-white/10 text-white/40 hover:text-white"}`}>
+            {m || "Todas"}
+          </button>
+        ))}
+      </div>
+
+      {showForm && (
+        <div className="rounded-2xl border border-indigo-500/30 bg-indigo-600/5 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-white">Nova Questão</h3>
+            <button onClick={() => setShowForm(false)} className="text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
+          </div>
+          <form onSubmit={saveQuestion} className="space-y-4">
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-white/40 text-xs mb-1.5 block">Matéria</label>
+                <select value={form.materia} onChange={e => setForm(p => ({ ...p, materia: e.target.value }))}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white">
+                  {MATERIAS_BQ.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-white/40 text-xs mb-1.5 block">Nível</label>
+                <select value={form.nivel} onChange={e => setForm(p => ({ ...p, nivel: e.target.value }))}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white">
+                  {NIVEIS.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-white/40 text-xs mb-1.5 block">Tema</label>
+                <input value={form.tema} onChange={e => setForm(p => ({ ...p, tema: e.target.value }))} placeholder="Ex: Funções do 1º grau"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white" />
+              </div>
+            </div>
+            <div>
+              <label className="text-white/40 text-xs mb-1.5 block">Contexto (texto-base, opcional)</label>
+              <textarea value={form.context} onChange={e => setForm(p => ({ ...p, context: e.target.value }))} rows={2}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white resize-none" />
+            </div>
+            <div>
+              <label className="text-white/40 text-xs mb-1.5 block">Enunciado *</label>
+              <textarea required value={form.text} onChange={e => setForm(p => ({ ...p, text: e.target.value }))} rows={3}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white resize-none" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-white/40 text-xs">Alternativas (letra verde = gabarito)</label>
+              {form.alternatives.map((alt: string, i: number) => (
+                <div key={i} className="flex items-center gap-2">
+                  <button type="button" onClick={() => setForm(p => ({ ...p, correct: i }))}
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 border transition-colors ${form.correct === i ? "bg-emerald-500 border-emerald-400 text-white" : "bg-white/5 border-white/10 text-white/40"}`}>
+                    {String.fromCharCode(65 + i)}
+                  </button>
+                  <input value={alt} onChange={e => { const alts = [...form.alternatives]; alts[i] = e.target.value; setForm(p => ({ ...p, alternatives: alts })); }}
+                    placeholder={`Alternativa ${String.fromCharCode(65 + i)}`}
+                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white" />
+                </div>
+              ))}
+            </div>
+            <div>
+              <label className="text-white/40 text-xs mb-1.5 block">Explicação do gabarito</label>
+              <textarea value={form.explanation} onChange={e => setForm(p => ({ ...p, explanation: e.target.value }))} rows={2}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white resize-none" />
+            </div>
+            <div className="flex gap-3">
+              <button type="submit" className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-colors">Salvar Questão</button>
+              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2.5 rounded-xl bg-white/5 text-white/60 text-sm font-bold">Cancelar</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {loading ? <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 text-indigo-400 animate-spin" /></div>
+        : filtered.length === 0 ? (
+          <div className="text-center py-16 text-white/30">
+            <Database className="w-12 h-12 mx-auto mb-3 opacity-30" />
+            <p className="font-semibold">Nenhuma questão ainda</p>
+            <p className="text-xs mt-1">Clique em "Nova Questão" para começar</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filtered.map((q: any) => (
+              <div key={q.id} className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <span className="text-xs bg-indigo-600/20 text-indigo-300 px-2 py-0.5 rounded-full font-semibold">{q.materia}</span>
+                      <span className="text-xs bg-white/5 text-white/40 px-2 py-0.5 rounded-full">{q.nivel}</span>
+                      {q.tema && <span className="text-xs text-white/30">{q.tema}</span>}
+                    </div>
+                    <p className="text-white text-sm leading-relaxed">{q.text}</p>
+                    {q.alternatives && (
+                      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {(q.alternatives as string[]).map((alt: string, i: number) => (
+                          <div key={i} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs ${q.correct === i ? "bg-emerald-500/15 text-emerald-300" : "bg-white/5 text-white/40"}`}>
+                            <span className="font-bold">{String.fromCharCode(65 + i)})</span> {alt}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <button onClick={() => deleteQuestion(q.id)} className="p-1.5 text-white/20 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors flex-shrink-0">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+    </div>
+  );
+}
+
+// ─── Atividades ────────────────────────────────────────────────────────────────
+function AtividadesSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) => Promise<Response> }) {
+  const [activities, setActivities] = useState<any[]>([]);
+  const [turmas, setTurmas] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [selectedActivity, setSelectedActivity] = useState<any | null>(null);
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [loadingSubs, setLoadingSubs] = useState(false);
+  const [questoes, setQuestoes] = useState<{ text: string; alternatives: string[]; correct: number }[]>([{ text: "", alternatives: ["","","","",""], correct: 0 }]);
+  const [form, setForm] = useState({ title: "", description: "", type: "prova", turmaId: "", dueDate: "" });
+
+  useEffect(() => {
+    Promise.all([
+      apiFetch("/api/teacher/activities").then(r => r.json()).then(d => setActivities(d.activities ?? [])),
+      apiFetch("/api/teacher/turmas").then(r => r.json()).then(d => setTurmas(d.turmas ?? [])),
+    ]).finally(() => setLoading(false));
+  }, []);
+
+  async function saveActivity(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      await apiFetch("/api/teacher/activities", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, turmaId: form.turmaId || undefined, content: { questions: questoes } }),
+      });
+      setShowForm(false);
+      const r = await apiFetch("/api/teacher/activities"); const d = await r.json(); setActivities(d.activities ?? []);
+    } catch { alert("Erro ao salvar atividade"); }
+  }
+
+  async function viewSubmissions(activity: any) {
+    setSelectedActivity(activity); setLoadingSubs(true);
+    try { const r = await apiFetch(`/api/teacher/activities/${activity.id}/submissions`); const d = await r.json(); setSubmissions(d.submissions ?? []); }
+    finally { setLoadingSubs(false); }
+  }
+
+  if (selectedActivity) return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3">
+        <button onClick={() => { setSelectedActivity(null); setSubmissions([]); }} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors">
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <div>
+          <h2 className="font-black text-white">{selectedActivity.title}</h2>
+          <p className="text-white/40 text-xs">Respostas dos alunos — {submissions.length} entrega(s)</p>
+        </div>
+      </div>
+      {loadingSubs ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 text-indigo-400 animate-spin" /></div>
+        : submissions.length === 0 ? (
+          <div className="text-center py-16 text-white/30">
+            <ClipboardList className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p>Nenhum aluno respondeu ainda</p>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] overflow-hidden">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-white/[0.06]">
+                {["Aluno","Nota","Acertos","Enviado em"].map(h => (
+                  <th key={h} className="text-left px-4 py-3 text-white/40 text-xs font-bold">{h}</th>
+                ))}
+              </tr></thead>
+              <tbody>
+                {submissions.map((s: any) => (
+                  <tr key={s.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
+                    <td className="px-4 py-3 text-white font-medium">{s.studentName || s.firstName || s.studentId?.slice(0,8)}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded-lg text-xs font-bold ${s.total > 0 && s.score / s.total >= 0.7 ? "bg-emerald-500/20 text-emerald-300" : "bg-red-500/20 text-red-300"}`}>
+                        {s.total > 0 ? Math.round((s.score / s.total) * 100) : 0}%
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-white/60">{s.score}/{s.total}</td>
+                    <td className="px-4 py-3 text-white/40 text-xs">{new Date(s.submittedAt).toLocaleDateString("pt-BR")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+    </div>
+  );
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="font-black text-white text-lg">Atividades</h2>
+          <p className="text-white/40 text-xs">Provas e tarefas para suas turmas</p>
+        </div>
+        <button onClick={() => { setShowForm(true); setForm({ title: "", description: "", type: "prova", turmaId: "", dueDate: "" }); setQuestoes([{ text: "", alternatives: ["","","","",""], correct: 0 }]); }}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-colors">
+          <Plus className="w-4 h-4" /> Nova Atividade
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="rounded-2xl border border-indigo-500/30 bg-indigo-600/5 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-white">Nova Atividade</h3>
+            <button onClick={() => setShowForm(false)} className="text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
+          </div>
+          <form onSubmit={saveActivity} className="space-y-4">
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-white/40 text-xs mb-1.5 block">Título *</label>
+                <input required value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                  placeholder="Ex: Prova de Matemática" className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white" />
+              </div>
+              <div>
+                <label className="text-white/40 text-xs mb-1.5 block">Tipo</label>
+                <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white">
+                  {["prova","tarefa","exercicio","simulado"].map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-white/40 text-xs mb-1.5 block">Turma (opcional)</label>
+                <select value={form.turmaId} onChange={e => setForm(f => ({ ...f, turmaId: e.target.value }))}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white">
+                  <option value="">Todas as turmas</option>
+                  {turmas.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-white/40 text-xs mb-1.5 block">Prazo</label>
+                <input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white" />
+              </div>
+            </div>
+            <div>
+              <label className="text-white/40 text-xs mb-1.5 block">Descrição</label>
+              <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white resize-none" />
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-white/40 text-xs font-bold">Questões ({questoes.length})</label>
+                <button type="button" onClick={() => setQuestoes(q => [...q, { text: "", alternatives: ["","","","",""], correct: 0 }])}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+                  <Plus className="w-3.5 h-3.5" /> Adicionar
+                </button>
+              </div>
+              {questoes.map((q, qi) => (
+                <div key={qi} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-white/30 text-xs font-bold">{qi + 1}.</span>
+                    <input value={q.text} onChange={e => { const qs = [...questoes]; qs[qi] = { ...qs[qi], text: e.target.value }; setQuestoes(qs); }}
+                      placeholder="Enunciado" className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white" />
+                    {qi > 0 && <button type="button" onClick={() => setQuestoes(q => q.filter((_, i) => i !== qi))} className="text-white/20 hover:text-red-400"><X className="w-3.5 h-3.5" /></button>}
+                  </div>
+                  {q.alternatives.map((alt: string, ai: number) => (
+                    <div key={ai} className="flex items-center gap-2">
+                      <button type="button" onClick={() => { const qs = [...questoes]; qs[qi] = { ...qs[qi], correct: ai }; setQuestoes(qs); }}
+                        className={`w-6 h-6 rounded-lg text-[10px] font-black flex-shrink-0 border transition-colors ${q.correct === ai ? "bg-emerald-500 border-emerald-400 text-white" : "bg-white/5 border-white/10 text-white/30"}`}>
+                        {String.fromCharCode(65 + ai)}
+                      </button>
+                      <input value={alt} onChange={e => { const qs = [...questoes]; const alts = [...qs[qi].alternatives]; alts[ai] = e.target.value; qs[qi] = { ...qs[qi], alternatives: alts }; setQuestoes(qs); }}
+                        placeholder={`Alt. ${String.fromCharCode(65 + ai)}`} className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white" />
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <button type="submit" className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-colors">Publicar Atividade</button>
+              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2.5 rounded-xl bg-white/5 text-white/60 text-sm font-bold">Cancelar</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {loading ? <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 text-indigo-400 animate-spin" /></div>
+        : activities.length === 0 ? (
+          <div className="text-center py-16 text-white/30">
+            <ClipboardList className="w-12 h-12 mx-auto mb-3 opacity-30" />
+            <p className="font-semibold">Nenhuma atividade ainda</p>
+            <p className="text-xs mt-1">Crie sua primeira atividade para os alunos</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {activities.map((a: any) => (
+              <div key={a.id} className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <span className="text-xs bg-violet-600/20 text-violet-300 px-2 py-0.5 rounded-full font-semibold capitalize">{a.type}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${a.isPublished ? "bg-emerald-500/20 text-emerald-300" : "bg-white/5 text-white/30"}`}>
+                        {a.isPublished ? "Publicada" : "Rascunho"}
+                      </span>
+                      {a.dueDate && <span className="text-xs text-white/30 flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(a.dueDate).toLocaleDateString("pt-BR")}</span>}
+                    </div>
+                    <h3 className="font-bold text-white">{a.title}</h3>
+                    {a.description && <p className="text-white/40 text-xs mt-0.5">{a.description}</p>}
+                    <div className="flex items-center gap-4 mt-2">
+                      <span className="text-white/30 text-xs">{(a.content as any)?.questions?.length ?? 0} questão(ões)</span>
+                      <span className="text-white/30 text-xs">{a.submissionCount ?? 0} entrega(s)</span>
+                    </div>
+                  </div>
+                  <button onClick={() => viewSubmissions(a)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 hover:bg-indigo-600/20 hover:text-indigo-300 text-white/50 text-xs font-bold transition-colors flex-shrink-0">
+                    <Eye className="w-3.5 h-3.5" /> Ver respostas
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
     </div>
   );
 }

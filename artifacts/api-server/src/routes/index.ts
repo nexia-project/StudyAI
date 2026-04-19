@@ -31,6 +31,7 @@ import ocrRouter from "./ocr";
 import notifyRouter from "./notify";
 import salaEstudosRouter from "./sala-estudos";
 import flashcardReviewsRouter from "./flashcard-reviews";
+import studentRouter from "./student";
 
 const router: IRouter = Router();
 
@@ -66,5 +67,6 @@ router.use(ocrRouter);
 router.use(notifyRouter);
 router.use(salaEstudosRouter);
 router.use(flashcardReviewsRouter);
+router.use(studentRouter);
 
 export default router;

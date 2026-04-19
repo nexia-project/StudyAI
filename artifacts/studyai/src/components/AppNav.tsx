@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Home, Map, PenLine, BarChart2, Trophy, Medal, History, Brain,
   Target, Clock, ChevronDown, Menu, X, GraduationCap,
-  BookOpen, Flame, Zap, Users, Globe,
+  BookOpen, Flame, Zap, Users, Globe, Calendar,
 } from "lucide-react";
 import { UserMenu } from "@/components/UserMenu";
 import { cn } from "@/lib/utils";
@@ -24,6 +24,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { icon: Home,   label: "Plano de Estudos",  path: "/app",           color: "text-violet-600" },
       { icon: Target, label: "Simulado ENEM",      path: "/simulado-enem", color: "text-indigo-600" },
       { icon: PenLine, label: "Redação",           path: "/redacao",       color: "text-rose-600"   },
+      { icon: Calendar, label: "Cronograma",       path: "/cronograma",    color: "text-violet-600" },
       { icon: Clock,  label: "Sala de Estudos",    path: "/sala-estudos",  color: "text-amber-600"  },
     ],
   },

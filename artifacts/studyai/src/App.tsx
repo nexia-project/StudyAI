@@ -26,6 +26,7 @@ import GovernoLoginPage from "@/pages/GovernoLogin";
 import SimuladoEnemPage from "@/pages/SimuladoEnem";
 import CronogramaPage from "@/pages/Cronograma";
 import SalaEstudosPage from "@/pages/SalaEstudos";
+import AulaIAPage from "@/pages/AulaIA";
 import BaseConhecimentoPage from "@/pages/BaseConhecimento";
 import NotFound from "@/pages/not-found";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -234,6 +235,7 @@ function Router() {
         <Route path="/simulado-enem" component={SimuladoEnemPage} />
         <Route path="/sala-estudos" component={SalaEstudosPage} />
         <Route path="/cronograma" component={CronogramaPage} />
+        <Route path="/aula-ia" component={AulaIAPage} />
         <Route path="/base-conhecimento" component={BaseConhecimentoPage} />
         {/* Clerk OAuth callback — handles Google/GitHub sign-in redirects */}
         <Route path="/v1/oauth_callback" component={OAuthCallbackPage} />

@@ -166,6 +166,11 @@ export default function AulaIA() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topico, estilo }),
       });
+      if (r.status === 401) {
+        setErroGerar("Faça login para acessar as aulas com IA.");
+        setGerando(false);
+        return;
+      }
       if (!r.ok) throw new Error("Erro ao gerar aula");
       const data: Aula = await r.json();
       setAula(data);

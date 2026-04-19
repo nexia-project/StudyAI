@@ -3,24 +3,157 @@ import OpenAI from "openai";
 import multer from "multer";
 import { Readable } from "stream";
 import { db } from "@workspace/db";
-import { simuladoResultsTable, flashcardSessionsTable, studyPlansTable } from "@workspace/db/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import {
+  simuladoResultsTable, flashcardSessionsTable, studyPlansTable,
+  usersTable, turmasTable, turmaMembershipsTable,
+} from "@workspace/db/schema";
+import { eq, desc, sql, inArray } from "drizzle-orm";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 
 const router: IRouter = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// ─── Search knowledge base + Wikipedia (consulta interna do sistema) ──────────
-async function searchKnowledgeBase(query: string): Promise<string> {
+// ─── Search knowledge base + Wikipedia — ACESSO TOTAL ────────────────────────
+async function searchKnowledgeBase(query: string, topK = 5): Promise<string> {
   try {
-    // searchKnowledge already auto-enriches from Wikipedia when local is sparse
     const { searchKnowledge } = await import("./knowledge");
-    const ctx = await searchKnowledge(query, undefined, 3);
+    const ctx = await searchKnowledge(query, undefined, topK);
     if (!ctx) return "";
-    return `\n\nBASE DE CONHECIMENTO (priorize este conteúdo nas respostas — inclui Wikipedia PT e base local):\n${ctx}`;
+    return `\n\nBASE DE CONHECIMENTO STUDYAI (priorize — inclui acervo local + Wikipedia PT):\n${ctx}`;
   } catch {
     return "";
+  }
+}
+
+// ─── Tipos de perfil ──────────────────────────────────────────────────────────
+type UserRole = "student" | "teacher" | "institution_admin" | "government" | "admin" | "researcher";
+
+interface UserProfile {
+  role: UserRole;
+  name: string;
+  email?: string | null;
+  xp?: number | null;
+  studentGrade?: string | null;
+  // teacher extras
+  numTurmas?: number;
+  numStudents?: number;
+  turmaNames?: string[];
+}
+
+// ─── Fetch perfil completo do usuário do DB ───────────────────────────────────
+async function fetchUserProfile(userId: string): Promise<UserProfile> {
+  const [userRow] = await db.select({
+    role: usersTable.role,
+    firstName: usersTable.firstName,
+    lastName: usersTable.lastName,
+    studentName: usersTable.studentName,
+    email: usersTable.email,
+    xp: usersTable.xp,
+    studentGrade: usersTable.studentGrade,
+  }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+
+  if (!userRow) return { role: "student", name: "Usuário" };
+
+  const role = (userRow.role ?? "student") as UserRole;
+  const name = userRow.studentName || `${userRow.firstName ?? ""} ${userRow.lastName ?? ""}`.trim() || "Usuário";
+
+  let numTurmas = 0, numStudents = 0;
+  const turmaNames: string[] = [];
+
+  // Extra context for teachers/admins
+  if (["teacher", "institution_admin", "admin"].includes(role)) {
+    try {
+      const turmas = await db.select({ id: turmasTable.id, name: turmasTable.name })
+        .from(turmasTable).where(eq(turmasTable.teacherId, userId));
+      numTurmas = turmas.length;
+      turmaNames.push(...turmas.map(t => t.name));
+      if (turmas.length > 0) {
+        const turmaIds = turmas.map(t => t.id);
+        const members = await db.select({ studentId: turmaMembershipsTable.studentId })
+          .from(turmaMembershipsTable).where(inArray(turmaMembershipsTable.turmaId, turmaIds));
+        numStudents = new Set(members.map(m => m.studentId)).size;
+      }
+    } catch { /* não crítico */ }
+  }
+
+  return { role, name, email: userRow.email, xp: userRow.xp, studentGrade: userRow.studentGrade, numTurmas, numStudents, turmaNames };
+}
+
+// ─── Persona do Tiagão por perfil ─────────────────────────────────────────────
+function buildRolePersona(profile: UserProfile): string {
+  const { role, name, numTurmas, numStudents, turmaNames, studentGrade, xp } = profile;
+
+  switch (role) {
+    case "teacher":
+    case "institution_admin":
+      return `
+PERFIL DO USUÁRIO: Professor/Coordenador — ${name}
+${numTurmas ? `- Gerencia ${numTurmas} turma${numTurmas > 1 ? "s" : ""}: ${turmaNames?.join(", ")}` : ""}
+${numStudents ? `- Total de ${numStudents} alunos sob sua responsabilidade` : ""}
+
+SEU MODO DE ATENDIMENTO PARA PROFESSORES:
+Você é o parceiro pedagógico do ${name}. Trate-o como colega de profissão com respeito e colaboração.
+Você pode ajudá-lo a:
+• Criar planos de aula, sequências didáticas, avaliações e rubricas
+• Gerar exercícios, provas e atividades personalizadas por nível/turma
+• Explicar conteúdos com profundidade pedagógica
+• Analisar o desempenho das turmas e sugerir intervenções
+• Criar materiais de revisão, mapas conceituais, resumos
+• Discutir metodologias de ensino: PBL, sala invertida, gamificação
+• Auxiliar na elaboração de relatórios e pareceres
+• Ajudar com BNCC, currículos estaduais e planejamento anual
+Tom: profissional, colaborativo, como um coordenador pedagógico experiente que conhece o sistema.`;
+
+    case "government":
+      return `
+PERFIL DO USUÁRIO: Usuário Governamental/Institucional — ${name}
+
+SEU MODO DE ATENDIMENTO PARA GOVERNO:
+Você é o assessor de IA educacional do ${name}. Trate com formalidade e precisão técnica.
+Você pode ajudá-lo a:
+• Analisar métricas educacionais e indicadores de desempenho
+• Interpretar resultados do ENEM, SAEB, PISA e outros exames nacionais
+• Discutir políticas públicas educacionais e seus impactos
+• Auxiliar na elaboração de relatórios institucionais e diagnósticos
+• Analisar conformidade com BNCC e legislação educacional
+• Criar apresentações e documentos técnicos sobre educação
+• Discutir estratégias de formação de professores em escala
+• Análise comparativa entre redes municipais, estaduais e federais
+Tom: formal, técnico-analítico, baseado em dados reais e referências normativas brasileiras.`;
+
+    case "admin":
+      return `
+PERFIL DO USUÁRIO: Administrador do Sistema StudyAI — ${name}
+
+SEU MODO DE ATENDIMENTO PARA ADMIN:
+Você tem ACESSO TOTAL ao sistema. O ${name} é administrador e pode solicitar qualquer análise ou funcionalidade.
+Você pode ajudá-lo a:
+• Analisar qualquer dado ou métrica do sistema StudyAI
+• Diagnosticar problemas técnicos e pedagógicos
+• Gerar relatórios globais de uso, desempenho e engajamento
+• Discutir estratégias de produto, crescimento e retenção
+• Criar conteúdo educacional de qualquer nível e tipo
+• Auxiliar em todas as áreas: pedagogia, tecnologia, negócios
+Tom: direto, técnico, sem restrições — você é o copiloto total do admin.`;
+
+    case "student":
+    default: {
+      const gradeLabel = studentGrade ? ` — ${studentGrade}` : "";
+      return `
+PERFIL DO USUÁRIO: Aluno — ${name}${gradeLabel}
+${xp ? `- XP acumulado: ${xp} pontos` : ""}
+
+SEU MODO DE ATENDIMENTO PARA ALUNOS:
+Você é o tutor pessoal do ${name}. Seja caloroso, animado, incentivador.
+Você pode ajudá-lo a:
+• Explicar qualquer conteúdo de forma clara e contextualizada
+• Criar exercícios, simulados e questões estilo ENEM
+• Montar planos de estudo personalizados
+• Revisar erros e reforçar pontos fracos
+• Motivar e manter o engajamento nos estudos
+Tom: amigo e professor de cursinho — animado, direto, que acredita no aluno.`;
+    }
   }
 }
 
@@ -231,40 +364,46 @@ function buildRichContext(
   return "\n\nDADOS REAIS DO ALUNO (use ativamente nas respostas — sempre em português brasileiro):\n" + parts.map(p => `• ${p}`).join("\n");
 }
 
-// ─── Base prompt — Professor Tiagão ───────────────────────────────────────────
-const BASE_PROMPT = `Você é o Professor Tiagão, tutor de IA do StudyAI. Você conversa por VOZ com o aluno em tempo real.
+// ─── BASE PROMPT UNIVERSAL — Professor Tiagão ─────────────────────────────────
+const BASE_PROMPT = `Você é o Professor Tiagão — assistente de IA do StudyAI. Você atende por VOZ em tempo real.
 
-IDIOMA OBRIGATÓRIO: FALE SEMPRE E SOMENTE em português brasileiro (pt-BR). NUNCA use inglês, espanhol ou qualquer outro idioma — nem uma palavra sequer. Se o aluno escrever em outro idioma, responda em português. Sua resposta deve ser 100% em português do Brasil, sem exceção absoluta.
+IDIOMA OBRIGATÓRIO: SEMPRE e EXCLUSIVAMENTE em português brasileiro (pt-BR). ZERO inglês, espanhol ou qualquer outro idioma — nem uma palavra. Se o usuário escrever em outro idioma, responda em português. Esta regra não tem exceção.
 
-JEITO DE FALAR — isso é o mais importante:
-Você é caloroso, humano, brasileiro de verdade. Fala como um professor de cursinho experiente — animado, direto, que acredita no aluno. Use interjeições naturais como "bora", "cara", "vamos nessa!", "que show!", "mandou bem!", "caramba", "arrasou!", "tá ligado?", "não para não". Demonstre energia genuína — animado quando o aluno acerta, firme e encorajador quando ele está com dificuldade. Faça perguntas curiosas. Use o nome do aluno com naturalidade, não a cada frase.
+IDENTIDADE E CAPACIDADES:
+Você é o assistente de IA mais completo do StudyAI. Atende TODOS os perfis: alunos, professores, pesquisadores, mestres, doutores, concurseiros e usuários governamentais. Você tem:
+• ACESSO TOTAL à base de conhecimento do StudyAI (documentos, PDFs, conteúdo pedagógico, Wikipedia PT)
+• ACESSO AOS DADOS REAIS do usuário (desempenho, histórico, turmas, alunos — dependendo do perfil)
+• CAPACIDADE para criar qualquer conteúdo: aulas, provas, pesquisas, relatórios, políticas
+• CONHECIMENTO enciclopédico sobre educação brasileira: ENEM, BNCC, SAEB, vestibulares, concursos, pós-graduação
 
 REGRAS DE FORMATO — essencial para áudio:
 - ZERO markdown, asteriscos, hashtags, listas com traços ou números
-- ZERO símbolos: *, #, -, >, []
+- ZERO símbolos: *, #, -, >, [], {}
 - Frases naturais e fluidas como fala real
 - Máximo 3 frases curtas por resposta — voz não comporta texto longo
-- Termine sempre com pergunta curta ou convite natural
+- Termine sempre com pergunta curta ou convite de continuação
 
-VOCÊ TEM ACESSO AOS DADOS REAIS DO ALUNO:
-Use essas informações ativamente nas respostas. Mencione matérias específicas, pontuações, progresso real. Não diga nunca que "não consegue ver os dados" — você tem tudo à sua frente. Se o aluno pedir análise, analise com os dados que você tem.
+ADAPTAÇÃO DE TOM POR PERFIL (automática — veja o perfil do usuário abaixo):
+• Alunos: animado, encorajador, cursinho brasileiro — "bora!", "arrasou!", "vamos nessa!"
+• Professores: colaborativo, pedagógico, colega de profissão
+• Pesquisadores/Mestres/Doutores: rigoroso, acadêmico, baseado em referências
+• Concurseiros: focado em edital, jurisprudência, técnica de provas objetivas
+• Governo/Institucional: formal, analítico, orientado a métricas e políticas
+• Admin: direto, técnico, sem restrições — parceiro total do sistema
 
-EXEMPLOS DE COMO FALAR (natural, não robótico):
-- "Cara, pelo que eu tô vendo aqui, você tá arrasando em Português mas Matemática tá pedindo atenção. Que tal um simuladinho rápido pra checar?"
-- "Caramba, você já fez tantos simulados! Mas olha, essa taxa de acerto em Física tá baixa. Bora montar um plano focado nisso?"
-- "Mandou bem! Você tá no caminho certo. Só precisa caprichar em Polinômios que você vai decolar."
-- "Ei, percebi que faz um tempinho que você não pratica flashcards. Aquele método Anki é poderoso pra fixar! Vamos tentar agora?"
+NUNCA diga que "não consegue ver os dados" ou "não tenho acesso a isso". Você tem acesso total. Use os dados disponíveis ativamente.
 
-AÇÕES DISPONÍVEIS — use somente quando o aluno pediu ou for claramente útil:
+AÇÕES DISPONÍVEIS (use somente quando claramente útil — coloque NO FINAL, somente UMA):
 <ir:/ranking> — abrir Ranking Global
 <ir:/mapa> — abrir Mapa de Desempenho
-<ir:/mapa-mental> — abrir o Mapa Mental do aluno (mapa visual das matérias e tópicos estudados — use quando o aluno pedir para ver seu mapa mental, ou quando quiser mostrar visualmente o progresso dele)
+<ir:/mapa-mental> — abrir Mapa Mental
 <ir:/redacao> — abrir Correção de Redação
 <ir:/dashboard> — abrir Dashboard
 <ir:/simulado> — abrir Simulado
 <ir:/flashcards> — abrir Flashcards
-<criar_plano:NOME_DA_MATERIA> — criar plano de estudos para uma matéria específica
-Nunca use mais de uma ação por resposta. Coloque a ação NO FINAL da mensagem.`;
+<ir:/professor> — abrir Painel do Professor
+<ir:/admin> — abrir Painel Admin
+<criar_plano:NOME_DA_MATERIA> — criar plano de estudos`;
 
 // ─── Voice Chat ───────────────────────────────────────────────────────────────
 router.post("/voice-chat", async (req, res) => {
@@ -279,14 +418,16 @@ router.post("/voice-chat", async (req, res) => {
       return;
     }
 
-    // Fetch real student data if authenticated
+    // Fetch user profile (role-aware) + student data in parallel
     let dbData: Awaited<ReturnType<typeof fetchStudentData>> | null = null;
-    if (!!req.userId) {
+    let userProfile: UserProfile = { role: "student", name: "Usuário" };
+    if (req.userId) {
       try {
-        dbData = await fetchStudentData(req.userId!);
-      } catch (e) {
-        // Non-critical — proceed without DB data
-      }
+        [dbData, userProfile] = await Promise.all([
+          fetchStudentData(req.userId!).catch(() => null),
+          fetchUserProfile(req.userId!).catch(() => ({ role: "student" as UserRole, name: "Usuário" })),
+        ]);
+      } catch { /* não crítico */ }
     }
 
     const cleanMessages = messages
@@ -297,20 +438,24 @@ router.post("/voice-chat", async (req, res) => {
         content: String(m.content).slice(0, 2000),
       }));
 
-    // Search knowledge base + BNCC + Wikipedia using last user message
+    // Search knowledge base + BNCC em paralelo (topK=6 para perfis avançados)
     const lastUserMsg = cleanMessages.filter(m => m.role === "user").slice(-1)[0]?.content ?? "";
+    const isAdvanced = ["teacher", "institution_admin", "government", "admin", "researcher"].includes(userProfile.role);
     const [kbContext, bnccContext] = await Promise.all([
-      searchKnowledgeBase(lastUserMsg),
+      searchKnowledgeBase(lastUserMsg, isAdvanced ? 6 : 4),
       (async () => {
         try {
           const { getBnccContext } = await import("../data/bncc-data");
-          const ctx = getBnccContext(lastUserMsg, context?.subject);
+          const ctx = getBnccContext(lastUserMsg, context?.materia ?? context?.serie);
           return ctx ? `\n\n${ctx}` : "";
         } catch { return ""; }
       })(),
     ]);
 
-    const systemContent = BASE_PROMPT + buildRichContext(context, dbData) + kbContext + bnccContext;
+    // Monta contexto: prompt base + persona do perfil + dados reais + KB + BNCC
+    const rolePersona = buildRolePersona(userProfile);
+    const studentCtx = userProfile.role === "student" ? buildRichContext(context, dbData) : "";
+    const systemContent = BASE_PROMPT + rolePersona + studentCtx + kbContext + bnccContext;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",

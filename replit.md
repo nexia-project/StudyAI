@@ -1,5 +1,17 @@
 # StudyAI — Tutor de IA para ENEM/Vestibular/Concursos (study.ia.br)
 
+## Professor Tiagão — Assistente Universal (Acesso Total)
+Tiagão é o assistente de IA central do StudyAI com acesso total ao sistema. Ele atende TODOS os perfis:
+- **Alunos**: tutoria animada, ENEM, vestibular, concursos, método socrático
+- **Professores/Coordenadores**: parceiro pedagógico — planos de aula, provas, análise de turmas, BNCC
+- **Pesquisadores/Mestres/Doutores**: rigor acadêmico, metodologia, referências
+- **Concurseiros**: edital, questões objetivas, jurisprudência
+- **Governo/Institucional**: relatórios técnicos, métricas educacionais (ENEM/SAEB/IDEB), políticas públicas
+- **Admin**: sem restrições, acesso pleno
+Detecção automática do perfil via DB. `fetchUserProfile()` busca role + dados específicos (turmas para professores, etc.)
+KB search: topK=4 para alunos, topK=6-7 para perfis avançados.
+Implementado em: `artifacts/api-server/src/routes/professor.ts` (voice-chat) e `chat.ts` (text-chat).
+
 ## Navigation Architecture (updated)
 - **AppNav** (`artifacts/studyai/src/components/AppNav.tsx`): shared navigation bar used across ALL internal pages. Dropdown groups: Estudar (Plano, Simulado, Redação, Sala Estudos), Acompanhar (Dashboard, Radar de Desempenho, Histórico, Conquistas, Ranking), Recursos (Mapa Mental). Has mobile hamburger menu + bottom tab bar.
 - **Landing nav**: Rebuilt with `LandingDropdown` components — "Plataforma" + "Para Quem" + Preços + FAQ + Entrar + Começar Grátis (orange CTA).

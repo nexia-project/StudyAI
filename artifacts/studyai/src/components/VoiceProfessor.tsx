@@ -10,7 +10,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, X, Square, VolumeX, Volume2 } from "lucide-react";
+import { Mic, MicOff, X, Square, VolumeX, Volume2, ThumbsUp, ThumbsDown, Timer, Maximize2, Minimize2, Send } from "lucide-react";
 import { useLocation } from "wouter";
 import {
   collectStudentContext,
@@ -134,6 +134,10 @@ export function VoiceProfessor() {
   const [textInput, setTextInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [showHint, setShowHint] = useState(true);
+  const [lastAssistantMsg, setLastAssistantMsg] = useState("");
+  const [reaction, setReaction] = useState<"up" | "down" | null>(null);
+  const [focusMode, setFocusMode] = useState(false);
+  const [focusSeconds, setFocusSeconds] = useState(0);
 
   const mutedRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -143,6 +147,20 @@ export function VoiceProfessor() {
   const lastUserActivityRef = useRef<number>(Date.now());
   const greetedRef = useRef(false);
   const proactiveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const focusTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Focus mode timer
+  useEffect(() => {
+    if (focusMode) {
+      setFocusSeconds(0);
+      focusTimerRef.current = setInterval(() => setFocusSeconds(s => s + 1), 1000);
+    } else {
+      if (focusTimerRef.current) clearInterval(focusTimerRef.current);
+    }
+    return () => { if (focusTimerRef.current) clearInterval(focusTimerRef.current); };
+  }, [focusMode]);
+
+  const fmtFocusTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
   useEffect(() => { mutedRef.current = muted; }, [muted]);
 
@@ -201,6 +219,8 @@ export function VoiceProfessor() {
       const { text, action } = await res.json();
       historyRef.current.push({ role: "assistant", content: text || "" });
       lastProactiveRef.current = Date.now();
+      setLastAssistantMsg(text || "");
+      setReaction(null);
       if (action?.type === "ir") setTimeout(() => navigate(action.param), 600);
       if (action?.type === "criar_plano") triggerProfessorAction("criar_plano", action.param);
       await speak(text || "");
@@ -232,6 +252,8 @@ export function VoiceProfessor() {
       if (!message) return;
       historyRef.current.push({ role: "assistant", content: message });
       lastProactiveRef.current = Date.now();
+      setLastAssistantMsg(message);
+      setReaction(null);
       if (action?.type === "ir") setTimeout(() => navigate(action.param), 600);
       if (action?.type === "criar_plano") triggerProfessorAction("criar_plano", action.param);
       await speak(message);
@@ -245,6 +267,8 @@ export function VoiceProfessor() {
       if (!text || mutedRef.current) return;
       historyRef.current.push({ role: "assistant", content: text });
       lastProactiveRef.current = Date.now();
+      setLastAssistantMsg(text);
+      setReaction(null);
       speak(text);
     };
     window.addEventListener("professor:proactive", handler);
@@ -320,6 +344,8 @@ export function VoiceProfessor() {
           : "Oi! Aqui é o Tiagão, seu professor de estudos. Pode me chamar a qualquer hora!";
         historyRef.current.push({ role: "assistant", content: greeting });
         lastProactiveRef.current = Date.now();
+        setLastAssistantMsg(greeting);
+        setReaction(null);
         // Short delay so AudioContext finishes warming up
         setTimeout(() => speak(greeting), 300);
       }
@@ -473,6 +499,17 @@ export function VoiceProfessor() {
         )}
       </AnimatePresence>
 
+      {/* Focus mode overlay */}
+      <AnimatePresence>
+        {focusMode && open && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-30"
+            style={{ background: "rgba(5,5,16,0.88)", backdropFilter: "blur(8px)" }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Full panel */}
       <AnimatePresence>
         {open && (
@@ -481,18 +518,21 @@ export function VoiceProfessor() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.96 }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className="fixed bottom-24 left-4 right-4 sm:left-6 sm:right-auto sm:w-80 z-40 bg-white rounded-3xl shadow-2xl border border-indigo-100 overflow-hidden"
+            className={`fixed z-50 bg-white rounded-3xl shadow-2xl border border-indigo-100 overflow-hidden transition-all duration-300 ${
+              focusMode
+                ? "inset-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[480px] sm:max-h-[85vh]"
+                : "bottom-24 left-4 right-4 sm:left-6 sm:right-auto sm:w-80"
+            }`}
           >
             {/* Header */}
             <div className="p-4 flex items-center gap-3"
               style={{ background: "linear-gradient(135deg,#6366f1,#4f46e5)" }}>
-              <div className="relative">
-                <div className="w-12 h-12 rounded-full overflow-hidden select-none">
+              <div className="relative flex-shrink-0">
+                <div className={`rounded-full overflow-hidden select-none ${focusMode ? "w-14 h-14" : "w-12 h-12"}`}>
                   <img src="/tiagao-robot.jpg" alt="Professor Tiagão" className="w-full h-full object-cover object-top" />
                 </div>
                 <motion.span
-                  animate={phase === "speaking"
-                    ? { scale: [1, 1.7, 1], opacity: [1, 0.5, 1] } : {}}
+                  animate={phase === "speaking" ? { scale: [1, 1.7, 1], opacity: [1, 0.5, 1] } : {}}
                   transition={{ repeat: Infinity, duration: 0.7 }}
                   className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white"
                   style={{ backgroundColor: phaseColor[phase] }}
@@ -500,18 +540,33 @@ export function VoiceProfessor() {
               </div>
               <div className="flex-1">
                 <p className="text-white font-black text-sm">Professor Tiagão</p>
-                <p className="text-indigo-100 text-xs">{phaseLabel[phase]}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-indigo-100 text-xs">{phaseLabel[phase]}</p>
+                  {focusMode && (
+                    <span className="flex items-center gap-1 text-indigo-200 text-xs bg-white/10 px-2 py-0.5 rounded-full">
+                      <Timer className="w-3 h-3" /> {fmtFocusTime(focusSeconds)}
+                    </span>
+                  )}
+                </div>
               </div>
-              <button onClick={() => setMuted(m => !m)}
-                className="text-white/70 hover:text-white transition-colors"
-                title={muted ? "Ativar som" : "Silenciar"}>
-                {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setFocusMode(f => !f)}
+                  className={`transition-colors p-1.5 rounded-lg ${focusMode ? "text-amber-300 bg-white/15 hover:bg-white/25" : "text-white/60 hover:text-white"}`}
+                  title={focusMode ? "Sair do Modo Foco" : "Modo Foco"}>
+                  {focusMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                </button>
+                <button onClick={() => setMuted(m => !m)}
+                  className="text-white/60 hover:text-white transition-colors p-1.5"
+                  title={muted ? "Ativar som" : "Silenciar"}>
+                  {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
-            {/* Orb */}
-            <div className="flex flex-col items-center py-6 px-4 gap-4">
-              <div className="relative w-24 h-24 flex items-center justify-center">
+            {/* Last message bubble + orb */}
+            <div className={`flex flex-col items-center px-4 gap-3 ${focusMode ? "py-6" : "py-5"}`}>
+              {/* Orb */}
+              <div className={`relative flex items-center justify-center ${focusMode ? "w-28 h-28" : "w-20 h-20"}`}>
                 {(phase === "speaking" || phase === "listening") && (
                   <>
                     <motion.div
@@ -529,35 +584,83 @@ export function VoiceProfessor() {
                   </>
                 )}
                 <motion.div
-                  animate={phase === "thinking"
-                    ? { rotate: 360 }
-                    : phase === "speaking"
-                    ? { scale: [1, 1.06, 1] } : { scale: 1 }}
-                  transition={phase === "thinking"
-                    ? { repeat: Infinity, duration: 1.4, ease: "linear" }
-                    : phase === "speaking"
-                    ? { repeat: Infinity, duration: 0.55 } : {}}
-                  className="w-20 h-20 rounded-full select-none shadow-xl overflow-hidden"
-                  style={{
-                    boxShadow: `0 8px 32px ${phaseColor[phase]}55`,
-                    outline: `3px solid ${phaseColor[phase]}`,
-                    outlineOffset: "2px",
-                  }}
+                  animate={phase === "thinking" ? { rotate: 360 } : phase === "speaking" ? { scale: [1, 1.07, 1] } : { scale: 1 }}
+                  transition={phase === "thinking" ? { repeat: Infinity, duration: 1.4, ease: "linear" } : phase === "speaking" ? { repeat: Infinity, duration: 0.55 } : {}}
+                  className={`rounded-full select-none shadow-xl overflow-hidden ${focusMode ? "w-24 h-24" : "w-16 h-16"}`}
+                  style={{ boxShadow: `0 8px 32px ${phaseColor[phase]}55`, outline: `3px solid ${phaseColor[phase]}`, outlineOffset: "2px" }}
                 >
                   <img src="/tiagao-robot.jpg" alt="Professor Tiagão" className="w-full h-full object-cover object-top" />
                 </motion.div>
               </div>
 
+              {/* Last Tiagão message */}
+              {lastAssistantMsg && (
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={lastAssistantMsg.slice(0, 40)}
+                    initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                    className="w-full rounded-2xl px-4 py-3 text-sm text-gray-700 leading-relaxed relative"
+                    style={{ background: "linear-gradient(135deg,#eef2ff,#f0f4ff)", border: "1px solid #c7d2fe" }}
+                  >
+                    <div className="absolute -top-1.5 left-6 w-3 h-3 rotate-45 bg-indigo-50 border-l border-t border-indigo-200" />
+                    <p className={focusMode ? "text-base" : "text-sm"}>{lastAssistantMsg}</p>
+
+                    {/* Reaction buttons */}
+                    {phase === "idle" && (
+                      <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-indigo-100">
+                        <span className="text-xs text-gray-400 mr-auto">Essa explicação te ajudou?</span>
+                        <button
+                          onClick={() => {
+                            setReaction("up");
+                            sendMessage("👍 Ótimo, entendi bem! Pode continuar.");
+                          }}
+                          disabled={reaction !== null}
+                          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                            reaction === "up" ? "bg-emerald-500 text-white scale-110" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 disabled:opacity-40"
+                          }`}
+                        >
+                          <ThumbsUp className="w-3.5 h-3.5" />
+                          {reaction === "up" ? "Ótimo!" : "Entendi"}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setReaction("down");
+                            sendMessage("Não entendi bem. Pode explicar de outro jeito, mais simples?");
+                          }}
+                          disabled={reaction !== null}
+                          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                            reaction === "down" ? "bg-orange-500 text-white scale-110" : "bg-orange-50 text-orange-600 hover:bg-orange-100 disabled:opacity-40"
+                          }`}
+                        >
+                          <ThumbsDown className="w-3.5 h-3.5" />
+                          {reaction === "down" ? "Pedindo..." : "Não entendi"}
+                        </button>
+                      </div>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
+              )}
+
+              {/* User transcript */}
               {userTranscript && phase !== "idle" && (
-                <div className="w-full bg-gray-50 rounded-2xl px-4 py-2.5 text-sm text-gray-600 text-center italic">
+                <div className="w-full bg-gray-50 rounded-2xl px-4 py-2.5 text-sm text-gray-500 text-center italic border border-gray-100">
                   "{userTranscript}"
                 </div>
               )}
 
+              {phase === "thinking" && (
+                <div className="flex gap-1.5 items-center text-indigo-400 text-xs">
+                  {[0, 150, 300].map(d => (
+                    <span key={d} className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: `${d}ms` }} />
+                  ))}
+                  <span className="ml-1 text-gray-400">Tiagão pensando...</span>
+                </div>
+              )}
+
               {error && (
-                <div className="w-full bg-red-50 text-red-600 text-xs rounded-xl px-3 py-2 text-center">
+                <div className="w-full bg-red-50 text-red-600 text-xs rounded-xl px-3 py-2 text-center border border-red-100">
                   {error}{" "}
-                  <button onClick={() => setError(null)} className="underline">OK</button>
+                  <button onClick={() => setError(null)} className="underline ml-1">OK</button>
                 </div>
               )}
             </div>
@@ -578,12 +681,9 @@ export function VoiceProfessor() {
                 <button onClick={startListening}
                   disabled={phase === "thinking"}
                   className="w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 text-white transition-all"
-                  style={{
-                    background: "linear-gradient(135deg,#6366f1,#4f46e5)",
-                    boxShadow: "0 4px 16px #6366f140",
-                  }}>
+                  style={{ background: "linear-gradient(135deg,#6366f1,#4f46e5)", boxShadow: "0 4px 16px #6366f140" }}>
                   <Mic className="w-4 h-4" />
-                  {phase === "thinking" ? "Pensando..." : "Falar com a Tiagão"}
+                  {phase === "thinking" ? "Pensando..." : hasSpeechInput ? "Falar com o Tiagão" : "Perguntar ao Tiagão"}
                 </button>
               )}
 
@@ -593,20 +693,27 @@ export function VoiceProfessor() {
                     type="text"
                     value={textInput}
                     onChange={e => setTextInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter") { sendMessage(textInput); setTextInput(""); } }}
-                    placeholder="Ou escreva aqui..."
-                    className="flex-1 text-sm px-3 py-2 rounded-xl border border-gray-200 focus:border-indigo-400 focus:outline-none"
+                    onKeyDown={e => { if (e.key === "Enter" && textInput.trim()) { sendMessage(textInput); setTextInput(""); } }}
+                    placeholder="Ou escreva sua dúvida..."
+                    className={`flex-1 text-sm px-3 py-2 rounded-xl border border-gray-200 focus:border-indigo-400 focus:outline-none ${focusMode ? "text-base py-3" : ""}`}
                   />
                   <button
                     onClick={() => { if (textInput.trim()) { sendMessage(textInput); setTextInput(""); } }}
                     disabled={!textInput.trim()}
-                    className="px-3 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold disabled:opacity-40 transition-colors">
-                    →
+                    className="px-3 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold disabled:opacity-40 transition-colors flex items-center">
+                    <Send className="w-4 h-4" />
                   </button>
                 </div>
               )}
 
-              {!hasSpeechInput && (
+              {focusMode && (
+                <button onClick={() => { setFocusMode(false); }}
+                  className="w-full py-2 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-xs flex items-center justify-center gap-2 transition-colors border border-amber-200">
+                  <Minimize2 className="w-3.5 h-3.5" /> Sair do Modo Foco — {fmtFocusTime(focusSeconds)} focado
+                </button>
+              )}
+
+              {!hasSpeechInput && !focusMode && (
                 <p className="text-xs text-center text-gray-400">
                   Use Chrome ou Edge para o microfone
                 </p>

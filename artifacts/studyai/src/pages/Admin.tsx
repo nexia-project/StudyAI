@@ -229,10 +229,23 @@ export default function AdminPage() {
       if (kbForm.subject) fd.append("subject", kbForm.subject);
       const res = await adminFetch("/api/knowledge/upload-file", { method: "POST", body: fd });
       const data = await res.json();
-      if (res.ok) { setKbMsg({ ok: true, text: "Arquivo processado!" }); setKbFile(null); setKbForm({ title: "", subject: "", contentText: "" }); fetchKbDocs(); }
-      else { setKbMsg({ ok: false, text: data.erro ?? "Erro ao processar." }); }
+      if (res.ok) {
+        const details = [
+          data.pageCount ? `${data.pageCount} páginas` : null,
+          data.wordCount ? `${data.wordCount.toLocaleString("pt-BR")} palavras` : null,
+          data.chunks > 0 ? `${data.chunks} partes indexadas` : "indexado como documento único",
+          data.charCount ? `${data.charCount.toLocaleString("pt-BR")} caracteres lidos` : null,
+        ].filter(Boolean).join(" · ");
+        const preview = data.preview ? `\nTrecho lido: "${data.preview.slice(0, 200)}..."` : "";
+        setKbMsg({ ok: true, text: `${data.message || "Processado com sucesso!"}\n${details}${preview}` });
+        setKbFile(null);
+        setKbForm({ title: "", subject: "", contentText: "" });
+        fetchKbDocs();
+      } else {
+        setKbMsg({ ok: false, text: data.erro ?? "Erro ao processar." });
+      }
     } catch { setKbMsg({ ok: false, text: "Erro de conexão." }); }
-    finally { setKbSaving(false); setTimeout(() => setKbMsg(null), 4000); }
+    finally { setKbSaving(false); setTimeout(() => setKbMsg(null), 12000); }
   }
   async function deleteKbDoc(id: number) {
     if (!confirm("Remover este documento?")) return;
@@ -1067,7 +1080,13 @@ export default function AdminPage() {
                   </form>
                 </div>
               </div>
-              {kbMsg && <div className={`px-4 py-3 rounded-xl text-sm font-semibold ${kbMsg.ok ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "bg-red-500/10 text-red-300 border border-red-500/20"}`}>{kbMsg.text}</div>}
+              {kbMsg && (
+                <div className={`px-4 py-3 rounded-xl text-sm ${kbMsg.ok ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20" : "bg-red-500/10 text-red-300 border border-red-500/20"}`}>
+                  {kbMsg.text.split("\n").map((line, i) => (
+                    <p key={i} className={i === 0 ? "font-semibold" : "mt-1 text-xs opacity-80 break-words"}>{line}</p>
+                  ))}
+                </div>
+              )}
               <div>
                 <div className="flex items-center gap-3 mb-4">
                   <h3 className="font-bold">Documentos ({kbDocs.length})</h3>

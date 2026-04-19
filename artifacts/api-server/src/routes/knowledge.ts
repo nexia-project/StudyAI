@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { createRequire } from "module";
 import OpenAI from "openai";
 import multer from "multer";
 import { db } from "@workspace/db";
@@ -6,6 +7,9 @@ import { usersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { validateFileUpload } from "../middlewares/security";
 import { enrichTopicFromWikipedia } from "./wikipedia";
+
+// createRequire allows safe CJS import from ESM — avoids pdf-parse@1.1.1 module-level ENOENT bug
+const _require = createRequire(import.meta.url);
 
 const router: IRouter = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -114,8 +118,12 @@ async function requireAdmin(req: Request, res: Response): Promise<boolean> {
     res.status(401).json({ erro: "Não autenticado" });
     return false;
   }
-  const [user] = await db.select({ role: usersTable.role }).from(usersTable).where(eq(usersTable.id, req.userId)).limit(1);
-  if (user?.role !== "admin") {
+  // Check by id OR clerk_id to handle Clerk ID vs internal ID mismatch
+  const result = await db.execute(sql`
+    SELECT role FROM users WHERE id = ${req.userId} OR clerk_id = ${req.userId} LIMIT 1
+  `);
+  const row = (result.rows as any[])[0];
+  if (row?.role !== "admin") {
     res.status(403).json({ erro: "Apenas administradores podem gerenciar a base de conhecimento" });
     return false;
   }
@@ -259,7 +267,22 @@ router.post("/knowledge/upload-text", async (req: Request, res: Response) => {
   }
 });
 
-// ─── Upload doc (PDF/TXT file) ─────────────────────────────────────────────────
+/** Parse PDF buffer safely — avoids pdf-parse@1.1.1 module-level ENOENT bug.
+ *  Uses createRequire to load the internal CJS parser directly, skipping the
+ *  wrapper index.js that reads a test file at module load time. */
+async function parsePdfBuffer(buffer: Buffer): Promise<{ text: string; numpages: number }> {
+  try {
+    // _require('pdf-parse/lib/pdf-parse') loads the actual parser function
+    // without triggering the module-level readFileSync('./test/data/05-versions-space.pdf')
+    const pdfParser = _require("pdf-parse/lib/pdf-parse");
+    return await pdfParser(buffer);
+  } catch (err: any) {
+    console.warn("[knowledge] parsePdfBuffer error:", err?.message);
+    throw err;
+  }
+}
+
+// ─── Upload doc (PDF/TXT/DOCX file) ───────────────────────────────────────────
 router.post("/knowledge/upload-file", upload.single("file"), validateFileUpload, async (req: Request, res: Response) => {
   if (!await requireAdmin(req, res)) return;
   if (!req.file) {
@@ -270,14 +293,23 @@ router.post("/knowledge/upload-file", upload.single("file"), validateFileUpload,
   try {
     let contentText = "";
     let pageCount: number | undefined;
+    const mime = req.file.mimetype;
 
-    if (req.file.mimetype === "application/pdf") {
-      const pdfParse = (await import("pdf-parse")).default;
-      const parsed = await pdfParse(req.file.buffer);
+    if (mime === "application/pdf") {
+      const parsed = await parsePdfBuffer(req.file.buffer);
       contentText = parsed.text;
-      pageCount = parsed.numpages;
+      pageCount = parsed.numpages || undefined;
+    } else if (mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+      const mammoth = await import("mammoth");
+      const result = await mammoth.extractRawText({ buffer: req.file.buffer });
+      contentText = result.value;
     } else {
       contentText = req.file.buffer.toString("utf8");
+    }
+
+    if (!contentText || contentText.trim().length < 20) {
+      res.status(422).json({ erro: "Não foi possível extrair texto legível do arquivo. Verifique se o PDF tem texto selecionável (não é imagem escaneada)." });
+      return;
     }
 
     const docTitle = title || req.file.originalname.replace(/\.[^.]+$/, "");
@@ -297,10 +329,18 @@ router.post("/knowledge/upload-file", upload.single("file"), validateFileUpload,
       tags: tagsArr,
     });
 
+    const charCount = contentText.trim().length;
+    const wordCount = contentText.trim().split(/\s+/).length;
+    const preview = contentText.trim().slice(0, 300).replace(/\s+/g, " ");
+
     res.json({
       ok: true,
-      message: `Arquivo processado: ${pageCount ? pageCount + " páginas, " : ""}${result.chunks > 0 ? result.chunks + " partes indexadas" : "indexado como documento único"}`,
+      message: `✅ Processado com sucesso: ${pageCount ? pageCount + " páginas · " : ""}${wordCount.toLocaleString("pt-BR")} palavras · ${result.chunks > 0 ? result.chunks + " partes indexadas" : "indexado como documento único"}`,
       ...result,
+      charCount,
+      wordCount,
+      preview,
+      pageCount: pageCount ?? null,
     });
   } catch (err) {
     req.log.error({ err }, "Error uploading knowledge file");

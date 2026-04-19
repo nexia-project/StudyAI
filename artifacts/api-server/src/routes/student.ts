@@ -123,6 +123,20 @@ router.post("/student/caderno", async (req: Request, res: Response) => {
   }
 });
 
+router.put("/student/caderno/:id", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  const { title, content, materia } = req.body as { title?: string; content?: string; materia?: string };
+  try {
+    const [note] = await db.update(cadernoNotesTable)
+      .set({ title, content, materia, updatedAt: new Date() })
+      .where(and(eq(cadernoNotesTable.id, req.params.id), eq(cadernoNotesTable.userId, req.userId!)))
+      .returning();
+    res.json({ ok: true, note });
+  } catch {
+    res.status(500).json({ error: "Erro ao atualizar nota" });
+  }
+});
+
 router.delete("/student/caderno/:id", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
   try {

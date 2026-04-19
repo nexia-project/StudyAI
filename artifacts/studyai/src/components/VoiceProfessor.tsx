@@ -137,6 +137,7 @@ export function VoiceProfessor() {
   const [lastAssistantMsg, setLastAssistantMsg] = useState("");
   const [reaction, setReaction] = useState<"up" | "down" | null>(null);
   const [focusMode, setFocusMode] = useState(false);
+  const [actionNotif, setActionNotif] = useState<{ text: string; path?: string } | null>(null);
   const [focusSeconds, setFocusSeconds] = useState(0);
 
   const mutedRef = useRef(false);
@@ -195,6 +196,44 @@ export function VoiceProfessor() {
     setSubtitle("");
   }, []);
 
+  // ── Handle agent actions + notifications ───────────────────────────────────
+  const handleAgentActions = useCallback((
+    action: Record<string, any> | null | undefined,
+    notifications: Record<string, any>[]
+  ) => {
+    if (!action) {
+      // Legacy compat
+      return;
+    }
+    if (action.type === "ir") {
+      setTimeout(() => navigate(action.param), 600);
+    } else if (action.type === "criar_plano") {
+      triggerProfessorAction("criar_plano", action.param);
+    } else if (action.type === "navegar") {
+      setTimeout(() => navigate(action.path ?? "/app"), 700);
+    } else if (action.type === "abrir_aula_ia") {
+      localStorage.setItem("tiagao_aula_topico", action.topico ?? "");
+      localStorage.setItem("tiagao_aula_estilo", action.estilo ?? "ENEM");
+      setTimeout(() => navigate("/aula-ia"), 700);
+    } else if (action.type === "flashcards_criados") {
+      setActionNotif({
+        text: `✅ ${action.quantidade} flashcards criados sobre "${action.topico}"`,
+        path: "/app",
+      });
+      setTimeout(() => setActionNotif(null), 6000);
+    }
+    // Process other notifications (e.g., flashcards_criados in secondary actions)
+    for (const notif of notifications) {
+      if (notif.type === "flashcards_criados") {
+        setActionNotif({
+          text: `✅ ${notif.quantidade} flashcards criados sobre "${notif.topico}"`,
+          path: "/app",
+        });
+        setTimeout(() => setActionNotif(null), 6000);
+      }
+    }
+  }, [navigate]);
+
   // ── Send message to Tiagão ─────────────────────────────────────────────────
   const sendMessage = useCallback(async (userText: string) => {
     if (!userText.trim()) return;
@@ -216,13 +255,12 @@ export function VoiceProfessor() {
         signal: abortRef.current.signal,
       });
       if (!res.ok) throw new Error("Erro");
-      const { text, action } = await res.json();
+      const { text, action, notifications } = await res.json();
       historyRef.current.push({ role: "assistant", content: text || "" });
       lastProactiveRef.current = Date.now();
       setLastAssistantMsg(text || "");
       setReaction(null);
-      if (action?.type === "ir") setTimeout(() => navigate(action.param), 600);
-      if (action?.type === "criar_plano") triggerProfessorAction("criar_plano", action.param);
+      handleAgentActions(action, notifications ?? []);
       await speak(text || "");
       setUserTranscript("");
     } catch (e: any) {
@@ -248,14 +286,13 @@ export function VoiceProfessor() {
         credentials: "include",
       });
       if (!res.ok) return;
-      const { message, action } = await res.json();
+      const { message, action, notifications } = await res.json();
       if (!message) return;
       historyRef.current.push({ role: "assistant", content: message });
       lastProactiveRef.current = Date.now();
       setLastAssistantMsg(message);
       setReaction(null);
-      if (action?.type === "ir") setTimeout(() => navigate(action.param), 600);
-      if (action?.type === "criar_plano") triggerProfessorAction("criar_plano", action.param);
+      handleAgentActions(action, notifications ?? []);
       await speak(message);
     } catch { /* ignore */ }
   }, [phase, speak, navigate]);
@@ -494,6 +531,31 @@ export function VoiceProfessor() {
               >
                 <Square className="w-3.5 h-3.5 fill-current" />
               </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Action notification toast */}
+      <AnimatePresence>
+        {actionNotif && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ type: "spring", damping: 24, stiffness: 300 }}
+            className="fixed bottom-28 md:bottom-24 left-4 right-4 sm:left-auto sm:right-6 sm:w-80 z-50"
+          >
+            <div className="bg-emerald-600 text-white text-sm font-semibold px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3">
+              <span className="flex-1">{actionNotif.text}</span>
+              {actionNotif.path && (
+                <button
+                  onClick={() => { navigate(actionNotif.path!); setActionNotif(null); }}
+                  className="text-xs bg-white/20 hover:bg-white/30 px-2.5 py-1 rounded-lg whitespace-nowrap transition-colors"
+                >
+                  Ver
+                </button>
+              )}
             </div>
           </motion.div>
         )}

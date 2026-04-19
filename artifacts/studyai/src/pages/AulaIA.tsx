@@ -123,8 +123,16 @@ export default function AulaIA() {
   const [, navigate] = useLocation();
 
   // ── lesson state ──
-  const [topico, setTopico] = useState("");
-  const [estilo, setEstilo] = useState<typeof ESTILOS[number]>("ENEM");
+  const [topico, setTopico] = useState(() => {
+    const t = localStorage.getItem("tiagao_aula_topico") ?? "";
+    if (t) localStorage.removeItem("tiagao_aula_topico");
+    return t;
+  });
+  const [estilo, setEstilo] = useState<typeof ESTILOS[number]>(() => {
+    const e = localStorage.getItem("tiagao_aula_estilo") as typeof ESTILOS[number] | null;
+    if (e) { localStorage.removeItem("tiagao_aula_estilo"); return e; }
+    return "ENEM";
+  });
   const [aula, setAula] = useState<Aula | null>(null);
   const [gerando, setGerando] = useState(false);
   const [erroGerar, setErroGerar] = useState("");

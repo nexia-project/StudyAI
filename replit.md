@@ -33,13 +33,19 @@ StudyAI is built as a `pnpm` monorepo using TypeScript, Node.js 24, and Express 
 
 **Key Features and Modules:**
 
-- **Professor Tiagão**: A universal AI assistant adapting to user roles (student, teacher, researcher, etc.) for personalized interaction.
-- **Study Modules**: Includes features for study plans, simulated exams, essay correction, flashcards, and a performance heat map.
-- **Mind Map (Mapa Mental)**: Visualizes study progress, allowing users to upload documents and generate interactive mind maps with clickable nodes linked to study history.
+- **Professor Tiagão (Agente IA)**: Universal AI assistant with persistent memory (`tiagao_memory` table), OpenAI Function Calling (tools: `navegar`, `abrir_aula_ia`, `criar_flashcards`, `iniciar_simulado`, `criar_cronograma`, `salvar_memoria`), and real-time action execution. Adapts to user roles (student, teacher, researcher, etc.) and learns from each conversation.
+- **Aula com IA (Tiagão na Lousa)**: Interactive animated whiteboard lesson page at `/aula-ia`. Tiagão can open lessons on any topic via function calling. The AulaIA page reads topic/estilo from localStorage when navigated via the agent.
+- **Caderno Digital**: Full-featured digital notebook at `/caderno`. Create/edit/delete notes with subject tags, auto-save, AI processing (resumo, key points, flashcards, questões), and search/filter by subject.
+- **Study Modules**: Includes study plans, simulated exams (ENEM), essay correction with 5-competency scoring, flashcards (SM-2 algorithm), Pomodoro timer, and performance heat map.
+- **Correção de Redação com Histórico**: Redação corrections saved to `redacoes` table. History tab shows past corrections with visual competency bars and scores.
+- **Mind Map (Mapa Mental)**: Visualizes study progress, allows document uploads and generates interactive mind maps.
 - **Admin Panel**: Comprehensive interface for managing users, finance, AI costs, content, database, integrations, and system settings.
 - **Teacher Module**: Tools for managing classes, students, tasks, and analyzing student performance.
 - **Institution Module**: Functionality for institutional oversight, managing teachers, and tracking aggregated data.
 - **Government Module**: Provides aggregate educational metrics, weekly growth analysis, and tools for promoting user roles.
+
+**DB Tables (as of April 2026):**
+26 core tables + `tiagao_memory` + `tiagao_conversations` added for agent memory system.
 
 ### External Dependencies
 

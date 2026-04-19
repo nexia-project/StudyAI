@@ -9,6 +9,206 @@ import {
 } from "@workspace/db/schema";
 import { eq, desc, sql, inArray } from "drizzle-orm";
 
+// ─── Memory helpers ───────────────────────────────────────────────────────────
+async function loadUserMemories(userId: string): Promise<string> {
+  try {
+    const rows = await db.execute<{ memoria: string; categoria: string; importancia: number }>(
+      sql`SELECT memoria, categoria, importancia FROM tiagao_memory
+          WHERE user_id = ${userId}
+          ORDER BY importancia DESC, atualizado_at DESC
+          LIMIT 15`
+    );
+    if (!rows.rows?.length) return "";
+    const lines = rows.rows.map((r: any) => `[${r.categoria}|imp:${r.importancia}] ${r.memoria}`);
+    return `\n\n🧠 MEMÓRIA PERSISTENTE DO TIAGÃO (sobre este usuário — USE SEMPRE para personalizar):\n${lines.join("\n")}`;
+  } catch { return ""; }
+}
+
+async function saveUserMemory(userId: string, memoria: string, categoria: string, importancia: number) {
+  try {
+    await db.execute(sql`
+      INSERT INTO tiagao_memory (user_id, memoria, categoria, importancia)
+      VALUES (${userId}, ${memoria}, ${categoria}, ${importancia})
+      ON CONFLICT DO NOTHING
+    `);
+  } catch { /* non-critical */ }
+}
+
+// ─── Tiagão Tools (Function Calling) ─────────────────────────────────────────
+const TIAGAO_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
+  {
+    type: "function",
+    function: {
+      name: "salvar_memoria",
+      description: "Salva uma observação importante sobre o usuário na memória persistente. Use SEMPRE que aprender algo relevante: objetivos, dificuldades, matérias favoritas, estilo de aprendizado, preferências. Chamada silenciosa — o usuário não vê.",
+      parameters: {
+        type: "object",
+        properties: {
+          memoria: { type: "string", description: "O que aprendeu sobre o usuário (ex: 'Quer passar em Medicina na FUVEST 2025', 'Tem muita dificuldade em logaritmos')" },
+          categoria: { type: "string", enum: ["objetivo", "dificuldade", "topico", "personalidade", "progresso", "geral"] },
+          importancia: { type: "number", description: "1 (curiosidade) a 5 (essencial para personalização)" },
+        },
+        required: ["memoria", "categoria", "importancia"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "navegar",
+      description: "Navega para uma seção do StudyAI. Use quando o usuário pede para abrir, ir ou acessar uma parte do sistema.",
+      parameters: {
+        type: "object",
+        properties: {
+          destino: {
+            type: "string",
+            enum: ["home", "simulado", "flashcards", "redacao", "cronograma", "aula-ia", "dashboard", "sala-estudos", "ranking"],
+            description: "Destino da navegação",
+          },
+        },
+        required: ["destino"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "abrir_aula_ia",
+      description: "Abre a Aula com IA — Tiagão na Lousa — sobre um tópico específico. Use quando o usuário quer uma explicação mais completa ou pede 'me ensina', 'explica mais', 'quero uma aula sobre'.",
+      parameters: {
+        type: "object",
+        properties: {
+          topico: { type: "string", description: "Tópico da aula (ex: Funções do 1º Grau, Segunda Guerra Mundial)" },
+          estilo: { type: "string", enum: ["ENEM", "Vestibular", "Concurso", "Simples"] },
+        },
+        required: ["topico"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "criar_flashcards",
+      description: "Cria e salva um deck de flashcards no sistema. Use quando o usuário pede para criar, gerar ou fazer flashcards sobre um assunto.",
+      parameters: {
+        type: "object",
+        properties: {
+          topico: { type: "string", description: "Assunto dos flashcards" },
+          materia: { type: "string", description: "Matéria (ex: Matemática, Biologia, História)" },
+          quantidade: { type: "number", description: "Número de flashcards (5 a 12)" },
+        },
+        required: ["topico", "materia", "quantidade"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "iniciar_simulado",
+      description: "Abre o simulado ENEM. Use quando o usuário quer fazer um simulado, testar conhecimentos ou praticar questões.",
+      parameters: {
+        type: "object",
+        properties: {
+          materia: { type: "string", description: "Matéria específica (opcional)" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "criar_cronograma",
+      description: "Abre a tela de criação de cronograma de estudos. Use quando o usuário quer organizar os estudos ou criar um plano.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+];
+
+// ─── Execute tool call ─────────────────────────────────────────────────────────
+async function executeTiagaoTool(
+  toolName: string,
+  args: Record<string, any>,
+  userId: string | undefined,
+  _userProfile: UserProfile
+): Promise<{ result: string; action?: Record<string, any> }> {
+  const DEST_MAP: Record<string, string> = {
+    "home": "/app", "simulado": "/simulado-enem", "flashcards": "/app",
+    "redacao": "/redacao", "cronograma": "/cronograma", "aula-ia": "/aula-ia",
+    "dashboard": "/dashboard", "sala-estudos": "/sala-estudos", "ranking": "/ranking",
+  };
+
+  switch (toolName) {
+    case "salvar_memoria":
+      if (userId) await saveUserMemory(userId, args.memoria, args.categoria, args.importancia ?? 3);
+      return { result: "Memória salva com sucesso." };
+
+    case "navegar":
+      return {
+        result: `Navegando para ${args.destino}`,
+        action: { type: "navegar", path: DEST_MAP[args.destino] ?? "/app", label: args.destino },
+      };
+
+    case "abrir_aula_ia":
+      return {
+        result: `Abrindo aula sobre "${args.topico}"`,
+        action: { type: "abrir_aula_ia", topico: args.topico, estilo: args.estilo ?? "ENEM" },
+      };
+
+    case "iniciar_simulado":
+      return {
+        result: "Simulado aberto",
+        action: { type: "navegar", path: "/simulado-enem", label: "simulado" },
+      };
+
+    case "criar_cronograma":
+      return {
+        result: "Cronograma aberto",
+        action: { type: "navegar", path: "/cronograma", label: "cronograma" },
+      };
+
+    case "criar_flashcards": {
+      if (!userId) return { result: "Usuário não autenticado para criar flashcards." };
+      try {
+        // Generate flashcard Q&A pairs via GPT
+        const gen = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [{
+            role: "system",
+            content: `Crie ${args.quantidade ?? 8} flashcards em JSON sobre "${args.topico}" para ${args.materia ?? "estudo geral"}.
+Formato: [{"pergunta":"...","resposta":"..."}]
+Perguntas claras, respostas curtas (máx 2 linhas). Retorne SOMENTE o array JSON.`,
+          }],
+          response_format: { type: "json_object" },
+          max_tokens: 1200,
+          temperature: 0.7,
+        });
+        const raw = JSON.parse(gen.choices[0].message.content ?? "{}");
+        const cards: { pergunta: string; resposta: string }[] = raw.flashcards ?? raw.cards ?? raw.perguntas ?? Object.values(raw)[0] ?? [];
+
+        if (cards.length > 0) {
+            for (const c of cards.slice(0, 12)) {
+            await db.execute(sql`
+              INSERT INTO flashcard_reviews (user_id, materia, pergunta, resposta)
+              VALUES (${userId}, ${args.materia ?? "Geral"}, ${c.pergunta}, ${c.resposta})
+            `);
+          }
+          return {
+            result: `${cards.length} flashcards criados sobre "${args.topico}"`,
+            action: { type: "flashcards_criados", quantidade: cards.length, topico: args.topico, materia: args.materia },
+          };
+        }
+        return { result: "Não consegui gerar os flashcards." };
+      } catch (err) {
+        console.error("[tool:criar_flashcards]", err);
+        return { result: "Erro ao criar flashcards." };
+      }
+    }
+
+    default:
+      return { result: `Tool ${toolName} executado.` };
+  }
+}
+
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 
 const router: IRouter = Router();
@@ -427,7 +627,7 @@ Você fala como um professor real — espontâneo, caloroso, com personalidade:
 <ir:/admin> — abrir Painel Admin
 <criar_plano:MATERIA> — criar plano de estudos para a matéria`;
 
-// ─── Voice Chat ───────────────────────────────────────────────────────────────
+// ─── Voice Chat — Tiagão Agente com Memória + Function Calling ─────────────────
 router.post("/voice-chat", async (req, res) => {
   try {
     const { messages, context } = req.body as {
@@ -440,14 +640,16 @@ router.post("/voice-chat", async (req, res) => {
       return;
     }
 
-    // Fetch user profile (role-aware) + student data in parallel
+    // Fetch user profile + student data + memory in parallel
     let dbData: Awaited<ReturnType<typeof fetchStudentData>> | null = null;
     let userProfile: UserProfile = { role: "student", name: "Usuário" };
+    let memoryContext = "";
     if (req.userId) {
       try {
-        [dbData, userProfile] = await Promise.all([
+        [dbData, userProfile, memoryContext] = await Promise.all([
           fetchStudentData(req.userId!).catch(() => null),
           fetchUserProfile(req.userId!).catch(() => ({ role: "student" as UserRole, name: "Usuário" })),
+          loadUserMemories(req.userId!),
         ]);
       } catch { /* não crítico */ }
     }
@@ -460,7 +662,7 @@ router.post("/voice-chat", async (req, res) => {
         content: String(m.content).slice(0, 2000),
       }));
 
-    // Search knowledge base + BNCC em paralelo (topK=6 para perfis avançados)
+    // Knowledge base + BNCC em paralelo
     const lastUserMsg = cleanMessages.filter(m => m.role === "user").slice(-1)[0]?.content ?? "";
     const isAdvanced = ["teacher", "institution_admin", "government", "admin", "researcher"].includes(userProfile.role);
     const [kbContext, bnccContext] = await Promise.all([
@@ -474,25 +676,83 @@ router.post("/voice-chat", async (req, res) => {
       })(),
     ]);
 
-    // Monta contexto: prompt base + persona do perfil + dados reais + KB + BNCC
     const rolePersona = buildRolePersona(userProfile);
     const studentCtx = userProfile.role === "student" ? buildRichContext(context, dbData) : "";
-    const systemContent = BASE_PROMPT + rolePersona + studentCtx + kbContext + bnccContext;
+    const agentInstructions = `
 
-    const completion = await openai.chat.completions.create({
+INSTRUÇÕES DE AGENTE:
+- Você TEM ferramentas reais que executam ações no sistema — USE-AS de verdade!
+- salvar_memoria: chame SEMPRE que o usuário revelar objetivos, dificuldades, matérias preferidas ou qualquer info pessoal relevante. Silencioso.
+- navegar: chame quando usuário pede pra ir a algum lugar do sistema.
+- abrir_aula_ia: chame quando usuário quer uma explicação completa ou aula sobre algo.
+- criar_flashcards: chame quando usuário pede flashcards. Gera E SALVA automaticamente.
+- iniciar_simulado: chame quando usuário quer fazer um simulado.
+- criar_cronograma: chame quando usuário quer organizar os estudos.
+- Após chamar tools, dê uma resposta curta (máx 3 frases) confirmando o que fez, em PT-BR coloquial. Nunca markdown, nunca lista.`;
+    const systemContent = BASE_PROMPT + rolePersona + studentCtx + kbContext + bnccContext + memoryContext + agentInstructions;
+
+    // ── Primeira chamada com tools ───────────────────────────────────────────
+    const apiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+      { role: "system", content: systemContent },
+      ...cleanMessages,
+    ];
+
+    const firstCall = await openai.chat.completions.create({
       model: "gpt-4o",
-      messages: [{ role: "system", content: systemContent }, ...cleanMessages],
-      max_tokens: 280,
-      temperature: 1.0,
+      messages: apiMessages,
+      tools: TIAGAO_TOOLS,
+      tool_choice: "auto",
+      max_tokens: 500,
+      temperature: 0.9,
+      parallel_tool_calls: true,
     });
 
-    const raw = completion.choices[0]?.message?.content?.trim() || "";
-    const actionMatch = raw.match(/<(ir|criar_plano):([^>]+)>/);
-    const action = actionMatch ? { type: actionMatch[1], param: actionMatch[2] } : null;
-    const text = raw.replace(/<(ir|criar_plano):[^>]+>/g, "").trim();
+    const firstMsg = firstCall.choices[0].message;
+    const frontendActions: Record<string, any>[] = [];
 
-    res.json({ text, action });
+    // ── Executar tool calls ──────────────────────────────────────────────────
+    if (firstMsg.tool_calls && firstMsg.tool_calls.length > 0) {
+      const toolResults: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+        { role: "assistant", ...firstMsg } as any,
+      ];
+
+      for (const toolCall of firstMsg.tool_calls) {
+        let args: Record<string, any> = {};
+        try { args = JSON.parse(toolCall.function.arguments); } catch { /* ignore */ }
+        const { result, action } = await executeTiagaoTool(
+          toolCall.function.name, args, req.userId, userProfile
+        );
+        if (action) frontendActions.push(action);
+        toolResults.push({
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: result,
+        });
+      }
+
+      // Segunda chamada: resposta final com contexto dos resultados
+      const finalCall = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [...apiMessages, ...toolResults],
+        max_tokens: 280,
+        temperature: 0.9,
+      });
+      const text = finalCall.choices[0]?.message?.content?.trim() || "";
+      const primaryAction = frontendActions.find(a => a.type !== "flashcards_criados") ??
+                            frontendActions.find(a => a.type === "flashcards_criados") ??
+                            null;
+      const notifications = frontendActions.filter(a => a.type === "flashcards_criados");
+      res.json({ text, action: primaryAction, notifications });
+    } else {
+      // Sem tool calls — resposta direta
+      const raw = firstMsg.content?.trim() || "";
+      const actionMatch = raw.match(/<(ir|criar_plano):([^>]+)>/);
+      const legacyAction = actionMatch ? { type: actionMatch[1], param: actionMatch[2] } : null;
+      const text = raw.replace(/<(ir|criar_plano):[^>]+>/g, "").trim();
+      res.json({ text, action: legacyAction, notifications: [] });
+    }
   } catch (err) {
+    console.error("[voice-chat]", err);
     res.status(500).json({ erro: "Erro interno" });
   }
 });

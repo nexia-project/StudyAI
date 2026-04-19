@@ -1,5 +1,7 @@
 import { Router } from "express";
 import OpenAI from "openai";
+import { db } from "@workspace/db";
+import { redacoesTable } from "@workspace/db/schema";
 import { checkFreeUsage } from "../lib/freeUsage";
 
 const router = Router();
@@ -57,6 +59,30 @@ router.post("/api/redacao", checkFreeUsage, async (req, res) => {
 
     const raw = completion.choices[0].message.content ?? "{}";
     const result = JSON.parse(raw);
+
+    // Save to DB if user is authenticated
+    if ((req as any).userId) {
+      const userId = (req as any).userId as string;
+      const comps: number[] = (result.competencias ?? []).map((c: any) => c.nota ?? 0);
+      try {
+        await db.insert(redacoesTable).values({
+          userId,
+          tema: tema ?? "Sem tema",
+          tipo: "ENEM",
+          texto,
+          correction: result,
+          scoreTotal: result.notaTotal ?? 0,
+          comp1: comps[0] ?? 0,
+          comp2: comps[1] ?? 0,
+          comp3: comps[2] ?? 0,
+          comp4: comps[3] ?? 0,
+          comp5: comps[4] ?? 0,
+        });
+      } catch (dbErr) {
+        console.warn("Redacao: failed to save to DB:", dbErr);
+      }
+    }
+
     return res.json(result);
   } catch (err) {
     console.error("Redacao error:", err);

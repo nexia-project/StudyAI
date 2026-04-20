@@ -8,7 +8,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 async function gerarPDF() {
   const pdfDoc = await PDFDocument.create();
 
-  for (let i = 1; i <= 9; i++) {
+  for (let i = 1; i <= 17; i++) {
     const imgPath = join(__dirname, 'slides-screenshots', `slide${i}.jpg`);
     const imgBytes = await readFile(imgPath);
     const img = await pdfDoc.embedJpg(imgBytes);

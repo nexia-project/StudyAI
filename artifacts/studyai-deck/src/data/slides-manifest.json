@@ -24,8 +24,24 @@
     "speakerNotes": ""
   },
   {
-    "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567804",
+    "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567810",
     "position": 4,
+    "filepath": "src/pages/slides/Slide10_IAImagem.tsx",
+    "title": "IAs de Imagem Integradas",
+    "description": "Gemini Imagen, DALL-E 3 e Stable Diffusion para geracao visual educacional",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567811",
+    "position": 5,
+    "filepath": "src/pages/slides/Slide11_Kumon.tsx",
+    "title": "Progressao Estilo Kumon",
+    "description": "Metodo de aprendizado com micro-series, dominio exigido e revisao espacada SM-2",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567804",
+    "position": 6,
     "filepath": "src/pages/slides/Slide4_Modulos.tsx",
     "title": "Modulos de Estudo",
     "description": "Seis modulos: plano de estudos, simulado adaptativo, flashcards SM-2, redacao, pomodoro e mapa mental",
@@ -33,7 +49,7 @@
   },
   {
     "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567805",
-    "position": 5,
+    "position": 7,
     "filepath": "src/pages/slides/Slide5_AulaIA.tsx",
     "title": "Aula com o Professor",
     "description": "Lousa interativa sincronizada com naracao de voz, gerada por Claude e ilustrada por Gemini",
@@ -41,31 +57,79 @@
   },
   {
     "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567806",
-    "position": 6,
+    "position": 8,
     "filepath": "src/pages/slides/Slide6_Caderno.tsx",
     "title": "Caderno Digital com RAG",
     "description": "Notebook inteligente com upload de documentos, busca semantica por embeddings e ferramentas de IA",
     "speakerNotes": ""
   },
   {
+    "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567812",
+    "position": 9,
+    "filepath": "src/pages/slides/Slide12_DashboardAluno.tsx",
+    "title": "Dashboard do Aluno",
+    "description": "Progresso por materia, heatmap de estudos, XP, conquistas e proximas revisoes",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567813",
+    "position": 10,
+    "filepath": "src/pages/slides/Slide13_DashboardProfessor.tsx",
+    "title": "Dashboard do Professor",
+    "description": "Visao de turma, desempenho individual, alertas de risco e relatorios automaticos",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567814",
+    "position": 11,
+    "filepath": "src/pages/slides/Slide14_AdminPanel.tsx",
+    "title": "Painel Admin Completo",
+    "description": "Gestao de usuarios, controle de acesso, configuracao de conteudo, monitoramento e compliance",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567815",
+    "position": 12,
+    "filepath": "src/pages/slides/Slide15_Analytics.tsx",
+    "title": "Analytics e Relatorios Gerais",
+    "description": "Metricas de crescimento, engajamento por modulo, NPS e graficos de usuarios",
+    "speakerNotes": ""
+  },
+  {
     "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567807",
-    "position": 7,
+    "position": 13,
     "filepath": "src/pages/slides/Slide7_StackIA.tsx",
     "title": "Stack de Inteligencia Artificial",
     "description": "Seis modelos de IA: DeepSeek, ElevenLabs, Claude, Gemini, Whisper e OpenAI Embeddings",
     "speakerNotes": ""
   },
   {
+    "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567816",
+    "position": 14,
+    "filepath": "src/pages/slides/Slide16_Negocio.tsx",
+    "title": "Modelo de Negocio",
+    "description": "Tres planos: Gratuito, Pro R$39/mes e B2B para escolas sob consulta",
+    "speakerNotes": ""
+  },
+  {
     "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567808",
-    "position": 8,
+    "position": 15,
     "filepath": "src/pages/slides/Slide8_ParaQuem.tsx",
     "title": "Para Quem",
     "description": "Quatro perfis de usuarios: alunos, professores, instituicoes e governo",
     "speakerNotes": ""
   },
   {
+    "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567817",
+    "position": 16,
+    "filepath": "src/pages/slides/Slide17_Roadmap.tsx",
+    "title": "Roadmap 2026-2027",
+    "description": "Quatro fases: MVP, B2B e Escolas, Governo e Parceiros, Expansao LATAM",
+    "speakerNotes": ""
+  },
+  {
     "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567809",
-    "position": 9,
+    "position": 17,
     "filepath": "src/pages/slides/Slide9_Encerramento.tsx",
     "title": "Encerramento",
     "description": "Visao da plataforma e chamada para study.ia.br",

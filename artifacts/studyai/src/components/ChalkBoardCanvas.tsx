@@ -1,14 +1,14 @@
 /**
- * ChalkBoardCanvas — lousa em canvas real
+ * WhiteBoardCanvas — lousa clara estilo Bible Project
  *
- * Professor escreve letra por letra com:
+ * Marcador desenha letra por letra com:
  * - Fonte caligráfica (Caveat)
- * - Cursor de caneta animado que precede o texto
- * - Efeito de marcador (múltiplas camadas suaves)
- * - Caixas/fundo para destaque/fórmula/exemplo
- * - Setas desenhadas no canvas
+ * - Fundo creme/branco com linhas sutis
+ * - Cursor de marcador animado
+ * - Caixas coloridas para destaque/fórmula/exemplo
+ * - Setas desenhadas
  * - Sublinhado animado em títulos
- * - Auto-scroll quando o conteúdo ultrapassa a área visível
+ * - Auto-scroll suave
  */
 
 import { useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
@@ -35,7 +35,7 @@ interface Props {
   onAllDone?: () => void;
 }
 
-// ─── Estilo por tipo ────────────────────────────────────────────────────────
+// ─── Estilo por tipo — cores de marcador para lousa clara ───────────────────
 interface ElStyle {
   fontSize: number;
   fontWeight: string;
@@ -49,16 +49,17 @@ interface ElStyle {
   hasUnderline?: boolean;
   hasArrow?: boolean;
   hasBorder?: string;
+  underlineColor?: string;
 }
 
 const STYLES: Record<BoardElement["tipo"], ElStyle> = {
-  titulo:    { fontSize: 30, fontWeight: "700", color: "#1e1b4b", lineHeight: 42, msPerChar: 55, pauseAfter: 650, hasUnderline: true },
-  formula:   { fontSize: 25, fontWeight: "700", color: "#7c3aed", lineHeight: 42, msPerChar: 75, pauseAfter: 900, bgColor: "#fef9c3", padding: 12, hasBorder: "#fde047" },
-  texto:     { fontSize: 21, fontWeight: "400", color: "#374151", lineHeight: 32, msPerChar: 25, pauseAfter: 350 },
-  destaque:  { fontSize: 21, fontWeight: "700", color: "#166534", lineHeight: 32, msPerChar: 38, pauseAfter: 480, bgColor: "#bbf7d0", textColor: "#166534", padding: 10 },
-  seta:      { fontSize: 21, fontWeight: "400", color: "#4338ca", lineHeight: 32, msPerChar: 26, pauseAfter: 320, hasArrow: true },
-  separador: { fontSize: 0,  fontWeight: "400", color: "#e2e8f0", lineHeight: 22, msPerChar: 0,  pauseAfter: 160 },
-  exemplo:   { fontSize: 20, fontWeight: "400", color: "#1e40af", lineHeight: 32, msPerChar: 30, pauseAfter: 520, bgColor: "#dbeafe", padding: 12, hasBorder: "#93c5fd" },
+  titulo:    { fontSize: 30, fontWeight: "700", color: "#1e1b4b", lineHeight: 44, msPerChar: 55, pauseAfter: 650, hasUnderline: true, underlineColor: "#F59E0B" },
+  formula:   { fontSize: 25, fontWeight: "700", color: "#6D28D9", lineHeight: 42, msPerChar: 75, pauseAfter: 900, bgColor: "#FEF9C3", padding: 12, hasBorder: "#FDE047" },
+  texto:     { fontSize: 21, fontWeight: "400", color: "#374151", lineHeight: 34, msPerChar: 25, pauseAfter: 350 },
+  destaque:  { fontSize: 21, fontWeight: "700", color: "#065F46", lineHeight: 34, msPerChar: 38, pauseAfter: 480, bgColor: "#D1FAE5", textColor: "#065F46", padding: 10, hasBorder: "#6EE7B7" },
+  seta:      { fontSize: 21, fontWeight: "400", color: "#4338CA", lineHeight: 34, msPerChar: 26, pauseAfter: 320, hasArrow: true },
+  separador: { fontSize: 0,  fontWeight: "400", color: "#D1D5DB", lineHeight: 22, msPerChar: 0,  pauseAfter: 160 },
+  exemplo:   { fontSize: 20, fontWeight: "400", color: "#1e40af", lineHeight: 34, msPerChar: 30, pauseAfter: 520, bgColor: "#DBEAFE", padding: 12, hasBorder: "#93C5FD" },
 };
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -100,8 +101,8 @@ interface LayoutEl {
 
 // ─── Build layout ─────────────────────────────────────────────────────────────
 function buildLayout(ctx: CanvasRenderingContext2D, canvasW: number, elementos: BoardElement[]): { layout: LayoutEl[]; totalHeight: number } {
-  const PAD_X = 32;
-  let y = 24;
+  const PAD_X = 36;
+  let y = 28;
   const layout: LayoutEl[] = [];
 
   for (const el of elementos) {
@@ -113,28 +114,27 @@ function buildLayout(ctx: CanvasRenderingContext2D, canvasW: number, elementos: 
     };
 
     if (el.tipo === "separador") {
-      layout.push({ el, style: s, lines: [], startY: y, contentY: y + 8, height: 24, chars: [] });
-      y += 24;
+      layout.push({ el, style: s, lines: [], startY: y, contentY: y + 8, height: 28, chars: [] });
+      y += 28;
       continue;
     }
 
     const paddingX = s.padding ?? 0;
     const paddingY = s.padding ?? 0;
-    const arrowOffset = s.hasArrow ? 24 : 0;
+    const arrowOffset = s.hasArrow ? 26 : 0;
     const innerW = canvasW - PAD_X * 2 - paddingX * 2 - arrowOffset;
 
     ctx.font = `${s.fontWeight} ${s.fontSize}px 'Caveat', cursive`;
     const rawText = el.texto ?? "";
     const lines = wrapText(ctx, rawText, innerW);
 
-    const topLabelH = (el.tipo === "destaque" || el.tipo === "exemplo") ? 14 : 0;
+    const topLabelH = (el.tipo === "destaque" || el.tipo === "exemplo") ? 15 : 0;
     const textH = lines.length * s.lineHeight;
-    const height = textH + paddingY * 2 + topLabelH + (s.hasUnderline ? 8 : 0) + 14;
+    const height = textH + paddingY * 2 + topLabelH + (s.hasUnderline ? 10 : 0) + 16;
 
     const startY = y;
     const contentY = y + paddingY + topLabelH;
 
-    // Build char positions
     const chars: LayoutChar[] = [];
     let lineY = contentY;
     for (const line of lines) {
@@ -148,33 +148,35 @@ function buildLayout(ctx: CanvasRenderingContext2D, canvasW: number, elementos: 
     }
 
     layout.push({ el, style: s, lines, startY, contentY, height, chars });
-    y += height + 4;
+    y += height + 6;
   }
 
-  return { layout, totalHeight: y + 24 };
+  return { layout, totalHeight: y + 28 };
 }
 
 // ─── Draw one element ─────────────────────────────────────────────────────────
 function drawElement(
   ctx: CanvasRenderingContext2D,
   lel: LayoutEl,
-  charCount: number,   // number of chars drawn; -1 = fully done
+  charCount: number,
   scrollY: number,
   canvasW: number,
 ) {
   const s = lel.style;
-  const PAD_X = 32;
+  const PAD_X = 36;
   ctx.save();
   ctx.translate(0, -scrollY);
 
   // ── Separador ──
   if (lel.el.tipo === "separador") {
-    ctx.strokeStyle = "#e2e8f0";
+    ctx.strokeStyle = "#E5E7EB";
     ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
     ctx.beginPath();
-    ctx.moveTo(PAD_X, lel.startY + 10);
-    ctx.lineTo(canvasW - PAD_X, lel.startY + 10);
+    ctx.moveTo(PAD_X, lel.startY + 12);
+    ctx.lineTo(canvasW - PAD_X, lel.startY + 12);
     ctx.stroke();
+    ctx.setLineDash([]);
     ctx.restore();
     return;
   }
@@ -187,15 +189,15 @@ function drawElement(
   if (s.bgColor) {
     const paddingX = s.padding ?? 0;
     const paddingY = s.padding ?? 0;
-    const topLabelH = (lel.el.tipo === "destaque" || lel.el.tipo === "exemplo") ? 14 : 0;
+    const topLabelH = (lel.el.tipo === "destaque" || lel.el.tipo === "exemplo") ? 15 : 0;
     const bx = PAD_X - paddingX;
     const by = lel.startY;
     const bw = canvasW - PAD_X * 2 + paddingX * 2;
-    const bh = lel.height - 14;
+    const bh = lel.height - 16;
     const rx = 10;
 
     ctx.save();
-    ctx.fillStyle = hexToRgba(s.bgColor, 0.92);
+    ctx.fillStyle = hexToRgba(s.bgColor, 0.95);
     ctx.beginPath();
     ctx.moveTo(bx + rx, by); ctx.lineTo(bx + bw - rx, by);
     ctx.arcTo(bx + bw, by, bx + bw, by + rx, rx);
@@ -209,18 +211,18 @@ function drawElement(
     ctx.fill();
     if (s.hasBorder) {
       ctx.strokeStyle = s.hasBorder;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 2;
       ctx.stroke();
     }
     // Top label
     if (lel.el.tipo === "exemplo") {
-      ctx.font = "700 10px 'Inter', sans-serif";
-      ctx.fillStyle = hexToRgba("#1e40af", 0.75);
-      ctx.fillText("EXEMPLO", bx + paddingX, lel.startY + topLabelH - 2);
+      ctx.font = "800 10px 'Inter', sans-serif";
+      ctx.fillStyle = hexToRgba("#1e40af", 0.7);
+      ctx.fillText("EXEMPLO", bx + paddingX + 2, lel.startY + topLabelH - 2);
     } else if (lel.el.tipo === "destaque") {
-      ctx.font = "700 10px 'Inter', sans-serif";
-      ctx.fillStyle = hexToRgba("#166534", 0.7);
-      ctx.fillText("CONCEITO", bx + paddingX, lel.startY + topLabelH - 2);
+      ctx.font = "800 10px 'Inter', sans-serif";
+      ctx.fillStyle = hexToRgba("#065F46", 0.65);
+      ctx.fillText("CONCEITO", bx + paddingX + 2, lel.startY + topLabelH - 2);
     }
     ctx.restore();
   }
@@ -229,73 +231,75 @@ function drawElement(
   if (s.hasArrow) {
     const ax = PAD_X + 2;
     const ay = lel.contentY + s.lineHeight * 0.44;
-    const aLen = 14;
+    const aLen = 16;
     ctx.save();
-    ctx.strokeStyle = hexToRgba(s.color, 0.8);
-    ctx.fillStyle = hexToRgba(s.color, 0.8);
-    ctx.lineWidth = 1.8;
+    ctx.strokeStyle = hexToRgba(s.color, 0.85);
+    ctx.fillStyle = hexToRgba(s.color, 0.85);
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = "round";
     ctx.beginPath();
     ctx.moveTo(ax, ay);
     ctx.lineTo(ax + aLen, ay);
-    ctx.moveTo(ax + aLen - 5, ay - 4);
+    ctx.moveTo(ax + aLen - 6, ay - 5);
     ctx.lineTo(ax + aLen, ay);
-    ctx.lineTo(ax + aLen - 5, ay + 4);
+    ctx.lineTo(ax + aLen - 6, ay + 5);
     ctx.stroke();
     ctx.restore();
   }
 
-  // ── Characters (chalk layering effect) ──
+  // ── Characters (marcador limpo, 2 passes) ──
   const textColor = s.textColor ?? s.color;
   ctx.font = `${s.fontWeight} ${s.fontSize}px 'Caveat', cursive`;
 
-  // Pass 1 — ghost
-  ctx.fillStyle = hexToRgba(textColor, 0.12);
+  // Pass 1 — sombra suave
+  ctx.fillStyle = hexToRgba(textColor, 0.08);
   for (let i = 0; i < drawChars; i++) {
     const ch = lel.chars[i];
-    ctx.fillText(ch.char, ch.x + 0.5, ch.y + 0.4);
+    ctx.fillText(ch.char, ch.x + 0.8, ch.y + 0.8);
   }
-  // Pass 2 — mid
-  ctx.fillStyle = hexToRgba(textColor, 0.28);
-  for (let i = 0; i < drawChars; i++) {
-    const ch = lel.chars[i];
-    ctx.fillText(ch.char, ch.x - 0.3, ch.y - 0.3);
-  }
-  // Pass 3 — main stroke
-  ctx.fillStyle = hexToRgba(textColor, 0.9);
+  // Pass 2 — traço principal
+  ctx.fillStyle = hexToRgba(textColor, 0.92);
   for (let i = 0; i < drawChars; i++) {
     const ch = lel.chars[i];
     ctx.fillText(ch.char, ch.x, ch.y);
   }
 
-  // ── Cursor dot (moving pen tip) ──
+  // ── Cursor (ponta do marcador) ──
   if (!isDone && drawChars > 0 && drawChars < lel.chars.length) {
     const last = lel.chars[drawChars - 1];
     ctx.font = `${s.fontWeight} ${s.fontSize}px 'Caveat', cursive`;
     const cw = ctx.measureText(last.char).width;
-    const cx = last.x + cw + 3;
-    const cy = last.y - s.fontSize * 0.38;
-    // Ink blob
+    const cx = last.x + cw + 2;
+    const cy = last.y - s.fontSize * 0.36;
     ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx, cy, 5, 0, Math.PI * 2);
-    ctx.fillStyle = hexToRgba(textColor, 0.65);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(cx, cy, 9, 0, Math.PI * 2);
-    ctx.fillStyle = hexToRgba(textColor, 0.1);
-    ctx.fill();
+    // Ponta do marcador — retângulo inclinado
+    ctx.translate(cx, cy);
+    ctx.rotate(-0.3);
+    ctx.fillStyle = hexToRgba(textColor, 0.8);
+    ctx.fillRect(-3, -4, 6, 10);
+    ctx.fillStyle = hexToRgba(textColor, 0.15);
+    ctx.fillRect(-6, -6, 12, 16);
     ctx.restore();
   }
 
-  // ── Underline for titles ──
+  // ── Underline colorido para títulos ──
   if (s.hasUnderline && (isDone || drawChars >= lel.chars.length)) {
-    const uly = lel.contentY + lel.lines.length * s.lineHeight + 4;
+    const uly = lel.contentY + lel.lines.length * s.lineHeight + 5;
     ctx.save();
-    ctx.strokeStyle = hexToRgba(textColor, 0.3);
-    ctx.lineWidth = 2;
+    // Linha principal
+    ctx.strokeStyle = hexToRgba(s.underlineColor ?? "#F59E0B", 0.9);
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = "round";
     ctx.beginPath();
     ctx.moveTo(PAD_X, uly);
     ctx.lineTo(canvasW - PAD_X, uly);
+    ctx.stroke();
+    // Linha secundária mais fina
+    ctx.strokeStyle = hexToRgba(s.underlineColor ?? "#F59E0B", 0.35);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(PAD_X, uly + 5);
+    ctx.lineTo(canvasW * 0.5, uly + 5);
     ctx.stroke();
     ctx.restore();
   }
@@ -331,7 +335,7 @@ export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
     onFirstCharRef.current = onFirstChar;
     onAllDoneRef.current = onAllDone;
 
-    // ── Redraw all elements up to current state ─────────────────────────────
+    // ── Redraw ──────────────────────────────────────────────────────────────
     const redraw = useCallback(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -342,31 +346,39 @@ export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
 
       ctx.clearRect(0, 0, canvasW, canvasH);
 
-      // Subtle ruled lines
+      // Fundo creme
+      ctx.fillStyle = "#FFFEF5";
+      ctx.fillRect(0, 0, canvasW, canvasH);
+
+      // Linhas pautadas suaves (azul-acinzentado)
       ctx.save();
-      for (let ly = 40; ly < st.totalHeight; ly += 32) {
+      for (let ly = 44; ly < st.totalHeight; ly += 36) {
         const screenY = ly - scrollY;
-        if (screenY < -32 || screenY > canvasH + 32) continue;
-        ctx.strokeStyle = "rgba(203,213,225,0.35)";
-        ctx.lineWidth = 0.7;
+        if (screenY < -36 || screenY > canvasH + 36) continue;
+        ctx.strokeStyle = "rgba(180,200,230,0.18)";
+        ctx.lineWidth = 0.8;
         ctx.beginPath();
         ctx.moveTo(0, screenY);
         ctx.lineTo(canvasW, screenY);
         ctx.stroke();
       }
+      // Margem esquerda vertical (vermelho bem suave)
+      ctx.strokeStyle = "rgba(239,68,68,0.08)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(22, 0);
+      ctx.lineTo(22, canvasH);
+      ctx.stroke();
       ctx.restore();
 
       // All elements
       for (let i = 0; i < layout.length; i++) {
         if (i < elIdx) {
-          // Previously completed elements: fully drawn
           drawElement(ctx, layout[i], -1, scrollY, canvasW);
         } else if (i === elIdx) {
-          // Current element: fully drawn during pause/done, progressive during drawing
           const count = (phase === "pause" || phase === "done") ? -1 : charIdx;
           drawElement(ctx, layout[i], count, scrollY, canvasW);
         }
-        // Future elements: not drawn
       }
     }, []);
 
@@ -381,7 +393,6 @@ export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
       if (st.phase === "pause") {
         st.pauseRemaining -= dt;
         if (st.pauseRemaining <= 0) {
-          // Advance to next element
           const nextIdx = st.elIdx + 1;
           if (nextIdx >= st.layout.length) {
             st.elIdx = nextIdx;
@@ -404,7 +415,6 @@ export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
         if (!lel) { st.phase = "done"; return; }
         const s = lel.style;
 
-        // Separador: instant
         if (lel.el.tipo === "separador") {
           redraw();
           st.phase = "pause";
@@ -413,13 +423,11 @@ export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
           return;
         }
 
-        // Fire firstChar callback
         if (!st.firstCharFired && st.charIdx === 0) {
           st.firstCharFired = true;
           onFirstCharRef.current?.();
         }
 
-        // Advance chars based on elapsed time
         st.msAccum += dt;
         const msPerChar = Math.max(1, s.msPerChar / speedMultiplier);
         const add = Math.floor(st.msAccum / msPerChar);
@@ -428,14 +436,12 @@ export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
           st.charIdx = Math.min(st.charIdx + add, lel.chars.length);
         }
 
-        // Auto-scroll: keep writing cursor in lower 3/4 of canvas
         const lastCharY = (lel.chars[Math.max(0, st.charIdx - 1)]?.y ?? 0) - (st.scrollY);
         if (lastCharY > st.canvasH * 0.7) {
           st.scrollY += lastCharY - st.canvasH * 0.55;
         }
 
         if (st.charIdx >= lel.chars.length) {
-          // Element fully written: enter pause (elIdx stays at current element)
           st.phase = "pause";
           st.pauseRemaining = s.pauseAfter / speedMultiplier;
         }
@@ -455,7 +461,6 @@ export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
       const w = container.clientWidth;
       const h = container.clientHeight;
 
-      // Size canvas for sharp rendering
       canvas.width = w * dpr;
       canvas.height = h * dpr;
       canvas.style.width = `${w}px`;
@@ -463,8 +468,6 @@ export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
 
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
-
-      // Reset transform then apply DPR scale
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       const { layout, totalHeight } = buildLayout(ctx, w, elementos);
@@ -484,22 +487,20 @@ export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
       st.scrollY = 0;
 
       cancelAnimationFrame(rafRef.current);
-      ctx.clearRect(0, 0, w, h);
+      redraw();
 
       if (playing) {
         rafRef.current = requestAnimationFrame(animate);
       }
-    }, [elementos, playing, animate]);
+    }, [elementos, playing, animate, redraw]);
 
     useImperativeHandle(ref, () => ({ restart: () => setup() }), [setup]);
 
-    // Rebuild when elementos change
     useEffect(() => {
       document.fonts.ready.then(() => setup());
       return () => cancelAnimationFrame(rafRef.current);
     }, [elementos]); // eslint-disable-line
 
-    // playing toggle
     useEffect(() => {
       const st = stateRef.current;
       if (playing && st.phase === "idle") {
@@ -510,7 +511,6 @@ export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
       }
     }, [playing, animate]);
 
-    // Resize observer
     useEffect(() => {
       const container = containerRef.current;
       if (!container) return;
@@ -522,7 +522,8 @@ export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
     }, [setup]);
 
     return (
-      <div ref={containerRef} className="w-full h-full relative overflow-hidden bg-white">
+      <div ref={containerRef} className="w-full h-full relative overflow-hidden"
+        style={{ background: "#FFFEF5" }}>
         <canvas ref={canvasRef} className="absolute inset-0" />
       </div>
     );

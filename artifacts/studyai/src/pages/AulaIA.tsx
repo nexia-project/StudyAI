@@ -50,28 +50,23 @@ const TOPICOS_SUGERIDOS = [
 
 // ─── Waveform animation (professor falando) ────────────────────────────────
 function SpeakingWaveform({ active }: { active: boolean }) {
-  const bars = [3, 6, 9, 12, 9, 6, 3];
+  const bars = [3, 5, 8, 12, 8, 5, 3];
   return (
-    <div className="flex items-center gap-[3px] h-5">
+    <div className="flex items-center gap-[3px]" style={{ height: 16 }}>
       {bars.map((h, i) => (
         <motion.div
           key={i}
           className={`rounded-full ${active ? "bg-indigo-500" : "bg-slate-300"}`}
-          style={{ width: 3 }}
-          animate={active ? {
-            scaleY: [0.3, 1, 0.3],
-            opacity: [0.5, 1, 0.5],
-          } : { scaleY: 0.3, opacity: 0.4 }}
+          style={{ width: 3, height: h }}
+          animate={active ? { scaleY: [0.25, 1, 0.25] } : { scaleY: 0.25 }}
           transition={active ? {
             repeat: Infinity,
-            duration: 0.55 + i * 0.05,
-            delay: i * 0.07,
+            duration: 0.5 + i * 0.04,
+            delay: i * 0.06,
             ease: "easeInOut",
-          } : { duration: 0.3 }}
+          } : { duration: 0.25 }}
           initial={false}
-        >
-          <div style={{ height: h }} />
-        </motion.div>
+        />
       ))}
     </div>
   );
@@ -230,22 +225,14 @@ export default function AulaIA() {
     setIsPlaying(autoPlay);
   }, [aula]);
 
-  // ── fetch + play audio when isPlaying becomes true for a step ────────────
-  // This effect is the single source of truth for when audio is fetched.
-  // Canvas waits because canvasPlaying = isPlaying && !audioLoading
+  // ── fetch audio when isPlaying becomes true for a NEW step ──────────────
+  // Canvas waits because canvasPlaying = isPlaying && !audioLoading.
+  // Resume (same step) is handled directly in togglePlay.
   useEffect(() => {
     if (!isPlaying || !etapa) return;
-    if (audioStepRef.current === etapaAtual) return; // already fetched/fetching for this step
+    if (audioStepRef.current === etapaAtual) return; // already fetched/fetching
 
-    // If audio was paused mid-play (resume scenario), just resume it
-    const audio = audioRef.current;
-    if (audio && audio.src && audio.currentTime > 0 && audio.paused && !audio.ended) {
-      audio.play().catch(() => {});
-      audioStepRef.current = etapaAtual;
-      return;
-    }
-
-    // Otherwise, fetch fresh audio for this step
+    // Fetch fresh audio for this step
     audioStepRef.current = etapaAtual;
     playNarration(etapa.narracao, etapaAtual);
   }, [isPlaying, etapaAtual]); // eslint-disable-line
@@ -257,12 +244,13 @@ export default function AulaIA() {
       audioRef.current?.pause();
       setIsPlaying(false);
     } else {
-      // Reset step tracker if audio is fully done (not just paused)
-      if (!audioRef.current?.src || audioRef.current?.ended) {
-        audioStepRef.current = -1;
+      // Resume existing audio directly if paused mid-play
+      const audio = audioRef.current;
+      if (audio && audio.src && audio.currentTime > 0 && audio.paused && !audio.ended) {
+        audio.play().catch(() => {});
       }
       setIsPlaying(true);
-      // useEffect above will handle TTS fetch/resume
+      // useEffect handles fresh fetch only when audioStepRef doesn't match etapaAtual
     }
   }, [aula, isPlaying]);
 

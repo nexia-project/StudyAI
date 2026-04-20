@@ -503,11 +503,18 @@ export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
 
     useEffect(() => {
       const st = stateRef.current;
-      if (playing && st.phase === "idle") {
-        st.phase = "drawing";
-        st.lastTime = 0;
+      if (playing) {
+        // Start or resume drawing
+        if (st.phase === "idle") st.phase = "drawing";
+        if (st.phase !== "done") {
+          st.lastTime = 0; // reset dt so first frame has sane delta
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = requestAnimationFrame(animate);
+        }
+      } else {
+        // Pause: stop the animation loop, keep state intact for resume
         cancelAnimationFrame(rafRef.current);
-        rafRef.current = requestAnimationFrame(animate);
+        st.lastTime = 0;
       }
     }, [playing, animate]);
 

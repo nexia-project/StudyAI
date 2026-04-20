@@ -10,6 +10,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { TiagaoCharacter, type CharacterState } from "@/components/TiagaoCharacter";
 import { Mic, MicOff, X, Square, VolumeX, Volume2, ThumbsUp, ThumbsDown, Timer, Maximize2, Minimize2, Send } from "lucide-react";
 import { useLocation } from "wouter";
 import {
@@ -456,26 +457,12 @@ export function VoiceProfessor() {
             <X className="w-5 h-5 text-white" />
           </div>
         ) : (
-          <div className="relative">
-            <motion.img
-              src="/tiagao-pointing.png"
-              alt="Professor Tiagão"
-              className="w-20 h-20 md:w-24 md:h-24 object-contain"
-              style={{ filter: "drop-shadow(0 4px 16px rgba(99,102,241,0.35))" }}
-              animate={phase === "speaking" ? { y: [0, -4, 0] } : phase === "idle" ? { y: [0, -2, 0] } : {}}
-              transition={phase === "speaking"
-                ? { repeat: Infinity, duration: 0.65 }
-                : { repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
-            />
-            <motion.span
-              animate={phase === "speaking"
-                ? { scale: [1, 1.8, 1], opacity: [1, 0.4, 1] }
-                : { scale: [1, 1.3, 1] }}
-              transition={{ repeat: Infinity, duration: phase === "speaking" ? 0.8 : 2 }}
-              className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full border-2 border-white shadow-sm"
-              style={{ backgroundColor: phaseColor[phase] }}
-            />
-          </div>
+          <TiagaoCharacter
+            state={phase as CharacterState}
+            size={88}
+            showLabel={false}
+            className="md:scale-110"
+          />
         )}
       </motion.button>
 
@@ -508,8 +495,8 @@ export function VoiceProfessor() {
             className="fixed bottom-24 left-4 right-4 sm:left-6 sm:right-auto sm:w-80 z-40 bg-white rounded-2xl shadow-xl border border-indigo-100 p-3"
           >
             <div className="flex items-center gap-3">
-              <div className="w-14 h-14 flex-shrink-0 select-none">
-                <img src="/tiagao-pointing.png" alt="Professor Tiagão" className="w-full h-full object-contain" style={{ filter: "drop-shadow(0 2px 8px rgba(99,102,241,0.3))" }} />
+              <div className="flex-shrink-0">
+                <TiagaoCharacter state={phase as CharacterState} size={60} showLabel={false} />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-black text-indigo-600 mb-0.5">Professor Tiagão</p>
@@ -597,14 +584,10 @@ export function VoiceProfessor() {
             <div className="p-4 flex items-center gap-3"
               style={{ background: "linear-gradient(135deg,#6366f1,#4f46e5)" }}>
               <div className="relative flex-shrink-0">
-                <div className={`select-none ${focusMode ? "w-16 h-16" : "w-14 h-14"}`}>
-                  <img src="/tiagao-pointing.png" alt="Professor Tiagão" className="w-full h-full object-contain" style={{ filter: "drop-shadow(0 2px 10px rgba(255,255,255,0.4))" }} />
-                </div>
-                <motion.span
-                  animate={phase === "speaking" ? { scale: [1, 1.7, 1], opacity: [1, 0.5, 1] } : {}}
-                  transition={{ repeat: Infinity, duration: 0.7 }}
-                  className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white"
-                  style={{ backgroundColor: phaseColor[phase] }}
+                <TiagaoCharacter
+                  state={phase as CharacterState}
+                  size={focusMode ? 64 : 56}
+                  showLabel={false}
                 />
               </div>
               <div className="flex-1">
@@ -634,45 +617,13 @@ export function VoiceProfessor() {
 
             {/* Last message bubble + orb */}
             <div className={`flex flex-col items-center px-4 gap-3 ${focusMode ? "py-6" : "py-5"}`}>
-              {/* Orb */}
-              <div className={`relative flex items-center justify-center ${focusMode ? "w-28 h-28" : "w-20 h-20"}`}>
-                {(phase === "speaking" || phase === "listening") && (
-                  <>
-                    <motion.div
-                      animate={{ scale: [1, 1.7], opacity: [0.3, 0] }}
-                      transition={{ repeat: Infinity, duration: 1.1, ease: "easeOut" }}
-                      className="absolute inset-0 rounded-full"
-                      style={{ backgroundColor: phaseColor[phase] + "55" }}
-                    />
-                    <motion.div
-                      animate={{ scale: [1, 1.4], opacity: [0.4, 0] }}
-                      transition={{ repeat: Infinity, duration: 1.1, ease: "easeOut", delay: 0.25 }}
-                      className="absolute inset-0 rounded-full"
-                      style={{ backgroundColor: phaseColor[phase] + "66" }}
-                    />
-                  </>
-                )}
-                <motion.div
-                  animate={phase === "thinking"
-                    ? { y: [0, -6, 0], rotate: [-2, 2, -2] }
-                    : phase === "speaking"
-                    ? { y: [0, -8, 0], scale: [1, 1.05, 1] }
-                    : { y: [0, -3, 0] }}
-                  transition={phase === "thinking"
-                    ? { repeat: Infinity, duration: 1.4, ease: "easeInOut" }
-                    : phase === "speaking"
-                    ? { repeat: Infinity, duration: 0.55 }
-                    : { repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
-                  className={`select-none ${focusMode ? "w-28 h-28" : "w-20 h-20"}`}
-                >
-                  <img
-                    src="/tiagao-pointing.png"
-                    alt="Professor Tiagão"
-                    className="w-full h-full object-contain"
-                    style={{ filter: `drop-shadow(0 6px 24px ${phaseColor[phase]}88)` }}
-                  />
-                </motion.div>
-              </div>
+              {/* Personagem animado */}
+              <TiagaoCharacter
+                state={phase as CharacterState}
+                size={focusMode ? 140 : 108}
+                showLabel={true}
+                onClick={() => {}}
+              />
 
               {/* Last Tiagão message */}
               {lastAssistantMsg && (

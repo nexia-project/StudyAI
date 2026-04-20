@@ -300,7 +300,8 @@ export default function Notebook() {
     try {
       const r = await fetch(`${BASE_URL}/api/notebook/docs`);
       if (r.ok) {
-        const data: Doc[] = await r.json();
+        const raw = await r.json();
+        const data: Doc[] = Array.isArray(raw) ? raw : (Array.isArray(raw?.rows) ? raw.rows : []);
         setDocs(data);
         if (data.length && !selectedDocIds.length) {
           setSelectedDocIds([data[0].id]);

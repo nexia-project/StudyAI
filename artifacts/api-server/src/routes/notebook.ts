@@ -251,7 +251,7 @@ router.get("/notebook/docs", async (req: Request, res: Response) => {
       ORDER BY created_at DESC
       LIMIT 50
     `);
-    res.json(docs);
+    res.json([...docs]);
   } catch (e) {
     res.status(500).json({ erro: "Erro ao buscar documentos" });
   }

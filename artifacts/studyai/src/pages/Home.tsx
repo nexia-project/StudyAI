@@ -464,7 +464,7 @@ export default function Home() {
           // calculate xp
           let xp = 0;
           planResult.dias.forEach(d => {
-            d.topicos.forEach((t, i) => {
+            (Array.isArray(d.topicos) ? d.topicos : []).forEach((t, i) => {
               if (parsed[`${d.numero}-${i}`]) xp += 100; // assuming 100 xp per topic
             });
           });
@@ -589,7 +589,7 @@ export default function Home() {
         plan.resumoDoConteudo,
         ...plan.dias.map(d =>
           `Dia ${d.numero} – ${d.titulo}: ` +
-          d.topicos.map(t => typeof t === "object" ? (t as any).nome : t).join(", ")
+          (Array.isArray(d.topicos) ? d.topicos : []).map((t: any) => typeof t === "object" ? t?.nome : t).join(", ")
         ),
         ...(plan.dicasGerais ?? []),
       ].join("\n");
@@ -655,7 +655,7 @@ export default function Home() {
         if (planResult) {
           const dia = planResult.dias.find(d => d.numero === dayNum);
           if (dia) {
-            const allDayDone = dia.topicos.every((_, idx) => {
+            const allDayDone = Array.isArray(dia.topicos) && dia.topicos.every((_, idx) => {
               const k = `${dayNum}-${idx}`;
               return k === key || next[k];
             });
@@ -675,7 +675,7 @@ export default function Home() {
     });
   };
 
-  const totalTopics = planResult?.dias.reduce((acc, d) => acc + d.topicos.length, 0) || 1;
+  const totalTopics = Array.isArray(planResult?.dias) ? planResult!.dias.reduce((acc, d) => acc + (Array.isArray(d.topicos) ? d.topicos.length : 0), 0) || 1 : 1;
   const completedCount = Object.values(completedTopics).filter(Boolean).length;
   const progressPercent = Math.min(100, Math.round((completedCount / totalTopics) * 100));
   const isAllComplete = progressPercent === 100;
@@ -1470,8 +1470,9 @@ export default function Home() {
                     const diaColor = dia.cor || planResult.cor;
                     
                     // calculate day progress
-                    const dayTopicsCompleted = dia.topicos.filter((_, i) => completedTopics[`${dia.numero}-${i}`]).length;
-                    const dayProgress = Math.round((dayTopicsCompleted / dia.topicos.length) * 100);
+                    const safeTopicos = Array.isArray(dia.topicos) ? dia.topicos : [];
+                    const dayTopicsCompleted = safeTopicos.filter((_, i) => completedTopics[`${dia.numero}-${i}`]).length;
+                    const dayProgress = safeTopicos.length > 0 ? Math.round((dayTopicsCompleted / safeTopicos.length) * 100) : 0;
                     const isDayDone = dayProgress === 100;
 
                     return (
@@ -1554,7 +1555,7 @@ export default function Home() {
                                       serie={formData.serie || "Não informado"}
                                       resumo={planResult.resumoDoConteudo || ""}
                                       diaNumero={dia.numero}
-                                      diaTopicos={dia.topicos.map((t) => typeof t === "object" ? (t as any).nome : t).join(", ")}
+                                      diaTopicos={safeTopicos.map((t) => typeof t === "object" ? (t as any).nome : t).join(", ")}
                                     />
                                   ) : (
                                     <PremiumGate
@@ -1566,7 +1567,7 @@ export default function Home() {
                                         serie={formData.serie || "Não informado"}
                                         resumo={planResult.resumoDoConteudo || ""}
                                         diaNumero={dia.numero}
-                                        diaTopicos={dia.topicos.map((t) => typeof t === "object" ? (t as any).nome : t).join(", ")}
+                                        diaTopicos={safeTopicos.map((t) => typeof t === "object" ? (t as any).nome : t).join(", ")}
                                       />
                                     </PremiumGate>
                                   )}
@@ -1586,7 +1587,7 @@ export default function Home() {
                                     <Brain className="w-6 h-6" style={{ color: diaColor }} /> Tópicos para Dominar
                                   </h4>
                                   <div className="space-y-4">
-                                    {dia.topicos.map((topico, idx) => {
+                                    {safeTopicos.map((topico, idx) => {
                                       const isObj = typeof topico === "object" && topico !== null;
                                       const topicoObj = isObj ? (topico as StudyPlanTopic) : null;
                                       const nome = isObj ? topicoObj!.nome : (topico as string);
@@ -1792,9 +1793,9 @@ export default function Home() {
               ? (() => {
                   const dia = planResult.dias.find((d) => d.numero === expandedDay);
                   if (!dia) return [];
-                  return dia.topicos.map((t) =>
+                  return Array.isArray(dia.topicos) ? dia.topicos.map((t) =>
                     typeof t === "object" ? (t as any).nome : (t as string)
-                  );
+                  ) : [];
                 })()
               : []
           }

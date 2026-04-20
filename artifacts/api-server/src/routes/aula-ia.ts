@@ -1,25 +1,23 @@
 import { Router, Request, Response } from "express";
+import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router = Router();
+
+// ─── Clientes de IA ───────────────────────────────────────────────────────────
+// Claude (Anthropic via Replit — sem chave própria necessária)
+const claude = new Anthropic({
+  apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY ?? "dummy",
+  baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+});
+
+// OpenAI como fallback
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// ─── Gerar aula estruturada para a lousa ─────────────────────────────────────
-router.post("/aula-ia/gerar", requireAuth, async (req: Request, res: Response) => {
-  try {
-    const { topico, estilo = "ENEM", nivel = "médio" } = req.body as {
-      topico: string;
-      estilo?: string;
-      nivel?: string;
-    };
-
-    if (!topico?.trim()) {
-      res.status(400).json({ erro: "topico é obrigatório" });
-      return;
-    }
-
-    const systemPrompt = `Você é o Professor Tiagão, tutor educacional brasileiro especialista em ${estilo}.
+// ─── Gerar aula com Claude (melhor qualidade educacional) ─────────────────────
+async function gerarAulaComClaude(topico: string, estilo: string, nivel: string): Promise<string> {
+  const systemPrompt = `Você é o Professor Tiagão, tutor educacional brasileiro especialista em ${estilo}.
 Crie uma aula DETALHADA e DIDÁTICA. Cada etapa é escrita letra por letra na lousa — o aluno lê no ritmo da escrita, então use textos completos e explicativos.
 
 ESTRUTURA DE CADA ETAPA:
@@ -43,42 +41,106 @@ REGRAS DE QUALIDADE:
 - Máximo 6 etapas por aula, mínimo 4
 - Nível: ${nivel}
 
-FORMATO JSON OBRIGATÓRIO (retorne APENAS o JSON, sem texto extra):
+RETORNE SOMENTE JSON VÁLIDO, sem texto extra, sem markdown:
 {
   "titulo": "string",
-  "subtitulo": "string — ex: Tudo que você precisa saber para o ENEM",
+  "subtitulo": "string",
   "etapas": [
     {
       "id": 1,
       "narracao": "string — 4-6 frases explicativas em PT-BR coloquial e animado",
       "elementos": [
-        { "tipo": "titulo", "texto": "string", "cor": "#1a1a2e" },
-        { "tipo": "texto", "texto": "string — frase completa explicando o conceito" },
-        { "tipo": "formula", "texto": "string", "destaque": "#fef08a" },
-        { "tipo": "destaque", "texto": "string — conceito que o aluno deve gravar", "cor": "#bbf7d0", "corTexto": "#166534" },
-        { "tipo": "seta", "texto": "string — passo ou item da lista", "cor": "#6366f1" },
-        { "tipo": "separador" },
-        { "tipo": "exemplo", "texto": "string — exemplo real do ${estilo}", "cor": "#dbeafe" }
+        { "tipo": "titulo", "texto": "string" },
+        { "tipo": "texto", "texto": "string" },
+        { "tipo": "destaque", "texto": "string" },
+        { "tipo": "seta", "texto": "string" },
+        { "tipo": "exemplo", "texto": "string" }
       ],
       "duracao": 30
     }
   ]
 }`;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: `Crie uma aula sobre: ${topico.trim()}` },
+  const message = await claude.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 4096,
+    messages: [
+      {
+        role: "user",
+        content: `${systemPrompt}\n\nCrie uma aula sobre: ${topico.trim()}`,
+      },
+    ],
+  });
+
+  const block = message.content[0];
+  return block.type === "text" ? block.text : "{}";
+}
+
+// ─── Fallback: gerar aula com OpenAI ─────────────────────────────────────────
+async function gerarAulaComOpenAI(topico: string, estilo: string, nivel: string): Promise<string> {
+  const systemPrompt = `Você é o Professor Tiagão, tutor educacional brasileiro especialista em ${estilo}.
+Crie uma aula DETALHADA e DIDÁTICA em JSON. Retorne APENAS o JSON, sem texto extra.
+{
+  "titulo": "string",
+  "subtitulo": "string",
+  "etapas": [
+    {
+      "id": 1,
+      "narracao": "4-6 frases explicativas em PT-BR coloquial",
+      "elementos": [
+        { "tipo": "titulo", "texto": "string" },
+        { "tipo": "texto", "texto": "string" },
+        { "tipo": "destaque", "texto": "string" },
+        { "tipo": "seta", "texto": "string" },
+        { "tipo": "exemplo", "texto": "string" }
       ],
-      temperature: 0.7,
-      response_format: { type: "json_object" },
-      max_tokens: 2500,
-    });
+      "duracao": 30
+    }
+  ]
+}
+Nível: ${nivel}. Máx 6 etapas, mín 4. Exemplos do contexto ${estilo}.`;
 
-    const raw = completion.choices[0].message.content ?? "{}";
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o",
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: `Crie uma aula sobre: ${topico.trim()}` },
+    ],
+    temperature: 0.7,
+    response_format: { type: "json_object" },
+    max_tokens: 2500,
+  });
+
+  return completion.choices[0].message.content ?? "{}";
+}
+
+// ─── Gerar aula estruturada para a lousa ─────────────────────────────────────
+router.post("/aula-ia/gerar", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { topico, estilo = "ENEM", nivel = "médio" } = req.body as {
+      topico: string;
+      estilo?: string;
+      nivel?: string;
+    };
+
+    if (!topico?.trim()) {
+      res.status(400).json({ erro: "topico é obrigatório" });
+      return;
+    }
+
+    let raw = "{}";
+    // Tenta Claude primeiro (qualidade superior), usa OpenAI como fallback
+    try {
+      raw = await gerarAulaComClaude(topico, estilo, nivel);
+      // Claude retorna JSON dentro de possível texto — extrai JSON
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (match) raw = match[0];
+    } catch (claudeErr) {
+      console.warn("[aula-ia] Claude falhou, usando OpenAI:", claudeErr);
+      raw = await gerarAulaComOpenAI(topico, estilo, nivel);
+    }
+
     const aula = JSON.parse(raw);
-
     res.json(aula);
   } catch (err) {
     console.error("[aula-ia/gerar]", err);
@@ -86,7 +148,7 @@ FORMATO JSON OBRIGATÓRIO (retorne APENAS o JSON, sem texto extra):
   }
 });
 
-// ─── Pergunta durante a aula ─────────────────────────────────────────────────
+// ─── Pergunta durante a aula (Claude — resposta curta e didática) ─────────────
 router.post("/aula-ia/pergunta", requireAuth, async (req: Request, res: Response) => {
   try {
     const { pergunta, topico, contexto } = req.body as {
@@ -100,29 +162,74 @@ router.post("/aula-ia/pergunta", requireAuth, async (req: Request, res: Response
       return;
     }
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: `Você é o Professor Tiagão, tutor brasileiro animado e didático.
+    const systemContent = `Você é o Professor Tiagão, tutor brasileiro animado e didático.
 O aluno está assistindo uma aula sobre "${topico}".
-${contexto ? `Contexto da aula: ${contexto}` : ""}
-Responda a pergunta de forma MUITO curta e direta (máximo 4 frases).
+${contexto ? `Contexto da aula atual: ${contexto}` : ""}
+Responda a pergunta de forma CURTA e direta (máximo 4 frases).
 Use linguagem coloquial PT-BR, seja animado e motivador.
-Não use markdown. Termine com uma frase de encorajamento.`,
-        },
-        { role: "user", content: pergunta },
-      ],
-      temperature: 0.8,
-      max_tokens: 250,
-    });
+Não use markdown nem listas. Termine com uma frase de encorajamento.`;
 
-    const resposta = completion.choices[0].message.content ?? "";
+    let resposta = "";
+
+    try {
+      const message = await claude.messages.create({
+        model: "claude-haiku-4-5",
+        max_tokens: 300,
+        messages: [
+          {
+            role: "user",
+            content: `${systemContent}\n\nPergunta do aluno: ${pergunta}`,
+          },
+        ],
+      });
+      const block = message.content[0];
+      resposta = block.type === "text" ? block.text : "";
+    } catch {
+      // Fallback para OpenAI mini
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemContent },
+          { role: "user", content: pergunta },
+        ],
+        temperature: 0.8,
+        max_tokens: 250,
+      });
+      resposta = completion.choices[0].message.content ?? "";
+    }
+
     res.json({ resposta });
   } catch (err) {
     console.error("[aula-ia/pergunta]", err);
     res.status(500).json({ erro: "Erro ao responder" });
+  }
+});
+
+// ─── Transcrição de voz (Whisper) para perguntas por voz ─────────────────────
+import multer from "multer";
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+router.post("/aula-ia/transcrever", requireAuth, upload.single("audio"), async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ erro: "Arquivo de áudio não enviado" });
+      return;
+    }
+
+    const blob = new Blob([req.file.buffer], { type: req.file.mimetype || "audio/webm" });
+    const file = new File([blob], "audio.webm", { type: req.file.mimetype || "audio/webm" });
+
+    const transcription = await openai.audio.transcriptions.create({
+      file,
+      model: "whisper-1",
+      language: "pt",
+      response_format: "text",
+    });
+
+    res.json({ texto: transcription });
+  } catch (err) {
+    console.error("[aula-ia/transcrever]", err);
+    res.status(500).json({ erro: "Erro na transcrição" });
   }
 });
 

@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX,
   ChevronRight, Loader2, Send, RefreshCw,
-  BookOpen, Maximize2, Minimize2, ChevronLeft, Zap,
+  BookOpen, Maximize2, Minimize2, ChevronLeft, Zap, Mic, MicOff,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { TiagaoCharacter, type CharacterState } from "@/components/TiagaoCharacter";
@@ -112,6 +112,12 @@ export default function AulaIA() {
   const [pergunta, setPergunta] = useState("");
   const [respondendo, setRespondendo] = useState(false);
   const [resposta, setResposta] = useState<{ texto: string; timestamp: number } | null>(null);
+
+  // ── mic / whisper ──
+  const [gravando, setGravando] = useState(false);
+  const [transcrevendo, setTranscrevendo] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   // ── board key: muda a cada nova etapa para forçar novo canvas ──
   const [boardKey, setBoardKey] = useState(0);
@@ -283,6 +289,41 @@ export default function AulaIA() {
       setTimeout(() => setCharState("idle"), 3000);
     }
   }, [pergunta, respondendo, aula, etapa, muted, isPlaying, playNarration]);
+
+  // ── microfone / whisper ───────────────────────────────────────────────────
+  const toggleMic = useCallback(async () => {
+    if (gravando) {
+      mediaRecorderRef.current?.stop();
+      setGravando(false);
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      audioChunksRef.current = [];
+      mr.ondataavailable = e => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+      mr.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        setTranscrevendo(true);
+        try {
+          const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+          const form = new FormData();
+          form.append("audio", blob, "pergunta.webm");
+          const r = await fetch("/api/aula-ia/transcrever", { method: "POST", body: form });
+          if (r.ok) {
+            const { texto } = await r.json();
+            if (texto?.trim()) setPergunta(p => p ? `${p} ${texto}` : texto);
+          }
+        } catch { /* silencioso */ }
+        finally { setTranscrevendo(false); }
+      };
+      mediaRecorderRef.current = mr;
+      mr.start();
+      setGravando(true);
+    } catch {
+      alert("Permita o acesso ao microfone para usar esta funcionalidade.");
+    }
+  }, [gravando]);
 
   // ─── TELA INICIAL ─────────────────────────────────────────────────────────
   if (!aula && !gerando) {
@@ -661,15 +702,39 @@ export default function AulaIA() {
           </div>
           <div className="flex-1 relative">
             <input
-              value={pergunta}
+              value={transcrevendo ? "Transcrevendo..." : pergunta}
               onChange={e => setPergunta(e.target.value)}
               onKeyDown={e => e.key === "Enter" && !e.shiftKey && enviarPergunta()}
-              placeholder="Pode perguntar ao Professor — ele responde ao vivo..."
-              className="w-full px-4 py-2.5 rounded-2xl border border-slate-200 focus:border-indigo-400 focus:outline-none text-sm text-slate-800 placeholder-slate-400 bg-slate-50 pr-10"
+              placeholder={gravando ? "🎙 Gravando... clique no mic para parar" : "Pergunte ao Professor — ou fale pelo microfone..."}
+              disabled={transcrevendo}
+              className={`w-full px-4 py-2.5 rounded-2xl border text-sm pr-20 transition-all ${
+                gravando
+                  ? "border-red-300 bg-red-50 placeholder-red-400 text-red-800"
+                  : "border-slate-200 focus:border-indigo-400 bg-slate-50 placeholder-slate-400 text-slate-800"
+              } focus:outline-none`}
             />
+            {/* Botão mic */}
+            <button
+              onClick={toggleMic}
+              disabled={transcrevendo || respondendo}
+              title={gravando ? "Parar gravação" : "Falar pergunta"}
+              className={`absolute right-10 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center transition-all ${
+                gravando
+                  ? "bg-red-500 animate-pulse"
+                  : transcrevendo
+                  ? "bg-amber-400"
+                  : "bg-slate-200 hover:bg-slate-300"
+              } disabled:opacity-30`}>
+              {transcrevendo
+                ? <Loader2 className="w-3 h-3 text-white animate-spin" />
+                : gravando
+                ? <MicOff className="w-3 h-3 text-white" />
+                : <Mic className="w-3 h-3 text-slate-600" />}
+            </button>
+            {/* Botão enviar */}
             <button
               onClick={enviarPergunta}
-              disabled={!pergunta.trim() || respondendo}
+              disabled={!pergunta.trim() || respondendo || gravando}
               className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center disabled:opacity-30">
               {respondendo
                 ? <Loader2 className="w-3 h-3 text-white animate-spin" />

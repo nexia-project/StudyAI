@@ -1,14 +1,11 @@
 /**
- * Aula com o Professor — Canvas real
+ * Aula com o Professor — Bible Project style
  *
- * Lousa em HTML5 Canvas com:
- * - Fonte Caveat (caligrafia)
- * - Cursor de caneta animado que precede o texto
- * - Efeito de marcador (traço com textura)
- * - Caixas coloridas para fórmula/destaque/exemplo
- * - Setas desenhadas no canvas
- * - Sublinhado animado em títulos
- * - Auto-scroll suave quando o conteúdo cresce
+ * Lousa HTML5 Canvas com:
+ * - Escrita sincronizada com áudio (pausa quando áudio pausa)
+ * - TTS pré-carregado antes da lousa começar a escrever
+ * - Personagem substituído por waveform animado
+ * - Layout limpo: lousa grande + painel de narração
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -20,7 +17,6 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { TiagaoCharacter, type CharacterState } from "@/components/TiagaoCharacter";
-import { TiagaoFullBody } from "@/components/TiagaoFullBody";
 import { ChalkBoardCanvas } from "@/components/ChalkBoardCanvas";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -52,24 +48,32 @@ const TOPICOS_SUGERIDOS = [
   "Geometria Plana - Área", "Gramática - Concordância Verbal", "Genética",
 ];
 
-// ─── Narração com typewriter ──────────────────────────────────────────────────
-function NarrationText({ text, active }: { text: string; active: boolean }) {
-  const [shown, setShown] = useState("");
-  useEffect(() => {
-    if (!active) { setShown(text); return; }
-    setShown("");
-    let i = 0;
-    const iv = setInterval(() => {
-      i++;
-      setShown(text.slice(0, i));
-      if (i >= text.length) clearInterval(iv);
-    }, 18);
-    return () => clearInterval(iv);
-  }, [active, text]);
+// ─── Waveform animation (professor falando) ────────────────────────────────
+function SpeakingWaveform({ active }: { active: boolean }) {
+  const bars = [3, 6, 9, 12, 9, 6, 3];
   return (
-    <p className="text-sm text-slate-700 leading-relaxed font-medium">
-      {active ? shown : text}
-    </p>
+    <div className="flex items-center gap-[3px] h-5">
+      {bars.map((h, i) => (
+        <motion.div
+          key={i}
+          className={`rounded-full ${active ? "bg-indigo-500" : "bg-slate-300"}`}
+          style={{ width: 3 }}
+          animate={active ? {
+            scaleY: [0.3, 1, 0.3],
+            opacity: [0.5, 1, 0.5],
+          } : { scaleY: 0.3, opacity: 0.4 }}
+          transition={active ? {
+            repeat: Infinity,
+            duration: 0.55 + i * 0.05,
+            delay: i * 0.07,
+            ease: "easeInOut",
+          } : { duration: 0.3 }}
+          initial={false}
+        >
+          <div style={{ height: h }} />
+        </motion.div>
+      ))}
+    </div>
   );
 }
 
@@ -99,13 +103,15 @@ export default function AulaIA() {
   const [muted, setMuted] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [boardAllDone, setBoardAllDone] = useState(false);
-  const [narrationActive, setNarrationActive] = useState(false);
 
   // ── audio ──
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const [audioLoading, setAudioLoading] = useState(false);
   const [charState, setCharState] = useState<CharacterState>("idle");
+
+  // Track which step audio has been fetched for (to avoid double-fetch on resume)
+  const audioStepRef = useRef<number>(-1);
 
   // ── question ──
   const [pergunta, setPergunta] = useState("");
@@ -116,6 +122,9 @@ export default function AulaIA() {
   const [boardKey, setBoardKey] = useState(0);
 
   const etapa = aula?.etapas[etapaAtual];
+
+  // ── Canvas only draws when audio is ACTUALLY playing (not loading, not paused) ──
+  const canvasPlaying = isPlaying && !audioLoading;
 
   // ── character state ──
   useEffect(() => {
@@ -134,7 +143,7 @@ export default function AulaIA() {
     setIsPlaying(false);
     setResposta(null);
     setBoardAllDone(false);
-    setNarrationActive(false);
+    audioStepRef.current = -1;
     try {
       const r = await fetch("/api/aula-ia/gerar", {
         method: "POST",
@@ -148,7 +157,6 @@ export default function AulaIA() {
       setEtapaAtual(0);
       setBoardKey(k => k + 1);
       setBoardAllDone(false);
-      setNarrationActive(false);
     } catch {
       setErroGerar("Não consegui gerar a aula. Tente outro tópico.");
     } finally {
@@ -157,8 +165,9 @@ export default function AulaIA() {
   }, [topico, estilo]);
 
   // ── TTS playback ──────────────────────────────────────────────────────────
-  const playNarration = useCallback(async (texto: string) => {
-    if (muted || !texto) return;
+  const playNarration = useCallback(async (texto: string, stepIdx: number) => {
+    if (!texto) return;
+    if (muted) return; // canvas will still draw since audioLoading stays false
     setAudioLoading(true);
     try {
       const r = await fetch("/api/voice-tts", {
@@ -174,9 +183,12 @@ export default function AulaIA() {
       if (audioRef.current) {
         audioRef.current.src = url;
         audioRef.current.playbackRate = velocidade;
-        await audioRef.current.play();
+        // Only play if this step is still the current one and still playing
+        if (audioStepRef.current === stepIdx) {
+          await audioRef.current.play();
+        }
       }
-    } catch { /* silent */ }
+    } catch { /* silent — canvas will still draw */ }
     finally { setAudioLoading(false); }
   }, [muted, velocidade]);
 
@@ -193,7 +205,7 @@ export default function AulaIA() {
       if (!aula || !isPlaying) return;
       const next = etapaAtual + 1;
       if (next < aula.etapas.length) {
-        setTimeout(() => irParaEtapa(next, true), 1000);
+        setTimeout(() => irParaEtapa(next, true), 800);
       } else {
         setIsPlaying(false);
         setCharState("idle");
@@ -209,22 +221,34 @@ export default function AulaIA() {
     setEtapaAtual(idx);
     setBoardKey(k => k + 1);
     setBoardAllDone(false);
-    setNarrationActive(false);
     setResposta(null);
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0; }
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+    }
+    audioStepRef.current = -1; // reset so new audio can be fetched
     setIsPlaying(autoPlay);
   }, [aula]);
 
-  // ── canvas: first char written → start narration audio ───────────────────
-  const handleFirstChar = useCallback(() => {
-    setNarrationActive(true);
-    if (isPlaying && etapa) playNarration(etapa.narracao);
-  }, [isPlaying, etapa, playNarration]);
+  // ── fetch + play audio when isPlaying becomes true for a step ────────────
+  // This effect is the single source of truth for when audio is fetched.
+  // Canvas waits because canvasPlaying = isPlaying && !audioLoading
+  useEffect(() => {
+    if (!isPlaying || !etapa) return;
+    if (audioStepRef.current === etapaAtual) return; // already fetched/fetching for this step
 
-  // ── canvas: all elements written ─────────────────────────────────────────
-  const handleAllDone = useCallback(() => {
-    setBoardAllDone(true);
-  }, []);
+    // If audio was paused mid-play (resume scenario), just resume it
+    const audio = audioRef.current;
+    if (audio && audio.src && audio.currentTime > 0 && audio.paused && !audio.ended) {
+      audio.play().catch(() => {});
+      audioStepRef.current = etapaAtual;
+      return;
+    }
+
+    // Otherwise, fetch fresh audio for this step
+    audioStepRef.current = etapaAtual;
+    playNarration(etapa.narracao, etapaAtual);
+  }, [isPlaying, etapaAtual]); // eslint-disable-line
 
   // ── play / pause ─────────────────────────────────────────────────────────
   const togglePlay = useCallback(() => {
@@ -233,15 +257,14 @@ export default function AulaIA() {
       audioRef.current?.pause();
       setIsPlaying(false);
     } else {
-      setIsPlaying(true);
-      if (audioRef.current?.paused && audioRef.current.src) {
-        audioRef.current.play();
-      } else {
-        playNarration(etapa?.narracao ?? "");
-        setNarrationActive(true);
+      // Reset step tracker if audio is fully done (not just paused)
+      if (!audioRef.current?.src || audioRef.current?.ended) {
+        audioStepRef.current = -1;
       }
+      setIsPlaying(true);
+      // useEffect above will handle TTS fetch/resume
     }
-  }, [aula, isPlaying, etapa, playNarration]);
+  }, [aula, isPlaying]);
 
   // ── question ─────────────────────────────────────────────────────────────
   const enviarPergunta = useCallback(async () => {
@@ -260,7 +283,11 @@ export default function AulaIA() {
       if (!r.ok) throw new Error();
       const { resposta: txt } = await r.json();
       setResposta({ texto: txt, timestamp: Date.now() });
-      if (!muted) { playNarration(txt); setCharState("speaking"); }
+      if (!muted) {
+        audioStepRef.current = -99; // special marker for Q&A audio
+        playNarration(txt, -99);
+        setCharState("speaking");
+      }
     } catch {
       setResposta({ texto: "Não consegui responder agora. Tente de novo!", timestamp: Date.now() });
     } finally {
@@ -311,7 +338,7 @@ export default function AulaIA() {
           <motion.p
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
             className="text-slate-500 text-center mb-8 text-sm">
-            O Professor Tiagão escreve na lousa ao seu ritmo — pode pausar e perguntar quando quiser
+            O Professor Tiagão escreve na lousa em sincronia com a fala — pause e pergunte quando quiser
           </motion.p>
 
           <motion.div
@@ -447,7 +474,6 @@ export default function AulaIA() {
           <div className="flex-1 relative rounded-3xl shadow-lg overflow-hidden min-h-[360px]"
             style={{ border: "2px solid #E8E0C8", background: "#FFFEF5" }}>
 
-            {/* Canvas ocupa 100% */}
             <AnimatePresence mode="wait">
               <motion.div
                 key={boardKey}
@@ -455,15 +481,14 @@ export default function AulaIA() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
+                transition={{ duration: 0.2 }}
               >
                 {etapa && (
                   <ChalkBoardCanvas
                     elementos={etapa.elementos}
-                    playing={true}
+                    playing={canvasPlaying}
                     speedMultiplier={velocidade}
-                    onFirstChar={handleFirstChar}
-                    onAllDone={handleAllDone}
+                    onAllDone={() => setBoardAllDone(true)}
                   />
                 )}
               </motion.div>
@@ -476,9 +501,21 @@ export default function AulaIA() {
               </span>
             </div>
 
-            {/* Indicador de escrita */}
+            {/* Estado: carregando áudio */}
             <AnimatePresence>
-              {!boardAllDone && etapa && (
+              {isPlaying && audioLoading && (
+                <motion.div
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="absolute top-3 left-3 z-20 flex items-center gap-2 bg-indigo-50/95 backdrop-blur-sm border border-indigo-200 rounded-xl px-3 py-1.5 shadow-sm">
+                  <Loader2 className="w-3 h-3 text-indigo-500 animate-spin" />
+                  <span className="text-xs text-indigo-600 font-semibold">Preparando áudio...</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Estado: professor escrevendo */}
+            <AnimatePresence>
+              {canvasPlaying && !boardAllDone && (
                 <motion.div
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                   className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-amber-200 rounded-xl px-3 py-1.5 shadow-sm">
@@ -490,14 +527,6 @@ export default function AulaIA() {
                 </motion.div>
               )}
             </AnimatePresence>
-
-            {/* Áudio carregando */}
-            {audioLoading && (
-              <div className="absolute top-10 left-3 z-20 flex items-center gap-2 bg-indigo-50/90 backdrop-blur-sm border border-indigo-200 rounded-xl px-3 py-1.5">
-                <Loader2 className="w-3 h-3 text-indigo-500 animate-spin" />
-                <span className="text-xs text-indigo-600 font-medium">Tiagão falando...</span>
-              </div>
-            )}
           </div>
 
           {/* ── CONTROLES ── */}
@@ -521,7 +550,11 @@ export default function AulaIA() {
               <motion.button whileTap={{ scale: 0.93 }} onClick={togglePlay}
                 className="w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-white transition-all"
                 style={{ background: "linear-gradient(135deg,#6366f1,#4f46e5)" }}>
-                {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-0.5" />}
+                {isPlaying && !audioLoading
+                  ? <Pause className="w-6 h-6" />
+                  : audioLoading
+                  ? <Loader2 className="w-6 h-6 animate-spin" />
+                  : <Play className="w-6 h-6 ml-0.5" />}
               </motion.button>
               <button onClick={() => irParaEtapa(Math.min(totalEtapas - 1, etapaAtual + 1))}
                 disabled={etapaAtual === totalEtapas - 1}
@@ -529,9 +562,18 @@ export default function AulaIA() {
                 <SkipForward className="w-4 h-4" />
               </button>
               <button
-                onClick={() => { audioRef.current?.pause(); playNarration(etapa?.narracao ?? ""); }}
+                onClick={() => {
+                  audioStepRef.current = -1;
+                  if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ""; }
+                  setBoardKey(k => k + 1);
+                  setBoardAllDone(false);
+                  if (isPlaying) {
+                    audioStepRef.current = etapaAtual;
+                    playNarration(etapa?.narracao ?? "", etapaAtual);
+                  }
+                }}
                 className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-all ml-2"
-                title="Repetir explicação">
+                title="Repetir etapa">
                 <RefreshCw className="w-4 h-4" />
               </button>
             </div>
@@ -542,62 +584,46 @@ export default function AulaIA() {
           </div>
         </div>
 
-        {/* ── COLUNA PROFESSOR ── */}
-        <div className="hidden lg:flex flex-col items-center justify-end flex-shrink-0 w-44 xl:w-52 pb-4 px-2 relative"
-          style={{ borderLeft: "1px solid #E8E0C8", background: "linear-gradient(to bottom, #F0F4F8 0%, #FFFEF5 60%)" }}>
-
-          {/* Balão de fala */}
-          <AnimatePresence>
-            {charState === "speaking" && etapa && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.85, y: 8 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="absolute top-4 left-2 right-2 z-10 bg-white rounded-2xl p-3 shadow-md"
-                style={{ border: "1.5px solid #E5E7EB" }}>
-                <div className="absolute bottom-[-8px] left-1/2 -translate-x-1/2 w-0 h-0"
-                  style={{ borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: "8px solid white" }} />
-                <p className="text-[11px] text-slate-600 leading-relaxed line-clamp-4 font-medium italic">
-                  "{etapa.narracao.slice(0, 100)}{etapa.narracao.length > 100 ? "..." : ""}"
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Personagem de corpo inteiro */}
-          <div className="mt-auto">
-            <TiagaoFullBody state={charState} width={160} />
-          </div>
-
-          <p className="text-[11px] text-slate-500 font-semibold mt-1 tracking-wide">Prof. Tiagão</p>
-        </div>
-
         {/* ── PAINEL DIREITO ── */}
-        <div className="lg:w-64 xl:w-72 flex flex-col border-t lg:border-t-0 lg:border-l border-slate-200 bg-white flex-shrink-0">
+        <div className="lg:w-72 xl:w-80 flex flex-col border-t lg:border-t-0 lg:border-l border-slate-200 bg-white flex-shrink-0">
 
-          {/* Narração */}
+          {/* Narração com avatar do professor */}
           <div className="p-4 border-b border-slate-100">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
-              O que o Professor diz
-            </p>
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className="relative flex-shrink-0">
+                <TiagaoCharacter state={charState} size={44} showLabel={false} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Prof. Tiagão</p>
+                  <SpeakingWaveform active={isPlaying && !audioLoading} />
+                </div>
+                <p className="text-[11px] text-slate-400 font-medium">
+                  {audioLoading ? "Preparando a explicação..." : isPlaying ? "Explicando agora..." : "Em pausa"}
+                </p>
+              </div>
+            </div>
+
+            {/* Narração da etapa atual */}
             <AnimatePresence mode="wait">
               <motion.div key={etapaAtual}
                 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
-                <NarrationText text={etapa?.narracao ?? ""} active={narrationActive && !boardAllDone} />
+                exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+                <p className="text-sm text-slate-700 leading-relaxed font-medium">
+                  {etapa?.narracao}
+                </p>
               </motion.div>
             </AnimatePresence>
           </div>
 
-          {/* Resposta do Tiagão */}
+          {/* Resposta do Tiagão a perguntas */}
           <AnimatePresence>
             {resposta && (
               <motion.div key={resposta.timestamp}
                 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                 className="p-4 border-b border-indigo-100 bg-indigo-50">
                 <div className="flex items-center gap-2 mb-1.5">
-                  <TiagaoCharacter state="speaking" size={32} showLabel={false} />
+                  <TiagaoCharacter state="speaking" size={28} showLabel={false} />
                   <p className="text-[10px] font-black text-indigo-500 uppercase tracking-wider">
                     Tiagão responde
                   </p>
@@ -630,6 +656,9 @@ export default function AulaIA() {
                   {et.elementos.find(e => e.tipo === "titulo")?.texto
                     || et.narracao.slice(0, 55) + "..."}
                 </span>
+                {i === etapaAtual && isPlaying && (
+                  <ChevronRight className="w-3 h-3 ml-auto flex-shrink-0 mt-0.5 text-indigo-400" />
+                )}
               </button>
             ))}
           </div>
@@ -639,8 +668,8 @@ export default function AulaIA() {
       {/* ── INPUT DE PERGUNTAS ── */}
       <div className="flex-shrink-0 border-t border-slate-200 bg-white px-3 sm:px-5 py-3">
         <div className="max-w-4xl mx-auto flex items-center gap-2">
-          <div className="w-10 h-10 flex-shrink-0">
-            <TiagaoCharacter state={respondendo ? "thinking" : "idle"} size={40} showLabel={false} />
+          <div className="w-8 h-8 flex-shrink-0">
+            <TiagaoCharacter state={respondendo ? "thinking" : "idle"} size={32} showLabel={false} />
           </div>
           <div className="flex-1 relative">
             <input

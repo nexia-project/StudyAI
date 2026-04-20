@@ -25,7 +25,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { icon: Target, label: "Simulado ENEM",      path: "/simulado-enem", color: "text-indigo-600" },
       { icon: PenLine, label: "Redação",           path: "/redacao",       color: "text-rose-600"   },
       { icon: Calendar, label: "Cronograma",       path: "/cronograma",    color: "text-violet-600" },
-      { icon: BookOpen, label: "Aula com IA",      path: "/aula-ia",       color: "text-indigo-600" },
+      { icon: BookOpen, label: "Aula com o Professor", path: "/aula-ia", color: "text-indigo-600" },
       { icon: TrendingUp, label: "Trilha Mestre",   path: "/trilha",        color: "text-blue-600"   },
       { icon: NotebookPen, label: "Caderno Digital", path: "/caderno",      color: "text-amber-600"  },
       { icon: Clock,  label: "Sala de Estudos",    path: "/sala-estudos",  color: "text-amber-600"  },

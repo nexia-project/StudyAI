@@ -1,11 +1,23 @@
+/**
+ * Aula com o Professor — Professor Tiagão na lousa
+ *
+ * Mudanças principais:
+ * - Texto escrito letra por letra como num quadro real (typewriter)
+ * - Cadência pausada: cada elemento espera o anterior terminar + pausa
+ * - Velocidade variável por tipo de elemento (título mais lento, texto médio)
+ * - Cursor piscando enquanto escreve
+ * - Narração começa junto com a primeira letra do primeiro elemento
+ */
+
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX,
-  ChevronRight, Loader2, Mic, Send, RefreshCw,
+  ChevronRight, Loader2, Send, RefreshCw,
   BookOpen, Maximize2, Minimize2, ChevronLeft, Zap,
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { TiagaoCharacter, type CharacterState } from "@/components/TiagaoCharacter";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface BoardElement {
@@ -15,14 +27,12 @@ interface BoardElement {
   destaque?: string;
   corTexto?: string;
 }
-
 interface Etapa {
   id: number;
   narracao: string;
   elementos: BoardElement[];
   duracao: number;
 }
-
 interface Aula {
   titulo: string;
   subtitulo: string;
@@ -31,7 +41,6 @@ interface Aula {
 
 const ESTILOS = ["ENEM", "Vestibular", "Concurso", "Simples"] as const;
 const VELOCIDADES = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
-
 const TOPICOS_SUGERIDOS = [
   "Funções do 1º Grau", "Lei de Ohm", "Revolução Francesa",
   "Equações do 2º Grau", "Fotossíntese", "Segunda Guerra Mundial",
@@ -39,82 +48,251 @@ const TOPICOS_SUGERIDOS = [
   "Geometria Plana - Área", "Gramática - Concordância Verbal", "Genética",
 ];
 
-// ─── Board Element Renderer ───────────────────────────────────────────────────
-function BoardEl({ el, delay }: { el: BoardElement; delay: number }) {
-  const variants = {
-    hidden: { opacity: 0, y: 12 },
-    visible: { opacity: 1, y: 0, transition: { delay, duration: 0.45, ease: "easeOut" } },
+// ─── Velocidade por tipo de elemento (ms por caractere) ───────────────────────
+const TYPING_SPEED: Record<BoardElement["tipo"], number> = {
+  titulo:    48,   // lento — professor escreve com cuidado
+  formula:   70,   // muito lento — cada símbolo importa
+  texto:     24,   // médio
+  destaque:  36,
+  seta:      22,
+  separador: 0,    // instantâneo
+  exemplo:   28,
+};
+// Pausa após cada elemento (ms) antes de começar o próximo
+const AFTER_PAUSE: Record<BoardElement["tipo"], number> = {
+  titulo:    600,
+  formula:   800,
+  texto:     350,
+  destaque:  450,
+  seta:      300,
+  separador: 180,
+  exemplo:   500,
+};
+
+// ─── Hook: typewriter letra por letra ────────────────────────────────────────
+function useTypewriter(
+  text: string,
+  active: boolean,
+  speed: number,
+  onDone: () => void,
+) {
+  const [displayed, setDisplayed] = useState("");
+  const [done, setDone] = useState(false);
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+
+  useEffect(() => {
+    if (!active) return;
+    setDisplayed("");
+    setDone(false);
+    if (!text) { onDoneRef.current(); return; }
+
+    let i = 0;
+    const interval = setInterval(() => {
+      i++;
+      setDisplayed(text.slice(0, i));
+      if (i >= text.length) {
+        clearInterval(interval);
+        setDone(true);
+        onDoneRef.current();
+      }
+    }, speed);
+    return () => clearInterval(interval);
+  }, [active, text, speed]);
+
+  return { displayed, done };
+}
+
+// ─── Cursor piscante (giz na lousa) ──────────────────────────────────────────
+function ChalkCursor({ visible }: { visible: boolean }) {
+  if (!visible) return null;
+  return (
+    <motion.span
+      animate={{ opacity: [1, 0, 1] }}
+      transition={{ repeat: Infinity, duration: 0.7, ease: "linear" }}
+      className="inline-block w-[2px] h-[1.1em] bg-slate-700 ml-0.5 align-text-bottom rounded-full"
+    />
+  );
+}
+
+// ─── Um elemento da lousa com typewriter ─────────────────────────────────────
+interface TypeBoardElProps {
+  el: BoardElement;
+  active: boolean;    // está sendo escrito agora
+  completed: boolean; // já foi escrito completamente
+  onDone: () => void;
+}
+
+function TypewriterBoardEl({ el, active, completed, onDone }: TypeBoardElProps) {
+  const speed = TYPING_SPEED[el.tipo];
+  const text = el.texto ?? "";
+
+  // Para separadores: aparece instantaneamente
+  useEffect(() => {
+    if (active && el.tipo === "separador") {
+      const t = setTimeout(() => onDone(), 120);
+      return () => clearTimeout(t);
+    }
+  }, [active, el.tipo]); // eslint-disable-line
+
+  const { displayed, done } = useTypewriter(
+    el.tipo !== "separador" ? text : "",
+    active && el.tipo !== "separador",
+    speed,
+    el.tipo !== "separador" ? onDone : () => {},
+  );
+
+  const showText = completed ? text : (active ? displayed : "");
+  const showCursor = active && !done && el.tipo !== "separador";
+
+  // Fade in da container ao aparecer
+  const appear = {
+    initial: { opacity: 0 },
+    animate: { opacity: 1, transition: { duration: 0.25 } },
   };
 
   if (el.tipo === "separador") {
-    return (
-      <motion.div variants={variants} initial="hidden" animate="visible"
-        className="w-full h-px bg-slate-200 my-3" />
-    );
+    if (!active && !completed) return null;
+    return <motion.div {...appear} className="w-full h-px bg-slate-200 my-3" />;
   }
 
-  const baseClass = "leading-snug";
+  if (!active && !completed) return null;
 
   if (el.tipo === "titulo") {
     return (
-      <motion.div variants={variants} initial="hidden" animate="visible">
-        <p className={`${baseClass} text-2xl sm:text-3xl font-black text-slate-800 mb-2`}
-          style={{ color: el.cor }}>
-          {el.texto}
+      <motion.div {...appear} className="mb-2">
+        <p className="text-2xl sm:text-3xl font-black text-slate-800 leading-snug" style={{ color: el.cor }}>
+          {showText}<ChalkCursor visible={showCursor} />
         </p>
       </motion.div>
     );
   }
-
   if (el.tipo === "formula") {
     return (
-      <motion.div variants={variants} initial="hidden" animate="visible">
-        <div className="inline-block my-2 px-5 py-3 rounded-2xl text-2xl sm:text-3xl font-mono font-black text-slate-900 shadow-sm border border-slate-100"
+      <motion.div {...appear} className="my-2">
+        <div className="inline-block px-5 py-3 rounded-2xl text-2xl sm:text-3xl font-mono font-black text-slate-900 shadow-sm border border-slate-100"
           style={{ backgroundColor: el.destaque ?? "#fef08a" }}>
-          {el.texto}
+          {showText}<ChalkCursor visible={showCursor} />
         </div>
       </motion.div>
     );
   }
-
   if (el.tipo === "destaque") {
     return (
-      <motion.div variants={variants} initial="hidden" animate="visible">
-        <span className="inline-block my-1 px-4 py-2 rounded-xl font-semibold text-base sm:text-lg"
+      <motion.div {...appear} className="my-1">
+        <span className="inline-block px-4 py-2 rounded-xl font-semibold text-base sm:text-lg"
           style={{ backgroundColor: el.cor ?? "#bbf7d0", color: el.corTexto ?? "#166534" }}>
-          {el.texto}
+          {showText}<ChalkCursor visible={showCursor} />
         </span>
       </motion.div>
     );
   }
-
   if (el.tipo === "seta") {
     return (
-      <motion.div variants={variants} initial="hidden" animate="visible">
-        <div className="flex items-start gap-2 my-1.5">
+      <motion.div {...appear} className="my-1.5">
+        <div className="flex items-start gap-2">
           <ChevronRight className="w-5 h-5 mt-0.5 flex-shrink-0 text-indigo-500" style={{ color: el.cor }} />
-          <p className="text-base sm:text-lg text-slate-700 font-medium">{el.texto}</p>
+          <p className="text-base sm:text-lg text-slate-700 font-medium">
+            {showText}<ChalkCursor visible={showCursor} />
+          </p>
         </div>
       </motion.div>
     );
   }
-
   if (el.tipo === "exemplo") {
     return (
-      <motion.div variants={variants} initial="hidden" animate="visible">
-        <div className="w-full my-2 px-4 py-3 rounded-2xl border-l-4 border-blue-400"
+      <motion.div {...appear} className="my-2">
+        <div className="w-full px-4 py-3 rounded-2xl border-l-4 border-blue-400"
           style={{ backgroundColor: el.cor ?? "#dbeafe" }}>
           <p className="text-xs font-bold text-blue-600 mb-0.5 uppercase tracking-wider">Exemplo</p>
-          <p className="text-base text-slate-800 font-medium">{el.texto}</p>
+          <p className="text-base text-slate-800 font-medium">
+            {showText}<ChalkCursor visible={showCursor} />
+          </p>
         </div>
       </motion.div>
     );
   }
+  // texto (default)
+  return (
+    <motion.div {...appear} className="my-1">
+      <p className="text-base sm:text-lg text-slate-700 leading-snug">
+        {showText}<ChalkCursor visible={showCursor} />
+      </p>
+    </motion.div>
+  );
+}
+
+// ─── Lousa completa com sequenciamento ───────────────────────────────────────
+interface WritingBoardProps {
+  etapa: Etapa;
+  boardKey: number;
+  onFirstChar: () => void;   // dispara narração quando começa a escrever
+  onAllDone: () => void;     // todos elementos escritos
+}
+
+function WritingBoard({ etapa, boardKey, onFirstChar, onAllDone }: WritingBoardProps) {
+  const [activeIdx, setActiveIdx] = useState<number>(-1);
+  const [completedSet, setCompletedSet] = useState<Set<number>>(new Set());
+  const firstCharFiredRef = useRef(false);
+  const onFirstCharRef = useRef(onFirstChar);
+  const onAllDoneRef = useRef(onAllDone);
+  onFirstCharRef.current = onFirstChar;
+  onAllDoneRef.current = onAllDone;
+
+  // Reset ao mudar etapa
+  useEffect(() => {
+    setActiveIdx(-1);
+    setCompletedSet(new Set());
+    firstCharFiredRef.current = false;
+    // Pequeno delay inicial para o aluno ver a lousa limpar antes de começar
+    const t = setTimeout(() => setActiveIdx(0), 380);
+    return () => clearTimeout(t);
+  }, [boardKey]);
+
+  // Quando activeIdx chega ao primeiro elemento, dispara narração
+  useEffect(() => {
+    if (activeIdx === 0 && !firstCharFiredRef.current) {
+      firstCharFiredRef.current = true;
+      onFirstCharRef.current();
+    }
+  }, [activeIdx]);
+
+  const handleDone = useCallback((idx: number) => {
+    setCompletedSet(prev => new Set([...prev, idx]));
+    const pauseTime = AFTER_PAUSE[etapa.elementos[idx]?.tipo ?? "texto"];
+    setTimeout(() => {
+      const next = idx + 1;
+      if (next >= etapa.elementos.length) {
+        onAllDoneRef.current();
+      } else {
+        setActiveIdx(next);
+      }
+    }, pauseTime);
+  }, [etapa.elementos]);
 
   return (
-    <motion.div variants={variants} initial="hidden" animate="visible">
-      <p className={`${baseClass} text-base sm:text-lg text-slate-700 my-1`}>{el.texto}</p>
-    </motion.div>
+    <div>
+      {etapa.elementos.map((el, i) => (
+        <TypewriterBoardEl
+          key={`${boardKey}-${i}`}
+          el={el}
+          active={activeIdx === i}
+          completed={completedSet.has(i)}
+          onDone={() => handleDone(i)}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── Narração com typewriter (painel direito) ─────────────────────────────────
+function NarrationText({ text, active }: { text: string; active: boolean }) {
+  const { displayed, done } = useTypewriter(text, active, 18, () => {});
+  return (
+    <p className="text-sm text-slate-700 leading-relaxed font-medium">
+      {active ? displayed : text}
+      {active && !done && <ChalkCursor visible />}
+    </p>
   );
 }
 
@@ -143,11 +321,14 @@ export default function AulaIA() {
   const [velocidade, setVelocidade] = useState<number>(1);
   const [muted, setMuted] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const [boardAllDone, setBoardAllDone] = useState(false);
+  const [narrationActive, setNarrationActive] = useState(false);
 
   // ── audio ──
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const [audioLoading, setAudioLoading] = useState(false);
+  const [charState, setCharState] = useState<CharacterState>("idle");
 
   // ── question ──
   const [pergunta, setPergunta] = useState("");
@@ -159,6 +340,13 @@ export default function AulaIA() {
 
   const etapa = aula?.etapas[etapaAtual];
 
+  // ── update character state based on playback ──
+  useEffect(() => {
+    if (audioLoading) { setCharState("thinking"); return; }
+    if (isPlaying) { setCharState("speaking"); return; }
+    setCharState("idle");
+  }, [isPlaying, audioLoading]);
+
   // ── generate lesson ───────────────────────────────────────────────────────
   const gerarAula = useCallback(async () => {
     if (!topico.trim()) return;
@@ -168,22 +356,22 @@ export default function AulaIA() {
     setEtapaAtual(0);
     setIsPlaying(false);
     setResposta(null);
+    setBoardAllDone(false);
+    setNarrationActive(false);
     try {
       const r = await fetch("/api/aula-ia/gerar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topico, estilo }),
       });
-      if (r.status === 401) {
-        setErroGerar("Faça login para acessar as aulas com IA.");
-        setGerando(false);
-        return;
-      }
+      if (r.status === 401) { setErroGerar("Faça login para acessar as aulas."); setGerando(false); return; }
       if (!r.ok) throw new Error("Erro ao gerar aula");
       const data: Aula = await r.json();
       setAula(data);
       setEtapaAtual(0);
       setBoardKey(k => k + 1);
+      setBoardAllDone(false);
+      setNarrationActive(false);
     } catch {
       setErroGerar("Não consegui gerar a aula. Tente outro tópico.");
     } finally {
@@ -202,63 +390,64 @@ export default function AulaIA() {
         body: JSON.stringify({ text: texto }),
       });
       if (!r.ok) throw new Error("TTS error");
-
       const blob = await r.blob();
       const url = URL.createObjectURL(blob);
-
       if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
       audioUrlRef.current = url;
-
       if (audioRef.current) {
         audioRef.current.src = url;
         audioRef.current.playbackRate = velocidade;
         await audioRef.current.play();
       }
-    } catch {
-      /* silent */
-    } finally {
-      setAudioLoading(false);
-    }
+    } catch { /* silent */ }
+    finally { setAudioLoading(false); }
   }, [muted, velocidade]);
 
-  // ── update playback speed on change ──────────────────────────────────────
+  // ── update playback speed ─────────────────────────────────────────────────
   useEffect(() => {
     if (audioRef.current) audioRef.current.playbackRate = velocidade;
   }, [velocidade]);
-
-  // ── play step: animate board + narration ─────────────────────────────────
-  const irParaEtapa = useCallback((idx: number, autoPlay = false) => {
-    if (!aula) return;
-    setEtapaAtual(idx);
-    setBoardKey(k => k + 1);
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-    setIsPlaying(autoPlay);
-    if (autoPlay && aula.etapas[idx]) {
-      playNarration(aula.etapas[idx].narracao);
-    }
-  }, [aula, playNarration]);
 
   // ── auto-advance when audio ends ─────────────────────────────────────────
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-
     const handleEnd = () => {
       if (!aula || !isPlaying) return;
       const next = etapaAtual + 1;
       if (next < aula.etapas.length) {
-        setTimeout(() => irParaEtapa(next, true), 800);
+        setTimeout(() => irParaEtapa(next, true), 1000);
       } else {
         setIsPlaying(false);
+        setCharState("idle");
       }
     };
-
     audio.addEventListener("ended", handleEnd);
     return () => audio.removeEventListener("ended", handleEnd);
-  }, [aula, etapaAtual, isPlaying, irParaEtapa]);
+  }, [aula, etapaAtual, isPlaying]); // eslint-disable-line
+
+  // ── go to step ───────────────────────────────────────────────────────────
+  const irParaEtapa = useCallback((idx: number, autoPlay = false) => {
+    if (!aula) return;
+    setEtapaAtual(idx);
+    setBoardKey(k => k + 1);
+    setBoardAllDone(false);
+    setNarrationActive(false);
+    setResposta(null);
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0; }
+    setIsPlaying(autoPlay);
+  }, [aula]);
+
+  // ── called when first char is written → start narration ──────────────────
+  const handleFirstChar = useCallback(() => {
+    if (isPlaying && etapa) playNarration(etapa.narracao);
+    setNarrationActive(true);
+  }, [isPlaying, etapa, playNarration]);
+
+  // ── called when all board elements are written ────────────────────────────
+  const handleAllDone = useCallback(() => {
+    setBoardAllDone(true);
+  }, []);
 
   // ── play / pause ─────────────────────────────────────────────────────────
   const togglePlay = useCallback(() => {
@@ -272,6 +461,7 @@ export default function AulaIA() {
         audioRef.current.play();
       } else {
         playNarration(etapa?.narracao ?? "");
+        setNarrationActive(true);
       }
     }
   }, [aula, isPlaying, etapa, playNarration]);
@@ -282,34 +472,31 @@ export default function AulaIA() {
     const q = pergunta.trim();
     setPergunta("");
     setRespondendo(true);
+    setCharState("thinking");
+    if (isPlaying) { audioRef.current?.pause(); setIsPlaying(false); }
     try {
       const r = await fetch("/api/aula-ia/pergunta", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          pergunta: q,
-          topico: aula.titulo,
-          contexto: etapa?.narracao,
-        }),
+        body: JSON.stringify({ pergunta: q, topico: aula.titulo, contexto: etapa?.narracao }),
       });
       if (!r.ok) throw new Error();
       const { resposta: txt } = await r.json();
       setResposta({ texto: txt, timestamp: Date.now() });
-      if (!muted) playNarration(txt);
+      if (!muted) { playNarration(txt); setCharState("speaking"); }
     } catch {
-      setResposta({ texto: "Hmm, não consegui responder agora. Tente de novo!", timestamp: Date.now() });
+      setResposta({ texto: "Não consegui responder agora. Tente de novo!", timestamp: Date.now() });
     } finally {
       setRespondendo(false);
+      setTimeout(() => setCharState("idle"), 3000);
     }
-  }, [pergunta, respondendo, aula, etapa, muted, playNarration]);
+  }, [pergunta, respondendo, aula, etapa, muted, isPlaying, playNarration]);
 
-  // ─── TELA INICIAL: escolher tópico ────────────────────────────────────────
+  // ─── TELA INICIAL ─────────────────────────────────────────────────────────
   if (!aula && !gerando) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 flex flex-col">
         <audio ref={audioRef} />
-
-        {/* Header */}
         <header className="bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-3 shadow-sm">
           <button onClick={() => navigate("/app")}
             className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 transition-colors text-sm font-medium">
@@ -320,27 +507,22 @@ export default function AulaIA() {
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
               <BookOpen className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="font-black text-slate-800 text-sm">Aula com IA — Tiagão na Lousa</span>
+            <span className="font-black text-slate-800 text-sm">Aula com o Professor</span>
           </div>
         </header>
 
-        {/* Main */}
         <div className="flex-1 flex flex-col items-center justify-center px-4 py-12 max-w-2xl mx-auto w-full">
-
-          {/* Avatar */}
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 200 }}
-            className="mb-8 relative">
-            <div className="w-32 h-32 select-none">
-              <img src="/tiagao-hero.png" alt="Professor Tiagão" className="w-full h-full object-contain" style={{ filter: "drop-shadow(0 4px 20px rgba(99,102,241,0.4))" }} />
-            </div>
+            className="mb-6 relative">
+            <TiagaoCharacter state="idle" size={140} showLabel={false} />
             <motion.div
               animate={{ scale: [1, 1.15, 1], opacity: [0.8, 1, 0.8] }}
               transition={{ repeat: Infinity, duration: 2.5 }}
-              className="absolute -top-1 -right-1 w-6 h-6 bg-indigo-500 rounded-full flex items-center justify-center">
-              <Zap className="w-3 h-3 text-white" />
+              className="absolute top-2 right-0 w-7 h-7 bg-indigo-500 rounded-full flex items-center justify-center shadow-lg">
+              <Zap className="w-3.5 h-3.5 text-white" />
             </motion.div>
           </motion.div>
 
@@ -352,10 +534,9 @@ export default function AulaIA() {
           <motion.p
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
             className="text-slate-500 text-center mb-8 text-sm">
-            Tiagão cria uma aula explicada na lousa em tempo real, só pra você
+            O Professor Tiagão escreve na lousa ao seu ritmo — pode pausar e perguntar quando quiser
           </motion.p>
 
-          {/* Input */}
           <motion.div
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
             className="w-full mb-4">
@@ -368,7 +549,6 @@ export default function AulaIA() {
             />
           </motion.div>
 
-          {/* Estilo selector */}
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}
             className="flex items-center gap-2 mb-6">
@@ -385,19 +565,16 @@ export default function AulaIA() {
             ))}
           </motion.div>
 
-          {erroGerar && (
-            <p className="text-red-500 text-sm mb-4 font-medium">{erroGerar}</p>
-          )}
+          {erroGerar && <p className="text-red-500 text-sm mb-4 font-medium">{erroGerar}</p>}
 
           <motion.button
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
             onClick={gerarAula}
             disabled={!topico.trim()}
             className="w-full py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-lg shadow-xl hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-            <BookOpen className="w-5 h-5" /> Começar Aula com Tiagão
+            <BookOpen className="w-5 h-5" /> Começar Aula com o Professor
           </motion.button>
 
-          {/* Quick topics */}
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
             className="mt-8 w-full">
@@ -418,34 +595,22 @@ export default function AulaIA() {
     );
   }
 
-  // ─── TELA DE CARREGAMENTO ─────────────────────────────────────────────────
+  // ─── CARREGANDO ───────────────────────────────────────────────────────────
   if (gerando) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 to-indigo-900 flex flex-col items-center justify-center gap-6">
         <audio ref={audioRef} />
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 2, ease: "linear" }}>
-          <Loader2 className="w-12 h-12 text-indigo-400" />
-        </motion.div>
+        <TiagaoCharacter state="thinking" size={160} showLabel />
         <div className="text-center">
-          <p className="text-white font-black text-xl mb-1">Tiagão está preparando a aula...</p>
-          <p className="text-indigo-300 text-sm">Gerando lousa, explicações e exemplos sobre</p>
+          <p className="text-white font-black text-xl mb-1">Professor Tiagão está preparando a aula...</p>
+          <p className="text-indigo-300 text-sm">Organizando lousa, explicações e exemplos sobre</p>
           <p className="text-indigo-200 font-bold mt-1">"{topico}"</p>
         </div>
-        <motion.div
-          animate={{ opacity: [0.4, 1, 0.4] }}
-          transition={{ repeat: Infinity, duration: 1.8 }}
-          className="flex gap-1.5">
-          {[0, 1, 2].map(i => (
-            <div key={i} className="w-2 h-2 rounded-full bg-indigo-400" />
-          ))}
-        </motion.div>
       </div>
     );
   }
 
-  // ─── TELA DA AULA ─────────────────────────────────────────────────────────
+  // ─── AULA ─────────────────────────────────────────────────────────────────
   if (!aula) return null;
 
   const totalEtapas = aula.etapas.length;
@@ -455,7 +620,7 @@ export default function AulaIA() {
     <div className={`bg-slate-100 flex flex-col ${fullscreen ? "fixed inset-0 z-50" : "min-h-screen"}`}>
       <audio ref={audioRef} />
 
-      {/* ── HEADER ────────────────────────────────────────────────────────── */}
+      {/* ── HEADER ── */}
       <header className="bg-white border-b border-slate-200 px-3 sm:px-5 py-2.5 flex items-center gap-2 sm:gap-3 shadow-sm flex-shrink-0">
         <button onClick={() => { setAula(null); setTopico(""); }}
           className="flex items-center gap-1 text-slate-500 hover:text-slate-800 transition-colors text-sm font-medium flex-shrink-0">
@@ -473,21 +638,14 @@ export default function AulaIA() {
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          {/* Speed */}
-          <select
-            value={velocidade}
-            onChange={e => setVelocidade(Number(e.target.value))}
+          <select value={velocidade} onChange={e => setVelocidade(Number(e.target.value))}
             className="text-xs font-bold bg-slate-100 border-0 rounded-lg px-2 py-1 text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-300">
-            {VELOCIDADES.map(v => (
-              <option key={v} value={v}>{v}x</option>
-            ))}
+            {VELOCIDADES.map(v => <option key={v} value={v}>{v}x</option>)}
           </select>
-          {/* Mute */}
           <button onClick={() => setMuted(m => !m)}
             className={`p-1.5 rounded-lg transition-colors ${muted ? "bg-red-100 text-red-500" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
             {muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
           </button>
-          {/* Fullscreen */}
           <button onClick={() => setFullscreen(f => !f)}
             className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
             {fullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
@@ -495,196 +653,171 @@ export default function AulaIA() {
         </div>
       </header>
 
-      {/* ── PROGRESS BAR ─────────────────────────────────────────────────── */}
+      {/* ── PROGRESSO ── */}
       <div className="h-1 bg-slate-200 flex-shrink-0">
-        <motion.div
-          className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
-          animate={{ width: `${progresso}%` }}
-          transition={{ duration: 0.5 }}
-        />
+        <motion.div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
+          animate={{ width: `${progresso}%` }} transition={{ duration: 0.5 }} />
       </div>
 
-      {/* ── BODY ──────────────────────────────────────────────────────────── */}
+      {/* ── BODY ── */}
       <div className="flex-1 flex flex-col lg:flex-row gap-0 overflow-hidden">
 
-        {/* ── WHITEBOARD ──────────────────────────────────────────────────── */}
+        {/* ── LOUSA ── */}
         <div className="flex-1 flex flex-col min-h-0 p-3 sm:p-5 gap-3">
+          <div className="flex-1 relative bg-white rounded-3xl shadow-lg border border-slate-200 overflow-hidden flex flex-col min-h-[320px]">
 
-          {/* Board surface */}
-          <div className="flex-1 relative bg-white rounded-3xl shadow-lg border border-slate-200 overflow-hidden flex flex-col min-h-[280px]">
-
-            {/* Board lines (ruled paper effect) */}
+            {/* Linhas do caderno */}
             <div className="absolute inset-0 pointer-events-none"
               style={{
-                backgroundImage: "repeating-linear-gradient(transparent, transparent 27px, #f1f5f9 27px, #f1f5f9 28px)",
-                backgroundPositionY: "40px",
+                backgroundImage: "repeating-linear-gradient(transparent, transparent 31px, #f1f5f9 31px, #f1f5f9 32px)",
+                backgroundPositionY: "44px",
               }} />
 
-            {/* Estilo tag */}
+            {/* Tag de estilo */}
             <div className="absolute top-3 right-3 z-10">
               <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-700 uppercase tracking-wider">
                 {estilo}
               </span>
             </div>
 
-            {/* Board content */}
-            <div className="flex-1 p-6 sm:p-8 pr-16 overflow-y-auto relative z-10">
+            {/* Conteúdo da lousa */}
+            <div className="flex-1 p-6 sm:p-8 pr-20 overflow-y-auto relative z-10">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={boardKey}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3 }}>
-                  {etapa?.elementos.map((el, i) => (
-                    <BoardEl key={i} el={el} delay={i * 0.18} />
-                  ))}
+                  transition={{ duration: 0.2 }}>
+                  {etapa && (
+                    <WritingBoard
+                      etapa={etapa}
+                      boardKey={boardKey}
+                      onFirstChar={handleFirstChar}
+                      onAllDone={handleAllDone}
+                    />
+                  )}
                 </motion.div>
               </AnimatePresence>
             </div>
 
-            {/* Tiagão Avatar on board */}
+            {/* Professor Tiagão na lousa */}
             <div className="absolute bottom-0 left-0 z-20 pointer-events-none select-none">
-              <div className="relative">
-                <motion.div
-                  animate={isPlaying ? { y: [0, -6, 0] } : {}}
-                  transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}>
-                  <img
-                    src="/tiagao-hero.png"
-                    alt="Professor Tiagão"
-                    className="w-24 h-24 sm:w-36 sm:h-36 object-contain"
-                    style={{ filter: "drop-shadow(0 6px 20px rgba(99,102,241,0.45))" }}
-                  />
-                </motion.div>
-                {/* Speaking indicator */}
-                {(isPlaying || audioLoading) && (
-                  <motion.div
-                    animate={{ scale: [1, 1.4, 1], opacity: [1, 0.5, 1] }}
-                    transition={{ repeat: Infinity, duration: 0.6 }}
-                    className="absolute top-1 right-1 w-4 h-4 bg-indigo-500 rounded-full border-2 border-white shadow" />
-                )}
-              </div>
+              <TiagaoCharacter
+                state={charState}
+                size={100}
+                showLabel={false}
+              />
             </div>
 
-            {/* Audio loading overlay */}
+            {/* Indicador de escrita */}
+            <AnimatePresence>
+              {!boardAllDone && etapa && (
+                <motion.div
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
+                  <motion.span
+                    animate={{ opacity: [1, 0.3, 1] }}
+                    transition={{ repeat: Infinity, duration: 0.8 }}
+                    className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                  <span className="text-xs text-slate-600 font-medium">Professor escrevendo...</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Loading de áudio */}
             {audioLoading && (
-              <div className="absolute top-3 left-3 z-20 flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-xl px-3 py-1.5">
+              <div className="absolute top-10 left-3 z-20 flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-xl px-3 py-1.5">
                 <Loader2 className="w-3 h-3 text-indigo-500 animate-spin" />
                 <span className="text-xs text-indigo-600 font-medium">Tiagão falando...</span>
               </div>
             )}
           </div>
 
-          {/* ── PLAYBACK CONTROLS ───────────────────────────────────────── */}
+          {/* ── CONTROLES ── */}
           <div className="flex flex-col gap-2">
-            {/* Step indicators */}
             <div className="flex items-center justify-center gap-1.5">
               {aula.etapas.map((_, i) => (
                 <button key={i} onClick={() => irParaEtapa(i)}
                   className={`rounded-full transition-all duration-300 ${
-                    i === etapaAtual
-                      ? "w-6 h-2.5 bg-indigo-500"
-                      : i < etapaAtual
-                      ? "w-2 h-2 bg-indigo-300"
-                      : "w-2 h-2 bg-slate-300 hover:bg-slate-400"
+                    i === etapaAtual ? "w-6 h-2.5 bg-indigo-500"
+                    : i < etapaAtual ? "w-2 h-2 bg-indigo-300"
+                    : "w-2 h-2 bg-slate-300 hover:bg-slate-400"
                   }`} />
               ))}
             </div>
-
-            {/* Buttons */}
             <div className="flex items-center justify-center gap-2">
-              {/* Back */}
-              <button
-                onClick={() => irParaEtapa(Math.max(0, etapaAtual - 1))}
+              <button onClick={() => irParaEtapa(Math.max(0, etapaAtual - 1))}
                 disabled={etapaAtual === 0}
                 className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
                 <SkipBack className="w-4 h-4" />
               </button>
-
-              {/* Play / Pause */}
-              <motion.button
-                whileTap={{ scale: 0.93 }}
-                onClick={togglePlay}
+              <motion.button whileTap={{ scale: 0.93 }} onClick={togglePlay}
                 className="w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-white transition-all"
                 style={{ background: "linear-gradient(135deg,#6366f1,#4f46e5)" }}>
-                {isPlaying
-                  ? <Pause className="w-6 h-6" />
-                  : <Play className="w-6 h-6 ml-0.5" />}
+                {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-0.5" />}
               </motion.button>
-
-              {/* Next */}
-              <button
-                onClick={() => irParaEtapa(Math.min(totalEtapas - 1, etapaAtual + 1))}
+              <button onClick={() => irParaEtapa(Math.min(totalEtapas - 1, etapaAtual + 1))}
                 disabled={etapaAtual === totalEtapas - 1}
                 className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
                 <SkipForward className="w-4 h-4" />
               </button>
-
-              {/* Replay step */}
               <button
                 onClick={() => { audioRef.current?.pause(); playNarration(etapa?.narracao ?? ""); }}
                 className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-all ml-2"
-                title="Repetir esta explicação">
+                title="Repetir explicação">
                 <RefreshCw className="w-4 h-4" />
               </button>
             </div>
-
-            {/* Step label */}
             <p className="text-center text-xs text-slate-400 font-medium">
               Etapa {etapaAtual + 1} de {totalEtapas}
+              {boardAllDone && <span className="text-indigo-500 ml-2">✓ escrito</span>}
             </p>
           </div>
         </div>
 
-        {/* ── RIGHT PANEL ─────────────────────────────────────────────────── */}
+        {/* ── PAINEL DIREITO ── */}
         <div className="lg:w-72 xl:w-80 flex flex-col border-t lg:border-t-0 lg:border-l border-slate-200 bg-white flex-shrink-0">
 
-          {/* Explanation */}
+          {/* Narração */}
           <div className="p-4 border-b border-slate-100">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
-              Explicação em tempo real
+              O que o Professor diz
             </p>
             <AnimatePresence mode="wait">
-              <motion.p
-                key={etapaAtual}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.4 }}
-                className="text-sm text-slate-700 leading-relaxed font-medium">
-                {etapa?.narracao}
-              </motion.p>
+              <motion.div key={etapaAtual}
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
+                <NarrationText text={etapa?.narracao ?? ""} active={narrationActive && !boardAllDone} />
+              </motion.div>
             </AnimatePresence>
           </div>
 
-          {/* Answer from Tiagão */}
+          {/* Resposta do Tiagão */}
           <AnimatePresence>
             {resposta && (
-              <motion.div
-                key={resposta.timestamp}
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
+              <motion.div key={resposta.timestamp}
+                initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                 className="p-4 border-b border-indigo-100 bg-indigo-50">
-                <p className="text-[10px] font-black text-indigo-500 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                  <img src="/tiagao-pointing.png" alt="" className="w-5 h-5 object-contain" />
-                  Tiagão responde
-                </p>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <TiagaoCharacter state="speaking" size={32} showLabel={false} />
+                  <p className="text-[10px] font-black text-indigo-500 uppercase tracking-wider">
+                    Tiagão responde
+                  </p>
+                </div>
                 <p className="text-xs text-indigo-800 leading-relaxed">{resposta.texto}</p>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Steps list */}
+          {/* Lista de etapas */}
           <div className="flex-1 overflow-y-auto p-3 space-y-1">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 px-1">
               Etapas da aula
             </p>
             {aula.etapas.map((et, i) => (
-              <button
-                key={et.id}
-                onClick={() => irParaEtapa(i)}
+              <button key={et.id} onClick={() => irParaEtapa(i)}
                 className={`w-full text-left px-3 py-2.5 rounded-xl transition-all text-xs font-medium flex items-start gap-2.5 ${
                   i === etapaAtual
                     ? "bg-indigo-50 text-indigo-800 border border-indigo-200"
@@ -707,18 +840,18 @@ export default function AulaIA() {
         </div>
       </div>
 
-      {/* ── QUESTION INPUT ────────────────────────────────────────────────── */}
+      {/* ── INPUT DE PERGUNTAS ── */}
       <div className="flex-shrink-0 border-t border-slate-200 bg-white px-3 sm:px-5 py-3">
         <div className="max-w-4xl mx-auto flex items-center gap-2">
-          <div className="w-9 h-9 flex-shrink-0 select-none">
-            <img src="/tiagao-pointing.png" alt="Tiagão" className="w-full h-full object-contain" />
+          <div className="w-10 h-10 flex-shrink-0">
+            <TiagaoCharacter state={respondendo ? "thinking" : "idle"} size={40} showLabel={false} />
           </div>
           <div className="flex-1 relative">
             <input
               value={pergunta}
               onChange={e => setPergunta(e.target.value)}
               onKeyDown={e => e.key === "Enter" && !e.shiftKey && enviarPergunta()}
-              placeholder="Pergunte algo ao Tiagão sobre esta aula..."
+              placeholder="Pode perguntar ao Professor — ele pausa a aula e responde..."
               className="w-full px-4 py-2.5 rounded-2xl border border-slate-200 focus:border-indigo-400 focus:outline-none text-sm text-slate-800 placeholder-slate-400 bg-slate-50 pr-10"
             />
             <button
@@ -730,13 +863,6 @@ export default function AulaIA() {
                 : <Send className="w-3 h-3 text-white" />}
             </button>
           </div>
-          <button
-            onClick={() => { playNarration(etapa?.narracao ?? ""); }}
-            disabled={muted || audioLoading}
-            className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 hover:bg-indigo-200 transition-colors disabled:opacity-40"
-            title="Repetir voz">
-            <Mic className="w-4 h-4" />
-          </button>
         </div>
       </div>
     </div>

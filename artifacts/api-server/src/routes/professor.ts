@@ -843,6 +843,40 @@ ${richContext}`;
   }
 });
 
+// ─── ElevenLabs helper ────────────────────────────────────────────────────────
+// Voz do Prof. Tiagão: Daniel (onwK4e9ZLuTAKqWW03F9) — multilingual, masculina, didática
+// Modelo turbo para latência mínima (~300 ms first-byte vs 600 ms eleven_multilingual_v2)
+const EL_VOICE_ID = process.env.ELEVENLABS_VOICE_ID ?? "onwK4e9ZLuTAKqWW03F9";
+const EL_MODEL    = "eleven_turbo_v2_5";
+
+async function ttsElevenLabs(text: string): Promise<Buffer> {
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  if (!apiKey) throw new Error("ELEVENLABS_API_KEY not set");
+
+  const res = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${EL_VOICE_ID}`,
+    {
+      method: "POST",
+      headers: {
+        "xi-api-key": apiKey,
+        "Content-Type": "application/json",
+        "Accept": "audio/mpeg",
+      },
+      body: JSON.stringify({
+        text: text.trim().slice(0, 2500),
+        model_id: EL_MODEL,
+        language_code: "pt",
+        voice_settings: { stability: 0.45, similarity_boost: 0.80, style: 0.35, use_speaker_boost: true },
+      }),
+    }
+  );
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`ElevenLabs ${res.status}: ${err}`);
+  }
+  return Buffer.from(await res.arrayBuffer());
+}
+
 // ─── TTS ──────────────────────────────────────────────────────────────────────
 router.post("/voice-tts", async (req, res) => {
   try {
@@ -852,7 +886,21 @@ router.post("/voice-tts", async (req, res) => {
       return;
     }
 
-    // tts-1 is ~40% faster than tts-1-hd — optimal for real-time voice
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader("Cache-Control", "no-cache");
+
+    // 1ª tentativa: ElevenLabs (melhor qualidade, latência ~300 ms)
+    if (process.env.ELEVENLABS_API_KEY) {
+      try {
+        const buf = await ttsElevenLabs(text);
+        res.end(buf);
+        return;
+      } catch (elErr) {
+        console.warn("[TTS] ElevenLabs falhou, usando OpenAI fallback:", elErr);
+      }
+    }
+
+    // Fallback: OpenAI TTS-1 (onyx)
     const mp3 = await openai.audio.speech.create({
       model: "tts-1",
       voice: "onyx",
@@ -860,12 +908,7 @@ router.post("/voice-tts", async (req, res) => {
       response_format: "mp3",
       speed: 1.15,
     });
-
-    res.setHeader("Content-Type", "audio/mpeg");
-    res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Transfer-Encoding", "chunked");
-
-    // Stream directly — browser receives first bytes ~400ms sooner
     const nodeStream = Readable.fromWeb(mp3.body as any);
     nodeStream.pipe(res);
     nodeStream.on("error", () => {

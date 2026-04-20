@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "KeEygRbH0WIbPhntDW-B3"
@@ -12,3 +11,9 @@ id = "GjW0f-Noi59AR3on4M0kp"
 uri = "file://artifacts/studyai-deck/public/hero.png"
 type = "image"
 title = "generated_image"
+
+[[outputs]]
+id = "vxPgBJsfqI2RuDa28gh8m"
+uri = "file://exports/StudyAI-Apresentacao.pdf"
+type = "pdf"
+title = "StudyAI — Apresentação (PDF)"

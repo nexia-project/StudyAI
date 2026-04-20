@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { TiagaoCharacter, type CharacterState } from "@/components/TiagaoCharacter";
+import { TiagaoFullBody } from "@/components/TiagaoFullBody";
 import { ChalkBoardCanvas } from "@/components/ChalkBoardCanvas";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -393,7 +394,8 @@ export default function AulaIA() {
   const progresso = ((etapaAtual + 1) / totalEtapas) * 100;
 
   return (
-    <div className={`bg-slate-100 flex flex-col ${fullscreen ? "fixed inset-0 z-50" : "min-h-screen"}`}>
+    <div className={`flex flex-col ${fullscreen ? "fixed inset-0 z-50" : "min-h-screen"}`}
+      style={{ background: "#F0F4F8" }}>
       <audio ref={audioRef} />
 
       {/* ── HEADER ── */}
@@ -442,7 +444,8 @@ export default function AulaIA() {
         <div className="flex-1 flex flex-col min-h-0 p-3 sm:p-5 gap-3">
 
           {/* ── CANVAS BOARD ── */}
-          <div className="flex-1 relative bg-white rounded-3xl shadow-lg border border-slate-200 overflow-hidden min-h-[360px]">
+          <div className="flex-1 relative rounded-3xl shadow-lg overflow-hidden min-h-[360px]"
+            style={{ border: "2px solid #E8E0C8", background: "#FFFEF5" }}>
 
             {/* Canvas ocupa 100% */}
             <AnimatePresence mode="wait">
@@ -468,14 +471,9 @@ export default function AulaIA() {
 
             {/* Tag de estilo */}
             <div className="absolute top-3 right-3 z-10 pointer-events-none">
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-700 uppercase tracking-wider">
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-700 uppercase tracking-wider shadow-sm">
                 {estilo}
               </span>
-            </div>
-
-            {/* Professor Tiagão na lousa */}
-            <div className="absolute bottom-0 left-0 z-20 pointer-events-none select-none">
-              <TiagaoCharacter state={charState} size={100} showLabel={false} />
             </div>
 
             {/* Indicador de escrita */}
@@ -483,11 +481,11 @@ export default function AulaIA() {
               {!boardAllDone && etapa && (
                 <motion.div
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
+                  className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-amber-200 rounded-xl px-3 py-1.5 shadow-sm">
                   <motion.span
                     animate={{ opacity: [1, 0.3, 1] }}
                     transition={{ repeat: Infinity, duration: 0.8 }}
-                    className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                    className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                   <span className="text-xs text-slate-600 font-medium">Professor escrevendo...</span>
                 </motion.div>
               )}
@@ -544,8 +542,38 @@ export default function AulaIA() {
           </div>
         </div>
 
+        {/* ── COLUNA PROFESSOR ── */}
+        <div className="hidden lg:flex flex-col items-center justify-end flex-shrink-0 w-44 xl:w-52 pb-4 px-2 relative"
+          style={{ borderLeft: "1px solid #E8E0C8", background: "linear-gradient(to bottom, #F0F4F8 0%, #FFFEF5 60%)" }}>
+
+          {/* Balão de fala */}
+          <AnimatePresence>
+            {charState === "speaking" && etapa && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.85, y: 8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="absolute top-4 left-2 right-2 z-10 bg-white rounded-2xl p-3 shadow-md"
+                style={{ border: "1.5px solid #E5E7EB" }}>
+                <div className="absolute bottom-[-8px] left-1/2 -translate-x-1/2 w-0 h-0"
+                  style={{ borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: "8px solid white" }} />
+                <p className="text-[11px] text-slate-600 leading-relaxed line-clamp-4 font-medium italic">
+                  "{etapa.narracao.slice(0, 100)}{etapa.narracao.length > 100 ? "..." : ""}"
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Personagem de corpo inteiro */}
+          <div className="mt-auto">
+            <TiagaoFullBody state={charState} width={160} />
+          </div>
+
+          <p className="text-[11px] text-slate-500 font-semibold mt-1 tracking-wide">Prof. Tiagão</p>
+        </div>
+
         {/* ── PAINEL DIREITO ── */}
-        <div className="lg:w-72 xl:w-80 flex flex-col border-t lg:border-t-0 lg:border-l border-slate-200 bg-white flex-shrink-0">
+        <div className="lg:w-64 xl:w-72 flex flex-col border-t lg:border-t-0 lg:border-l border-slate-200 bg-white flex-shrink-0">
 
           {/* Narração */}
           <div className="p-4 border-b border-slate-100">

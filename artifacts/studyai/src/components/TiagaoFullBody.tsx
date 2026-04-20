@@ -189,26 +189,18 @@ export function TiagaoFullBody({ state = "idle", width = 200 }: Props) {
             stroke="#E8956D" strokeWidth="2.2" fill="none" strokeLinecap="round" />
 
           {/* Boca */}
-          <ellipse
-            cx="83" cy="81"
-            rx="13"
-            ry={talking ? undefined : undefined}
-            fill="#C0392B"
-            style={{
-              animation: talking
-                ? "talkMouth 0.38s ease-in-out infinite"
-                : "none",
-              transformOrigin: "83px 81px",
-            }}
-          />
-          {/* Se não está falando, mostrar linha fechada */}
-          {!talking && (
-            <path d="M 70 80 Q 83 88 96 80" stroke="#8B2020" strokeWidth="2"
-              fill="none" strokeLinecap="round" />
-          )}
-          {/* Dentes quando fala */}
-          {talking && (
-            <rect x="74" y="79" width="18" height="6" rx="2" fill="white" opacity="0.9" />
+          {talking ? (
+            <>
+              <ellipse cx="83" cy="81" rx="13" ry="4" fill="#C0392B"
+                style={{ animation: "talkMouth 0.38s ease-in-out infinite", transformOrigin: "83px 81px" }} />
+              <rect x="74" y="79" width="18" height="6" rx="2" fill="white" opacity="0.9" />
+            </>
+          ) : (
+            <>
+              <ellipse cx="83" cy="82" rx="11" ry="3" fill="#C0392B" />
+              <path d="M 72 80 Q 83 88 94 80" stroke="#8B2020" strokeWidth="1.5"
+                fill="none" strokeLinecap="round" />
+            </>
           )}
 
           {/* Óculos */}

@@ -14,6 +14,7 @@ import {
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX,
   ChevronRight, Loader2, Send, RefreshCw,
   BookOpen, Maximize2, Minimize2, ChevronLeft, Zap, Mic, MicOff,
+  ImageIcon, X,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { TiagaoCharacter, type CharacterState } from "@/components/TiagaoCharacter";
@@ -118,6 +119,10 @@ export default function AulaIA() {
   const [transcrevendo, setTranscrevendo] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  // ── gemini image ──
+  const [gerandoImagem, setGerandoImagem] = useState(false);
+  const [imagemGerada, setImagemGerada] = useState<{ src: string; topico: string } | null>(null);
 
   // ── board key: muda a cada nova etapa para forçar novo canvas ──
   const [boardKey, setBoardKey] = useState(0);
@@ -289,6 +294,31 @@ export default function AulaIA() {
       setTimeout(() => setCharState("idle"), 3000);
     }
   }, [pergunta, respondendo, aula, etapa, muted, isPlaying, playNarration]);
+
+  // ── gemini: gerar ilustração ─────────────────────────────────────────────
+  const gerarIlustracao = useCallback(async () => {
+    if (!etapa || gerandoImagem) return;
+    setGerandoImagem(true);
+    try {
+      const r = await fetch("/api/gemini/gerar-imagem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topico: aula?.titulo ?? topico,
+          contexto: etapa.narracao,
+          estilo: "diagrama",
+        }),
+      });
+      if (r.ok) {
+        const { b64_json, mimeType } = await r.json();
+        setImagemGerada({
+          src: `data:${mimeType};base64,${b64_json}`,
+          topico: etapa.titulo ?? aula?.titulo ?? topico,
+        });
+      }
+    } catch { /* silent */ }
+    finally { setGerandoImagem(false); }
+  }, [etapa, aula, topico, gerandoImagem]);
 
   // ── microfone / whisper ───────────────────────────────────────────────────
   const toggleMic = useCallback(async () => {
@@ -523,12 +553,54 @@ export default function AulaIA() {
               </motion.div>
             </AnimatePresence>
 
-            {/* Tag de estilo */}
-            <div className="absolute top-3 right-3 z-10 pointer-events-none">
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-700 uppercase tracking-wider shadow-sm">
+            {/* Tag de estilo + botão Gemini */}
+            <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
+              <button
+                onClick={gerarIlustracao}
+                disabled={gerandoImagem || !etapa}
+                title="Gerar ilustração com Gemini IA"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-violet-500 hover:bg-violet-600 text-white shadow-sm transition-all disabled:opacity-40">
+                {gerandoImagem
+                  ? <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                  : <ImageIcon className="w-2.5 h-2.5" />}
+                {gerandoImagem ? "Gerando..." : "Ilustração"}
+              </button>
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-700 uppercase tracking-wider shadow-sm pointer-events-none">
                 {estilo}
               </span>
             </div>
+
+            {/* Overlay: imagem gerada pelo Gemini */}
+            <AnimatePresence>
+              {imagemGerada && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="absolute inset-0 z-30 bg-white/97 backdrop-blur-sm flex flex-col">
+                  <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-4 h-4 rounded-full bg-violet-500 flex items-center justify-center">
+                        <ImageIcon className="w-2.5 h-2.5 text-white" />
+                      </div>
+                      <span className="text-xs font-bold text-slate-700 truncate max-w-[200px]">{imagemGerada.topico}</span>
+                      <span className="text-[9px] text-violet-500 font-semibold bg-violet-50 px-1.5 py-0.5 rounded-full">Gemini</span>
+                    </div>
+                    <button onClick={() => setImagemGerada(null)}
+                      className="w-5 h-5 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center">
+                      <X className="w-3 h-3 text-slate-500" />
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-hidden flex items-center justify-center p-2">
+                    <img
+                      src={imagemGerada.src}
+                      alt={`Ilustração: ${imagemGerada.topico}`}
+                      className="max-h-full max-w-full object-contain rounded-xl"
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Estado: carregando áudio */}
             <AnimatePresence>

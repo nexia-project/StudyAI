@@ -35,6 +35,7 @@ import studentRouter from "./student";
 import aulaIaRouter from "./aula-ia";
 import trilhaRouter from "./trilha";
 import notebookRouter from "./notebook";
+import geminiRouter from "./gemini";
 
 const router: IRouter = Router();
 
@@ -74,5 +75,6 @@ router.use(studentRouter);
 router.use(aulaIaRouter);
 router.use(trilhaRouter);
 router.use(notebookRouter);
+router.use(geminiRouter);
 
 export default router;

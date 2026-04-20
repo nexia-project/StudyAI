@@ -11,7 +11,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TiagaoCharacter, type CharacterState } from "@/components/TiagaoCharacter";
-import { Mic, MicOff, X, Square, VolumeX, Volume2, ThumbsUp, ThumbsDown, Timer, Maximize2, Minimize2, Send } from "lucide-react";
+import { Mic, MicOff, X, Square, VolumeX, Volume2, ThumbsUp, ThumbsDown, Timer, Maximize2, Minimize2, Send, Camera, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 import {
   collectStudentContext,
@@ -140,6 +140,10 @@ export function VoiceProfessor() {
   const [focusMode, setFocusMode] = useState(false);
   const [actionNotif, setActionNotif] = useState<{ text: string; path?: string } | null>(null);
   const [focusSeconds, setFocusSeconds] = useState(0);
+
+  // ── câmera / Gemini multimodal — estado (callback declarado após sendMessage) ──
+  const [analisandoImagem, setAnalisandoImagem] = useState(false);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const mutedRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -297,6 +301,23 @@ export function VoiceProfessor() {
       await speak(message);
     } catch { /* ignore */ }
   }, [phase, speak, navigate]);
+
+  // ── Câmera / Gemini multimodal ─────────────────────────────────────────────
+  const analisarImagem = useCallback(async (file: File) => {
+    setAnalisandoImagem(true);
+    try {
+      const form = new FormData();
+      form.append("imagem", file);
+      if (textInput.trim()) form.append("pergunta", textInput.trim());
+      const r = await fetch(`${BASE_URL}/api/gemini/analisar-problema`, { method: "POST", body: form });
+      if (r.ok) {
+        const { resposta } = await r.json();
+        if (resposta) sendMessage(`📸 [Analisei a imagem] ${resposta}`);
+        setTextInput("");
+      }
+    } catch { /* silent */ }
+    finally { setAnalisandoImagem(false); }
+  }, [textInput, sendMessage]);
 
   // ── Proactive events from app (plan generated, XP, etc.) ─────────────────
   useEffect(() => {
@@ -721,17 +742,37 @@ export function VoiceProfessor() {
 
               {phase === "idle" && (
                 <div className="flex gap-2">
+                  {/* Input de foto escondido — câmera ou galeria */}
+                  <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) analisarImagem(f); e.target.value = ""; }}
+                  />
                   <input
                     type="text"
                     value={textInput}
                     onChange={e => setTextInput(e.target.value)}
                     onKeyDown={e => { if (e.key === "Enter" && textInput.trim()) { sendMessage(textInput); setTextInput(""); } }}
-                    placeholder="Ou escreva sua dúvida..."
+                    placeholder={analisandoImagem ? "Analisando imagem..." : "Ou escreva sua dúvida..."}
+                    disabled={analisandoImagem}
                     className={`flex-1 text-sm px-3 py-2 rounded-xl border border-gray-200 focus:border-indigo-400 focus:outline-none ${focusMode ? "text-base py-3" : ""}`}
                   />
+                  {/* Botão câmera — Gemini multimodal */}
+                  <button
+                    onClick={() => cameraInputRef.current?.click()}
+                    disabled={analisandoImagem}
+                    title="Tirar foto de uma questão para o Professor analisar"
+                    className="px-2.5 py-2 rounded-xl bg-violet-100 hover:bg-violet-200 text-violet-600 text-sm font-bold disabled:opacity-40 transition-colors flex items-center">
+                    {analisandoImagem
+                      ? <Loader2 className="w-4 h-4 animate-spin" />
+                      : <Camera className="w-4 h-4" />}
+                  </button>
                   <button
                     onClick={() => { if (textInput.trim()) { sendMessage(textInput); setTextInput(""); } }}
-                    disabled={!textInput.trim()}
+                    disabled={!textInput.trim() || analisandoImagem}
                     className="px-3 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold disabled:opacity-40 transition-colors flex items-center">
                     <Send className="w-4 h-4" />
                   </button>

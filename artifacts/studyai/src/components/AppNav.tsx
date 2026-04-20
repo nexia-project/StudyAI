@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Home, Map, PenLine, BarChart2, Trophy, Medal, History, Brain,
   Target, Clock, ChevronDown, Menu, X, GraduationCap,
-  BookOpen, Flame, Zap, Users, Globe, Calendar, NotebookPen, TrendingUp,
+  BookOpen, Flame, Zap, Users, Globe, Calendar, NotebookPen, TrendingUp, Layers,
 } from "lucide-react";
 import { UserMenu } from "@/components/UserMenu";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { icon: Calendar, label: "Cronograma",       path: "/cronograma",    color: "text-violet-600" },
       { icon: BookOpen, label: "Aula com o Professor", path: "/aula-ia", color: "text-indigo-600" },
       { icon: TrendingUp, label: "Trilha Mestre",   path: "/trilha",        color: "text-blue-600"   },
+      { icon: Layers,     label: "Notebook (RAG)",  path: "/notebook",      color: "text-indigo-600", badge: "NOVO" },
       { icon: NotebookPen, label: "Caderno Digital", path: "/caderno",      color: "text-amber-600"  },
       { icon: Clock,  label: "Sala de Estudos",    path: "/sala-estudos",  color: "text-amber-600"  },
     ],
@@ -124,6 +125,9 @@ function DropdownMenu({
                   >
                     <item.icon className={cn("w-4 h-4 flex-shrink-0", item.color)} />
                     {item.label}
+                    {item.badge && !isActive && (
+                      <span className="ml-auto text-[9px] font-black px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-600">{item.badge}</span>
+                    )}
                     {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-violet-500" />}
                   </button>
                 );

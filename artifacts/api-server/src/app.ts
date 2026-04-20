@@ -134,6 +134,13 @@ app.use("/api/student/sisu", aiLimiter);
 app.use("/api/teacher/redacao-correct", aiLimiter);
 app.use("/api/aula-ia", aiLimiter);
 app.use("/api/trilha/generate", aiLimiter);
+app.use("/api/notebook/chat", aiLimiter);
+app.use("/api/notebook/overview", aiLimiter);
+app.use("/api/notebook/study-guide", aiLimiter);
+app.use("/api/notebook/flashcards", aiLimiter);
+app.use("/api/notebook/questoes", aiLimiter);
+app.use("/api/notebook/mapa-mental", aiLimiter);
+app.use("/api/notebook/tiagao-explica", aiLimiter);
 app.use("/api", generalLimiter);
 
 // ── Optional auth: sets req.userId for authenticated requests ─────────────────

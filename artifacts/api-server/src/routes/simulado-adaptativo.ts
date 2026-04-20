@@ -5,7 +5,11 @@ import { simuladoResultsTable, studyPlansTable } from "@workspace/db/schema";
 import { eq, desc } from "drizzle-orm";
 
 const router = Router();
-const openai = new OpenAI();
+// DeepSeek — muito mais barato que GPT-4o para geração de questões
+const openai = new OpenAI({
+  apiKey: process.env.DEEPSEEK_API_KEY ?? "",
+  baseURL: "https://api.deepseek.com",
+});
 
 const ADAPTIVE_SYSTEM_PROMPT = `Você é um professor especialista em aprendizado adaptativo, com foco em diagnóstico de lacunas de conhecimento.
 
@@ -175,7 +179,7 @@ Escale dificuldade: Q1-Q2 fundamentos da lacuna, Q3-Q7 aplicação direta, Q8-Q1
 `.trim();
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "deepseek-chat",
       messages: [
         { role: "system", content: ADAPTIVE_SYSTEM_PROMPT },
         { role: "user", content: userContent },

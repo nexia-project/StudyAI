@@ -20,7 +20,13 @@ import { validateFileUpload } from "../middlewares/security";
 
 const _require = createRequire(import.meta.url);
 const router: IRouter = Router();
+// openai — usado exclusivamente para embeddings (text-embedding-3-small)
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// deepseek — usado para geração de texto (overview, flashcards, questões, chat RAG)
+const deepseek = new OpenAI({
+  apiKey: process.env.DEEPSEEK_API_KEY ?? "",
+  baseURL: "https://api.deepseek.com",
+});
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 // ─── Cosine similarity ────────────────────────────────────────────────────────
@@ -290,8 +296,8 @@ router.post("/notebook/chat", async (req: Request, res: Response) => {
       .map((c, i) => `[Fonte ${i + 1} — "${c.title}" (relevância: ${(c.similarity * 100).toFixed(0)}%)]\n${c.text}`)
       .join("\n\n---\n\n");
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const completion = await deepseek.chat.completions.create({
+      model: "deepseek-chat",
       temperature: 0.2,
       max_tokens: 1200,
       messages: [
@@ -356,8 +362,8 @@ router.post("/notebook/overview", async (req: Request, res: Response) => {
     if (!docs.length) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
     const { content_text, title } = docs[0];
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const completion = await deepseek.chat.completions.create({
+      model: "deepseek-chat",
       temperature: 0.3,
       max_tokens: 2000,
       messages: [
@@ -415,8 +421,8 @@ router.post("/notebook/study-guide", async (req: Request, res: Response) => {
     if (!docs.length) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
     const { content_text, title } = docs[0];
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const completion = await deepseek.chat.completions.create({
+      model: "deepseek-chat",
       temperature: 0.4,
       max_tokens: 3000,
       messages: [
@@ -468,8 +474,8 @@ router.post("/notebook/flashcards", async (req: Request, res: Response) => {
     if (!docs.length) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
     const { content_text, title } = docs[0];
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const completion = await deepseek.chat.completions.create({
+      model: "deepseek-chat",
       temperature: 0.5,
       max_tokens: 3000,
       messages: [
@@ -508,8 +514,8 @@ router.post("/notebook/questoes", async (req: Request, res: Response) => {
     if (!docs.length) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
     const { content_text, title } = docs[0];
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const completion = await deepseek.chat.completions.create({
+      model: "deepseek-chat",
       temperature: 0.5,
       max_tokens: 3000,
       messages: [
@@ -547,8 +553,8 @@ router.post("/notebook/mapa-mental", async (req: Request, res: Response) => {
     if (!docs.length) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
     const { content_text, title } = docs[0];
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const completion = await deepseek.chat.completions.create({
+      model: "deepseek-chat",
       temperature: 0.2,
       max_tokens: 2000,
       messages: [
@@ -600,8 +606,8 @@ router.post("/notebook/tiagao-explica", async (req: Request, res: Response) => {
     if (!docs.length) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
     const { content_text, title } = docs[0];
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const completion = await deepseek.chat.completions.create({
+      model: "deepseek-chat",
       temperature: 0.4,
       max_tokens: 3000,
       messages: [

@@ -23,7 +23,7 @@ StudyAI is built as a `pnpm` monorepo using TypeScript, Node.js 24, and Express 
 - **API-First Design**: OpenAPI 3.1 specification drives API development, enabling automatic code generation for clients and Zod schemas for validation.
 - **Authentication**: Clerk is used for user authentication, providing robust identity management and integration with various login providers.
 - **Freemium Model**: Implemented with Stripe for subscription management, offering a free tier with limited AI uses and a premium tier with unlimited access.
-- **AI Integration**: GPT-4o is central to all intelligent features, offering dynamic content generation and personalized learning paths.
+- **AI Integration**: Multi-model architecture for cost optimization: **DeepSeek-V3** (`deepseek-chat`) for chat, simulados, notebook tools; **Claude Sonnet** (Anthropic via Replit) for AulaIA lesson generation; **GPT-4o** fallback; OpenAI **Whisper** for transcription; OpenAI **TTS-1** (onyx voice) for narration; OpenAI **text-embedding-3-small** for RAG embeddings.
 - **Adaptive Learning**: The system tracks student performance to tailor learning content and identify weak areas, providing targeted support.
 - **Role-Based Access Control**: A flexible role system (`student`, `teacher`, `institution_admin`, `government`, `admin`) manages access to different platform modules and features.
 - **Navigation**: A shared `AppNav` component ensures consistent navigation across all internal pages, with a separate `LandingDropdown` for the public-facing site.

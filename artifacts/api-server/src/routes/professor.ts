@@ -170,13 +170,13 @@ async function executeTiagaoTool(
       if (!userId) return { result: "Usuário não autenticado para criar flashcards." };
       try {
         // Generate flashcard Q&A pairs via GPT
-        const gen = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
+        const gen = await deepseek.chat.completions.create({
+          model: DS_MODEL,
           messages: [{
             role: "system",
             content: `Crie ${args.quantidade ?? 8} flashcards em JSON sobre "${args.topico}" para ${args.materia ?? "estudo geral"}.
-Formato: [{"pergunta":"...","resposta":"..."}]
-Perguntas claras, respostas curtas (máx 2 linhas). Retorne SOMENTE o array JSON.`,
+Formato: {"flashcards":[{"pergunta":"...","resposta":"..."}]}
+Perguntas claras, respostas curtas (máx 2 linhas). Retorne SOMENTE o JSON.`,
           }],
           response_format: { type: "json_object" },
           max_tokens: 1200,
@@ -213,6 +213,13 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 
 
 const router: IRouter = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// DeepSeek — primário para chat/geração (mais barato, qualidade equivalente ao GPT-4o)
+const deepseek = new OpenAI({
+  apiKey: process.env.DEEPSEEK_API_KEY ?? "",
+  baseURL: "https://api.deepseek.com",
+});
+const DS_MODEL = "deepseek-chat";
 
 // ─── Search knowledge base + Wikipedia — ACESSO TOTAL ────────────────────────
 async function searchKnowledgeBase(query: string, topK = 5): Promise<string> {
@@ -698,14 +705,13 @@ INSTRUÇÕES DE AGENTE:
       ...cleanMessages,
     ];
 
-    const firstCall = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const firstCall = await deepseek.chat.completions.create({
+      model: DS_MODEL,
       messages: apiMessages,
       tools: TIAGAO_TOOLS,
       tool_choice: "auto",
       max_tokens: 500,
       temperature: 0.9,
-      parallel_tool_calls: true,
     });
 
     const firstMsg = firstCall.choices[0].message;
@@ -732,8 +738,8 @@ INSTRUÇÕES DE AGENTE:
       }
 
       // Segunda chamada: resposta final com contexto dos resultados
-      const finalCall = await openai.chat.completions.create({
-        model: "gpt-4o",
+      const finalCall = await deepseek.chat.completions.create({
+        model: DS_MODEL,
         messages: [...apiMessages, ...toolResults],
         max_tokens: 280,
         temperature: 0.9,
@@ -812,8 +818,8 @@ ${richContext}`;
       ? `Última coisa que eu disse: "${context.ultimaMensagem}"`
       : "Primeira vez falando com o aluno nesta sessão.";
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const completion = await deepseek.chat.completions.create({
+      model: DS_MODEL,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: lastMsg },

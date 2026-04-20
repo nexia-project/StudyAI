@@ -1,0 +1,31 @@
+kind = "slides"
+previewPath = "/studyai-deck/"
+title = "StudyAI — Apresentação do Produto"
+version = "1.0.0"
+id = "artifacts/studyai-deck"
+router = "path"
+
+[[integratedSkills]]
+name = "slides"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/studyai-deck/" ]
+localPort = 22645
+
+[services.development]
+run = "pnpm --filter @workspace/studyai-deck run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/studyai-deck", "run", "build" ]
+publicDir = "artifacts/studyai-deck/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22645"
+BASE_PATH = "/studyai-deck/"

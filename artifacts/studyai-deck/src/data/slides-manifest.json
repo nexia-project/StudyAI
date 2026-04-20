@@ -1,0 +1,74 @@
+[
+  {
+    "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567801",
+    "position": 1,
+    "filepath": "src/pages/slides/Slide1_Capa.tsx",
+    "title": "StudyAI — Capa",
+    "description": "Slide de abertura com identidade visual e tagline da plataforma",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567802",
+    "position": 2,
+    "filepath": "src/pages/slides/Slide2_Plataforma.tsx",
+    "title": "A Plataforma",
+    "description": "Visao geral dos tres pilares: Tutor por Voz, Modulos Completos e IA Multi-modelo",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567803",
+    "position": 3,
+    "filepath": "src/pages/slides/Slide3_ProfessorTiagao.tsx",
+    "title": "Professor Tiagao",
+    "description": "O agente de IA por voz com memoria, function calling e camera multimodal",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567804",
+    "position": 4,
+    "filepath": "src/pages/slides/Slide4_Modulos.tsx",
+    "title": "Modulos de Estudo",
+    "description": "Seis modulos: plano de estudos, simulado adaptativo, flashcards SM-2, redacao, pomodoro e mapa mental",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567805",
+    "position": 5,
+    "filepath": "src/pages/slides/Slide5_AulaIA.tsx",
+    "title": "Aula com o Professor",
+    "description": "Lousa interativa sincronizada com naracao de voz, gerada por Claude e ilustrada por Gemini",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567806",
+    "position": 6,
+    "filepath": "src/pages/slides/Slide6_Caderno.tsx",
+    "title": "Caderno Digital com RAG",
+    "description": "Notebook inteligente com upload de documentos, busca semantica por embeddings e ferramentas de IA",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567807",
+    "position": 7,
+    "filepath": "src/pages/slides/Slide7_StackIA.tsx",
+    "title": "Stack de Inteligencia Artificial",
+    "description": "Seis modelos de IA: DeepSeek, ElevenLabs, Claude, Gemini, Whisper e OpenAI Embeddings",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567808",
+    "position": 8,
+    "filepath": "src/pages/slides/Slide8_ParaQuem.tsx",
+    "title": "Para Quem",
+    "description": "Quatro perfis de usuarios: alunos, professores, instituicoes e governo",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c1a2b3d4-e5f6-4890-abcd-ef1234567809",
+    "position": 9,
+    "filepath": "src/pages/slides/Slide9_Encerramento.tsx",
+    "title": "Encerramento",
+    "description": "Visao da plataforma e chamada para study.ia.br",
+    "speakerNotes": ""
+  }
+]

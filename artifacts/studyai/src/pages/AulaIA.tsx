@@ -1,12 +1,14 @@
 /**
- * Aula com o Professor — Professor Tiagão na lousa
+ * Aula com o Professor — Canvas real
  *
- * Mudanças principais:
- * - Texto escrito letra por letra como num quadro real (typewriter)
- * - Cadência pausada: cada elemento espera o anterior terminar + pausa
- * - Velocidade variável por tipo de elemento (título mais lento, texto médio)
- * - Cursor piscando enquanto escreve
- * - Narração começa junto com a primeira letra do primeiro elemento
+ * Lousa em HTML5 Canvas com:
+ * - Fonte Caveat (caligrafia)
+ * - Cursor de caneta animado que precede o texto
+ * - Efeito de marcador (traço com textura)
+ * - Caixas coloridas para fórmula/destaque/exemplo
+ * - Setas desenhadas no canvas
+ * - Sublinhado animado em títulos
+ * - Auto-scroll suave quando o conteúdo cresce
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -18,6 +20,7 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { TiagaoCharacter, type CharacterState } from "@/components/TiagaoCharacter";
+import { ChalkBoardCanvas } from "@/components/ChalkBoardCanvas";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface BoardElement {
@@ -48,250 +51,23 @@ const TOPICOS_SUGERIDOS = [
   "Geometria Plana - Área", "Gramática - Concordância Verbal", "Genética",
 ];
 
-// ─── Velocidade por tipo de elemento (ms por caractere) ───────────────────────
-const TYPING_SPEED: Record<BoardElement["tipo"], number> = {
-  titulo:    48,   // lento — professor escreve com cuidado
-  formula:   70,   // muito lento — cada símbolo importa
-  texto:     24,   // médio
-  destaque:  36,
-  seta:      22,
-  separador: 0,    // instantâneo
-  exemplo:   28,
-};
-// Pausa após cada elemento (ms) antes de começar o próximo
-const AFTER_PAUSE: Record<BoardElement["tipo"], number> = {
-  titulo:    600,
-  formula:   800,
-  texto:     350,
-  destaque:  450,
-  seta:      300,
-  separador: 180,
-  exemplo:   500,
-};
-
-// ─── Hook: typewriter letra por letra ────────────────────────────────────────
-function useTypewriter(
-  text: string,
-  active: boolean,
-  speed: number,
-  onDone: () => void,
-) {
-  const [displayed, setDisplayed] = useState("");
-  const [done, setDone] = useState(false);
-  const onDoneRef = useRef(onDone);
-  onDoneRef.current = onDone;
-
-  useEffect(() => {
-    if (!active) return;
-    setDisplayed("");
-    setDone(false);
-    if (!text) { onDoneRef.current(); return; }
-
-    let i = 0;
-    const interval = setInterval(() => {
-      i++;
-      setDisplayed(text.slice(0, i));
-      if (i >= text.length) {
-        clearInterval(interval);
-        setDone(true);
-        onDoneRef.current();
-      }
-    }, speed);
-    return () => clearInterval(interval);
-  }, [active, text, speed]);
-
-  return { displayed, done };
-}
-
-// ─── Cursor piscante (giz na lousa) ──────────────────────────────────────────
-function ChalkCursor({ visible }: { visible: boolean }) {
-  if (!visible) return null;
-  return (
-    <motion.span
-      animate={{ opacity: [1, 0, 1] }}
-      transition={{ repeat: Infinity, duration: 0.7, ease: "linear" }}
-      className="inline-block w-[2px] h-[1.1em] bg-slate-700 ml-0.5 align-text-bottom rounded-full"
-    />
-  );
-}
-
-// ─── Um elemento da lousa com typewriter ─────────────────────────────────────
-interface TypeBoardElProps {
-  el: BoardElement;
-  active: boolean;    // está sendo escrito agora
-  completed: boolean; // já foi escrito completamente
-  onDone: () => void;
-}
-
-function TypewriterBoardEl({ el, active, completed, onDone }: TypeBoardElProps) {
-  const speed = TYPING_SPEED[el.tipo];
-  const text = el.texto ?? "";
-
-  // Para separadores: aparece instantaneamente
-  useEffect(() => {
-    if (active && el.tipo === "separador") {
-      const t = setTimeout(() => onDone(), 120);
-      return () => clearTimeout(t);
-    }
-  }, [active, el.tipo]); // eslint-disable-line
-
-  const { displayed, done } = useTypewriter(
-    el.tipo !== "separador" ? text : "",
-    active && el.tipo !== "separador",
-    speed,
-    el.tipo !== "separador" ? onDone : () => {},
-  );
-
-  const showText = completed ? text : (active ? displayed : "");
-  const showCursor = active && !done && el.tipo !== "separador";
-
-  // Fade in da container ao aparecer
-  const appear = {
-    initial: { opacity: 0 },
-    animate: { opacity: 1, transition: { duration: 0.25 } },
-  };
-
-  if (el.tipo === "separador") {
-    if (!active && !completed) return null;
-    return <motion.div {...appear} className="w-full h-px bg-slate-200 my-3" />;
-  }
-
-  if (!active && !completed) return null;
-
-  if (el.tipo === "titulo") {
-    return (
-      <motion.div {...appear} className="mb-2">
-        <p className="text-2xl sm:text-3xl font-black text-slate-800 leading-snug" style={{ color: el.cor }}>
-          {showText}<ChalkCursor visible={showCursor} />
-        </p>
-      </motion.div>
-    );
-  }
-  if (el.tipo === "formula") {
-    return (
-      <motion.div {...appear} className="my-2">
-        <div className="inline-block px-5 py-3 rounded-2xl text-2xl sm:text-3xl font-mono font-black text-slate-900 shadow-sm border border-slate-100"
-          style={{ backgroundColor: el.destaque ?? "#fef08a" }}>
-          {showText}<ChalkCursor visible={showCursor} />
-        </div>
-      </motion.div>
-    );
-  }
-  if (el.tipo === "destaque") {
-    return (
-      <motion.div {...appear} className="my-1">
-        <span className="inline-block px-4 py-2 rounded-xl font-semibold text-base sm:text-lg"
-          style={{ backgroundColor: el.cor ?? "#bbf7d0", color: el.corTexto ?? "#166534" }}>
-          {showText}<ChalkCursor visible={showCursor} />
-        </span>
-      </motion.div>
-    );
-  }
-  if (el.tipo === "seta") {
-    return (
-      <motion.div {...appear} className="my-1.5">
-        <div className="flex items-start gap-2">
-          <ChevronRight className="w-5 h-5 mt-0.5 flex-shrink-0 text-indigo-500" style={{ color: el.cor }} />
-          <p className="text-base sm:text-lg text-slate-700 font-medium">
-            {showText}<ChalkCursor visible={showCursor} />
-          </p>
-        </div>
-      </motion.div>
-    );
-  }
-  if (el.tipo === "exemplo") {
-    return (
-      <motion.div {...appear} className="my-2">
-        <div className="w-full px-4 py-3 rounded-2xl border-l-4 border-blue-400"
-          style={{ backgroundColor: el.cor ?? "#dbeafe" }}>
-          <p className="text-xs font-bold text-blue-600 mb-0.5 uppercase tracking-wider">Exemplo</p>
-          <p className="text-base text-slate-800 font-medium">
-            {showText}<ChalkCursor visible={showCursor} />
-          </p>
-        </div>
-      </motion.div>
-    );
-  }
-  // texto (default)
-  return (
-    <motion.div {...appear} className="my-1">
-      <p className="text-base sm:text-lg text-slate-700 leading-snug">
-        {showText}<ChalkCursor visible={showCursor} />
-      </p>
-    </motion.div>
-  );
-}
-
-// ─── Lousa completa com sequenciamento ───────────────────────────────────────
-interface WritingBoardProps {
-  etapa: Etapa;
-  boardKey: number;
-  onFirstChar: () => void;   // dispara narração quando começa a escrever
-  onAllDone: () => void;     // todos elementos escritos
-}
-
-function WritingBoard({ etapa, boardKey, onFirstChar, onAllDone }: WritingBoardProps) {
-  const [activeIdx, setActiveIdx] = useState<number>(-1);
-  const [completedSet, setCompletedSet] = useState<Set<number>>(new Set());
-  const firstCharFiredRef = useRef(false);
-  const onFirstCharRef = useRef(onFirstChar);
-  const onAllDoneRef = useRef(onAllDone);
-  onFirstCharRef.current = onFirstChar;
-  onAllDoneRef.current = onAllDone;
-
-  // Reset ao mudar etapa
-  useEffect(() => {
-    setActiveIdx(-1);
-    setCompletedSet(new Set());
-    firstCharFiredRef.current = false;
-    // Pequeno delay inicial para o aluno ver a lousa limpar antes de começar
-    const t = setTimeout(() => setActiveIdx(0), 380);
-    return () => clearTimeout(t);
-  }, [boardKey]);
-
-  // Quando activeIdx chega ao primeiro elemento, dispara narração
-  useEffect(() => {
-    if (activeIdx === 0 && !firstCharFiredRef.current) {
-      firstCharFiredRef.current = true;
-      onFirstCharRef.current();
-    }
-  }, [activeIdx]);
-
-  const handleDone = useCallback((idx: number) => {
-    setCompletedSet(prev => new Set([...prev, idx]));
-    const pauseTime = AFTER_PAUSE[etapa.elementos[idx]?.tipo ?? "texto"];
-    setTimeout(() => {
-      const next = idx + 1;
-      if (next >= etapa.elementos.length) {
-        onAllDoneRef.current();
-      } else {
-        setActiveIdx(next);
-      }
-    }, pauseTime);
-  }, [etapa.elementos]);
-
-  return (
-    <div>
-      {etapa.elementos.map((el, i) => (
-        <TypewriterBoardEl
-          key={`${boardKey}-${i}`}
-          el={el}
-          active={activeIdx === i}
-          completed={completedSet.has(i)}
-          onDone={() => handleDone(i)}
-        />
-      ))}
-    </div>
-  );
-}
-
-// ─── Narração com typewriter (painel direito) ─────────────────────────────────
+// ─── Narração com typewriter ──────────────────────────────────────────────────
 function NarrationText({ text, active }: { text: string; active: boolean }) {
-  const { displayed, done } = useTypewriter(text, active, 18, () => {});
+  const [shown, setShown] = useState("");
+  useEffect(() => {
+    if (!active) { setShown(text); return; }
+    setShown("");
+    let i = 0;
+    const iv = setInterval(() => {
+      i++;
+      setShown(text.slice(0, i));
+      if (i >= text.length) clearInterval(iv);
+    }, 18);
+    return () => clearInterval(iv);
+  }, [active, text]);
   return (
     <p className="text-sm text-slate-700 leading-relaxed font-medium">
-      {active ? displayed : text}
-      {active && !done && <ChalkCursor visible />}
+      {active ? shown : text}
     </p>
   );
 }
@@ -335,12 +111,12 @@ export default function AulaIA() {
   const [respondendo, setRespondendo] = useState(false);
   const [resposta, setResposta] = useState<{ texto: string; timestamp: number } | null>(null);
 
-  // ── board key to re-animate on step change ──
+  // ── board key: muda a cada nova etapa para forçar novo canvas ──
   const [boardKey, setBoardKey] = useState(0);
 
   const etapa = aula?.etapas[etapaAtual];
 
-  // ── update character state based on playback ──
+  // ── character state ──
   useEffect(() => {
     if (audioLoading) { setCharState("thinking"); return; }
     if (isPlaying) { setCharState("speaking"); return; }
@@ -438,13 +214,13 @@ export default function AulaIA() {
     setIsPlaying(autoPlay);
   }, [aula]);
 
-  // ── called when first char is written → start narration ──────────────────
+  // ── canvas: first char written → start narration audio ───────────────────
   const handleFirstChar = useCallback(() => {
-    if (isPlaying && etapa) playNarration(etapa.narracao);
     setNarrationActive(true);
+    if (isPlaying && etapa) playNarration(etapa.narracao);
   }, [isPlaying, etapa, playNarration]);
 
-  // ── called when all board elements are written ────────────────────────────
+  // ── canvas: all elements written ─────────────────────────────────────────
   const handleAllDone = useCallback(() => {
     setBoardAllDone(true);
   }, []);
@@ -664,50 +440,42 @@ export default function AulaIA() {
 
         {/* ── LOUSA ── */}
         <div className="flex-1 flex flex-col min-h-0 p-3 sm:p-5 gap-3">
-          <div className="flex-1 relative bg-white rounded-3xl shadow-lg border border-slate-200 overflow-hidden flex flex-col min-h-[320px]">
 
-            {/* Linhas do caderno */}
-            <div className="absolute inset-0 pointer-events-none"
-              style={{
-                backgroundImage: "repeating-linear-gradient(transparent, transparent 31px, #f1f5f9 31px, #f1f5f9 32px)",
-                backgroundPositionY: "44px",
-              }} />
+          {/* ── CANVAS BOARD ── */}
+          <div className="flex-1 relative bg-white rounded-3xl shadow-lg border border-slate-200 overflow-hidden min-h-[360px]">
+
+            {/* Canvas ocupa 100% */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={boardKey}
+                className="absolute inset-0"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+              >
+                {etapa && (
+                  <ChalkBoardCanvas
+                    elementos={etapa.elementos}
+                    playing={true}
+                    speedMultiplier={velocidade}
+                    onFirstChar={handleFirstChar}
+                    onAllDone={handleAllDone}
+                  />
+                )}
+              </motion.div>
+            </AnimatePresence>
 
             {/* Tag de estilo */}
-            <div className="absolute top-3 right-3 z-10">
+            <div className="absolute top-3 right-3 z-10 pointer-events-none">
               <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-700 uppercase tracking-wider">
                 {estilo}
               </span>
             </div>
 
-            {/* Conteúdo da lousa */}
-            <div className="flex-1 p-6 sm:p-8 pr-20 overflow-y-auto relative z-10">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={boardKey}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}>
-                  {etapa && (
-                    <WritingBoard
-                      etapa={etapa}
-                      boardKey={boardKey}
-                      onFirstChar={handleFirstChar}
-                      onAllDone={handleAllDone}
-                    />
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </div>
-
             {/* Professor Tiagão na lousa */}
             <div className="absolute bottom-0 left-0 z-20 pointer-events-none select-none">
-              <TiagaoCharacter
-                state={charState}
-                size={100}
-                showLabel={false}
-              />
+              <TiagaoCharacter state={charState} size={100} showLabel={false} />
             </div>
 
             {/* Indicador de escrita */}
@@ -715,7 +483,7 @@ export default function AulaIA() {
               {!boardAllDone && etapa && (
                 <motion.div
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
+                  className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
                   <motion.span
                     animate={{ opacity: [1, 0.3, 1] }}
                     transition={{ repeat: Infinity, duration: 0.8 }}
@@ -725,9 +493,9 @@ export default function AulaIA() {
               )}
             </AnimatePresence>
 
-            {/* Loading de áudio */}
+            {/* Áudio carregando */}
             {audioLoading && (
-              <div className="absolute top-10 left-3 z-20 flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-xl px-3 py-1.5">
+              <div className="absolute top-10 left-3 z-20 flex items-center gap-2 bg-indigo-50/90 backdrop-blur-sm border border-indigo-200 rounded-xl px-3 py-1.5">
                 <Loader2 className="w-3 h-3 text-indigo-500 animate-spin" />
                 <span className="text-xs text-indigo-600 font-medium">Tiagão falando...</span>
               </div>
@@ -851,7 +619,7 @@ export default function AulaIA() {
               value={pergunta}
               onChange={e => setPergunta(e.target.value)}
               onKeyDown={e => e.key === "Enter" && !e.shiftKey && enviarPergunta()}
-              placeholder="Pode perguntar ao Professor — ele pausa a aula e responde..."
+              placeholder="Pode perguntar ao Professor — ele responde ao vivo..."
               className="w-full px-4 py-2.5 rounded-2xl border border-slate-200 focus:border-indigo-400 focus:outline-none text-sm text-slate-800 placeholder-slate-400 bg-slate-50 pr-10"
             />
             <button

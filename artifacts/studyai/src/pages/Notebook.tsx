@@ -1194,11 +1194,20 @@ export default function Notebook() {
 
   // ─── TOOLS PANEL ───────────────────────────────────────────────────────────
   const ToolsPanel = (
-    <div className="flex flex-col h-full bg-white border-l border-slate-200">
-      <div className="px-3 py-3 border-b border-slate-100 flex-shrink-0">
-        <p className="text-xs font-black text-slate-800 uppercase tracking-wider mb-2">Ferramentas</p>
+    <div className="flex flex-col h-full bg-white border-l border-slate-200/70">
+      <div className="px-4 py-3.5 border-b border-slate-100 flex-shrink-0">
+        <div className="flex items-center justify-between mb-2.5">
+          <div className="flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-fuchsia-500" />
+            <p className="text-[11px] font-black text-slate-900 uppercase tracking-[0.08em]">Studio</p>
+          </div>
+          {selectedDocIds.length > 0 && <span className="text-[9px] font-bold text-slate-400">{selectedDocIds.length} doc</span>}
+        </div>
         {selectedDocIds.length === 0 ? (
-          <p className="text-[10px] text-slate-400">Selecione um documento para usar as ferramentas</p>
+          <div className="rounded-lg bg-slate-50 border border-dashed border-slate-200 p-3 text-center">
+            <FileText className="w-4 h-4 text-slate-300 mx-auto mb-1" />
+            <p className="text-[10px] text-slate-500 font-medium">Selecione uma fonte para liberar as ferramentas IA</p>
+          </div>
         ) : (
           <div className="space-y-1.5">
             {(Object.entries(TOOL_CONFIG) as [Tool, typeof TOOL_CONFIG[Tool]][]).map(([key, cfg]) => {
@@ -1407,39 +1416,48 @@ export default function Notebook() {
 
   // ─── RENDER ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       <AppNav />
 
-      <div className="bg-white border-b border-slate-200 px-4 py-2.5 flex items-center gap-3 flex-shrink-0">
-        <button onClick={() => navigate("/app")} className="text-slate-400 hover:text-slate-700 transition-colors">
+      <div className="bg-white/80 backdrop-blur-sm border-b border-slate-200/70 px-5 py-3 flex items-center gap-3 flex-shrink-0">
+        <button onClick={() => navigate("/app")} className="text-slate-400 hover:text-slate-700 transition-colors p-1 -ml-1 rounded-md hover:bg-slate-100">
           <ArrowLeft className="w-4 h-4" />
         </button>
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-            <BookOpen className="w-3.5 h-3.5 text-white" />
+        <div className="h-5 w-px bg-slate-200" />
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-fuchsia-500 flex items-center justify-center shadow-sm shadow-indigo-500/20">
+            <BookOpen className="w-4 h-4 text-white" />
           </div>
           <div>
-            <p className="font-black text-slate-800 text-sm leading-tight">StudyAI Notebook</p>
-            <p className="text-[10px] text-slate-400">RAG · Flashcards · Questões · Mapa Mental · Podcast</p>
+            <p className="font-bold text-slate-900 text-[13px] leading-tight tracking-tight">Notebook</p>
+            <p className="text-[10px] text-slate-500 leading-tight font-medium">Estudos com IA contextual</p>
           </div>
         </div>
 
-        <div className="ml-auto lg:hidden flex bg-slate-100 rounded-xl p-0.5 gap-0.5">
-          {(["sources", "chat", "tools"] as const).map(p => (
-            <button key={p} onClick={() => setMobilePanel(p)}
-              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                mobilePanel === p ? "bg-white shadow text-slate-800" : "text-slate-500"
-              }`}>
-              {p === "sources" ? "Fontes" : p === "chat" ? "Chat" : "Ferramentas"}
-            </button>
-          ))}
+        <div className="ml-auto flex items-center gap-2">
+          {selectedDocIds.length > 0 && (
+            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-lg">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span className="text-[10px] font-bold text-emerald-700">{selectedDocIds.length} {selectedDocIds.length === 1 ? "fonte" : "fontes"}</span>
+            </div>
+          )}
+          <div className="lg:hidden flex bg-slate-100 rounded-xl p-0.5 gap-0.5">
+            {(["sources", "chat", "tools"] as const).map(p => (
+              <button key={p} onClick={() => setMobilePanel(p)}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                  mobilePanel === p ? "bg-white shadow text-slate-800" : "text-slate-500"
+                }`}>
+                {p === "sources" ? "Fontes" : p === "chat" ? "Chat" : "Studio"}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        <div className="hidden lg:flex w-72 xl:w-80 flex-shrink-0 flex-col overflow-hidden">{SourcesPanel}</div>
-        <div className="hidden lg:flex flex-1 flex-col overflow-hidden">{ChatPanel}</div>
-        <div className="hidden lg:flex w-72 xl:w-80 flex-shrink-0 flex-col overflow-hidden">{ToolsPanel}</div>
+        <div className="hidden lg:flex w-[280px] xl:w-[300px] flex-shrink-0 flex-col overflow-hidden">{SourcesPanel}</div>
+        <div className="hidden lg:flex flex-1 flex-col overflow-hidden bg-slate-50">{ChatPanel}</div>
+        <div className="hidden lg:flex w-[300px] xl:w-[340px] flex-shrink-0 flex-col overflow-hidden">{ToolsPanel}</div>
 
         <div className="flex lg:hidden flex-1 flex-col overflow-hidden">
           {mobilePanel === "sources" && SourcesPanel}

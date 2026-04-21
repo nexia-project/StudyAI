@@ -6,6 +6,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -55,6 +56,23 @@ interface Podcast {
   destaques: string[];
 }
 
+interface Infografico {
+  b64_json: string;
+  mimeType: string;
+  titulo: string;
+  subtitulo: string;
+  estilo: string;
+}
+
+const INFO_ESTILOS: Array<{ id: string; label: string; icon: string }> = [
+  { id: "profissional", label: "Profissional",  icon: "briefcase" },
+  { id: "kawaii",       label: "Kawaii",         icon: "heart" },
+  { id: "cientifico",   label: "Científico",     icon: "activity" },
+  { id: "anime",        label: "Anime",          icon: "zap" },
+  { id: "esboco",       label: "Esboço",         icon: "edit-3" },
+  { id: "minimalista",  label: "Minimalista",    icon: "circle" },
+];
+
 export default function NotebookScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -84,6 +102,40 @@ export default function NotebookScreen() {
   const [podcastLoading, setPodcastLoading] = useState(false);
   const [playingIdx, setPlayingIdx] = useState<number | null>(null);
   const speakSoundRef = useRef<Audio.Sound | null>(null);
+
+  // Infographic modal state
+  const [infoDoc, setInfoDoc] = useState<NotebookDoc | null>(null);
+  const [infoEstilo, setInfoEstilo] = useState<string>("profissional");
+  const [infografico, setInfografico] = useState<Infografico | null>(null);
+  const [infoLoading, setInfoLoading] = useState(false);
+
+  const openInfografico = (doc: NotebookDoc) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setInfoDoc(doc);
+    setInfografico(null);
+    setInfoEstilo("profissional");
+  };
+
+  const generateInfografico = async () => {
+    if (!infoDoc) return;
+    setInfoLoading(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      const res = await fetch(`${API_BASE}/api/notebook/infografico`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ docId: infoDoc.id, estilo: infoEstilo, orientacao: "retrato" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.erro ?? "Erro");
+      setInfografico(data);
+    } catch (e: any) {
+      Alert.alert("Não consegui gerar o infográfico", e.message);
+    } finally {
+      setInfoLoading(false);
+    }
+  };
 
   const loadDocs = useCallback(async () => {
     try {
@@ -327,6 +379,13 @@ export default function NotebookScreen() {
                   </Text>
                 </View>
                 <Pressable
+                  onPress={() => openInfografico(d)}
+                  style={({ pressed }) => [styles.iconBtn, { backgroundColor: pressed ? "#d946ef30" : "#d946ef15" }]}
+                  hitSlop={6}
+                >
+                  <Feather name="image" size={16} color="#c026d3" />
+                </Pressable>
+                <Pressable
                   onPress={() => openPodcast(d)}
                   style={({ pressed }) => [styles.iconBtn, { backgroundColor: pressed ? `${colors.primary}30` : `${colors.primary}15` }]}
                   hitSlop={6}
@@ -554,6 +613,127 @@ export default function NotebookScreen() {
                 </View>
               </ScrollView>
             ) : null}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Infographic modal */}
+      <Modal visible={!!infoDoc} transparent animationType="slide" onRequestClose={() => { setInfoDoc(null); setInfografico(null); }}>
+        <View style={[styles.modalBg, { paddingTop: insets.top + 20 }]}>
+          <View style={[styles.podcastSheet, { backgroundColor: colors.background, paddingBottom: insets.bottom + 16 }]}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: "#c026d3", fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 1 }}>INFOGRÁFICO IA</Text>
+                <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold", fontSize: 16 }} numberOfLines={1}>
+                  {infoDoc?.title}
+                </Text>
+              </View>
+              <Pressable onPress={() => { setInfoDoc(null); setInfografico(null); }}>
+                <Feather name="x" size={22} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+
+            {!infografico && !infoLoading && (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 13, marginBottom: 8 }}>
+                  Escolha um estilo
+                </Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+                  {INFO_ESTILOS.map(est => {
+                    const selected = infoEstilo === est.id;
+                    return (
+                      <Pressable
+                        key={est.id}
+                        onPress={() => { Haptics.selectionAsync(); setInfoEstilo(est.id); }}
+                        style={({ pressed }) => [
+                          {
+                            flexDirection: "row", alignItems: "center", gap: 6,
+                            paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12,
+                            borderWidth: 1.5,
+                            backgroundColor: selected ? "#c026d3" : (pressed ? `${colors.primary}10` : colors.card),
+                            borderColor: selected ? "#c026d3" : colors.border,
+                          },
+                        ]}
+                      >
+                        <Feather name={est.icon as any} size={14} color={selected ? "#fff" : colors.foreground} />
+                        <Text style={{ color: selected ? "#fff" : colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 12 }}>
+                          {est.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <Pressable
+                  onPress={generateInfografico}
+                  style={({ pressed }) => [
+                    {
+                      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+                      paddingVertical: 14, borderRadius: 14,
+                      backgroundColor: pressed ? "#a21caf" : "#c026d3",
+                    },
+                  ]}
+                >
+                  <Feather name="zap" size={16} color="#fff" />
+                  <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 14 }}>
+                    Gerar infográfico
+                  </Text>
+                </Pressable>
+
+                <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 11, textAlign: "center", marginTop: 10 }}>
+                  Pode levar 15-30 segundos. A IA analisa o documento e desenha um pôster visual.
+                </Text>
+              </ScrollView>
+            )}
+
+            {infoLoading && (
+              <View style={{ alignItems: "center", paddingVertical: 60 }}>
+                <ActivityIndicator color="#c026d3" size="large" />
+                <Text style={{ color: colors.foreground, marginTop: 12, fontFamily: "Inter_600SemiBold" }}>
+                  Desenhando seu pôster...
+                </Text>
+                <Text style={{ color: colors.mutedForeground, marginTop: 4, fontFamily: "Inter_400Regular", fontSize: 11 }}>
+                  Estilo: {INFO_ESTILOS.find(e => e.id === infoEstilo)?.label}
+                </Text>
+              </View>
+            )}
+
+            {infografico && (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={{ marginBottom: 12 }}>
+                  <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold", fontSize: 15 }}>
+                    {infografico.titulo}
+                  </Text>
+                  <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12 }}>
+                    {infografico.subtitulo}
+                  </Text>
+                </View>
+                <View style={{ borderRadius: 14, overflow: "hidden", borderWidth: 1, borderColor: colors.border }}>
+                  {/* @ts-ignore — RN Image accepts data URLs */}
+                  <Image
+                    source={{ uri: `data:${infografico.mimeType};base64,${infografico.b64_json}` }}
+                    style={{ width: "100%", aspectRatio: 1024 / 1536 }}
+                    resizeMode="contain"
+                  />
+                </View>
+                <Pressable
+                  onPress={() => { setInfografico(null); }}
+                  style={({ pressed }) => [
+                    {
+                      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+                      paddingVertical: 12, borderRadius: 12, marginTop: 12,
+                      borderWidth: 1, borderColor: colors.border,
+                      backgroundColor: pressed ? `${colors.primary}10` : "transparent",
+                    },
+                  ]}
+                >
+                  <Feather name="refresh-cw" size={14} color={colors.foreground} />
+                  <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
+                    Gerar outro estilo
+                  </Text>
+                </Pressable>
+              </ScrollView>
+            )}
           </View>
         </View>
       </Modal>

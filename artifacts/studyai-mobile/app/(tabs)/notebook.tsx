@@ -69,6 +69,14 @@ export default function NotebookScreen() {
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
   const [openFonte, setOpenFonte] = useState<Fonte | null>(null);
+  const [selectedDocIds, setSelectedDocIds] = useState<number[]>([]);
+  const [restrictToSelected, setRestrictToSelected] = useState(false);
+
+  const toggleDocSelection = (id: number) => {
+    Haptics.selectionAsync();
+    setSelectedDocIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    setRestrictToSelected(true);
+  };
 
   // Podcast modal state
   const [podcastDoc, setPodcastDoc] = useState<NotebookDoc | null>(null);
@@ -145,11 +153,12 @@ export default function NotebookScreen() {
     setInput("");
     setThinking(true);
     try {
+      const useScope = restrictToSelected && selectedDocIds.length > 0;
       const res = await fetch(`${API_BASE}/api/notebook/chat`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pergunta: q }),
+        body: JSON.stringify({ pergunta: q, docIds: useScope ? selectedDocIds : undefined }),
       });
       const data = await res.json();
       setMessages(m => [...m, { role: "assistant", text: data.resposta ?? data.erro ?? "Sem resposta", fontes: data.fontes ?? [] }]);
@@ -283,13 +292,30 @@ export default function NotebookScreen() {
           </View>
         ) : (
           <View style={{ gap: 8 }}>
-            {docs.map(d => (
-              <View
+            {docs.map(d => {
+              const isSelected = selectedDocIds.includes(d.id);
+              return (
+              <Pressable
                 key={d.id}
-                style={[styles.docCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() => toggleDocSelection(d.id)}
+                style={({ pressed }) => [
+                  styles.docCard,
+                  {
+                    backgroundColor: isSelected ? `${colors.primary}10` : colors.card,
+                    borderColor: isSelected ? colors.primary : colors.border,
+                    opacity: pressed ? 0.85 : 1,
+                  },
+                ]}
               >
-                <View style={[styles.docIcon, { backgroundColor: `${colors.primary}20` }]}>
-                  <Feather name="file-text" size={18} color={colors.primary} />
+                <View style={[
+                  styles.docIcon,
+                  { backgroundColor: isSelected ? colors.primary : `${colors.primary}20` },
+                ]}>
+                  <Feather
+                    name={isSelected ? "check" : "file-text"}
+                    size={18}
+                    color={isSelected ? "#fff" : colors.primary}
+                  />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.docTitle, { color: colors.foreground }]} numberOfLines={1}>
@@ -314,8 +340,9 @@ export default function NotebookScreen() {
                 >
                   <Feather name="trash-2" size={16} color="#ef4444" />
                 </Pressable>
-              </View>
-            ))}
+              </Pressable>
+              );
+            })}
           </View>
         )}
 
@@ -366,11 +393,47 @@ export default function NotebookScreen() {
         )}
       </ScrollView>
 
-      {/* Composer */}
-      <View style={[
-        styles.composer,
-        { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: insets.bottom + 80 },
-      ]}>
+      {/* Scope bar + Composer */}
+      <View style={{
+        position: "absolute", left: 0, right: 0, bottom: 0,
+        backgroundColor: colors.background, borderTopWidth: 1, borderTopColor: colors.border,
+        paddingBottom: insets.bottom + 80,
+      }}>
+        {selectedDocIds.length > 0 && (
+          <View style={[styles.scopeBar, { borderBottomColor: colors.border }]}>
+            <Feather
+              name={restrictToSelected ? "lock" : "unlock"}
+              size={12}
+              color={restrictToSelected ? colors.primary : colors.mutedForeground}
+            />
+            <Text style={{
+              flex: 1,
+              color: restrictToSelected ? colors.primary : colors.mutedForeground,
+              fontSize: 11,
+              fontFamily: "Inter_600SemiBold",
+            }}>
+              {restrictToSelected
+                ? `Perguntando só sobre ${selectedDocIds.length} fonte${selectedDocIds.length > 1 ? "s" : ""} marcada${selectedDocIds.length > 1 ? "s" : ""}`
+                : `${selectedDocIds.length} marcada${selectedDocIds.length > 1 ? "s" : ""} (ignorando filtro)`}
+            </Text>
+            <Pressable
+              onPress={() => { Haptics.selectionAsync(); setRestrictToSelected(v => !v); }}
+              style={{ paddingHorizontal: 8, paddingVertical: 4 }}
+              hitSlop={6}
+            >
+              <Text style={{ color: colors.primary, fontSize: 11, fontFamily: "Inter_700Bold" }}>
+                {restrictToSelected ? "Soltar" : "Travar"}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSelectedDocIds([]); setRestrictToSelected(false); }}
+              hitSlop={6}
+            >
+              <Feather name="x" size={14} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
+        )}
+        <View style={{ flexDirection: "row", gap: 8, padding: 12, alignItems: "flex-end" }}>
         <TextInput
           value={input}
           onChangeText={setInput}
@@ -394,6 +457,7 @@ export default function NotebookScreen() {
         >
           <Feather name="send" size={18} color="#fff" />
         </Pressable>
+        </View>
       </View>
 
       {/* Fonte modal */}
@@ -515,6 +579,10 @@ const styles = StyleSheet.create({
   composer: {
     position: "absolute", left: 0, right: 0, bottom: 0,
     flexDirection: "row", gap: 8, padding: 12, borderTopWidth: 1, alignItems: "flex-end",
+  },
+  scopeBar: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1,
   },
   composerInput: {
     flex: 1, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 18, borderWidth: 1,

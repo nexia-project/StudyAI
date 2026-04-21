@@ -77,8 +77,8 @@ Every new AI feature added to ANY surface MUST also be reflected in:
    - `(tabs)/notebook.tsx` → PDF/text upload via expo-document-picker, RAG chat with [Fonte N] chips that open full trecho modal, podcast generator with Ana/Marcos roteiro and per-fala TTS playback (uses `/api/tiagao/tts` with voices nova/onyx).
    - `(tabs)/mapa-mental.tsx` → react-native-svg radial layout (center → topics → subtopics) with pinch+pan gesture handler, subtopic tap opens detail modal.
 2. ✅ **Instituição AI dashboard** delivered: new `/api/institution/:id/ai-stats` endpoint + "Inteligência IA" tab in `Instituicao.tsx` with KPIs, AI feature adoption grid, Trilha by subject (BarChart) and content breakdown (PieChart), all scoped to the institution's students.
-3. **Professor's own Notebook**: scope `knowledge_documents` queries by `uploaded_by = req.userId` and surface a "Caderno IA do Professor" tab in `Professor.tsx` (RAG over class material).
-4. **Citações inline + filtro por documento** no chat do Notebook do aluno.
+3. ✅ **Professor's own Notebook**: link "Caderno IA" added to `Professor.tsx` sidebar opening `/notebook`; backend already scopes `knowledge_documents` by `uploaded_by = req.userId`, so each professor sees only their own RAG corpus.
+4. ✅ **Citações inline + filtro por documento** entregue em web e mobile: chips clicáveis [Fonte N] abrem o trecho completo, e tap em qualquer doc da lista marca/desmarca como escopo (web: `selectedDocs` + `restrictToSelected`; mobile: `selectedDocIds` + barra "Travar/Soltar" acima do composer).
 
 ### External Dependencies
 

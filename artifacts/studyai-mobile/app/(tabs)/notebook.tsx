@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
 import { Audio } from "expo-av";
 import { useEffect, useState, useCallback, useRef } from "react";
 import {
@@ -29,6 +30,30 @@ interface NotebookDoc {
   created_at: string;
   content_length: number;
 }
+
+interface Caderno {
+  id: number;
+  title: string;
+  persona: string;
+  goals: string;
+  color: string;
+  emoji: string;
+  is_default: boolean;
+  docs_count?: number;
+}
+
+type SourceMode = "pdf" | "text" | "url" | "youtube" | "wikipedia" | "audio" | "image" | "gdocs";
+
+const SOURCE_OPTIONS: Array<{ id: SourceMode; label: string; icon: any; color: string }> = [
+  { id: "pdf",       label: "PDF / Doc",   icon: "file-text",   color: "#6366f1" },
+  { id: "text",      label: "Colar texto", icon: "edit-3",      color: "#14b8a6" },
+  { id: "url",       label: "Site / URL",  icon: "link-2",      color: "#0ea5e9" },
+  { id: "youtube",   label: "YouTube",     icon: "youtube",     color: "#ef4444" },
+  { id: "wikipedia", label: "Wikipedia",   icon: "book-open",   color: "#475569" },
+  { id: "audio",     label: "Áudio",       icon: "mic",         color: "#a855f7" },
+  { id: "image",     label: "Imagem (OCR)",icon: "image",       color: "#f59e0b" },
+  { id: "gdocs",     label: "Google Docs", icon: "file",        color: "#2563eb" },
+];
 
 interface Fonte {
   numero: number;
@@ -78,6 +103,18 @@ export default function NotebookScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
 
+  // ─── Cadernos (multi-notebook) ─────────────────────────────────────
+  const [cadernos, setCadernos] = useState<Caderno[]>([]);
+  const [activeCaderno, setActiveCaderno] = useState<Caderno | null>(null);
+  const [showCadernoModal, setShowCadernoModal] = useState(false);
+  const [cadernoForm, setCadernoForm] = useState({ title: "", persona: "", goals: "", emoji: "📘", color: "indigo" });
+
+  // ─── Source picker ─────────────────────────────────────────────────
+  const [sourceMode, setSourceMode] = useState<SourceMode | null>(null);
+  const [srcText, setSrcText] = useState("");
+  const [srcTitle, setSrcTitle] = useState("");
+  const [srcUrl, setSrcUrl] = useState("");
+
   const [docs, setDocs] = useState<NotebookDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -125,7 +162,7 @@ export default function NotebookScreen() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ docId: infoDoc.id, estilo: infoEstilo, orientacao: "retrato" }),
+        body: JSON.stringify({ docId: infoDoc.id, estilo: infoEstilo, orientacao: "retrato", cadernoId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.erro ?? "Erro");
@@ -137,17 +174,70 @@ export default function NotebookScreen() {
     }
   };
 
+  const loadCadernos = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/notebook/cadernos`, { credentials: "include" });
+      if (res.ok) {
+        const list: Caderno[] = await res.json();
+        setCadernos(list);
+        if (!activeCaderno && list.length) {
+          setActiveCaderno(list.find(c => c.is_default) ?? list[0]);
+        }
+      }
+    } catch (e) { console.warn("cadernos:", e); }
+  }, [activeCaderno]);
+
   const loadDocs = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/notebook/docs`, { credentials: "include" });
+      const cid = activeCaderno?.id;
+      const url = cid ? `${API_BASE}/api/notebook/docs?cadernoId=${cid}` : `${API_BASE}/api/notebook/docs`;
+      const res = await fetch(url, { credentials: "include" });
       if (res.ok) setDocs(await res.json());
     } catch (e) { console.warn("notebook docs:", e); }
     finally { setLoading(false); }
-  }, []);
+  }, [activeCaderno]);
 
-  useEffect(() => { if (user) loadDocs(); else setLoading(false); }, [user, loadDocs]);
+  useEffect(() => { if (user) { loadCadernos(); } else { setLoading(false); } }, [user, loadCadernos]);
+  useEffect(() => { if (user && activeCaderno) loadDocs(); }, [user, activeCaderno, loadDocs]);
 
-  // ─── Upload PDF / text file ─────────────────────────────────────────────
+  const createCaderno = async () => {
+    if (!cadernoForm.title.trim()) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/notebook/cadernos`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cadernoForm),
+      });
+      if (res.ok) {
+        const novo: Caderno = await res.json();
+        setCadernos(prev => [novo, ...prev]);
+        setActiveCaderno(novo);
+        setShowCadernoModal(false);
+        setCadernoForm({ title: "", persona: "", goals: "", emoji: "📘", color: "indigo" });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        const data = await res.json();
+        Alert.alert("Erro", data.erro ?? "Não foi possível criar o caderno");
+      }
+    } catch (e: any) { Alert.alert("Erro de conexão", e.message); }
+  };
+
+  // ─── Upload helpers ──────────────────────────────────────────────────────
+  const cadernoId = activeCaderno?.id;
+
+  const finishUpload = async (data: any) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Alert.alert("Pronto!", data.message ?? `"${data.title}" foi adicionado.`);
+    setSourceMode(null);
+    setSrcText(""); setSrcTitle(""); setSrcUrl("");
+    await loadDocs();
+  };
+
+  const failUpload = (msg: string) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    Alert.alert("Erro", msg);
+  };
+
   const uploadFile = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -156,32 +246,79 @@ export default function NotebookScreen() {
       });
       if (result.canceled || !result.assets?.[0]) return;
       const asset = result.assets[0];
-      setUploading(true);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
+      setUploading(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       const form = new FormData();
-      form.append("file", {
-        uri: asset.uri,
-        name: asset.name,
-        type: asset.mimeType ?? "application/pdf",
-      } as any);
-
-      const res = await fetch(`${API_BASE}/api/notebook/upload-file`, {
-        method: "POST",
-        credentials: "include",
-        body: form,
-      });
+      form.append("file", { uri: asset.uri, name: asset.name, type: asset.mimeType ?? "application/pdf" } as any);
+      if (cadernoId) form.append("cadernoId", String(cadernoId));
+      const res = await fetch(`${API_BASE}/api/notebook/upload-file`, { method: "POST", credentials: "include", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.erro ?? "Falha no upload");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("Pronto!", `"${data.title ?? asset.name}" foi adicionado.`);
-      await loadDocs();
-    } catch (e: any) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Erro no upload", e.message ?? "Tente novamente");
-    } finally {
-      setUploading(false);
-    }
+      await finishUpload(data);
+    } catch (e: any) { failUpload(e.message ?? "Tente novamente"); }
+    finally { setUploading(false); }
+  };
+
+  const uploadAudio = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ["audio/*"], copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      setUploading(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const form = new FormData();
+      form.append("audio", { uri: asset.uri, name: asset.name, type: asset.mimeType ?? "audio/m4a" } as any);
+      form.append("title", asset.name.replace(/\.[^.]+$/, ""));
+      if (cadernoId) form.append("cadernoId", String(cadernoId));
+      const res = await fetch(`${API_BASE}/api/notebook/upload-audio`, { method: "POST", credentials: "include", body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.erro ?? "Falha");
+      await finishUpload(data);
+    } catch (e: any) { failUpload(e.message ?? "Erro ao transcrever"); }
+    finally { setUploading(false); }
+  };
+
+  const uploadImage = async () => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) { Alert.alert("Permissão", "Precisamos do acesso à galeria"); return; }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.85,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      setUploading(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const form = new FormData();
+      const name = asset.fileName || `image-${Date.now()}.jpg`;
+      form.append("image", { uri: asset.uri, name, type: asset.mimeType ?? "image/jpeg" } as any);
+      form.append("title", name.replace(/\.[^.]+$/, ""));
+      if (cadernoId) form.append("cadernoId", String(cadernoId));
+      const res = await fetch(`${API_BASE}/api/notebook/upload-image`, { method: "POST", credentials: "include", body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.erro ?? "Falha");
+      await finishUpload(data);
+    } catch (e: any) { failUpload(e.message ?? "Erro ao processar imagem"); }
+    finally { setUploading(false); }
+  };
+
+  const uploadJsonEndpoint = async (
+    endpoint: string,
+    body: Record<string, any>,
+    requireField: string,
+  ) => {
+    if (!body[requireField]?.toString().trim()) return;
+    try {
+      setUploading(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const res = await fetch(`${API_BASE}/api/notebook/${endpoint}`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...body, cadernoId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.erro ?? "Falha");
+      await finishUpload(data);
+    } catch (e: any) { failUpload(e.message ?? "Erro"); }
+    finally { setUploading(false); }
   };
 
   const deleteDoc = (id: number, title: string) => {
@@ -210,7 +347,7 @@ export default function NotebookScreen() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pergunta: q, docIds: useScope ? selectedDocIds : undefined }),
+        body: JSON.stringify({ pergunta: q, docIds: useScope ? selectedDocIds : undefined, cadernoId }),
       });
       const data = await res.json();
       setMessages(m => [...m, { role: "assistant", text: data.resposta ?? data.erro ?? "Sem resposta", fontes: data.fontes ?? [] }]);
@@ -232,7 +369,7 @@ export default function NotebookScreen() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ docId: doc.id }),
+        body: JSON.stringify({ docId: doc.id, cadernoId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.erro ?? "Erro");
@@ -307,27 +444,79 @@ export default function NotebookScreen() {
         contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 200, paddingHorizontal: 16 }}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={{ marginBottom: 16 }}>
+        <View style={{ marginBottom: 12 }}>
           <Text style={[styles.title, { color: colors.foreground }]}>Caderno IA</Text>
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-            Suba PDFs, pergunte e gere podcast educativo
+            Cadernos personalizados, 8 tipos de fonte e Tiagão como tutor
           </Text>
         </View>
 
-        {/* Upload button */}
-        <Pressable
-          onPress={uploadFile}
-          disabled={uploading}
-          style={({ pressed }) => [
-            styles.uploadCard,
-            { backgroundColor: colors.primary, opacity: pressed || uploading ? 0.7 : 1 },
-          ]}
-        >
-          {uploading ? <ActivityIndicator color="#fff" /> : <Feather name="upload" size={20} color="#fff" />}
-          <Text style={styles.uploadText}>
-            {uploading ? "Enviando..." : "Adicionar PDF ou texto"}
-          </Text>
-        </Pressable>
+        {/* Cadernos picker */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12, marginHorizontal: -16, paddingHorizontal: 16 }} contentContainerStyle={{ gap: 8, paddingRight: 16 }}>
+          {cadernos.map(c => {
+            const isActive = activeCaderno?.id === c.id;
+            return (
+              <Pressable key={c.id} onPress={() => { Haptics.selectionAsync(); setActiveCaderno(c); setSelectedDocIds([]); setMessages([]); }}
+                style={({ pressed }) => [
+                  {
+                    flexDirection: "row", alignItems: "center", gap: 6,
+                    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14,
+                    borderWidth: 1.5,
+                    backgroundColor: isActive ? colors.primary : (pressed ? `${colors.primary}10` : colors.card),
+                    borderColor: isActive ? colors.primary : colors.border,
+                  },
+                ]}>
+                <Text style={{ fontSize: 16 }}>{c.emoji}</Text>
+                <Text style={{ color: isActive ? "#fff" : colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 13, maxWidth: 140 }} numberOfLines={1}>
+                  {c.title}
+                </Text>
+                {typeof c.docs_count === "number" && (
+                  <View style={{ paddingHorizontal: 6, paddingVertical: 1, borderRadius: 8, backgroundColor: isActive ? "#ffffff30" : `${colors.primary}15` }}>
+                    <Text style={{ color: isActive ? "#fff" : colors.primary, fontSize: 10, fontFamily: "Inter_700Bold" }}>{c.docs_count}</Text>
+                  </View>
+                )}
+              </Pressable>
+            );
+          })}
+          <Pressable onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowCadernoModal(true); }}
+            style={({ pressed }) => [
+              {
+                flexDirection: "row", alignItems: "center", gap: 4,
+                paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14,
+                borderWidth: 1.5, borderStyle: "dashed",
+                backgroundColor: pressed ? `${colors.primary}10` : "transparent",
+                borderColor: colors.border,
+              },
+            ]}>
+            <Feather name="plus" size={14} color={colors.primary} />
+            <Text style={{ color: colors.primary, fontFamily: "Inter_700Bold", fontSize: 12 }}>Novo</Text>
+          </Pressable>
+        </ScrollView>
+
+        {/* Source grid (8 types) */}
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+          {SOURCE_OPTIONS.map(opt => (
+            <Pressable key={opt.id} onPress={() => { Haptics.selectionAsync(); setSourceMode(opt.id); }} disabled={uploading}
+              style={({ pressed }) => [{
+                flexBasis: "23%", flexGrow: 1, alignItems: "center", justifyContent: "center", gap: 4,
+                paddingVertical: 10, paddingHorizontal: 4, borderRadius: 12,
+                borderWidth: 1, borderColor: colors.border,
+                backgroundColor: pressed ? `${opt.color}15` : colors.card,
+                opacity: uploading ? 0.5 : 1,
+              }]}>
+              <Feather name={opt.icon} size={18} color={opt.color} />
+              <Text style={{ color: colors.foreground, fontSize: 10, fontFamily: "Inter_600SemiBold", textAlign: "center" }} numberOfLines={1}>
+                {opt.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+        {uploading && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12, padding: 10, borderRadius: 12, backgroundColor: `${colors.primary}10` }}>
+            <ActivityIndicator color={colors.primary} size="small" />
+            <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold", fontSize: 12 }}>Processando fonte...</Text>
+          </View>
+        )}
 
         {/* Doc list */}
         <Text style={[styles.sectionTitle, { color: colors.foreground, marginTop: 20 }]}>
@@ -518,6 +707,159 @@ export default function NotebookScreen() {
         </Pressable>
         </View>
       </View>
+
+      {/* Source-mode bottom sheet */}
+      <Modal visible={!!sourceMode} transparent animationType="slide" onRequestClose={() => setSourceMode(null)}>
+        <Pressable style={[styles.modalBg, { justifyContent: "flex-end" }]} onPress={() => setSourceMode(null)}>
+          <Pressable style={[styles.modalSheet, { backgroundColor: colors.background, paddingBottom: insets.bottom + 24 }]} onPress={e => e.stopPropagation()}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+                {SOURCE_OPTIONS.find(o => o.id === sourceMode)?.label}
+              </Text>
+              <Pressable onPress={() => setSourceMode(null)} hitSlop={8}>
+                <Feather name="x" size={22} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+
+            {sourceMode === "pdf" && (
+              <Pressable onPress={uploadFile} disabled={uploading}
+                style={({ pressed }) => [styles.uploadCard, { backgroundColor: colors.primary, opacity: pressed || uploading ? 0.7 : 1 }]}>
+                {uploading ? <ActivityIndicator color="#fff" /> : <Feather name="upload" size={20} color="#fff" />}
+                <Text style={styles.uploadText}>{uploading ? "Enviando..." : "Escolher PDF / TXT / MD"}</Text>
+              </Pressable>
+            )}
+
+            {sourceMode === "audio" && (
+              <Pressable onPress={uploadAudio} disabled={uploading}
+                style={({ pressed }) => [styles.uploadCard, { backgroundColor: "#a855f7", opacity: pressed || uploading ? 0.7 : 1 }]}>
+                {uploading ? <ActivityIndicator color="#fff" /> : <Feather name="mic" size={20} color="#fff" />}
+                <Text style={styles.uploadText}>{uploading ? "Transcrevendo..." : "Escolher arquivo de áudio"}</Text>
+              </Pressable>
+            )}
+
+            {sourceMode === "image" && (
+              <Pressable onPress={uploadImage} disabled={uploading}
+                style={({ pressed }) => [styles.uploadCard, { backgroundColor: "#f59e0b", opacity: pressed || uploading ? 0.7 : 1 }]}>
+                {uploading ? <ActivityIndicator color="#fff" /> : <Feather name="image" size={20} color="#fff" />}
+                <Text style={styles.uploadText}>{uploading ? "Lendo imagem..." : "Escolher imagem (OCR)"}</Text>
+              </Pressable>
+            )}
+
+            {(sourceMode === "youtube" || sourceMode === "url" || sourceMode === "gdocs") && (
+              <View style={{ gap: 10 }}>
+                <TextInput
+                  value={srcUrl} onChangeText={setSrcUrl}
+                  placeholder={
+                    sourceMode === "youtube" ? "https://youtube.com/watch?v=..." :
+                    sourceMode === "gdocs"   ? "https://docs.google.com/document/d/..." :
+                                               "https://exemplo.com/artigo"
+                  }
+                  placeholderTextColor={colors.mutedForeground}
+                  autoCapitalize="none" autoCorrect={false}
+                  style={[styles.composerInput, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border, minHeight: 48 }]}
+                />
+                <TextInput
+                  value={srcTitle} onChangeText={setSrcTitle}
+                  placeholder="Título (opcional)"
+                  placeholderTextColor={colors.mutedForeground}
+                  style={[styles.composerInput, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border, minHeight: 44 }]}
+                />
+                <Pressable
+                  onPress={() => {
+                    const ep = sourceMode === "youtube" ? "upload-youtube" : sourceMode === "gdocs" ? "upload-gdocs" : "upload-url";
+                    uploadJsonEndpoint(ep, { url: srcUrl.trim(), title: srcTitle.trim() || undefined }, "url");
+                  }}
+                  disabled={!srcUrl.trim() || uploading}
+                  style={({ pressed }) => [styles.uploadCard, { backgroundColor: !srcUrl.trim() || uploading ? colors.muted : colors.primary, opacity: pressed ? 0.7 : 1 }]}>
+                  {uploading ? <ActivityIndicator color="#fff" /> : <Feather name="download-cloud" size={18} color="#fff" />}
+                  <Text style={styles.uploadText}>{uploading ? "Importando..." : "Importar"}</Text>
+                </Pressable>
+              </View>
+            )}
+
+            {sourceMode === "wikipedia" && (
+              <View style={{ gap: 10 }}>
+                <TextInput
+                  value={srcTitle} onChangeText={setSrcTitle}
+                  placeholder="Termo (ex: Revolução Francesa)"
+                  placeholderTextColor={colors.mutedForeground}
+                  style={[styles.composerInput, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border, minHeight: 48 }]}
+                />
+                <Pressable
+                  onPress={() => uploadJsonEndpoint("upload-wikipedia", { termo: srcTitle.trim() }, "termo")}
+                  disabled={!srcTitle.trim() || uploading}
+                  style={({ pressed }) => [styles.uploadCard, { backgroundColor: !srcTitle.trim() || uploading ? colors.muted : "#475569", opacity: pressed ? 0.7 : 1 }]}>
+                  {uploading ? <ActivityIndicator color="#fff" /> : <Feather name="book-open" size={18} color="#fff" />}
+                  <Text style={styles.uploadText}>{uploading ? "Buscando..." : "Buscar Wikipedia"}</Text>
+                </Pressable>
+              </View>
+            )}
+
+            {sourceMode === "text" && (
+              <View style={{ gap: 10 }}>
+                <TextInput
+                  value={srcTitle} onChangeText={setSrcTitle}
+                  placeholder="Título"
+                  placeholderTextColor={colors.mutedForeground}
+                  style={[styles.composerInput, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border, minHeight: 44 }]}
+                />
+                <TextInput
+                  value={srcText} onChangeText={setSrcText}
+                  placeholder="Cole seu texto aqui..."
+                  placeholderTextColor={colors.mutedForeground}
+                  multiline
+                  style={[styles.composerInput, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border, minHeight: 160, textAlignVertical: "top" }]}
+                />
+                <Pressable
+                  onPress={() => uploadJsonEndpoint("upload-text", { title: srcTitle.trim() || "Texto colado", text: srcText.trim() }, "text")}
+                  disabled={!srcText.trim() || uploading}
+                  style={({ pressed }) => [styles.uploadCard, { backgroundColor: !srcText.trim() || uploading ? colors.muted : "#14b8a6", opacity: pressed ? 0.7 : 1 }]}>
+                  {uploading ? <ActivityIndicator color="#fff" /> : <Feather name="check" size={18} color="#fff" />}
+                  <Text style={styles.uploadText}>{uploading ? "Salvando..." : "Adicionar texto"}</Text>
+                </Pressable>
+              </View>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* New caderno modal */}
+      <Modal visible={showCadernoModal} transparent animationType="slide" onRequestClose={() => setShowCadernoModal(false)}>
+        <Pressable style={[styles.modalBg, { justifyContent: "flex-end" }]} onPress={() => setShowCadernoModal(false)}>
+          <Pressable style={[styles.modalSheet, { backgroundColor: colors.background, paddingBottom: insets.bottom + 24 }]} onPress={e => e.stopPropagation()}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Novo caderno</Text>
+              <Pressable onPress={() => setShowCadernoModal(false)} hitSlop={8}>
+                <Feather name="x" size={22} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+            <View style={{ gap: 10 }}>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                {["📘","📚","🧠","⚗️","📐","🎨","🌍","💻"].map(em => (
+                  <Pressable key={em} onPress={() => setCadernoForm(f => ({ ...f, emoji: em }))}
+                    style={{ width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: cadernoForm.emoji === em ? colors.primary : colors.border, backgroundColor: cadernoForm.emoji === em ? `${colors.primary}15` : colors.card }}>
+                    <Text style={{ fontSize: 18 }}>{em}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <TextInput value={cadernoForm.title} onChangeText={t => setCadernoForm(f => ({ ...f, title: t }))}
+                placeholder="Nome (ex: Biologia ENEM)" placeholderTextColor={colors.mutedForeground}
+                style={[styles.composerInput, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border, minHeight: 48 }]} />
+              <TextInput value={cadernoForm.persona} onChangeText={t => setCadernoForm(f => ({ ...f, persona: t }))}
+                placeholder="Persona / quem é o aluno (opcional)" placeholderTextColor={colors.mutedForeground}
+                multiline style={[styles.composerInput, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border, minHeight: 70, textAlignVertical: "top" }]} />
+              <TextInput value={cadernoForm.goals} onChangeText={t => setCadernoForm(f => ({ ...f, goals: t }))}
+                placeholder="Objetivos / o que quer dominar (opcional)" placeholderTextColor={colors.mutedForeground}
+                multiline style={[styles.composerInput, { color: colors.foreground, backgroundColor: colors.card, borderColor: colors.border, minHeight: 70, textAlignVertical: "top" }]} />
+              <Pressable onPress={createCaderno} disabled={!cadernoForm.title.trim()}
+                style={({ pressed }) => [styles.uploadCard, { backgroundColor: !cadernoForm.title.trim() ? colors.muted : colors.primary, opacity: pressed ? 0.7 : 1 }]}>
+                <Feather name="plus-circle" size={18} color="#fff" />
+                <Text style={styles.uploadText}>Criar caderno</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Fonte modal */}
       <Modal visible={!!openFonte} transparent animationType="slide" onRequestClose={() => setOpenFonte(null)}>

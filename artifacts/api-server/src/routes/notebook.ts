@@ -221,7 +221,7 @@ async function saveDocWithChunks(
   userId: string,
   title: string,
   contentText: string,
-  sourceType: "pdf" | "text" | "url" | "youtube" | "wikipedia" | "audio" | "image",
+  sourceType: "pdf" | "text" | "url" | "youtube" | "wikipedia" | "audio" | "image" | "gdocs",
   sourceRef?: string,
   fileSizeKb?: number,
   notebookId?: number,
@@ -422,6 +422,32 @@ router.delete("/notebook/docs/:id", async (req: Request, res: Response) => {
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ erro: "Erro ao deletar documento" });
+  }
+});
+
+// ─── POST /api/notebook/upload-gdocs ─────────────────────────────────────────
+router.post("/notebook/upload-gdocs", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { url, title, cadernoId } = req.body as { url: string; title?: string; cadernoId?: number };
+  if (!url) { res.status(400).json({ erro: "Link do Google Docs obrigatório" }); return; }
+  try {
+    const m = url.match(/\/d\/([A-Za-z0-9_-]+)/);
+    if (!m) { res.status(400).json({ erro: "Link inválido — use o link do Google Docs (formato /d/ID/...)" }); return; }
+    const docId = m[1];
+    const exportUrl = `https://docs.google.com/document/d/${docId}/export?format=txt`;
+    const r = await fetch(exportUrl, { redirect: "follow" });
+    if (!r.ok) { res.status(422).json({ erro: "Doc não está público — habilite 'Qualquer um com o link pode ver'" }); return; }
+    const text = (await r.text()).trim();
+    if (text.length < 50) { res.status(422).json({ erro: "Documento vazio ou inacessível" }); return; }
+
+    const docTitle = title || `Google Docs — ${docId.slice(0, 8)}`;
+    const nbId = await resolveNotebookId(req.userId, cadernoId);
+    const newId = await saveDocWithChunks(req.userId, docTitle, text, "gdocs", url, undefined, nbId);
+    res.json({ id: newId, title: docTitle, chars: text.length, message: `✅ Google Docs importado (${text.length} caracteres)` });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Erro";
+    console.error("notebook upload-gdocs:", msg);
+    res.status(500).json({ erro: `Erro ao importar Google Docs: ${msg}` });
   }
 });
 

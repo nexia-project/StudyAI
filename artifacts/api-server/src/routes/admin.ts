@@ -271,6 +271,14 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
       activityHeatmap: activityHeatmap.rows,
       // ─── New AI feature metrics ───────────────────────────────────────
       aiFeatures,
+      aiProviders: [
+        { id: "deepseek",   ok: !!process.env.DEEPSEEK_API_KEY },
+        { id: "anthropic",  ok: !!process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY && process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY !== "_DUMMY_API_KEY_" },
+        { id: "openai",     ok: !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY && process.env.AI_INTEGRATIONS_OPENAI_API_KEY !== "_DUMMY_API_KEY_" },
+        { id: "gemini",     ok: !!process.env.AI_INTEGRATIONS_GEMINI_API_KEY && process.env.AI_INTEGRATIONS_GEMINI_API_KEY !== "_DUMMY_API_KEY_" },
+        { id: "openrouter", ok: !!process.env.AI_INTEGRATIONS_OPENROUTER_API_KEY && process.env.AI_INTEGRATIONS_OPENROUTER_API_KEY !== "_DUMMY_API_KEY_" },
+        { id: "elevenlabs", ok: !!process.env.ELEVENLABS_API_KEY },
+      ],
       trilhaBySubject,
       diagnosticsCompleted30d: (diagnosticsToday.rows[0] as any)?.count ?? 0,
       notebookDocsTotal: (notebookDocs.rows[0] as any)?.count ?? 0,

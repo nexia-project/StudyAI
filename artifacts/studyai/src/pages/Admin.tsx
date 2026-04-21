@@ -398,6 +398,18 @@ export default function AdminPage() {
   const aiFeaturesList = stats?.aiFeatures ?? [];
   const totalAiUses = aiFeaturesList.reduce((s: number, f: any) => s + (f.uses || 0), 0) || 1;
 
+  // Status dos provedores de IA (lido do backend; cai pra heurística se ausente)
+  const providersFromApi: any[] = (stats as any)?.aiProviders ?? [];
+  const providerStatus = (id: string) => providersFromApi.find(p => p.id === id);
+  const aiProviders = [
+    { id: "deepseek",  name: "DeepSeek",       emoji: "🧠", bg: "bg-blue-500/15",   ok: providerStatus("deepseek")?.ok  ?? true,  usage: "Tutor Tiagão · Simulado adaptativo · Notebook" },
+    { id: "anthropic", name: "Anthropic Claude", emoji: "🟠", bg: "bg-amber-500/15", ok: providerStatus("anthropic")?.ok ?? true,  usage: "Aula com lousa · Explicações longas" },
+    { id: "openai",    name: "OpenAI GPT",     emoji: "🟢", bg: "bg-emerald-500/15", ok: providerStatus("openai")?.ok    ?? true,  usage: "Imagens (slides, infográficos) · TTS Tiagão" },
+    { id: "gemini",    name: "Google Gemini",  emoji: "✨", bg: "bg-violet-500/15",  ok: providerStatus("gemini")?.ok    ?? true,  usage: "Resolução de problema por foto · OCR" },
+    { id: "openrouter", name: "OpenRouter",    emoji: "🔀", bg: "bg-pink-500/15",    ok: providerStatus("openrouter")?.ok ?? false, usage: "Fallback · Modelos extras (opcional)" },
+    { id: "elevenlabs", name: "ElevenLabs TTS", emoji: "🔊", bg: "bg-cyan-500/15",   ok: providerStatus("elevenlabs")?.ok ?? !!(stats as any)?.aiProviders?.find?.((p:any)=>p.id==="elevenlabs"), usage: "Voz do podcast (opcional)" },
+  ];
+
   const mockRevData = stats?.plansPerDay?.map((d, i) => ({
     day: d.day.slice(5), revenue: (d.count * 8.2 + i * 120).toFixed(0),
   })) ?? [];
@@ -1043,37 +1055,67 @@ export default function AdminPage() {
               <h2 className="text-lg font-black flex items-center gap-2"><Bot className="w-5 h-5 text-blue-400" /> IA & Custos</h2>
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
-                  <p className="text-sm font-bold text-white/70 mb-4">Custos por modelo de IA</p>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <BarChart data={mockIACosts} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                      <XAxis dataKey="model" tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }} />
-                      <YAxis tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }} />
-                      <Tooltip contentStyle={{ background: "#1a1a2e", border: "none", borderRadius: 8, color: "#fff", fontSize: 11 }}
-                        formatter={(v: any) => [`$${(v / 1000).toFixed(2)}k`, "Custo"]} />
-                      <Bar dataKey="cost" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <p className="text-sm font-bold text-white/70 mb-1">Uso de IA por feature</p>
+                  <p className="text-[10px] text-white/40 mb-3">Últimos 7 dias · chamadas reais</p>
+                  {aiCostsChart.length === 0 ? (
+                    <div className="h-[180px] flex items-center justify-center text-xs text-white/30">Sem dados ainda</div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={180}>
+                      <BarChart data={aiCostsChart} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                        <XAxis dataKey="model" tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }} />
+                        <YAxis tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }} />
+                        <Tooltip contentStyle={{ background: "#1a1a2e", border: "none", borderRadius: 8, color: "#fff", fontSize: 11 }}
+                          formatter={(v: any) => [v, "Chamadas"]} />
+                        <Bar dataKey="cost" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
                 <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5 space-y-4">
-                  <p className="text-sm font-bold text-white/70">Modelos mais usados</p>
-                  {[
-                    { name: "GPT-4", pct: 58 }, { name: "Embeddings", pct: 32 }, { name: "Summarization", pct: 10 },
-                  ].map(m => (
-                    <div key={m.name}>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-xs text-white/60">{m.name}</span>
-                        <span className="text-xs font-bold text-white/80">{m.pct}%</span>
+                  <p className="text-sm font-bold text-white/70">Distribuição de uso</p>
+                  {aiFeaturesList.length === 0 ? (
+                    <p className="text-xs text-white/30 py-4 text-center">Sem dados ainda</p>
+                  ) : aiFeaturesList.slice(0, 5).map((f: any) => {
+                    const pct = Math.round(((f.uses || 0) / totalAiUses) * 100);
+                    return (
+                      <div key={f.feature}>
+                        <div className="flex justify-between mb-1">
+                          <span className="text-xs text-white/60 truncate">{f.feature}</span>
+                          <span className="text-xs font-bold text-white/80">{pct}%</span>
+                        </div>
+                        <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-violet-500" style={{ width: `${pct}%` }} />
+                        </div>
                       </div>
-                      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-violet-500" style={{ width: `${m.pct}%` }} />
+                    );
+                  })}
+                  <div className="border-t border-white/[0.07] pt-3">
+                    <p className="text-xs text-white/40">Total de chamadas de IA</p>
+                    <p className="text-xl font-black text-amber-400">{totalAiUses.toLocaleString("pt-BR")}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status dos provedores de IA */}
+              <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
+                <p className="text-sm font-bold text-white/70 mb-1">Provedores de IA</p>
+                <p className="text-[10px] text-white/40 mb-4">Status das integrações que alimentam o Tutor, Aulas, Simulado e Notebook</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {aiProviders.map(p => (
+                    <div key={p.name} className="flex items-center gap-3 p-3 rounded-xl border border-white/[0.05] bg-white/[0.02]">
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-base ${p.bg}`}>{p.emoji}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-bold text-white truncate">{p.name}</p>
+                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${p.ok ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"}`}>
+                            {p.ok ? "ATIVO" : "PENDENTE"}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-white/40 truncate">{p.usage}</p>
                       </div>
                     </div>
                   ))}
-                  <div className="border-t border-white/[0.07] pt-3">
-                    <p className="text-xs text-white/40">Custo total do mês (estimado)</p>
-                    <p className="text-xl font-black text-amber-400">~$15</p>
-                  </div>
                 </div>
               </div>
             </div>
@@ -1253,6 +1295,7 @@ export default function AdminPage() {
               <h2 className="text-lg font-black flex items-center gap-2"><Link className="w-5 h-5 text-blue-400" /> Integrações</h2>
               <div className="grid grid-cols-3 gap-3">
                 {[
+                  ...aiProviders.map(p => ({ name: p.name, status: p.ok ? "Ativo" : "Pendente", color: p.ok ? "emerald" : "gray", icon: p.emoji })),
                   { name: "Stripe", status: "Conectado", color: "emerald", icon: "💳" },
                   { name: "Clerk Auth", status: "Conectado", color: "emerald", icon: "🔐" },
                   { name: "INEP / BNCC", status: "Configurado", color: "blue", icon: "📚" },

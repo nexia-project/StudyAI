@@ -47,7 +47,35 @@ async function ensureNotebooksSchema() {
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_notebooks_user ON notebooks(user_id)`);
   await db.execute(sql`ALTER TABLE knowledge_documents ADD COLUMN IF NOT EXISTS notebook_id INTEGER`);
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_knowdocs_notebook ON knowledge_documents(notebook_id)`);
+
+  // Artefatos gerados (slides, podcast, infografico, timeline, mapa-mental, etc.)
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS notebook_artifacts (
+      id SERIAL PRIMARY KEY,
+      user_id VARCHAR NOT NULL,
+      doc_id INTEGER NOT NULL,
+      kind VARCHAR(32) NOT NULL,
+      title VARCHAR(255) DEFAULT '',
+      payload JSONB NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_artifacts_user_doc ON notebook_artifacts(user_id, doc_id)`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_artifacts_kind ON notebook_artifacts(kind)`);
   _schemaReady = true;
+}
+
+// ─── Salvar artefato gerado (best-effort, não bloqueia resposta se falhar) ────
+async function saveArtifact(userId: string, docId: number, kind: string, title: string, payload: any) {
+  try {
+    await ensureNotebooksSchema();
+    await db.execute(sql`
+      INSERT INTO notebook_artifacts (user_id, doc_id, kind, title, payload)
+      VALUES (${userId}, ${docId}, ${kind}, ${title.slice(0, 250)}, ${JSON.stringify(payload)}::jsonb)
+    `);
+  } catch (e) {
+    console.warn(`[saveArtifact ${kind}]`, e);
+  }
 }
 
 async function getOrCreateDefaultNotebook(userId: string): Promise<number> {
@@ -1087,7 +1115,9 @@ O roteiro deve:
 
     const raw = completion.choices[0].message.content ?? "{}";
     const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    res.json(JSON.parse(clean));
+    const parsed = JSON.parse(clean);
+    await saveArtifact(req.userId, docId, "podcast", parsed.titulo ?? row.title, parsed);
+    res.json(parsed);
   } catch (e) {
     console.error("notebook podcast:", e);
     res.status(500).json({ erro: "Erro ao gerar podcast" });
@@ -1199,6 +1229,7 @@ Gere 6-12 eventos em ordem cronológica.`,
     const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     const timeline = JSON.parse(clean);
 
+    await saveArtifact(req.userId, docId, "timeline", timeline.titulo ?? row.title, { timeline });
     res.json({ timeline });
   } catch (e) {
     console.error("notebook timeline:", e);
@@ -1303,14 +1334,16 @@ REQUIREMENTS:
     const buffer = await generateImageBuffer(prompt, size);
     const b64_json = buffer.toString("base64");
 
-    res.json({
+    const result = {
       b64_json,
       mimeType: "image/png",
       titulo: brief.titulo,
       subtitulo: brief.subtitulo,
       estilo,
       orientacao,
-    });
+    };
+    await saveArtifact(req.userId, docId, "infografico", brief.titulo ?? row.title, result);
+    res.json(result);
   } catch (e: any) {
     console.error("notebook infografico:", e);
     res.status(500).json({ erro: e.message ?? "Erro ao gerar infográfico" });
@@ -1404,10 +1437,76 @@ Style: clean modern flat design, sophisticated color palette matching the theme 
       console.warn("Cover image generation failed:", imgErr);
     }
 
+    await saveArtifact(req.userId, docId, "slides", apresentacao.titulo ?? row.title, { apresentacao, titulo: row.title });
     res.json({ apresentacao, titulo: row.title });
   } catch (e) {
     console.error("notebook slides:", e);
     res.status(500).json({ erro: "Erro ao gerar apresentação" });
+  }
+});
+
+// ─── GET /api/notebook/docs/:docId/artifacts ─────────────────────────────────
+// Lista artefatos previamente gerados para o documento (ordenados do mais recente)
+router.get("/notebook/docs/:docId/artifacts", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const docId = Number(req.params.docId);
+  if (!Number.isFinite(docId)) { res.status(400).json({ erro: "docId inválido" }); return; }
+  try {
+    await ensureNotebooksSchema();
+    const owns = await db.execute(sql`
+      SELECT id FROM knowledge_documents WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
+    `);
+    if (!owns.rows.length) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
+
+    const rows = await db.execute(sql`
+      SELECT id, kind, title, created_at
+        FROM notebook_artifacts
+       WHERE user_id = ${req.userId} AND doc_id = ${docId}
+       ORDER BY created_at DESC
+       LIMIT 50
+    `);
+    res.json({ artifacts: rows.rows });
+  } catch (e) {
+    console.error("notebook artifacts list:", e);
+    res.status(500).json({ erro: "Erro ao listar artefatos" });
+  }
+});
+
+// ─── GET /api/notebook/artifacts/:id ─────────────────────────────────────────
+// Recupera o payload completo de um artefato (para reabrir slides, podcast etc.)
+router.get("/notebook/artifacts/:id", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ erro: "id inválido" }); return; }
+  try {
+    await ensureNotebooksSchema();
+    const rows = await db.execute(sql`
+      SELECT id, doc_id, kind, title, payload, created_at
+        FROM notebook_artifacts
+       WHERE id = ${id} AND user_id = ${req.userId}
+       LIMIT 1
+    `);
+    const row = (rows.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Artefato não encontrado" }); return; }
+    res.json(row);
+  } catch (e) {
+    console.error("notebook artifact get:", e);
+    res.status(500).json({ erro: "Erro ao carregar artefato" });
+  }
+});
+
+// ─── DELETE /api/notebook/artifacts/:id ──────────────────────────────────────
+router.delete("/notebook/artifacts/:id", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ erro: "id inválido" }); return; }
+  try {
+    await ensureNotebooksSchema();
+    await db.execute(sql`DELETE FROM notebook_artifacts WHERE id = ${id} AND user_id = ${req.userId}`);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("notebook artifact delete:", e);
+    res.status(500).json({ erro: "Erro ao remover artefato" });
   }
 });
 

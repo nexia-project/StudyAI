@@ -15,7 +15,7 @@ import {
   CheckCircle, AlertCircle, Star, StickyNote, HelpCircle,
   ExternalLink, ArrowLeft, RefreshCw, Mic, Play, Pause,
   Volume2, Users, Clock, Presentation, Lock, Unlock, Quote, Printer,
-  Sparkles, Download, Youtube, Image as ImageIcon,
+  Sparkles, Download, Youtube, Image as ImageIcon, Maximize2, Minimize2, Archive,
 } from "lucide-react";
 import { TiagaoCharacter } from "@/components/TiagaoCharacter";
 import { AppNav } from "@/components/AppNav";
@@ -521,13 +521,131 @@ const SLIDE_THEMES = {
 
 function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: (n: number) => void }) {
   const theme = SLIDE_THEMES[deck.tema ?? "indigo"];
-  const slide = deck.slides[idx] ?? deck.slides[0];
-  const total = deck.slides.length;
+  const slide = (deck.slides ?? [])[idx] ?? (deck.slides ?? [])[0];
+  const total = (deck.slides ?? []).length;
   const capaImagem = (deck as any).capaImagem as string | undefined;
 
   const [slideImages, setSlideImages] = useState<Record<number, string>>({});
   const [imgLoading, setImgLoading] = useState<number | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const currentImg = idx === 0 && capaImagem ? capaImagem : slideImages[idx];
+
+  // Atalhos no fullscreen: ←/→ navega, Esc sai
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFullscreen(false);
+      else if (e.key === "ArrowRight" || e.key === " ") setIdx(Math.min(total - 1, idx + 1));
+      else if (e.key === "ArrowLeft") setIdx(Math.max(0, idx - 1));
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [fullscreen, idx, total, setIdx]);
+
+  // Exporta para PDF (text-based, sem dependências externas além do jsPDF já instalado)
+  async function exportPDF() {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: [960, 540] });
+      const slides = deck.slides ?? [];
+      const stripEmoji = (s: string) => (s ?? "").replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, "").replace(/[\u0080-\uFFFF]/g, m => m.charCodeAt(0) > 255 ? "" : m);
+      const wrap = (text: string, maxW: number, fontSize: number) => {
+        doc.setFontSize(fontSize);
+        return doc.splitTextToSize(stripEmoji(text), maxW);
+      };
+
+      slides.forEach((s: any, i: number) => {
+        if (i > 0) doc.addPage();
+        // background
+        doc.setFillColor(31, 41, 99);
+        doc.rect(0, 0, 960, 540, "F");
+        doc.setTextColor(255, 255, 255);
+
+        if (s.tipo === "capa") {
+          doc.setFont("helvetica", "bold"); doc.setFontSize(44);
+          doc.text(wrap(s.titulo ?? deck.titulo, 800, 44), 80, 230);
+          if (s.subtitulo) {
+            doc.setFont("helvetica", "normal"); doc.setFontSize(20);
+            doc.text(wrap(s.subtitulo, 800, 20), 80, 310);
+          }
+          if (deck.autor) {
+            doc.setFontSize(14); doc.text(`por ${stripEmoji(deck.autor)}`, 80, 360);
+          }
+        } else if (s.tipo === "agenda") {
+          doc.setFont("helvetica", "bold"); doc.setFontSize(32);
+          doc.text(stripEmoji(s.titulo ?? "Agenda"), 80, 100);
+          doc.setFontSize(20); doc.setFont("helvetica", "normal");
+          (s.itens ?? []).forEach((it: string, j: number) => {
+            doc.text(`${j + 1}. ${stripEmoji(it)}`, 80, 170 + j * 36);
+          });
+        } else if (s.tipo === "comparacao") {
+          doc.setFont("helvetica", "bold"); doc.setFontSize(28);
+          doc.text(stripEmoji(s.titulo ?? ""), 80, 90);
+          [s.esquerda, s.direita].forEach((col: any, ci: number) => {
+            if (!col) return;
+            const x = 80 + ci * 420;
+            doc.setFont("helvetica", "bold"); doc.setFontSize(18);
+            doc.text(stripEmoji(col.titulo ?? ""), x, 150);
+            doc.setFont("helvetica", "normal"); doc.setFontSize(14);
+            (col.itens ?? []).forEach((it: string, j: number) => {
+              const lines = wrap(`• ${it}`, 380, 14);
+              doc.text(lines, x, 190 + j * 60);
+            });
+          });
+        } else if (s.tipo === "citacao") {
+          doc.setFont("helvetica", "italic"); doc.setFontSize(28);
+          doc.text(wrap(`"${s.texto ?? ""}"`, 800, 28), 80, 240);
+          if (s.autor) {
+            doc.setFont("helvetica", "normal"); doc.setFontSize(16);
+            doc.text(`— ${stripEmoji(s.autor)}`, 80, 360);
+          }
+        } else if (s.tipo === "encerramento") {
+          doc.setFont("helvetica", "bold"); doc.setFontSize(36);
+          doc.text(stripEmoji(s.titulo ?? "Conclusão"), 80, 180);
+          if (s.mensagem) {
+            doc.setFont("helvetica", "normal"); doc.setFontSize(20);
+            doc.text(wrap(s.mensagem, 800, 20), 80, 250);
+          }
+          if (s.dicaEnem) {
+            doc.setFontSize(14);
+            doc.text(wrap(`ENEM: ${s.dicaEnem}`, 800, 14), 80, 380);
+          }
+        } else {
+          // conteudo + fallback
+          doc.setFont("helvetica", "bold"); doc.setFontSize(32);
+          doc.text(wrap(s.titulo ?? "", 800, 32), 80, 100);
+          if (s.subtitulo) {
+            doc.setFont("helvetica", "normal"); doc.setFontSize(16);
+            doc.text(wrap(s.subtitulo, 800, 16), 80, 145);
+          }
+          doc.setFont("helvetica", "normal"); doc.setFontSize(18);
+          let y = s.subtitulo ? 200 : 170;
+          (s.bullets ?? []).forEach((b: string) => {
+            const lines = wrap(`• ${b}`, 800, 18);
+            doc.text(lines, 80, y);
+            y += lines.length * 26 + 8;
+          });
+          if (s.destaque) {
+            doc.setFillColor(255, 255, 255, 0.15);
+            doc.setFont("helvetica", "bold"); doc.setFontSize(16);
+            doc.text(wrap(s.destaque, 800, 16), 80, Math.min(y + 20, 480));
+          }
+        }
+        // Footer page number
+        doc.setFont("helvetica", "normal"); doc.setFontSize(11);
+        doc.setTextColor(255, 255, 255);
+        doc.text(`${i + 1} / ${slides.length}`, 880, 520);
+      });
+
+      const fname = `${(deck.titulo ?? "apresentacao").replace(/\s+/g, "-").toLowerCase()}.pdf`;
+      doc.save(fname);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   async function generateSlideImage() {
     if (imgLoading !== null) return;
@@ -564,6 +682,14 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
               {imgLoading === idx ? "Gerando..." : "Imagem IA"}
             </button>
           )}
+          <button onClick={() => setFullscreen(true)} className="flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-violet-600 px-2 py-1 rounded-md hover:bg-violet-50">
+            <Maximize2 className="w-3 h-3" /> Tela cheia
+          </button>
+          <button onClick={exportPDF} disabled={exporting}
+                  className="flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-rose-600 px-2 py-1 rounded-md hover:bg-rose-50 disabled:opacity-50">
+            {exporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+            {exporting ? "Gerando..." : "PDF"}
+          </button>
           <button onClick={handlePrint} className="flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-violet-600 px-2 py-1 rounded-md hover:bg-violet-50">
             <Printer className="w-3 h-3" /> Imprimir
           </button>
@@ -730,6 +856,149 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
           );
         })}
       </div>
+
+      {/* Fullscreen modal — projetor */}
+      {fullscreen && (
+        <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col" role="dialog" aria-modal="true">
+          {/* Topbar */}
+          <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
+            <span className="text-white/60 text-xs font-bold">{idx + 1} / {total}</span>
+            <button onClick={exportPDF} disabled={exporting}
+                    className="flex items-center gap-1.5 text-xs font-bold text-white/80 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg disabled:opacity-50">
+              {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+              PDF
+            </button>
+            <button onClick={() => setFullscreen(false)}
+                    className="flex items-center gap-1.5 text-xs font-bold text-white/80 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg">
+              <Minimize2 className="w-3.5 h-3.5" /> Sair (Esc)
+            </button>
+          </div>
+
+          {/* Slide central, ocupando praticamente toda a tela */}
+          <div className="flex-1 flex items-center justify-center p-8">
+            <div className="w-full max-w-[1600px] aspect-[16/9] relative">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={`fs-${idx}`}
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -30 }}
+                  transition={{ duration: 0.25 }}
+                  className={`absolute inset-0 rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br ${theme.bg} text-white p-16 flex flex-col`}
+                >
+                  {currentImg && (
+                    <>
+                      <img src={currentImg} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-luminosity" />
+                      <div className={`absolute inset-0 bg-gradient-to-br ${theme.bg} opacity-75`} />
+                    </>
+                  )}
+                  {slide.tipo === "capa" && (
+                    <div className="relative flex-1 flex flex-col justify-center items-center text-center">
+                      <div className={`w-20 h-20 rounded-full ${theme.chip} flex items-center justify-center mb-8 shadow-lg`}>
+                        <BookOpen className="w-10 h-10 text-white" />
+                      </div>
+                      <p className="text-6xl font-black leading-tight mb-4 drop-shadow">{slide.titulo}</p>
+                      {slide.subtitulo && <p className={`text-2xl ${theme.accent} drop-shadow`}>{slide.subtitulo}</p>}
+                      {deck.autor && <p className={`text-lg ${theme.accent} mt-8 drop-shadow`}>por {deck.autor}</p>}
+                    </div>
+                  )}
+                  {slide.tipo === "agenda" && (
+                    <div className="relative flex-1 flex flex-col">
+                      <p className={`text-xl font-black uppercase tracking-wider ${theme.accent} mb-3`}>Agenda</p>
+                      <p className="text-5xl font-black mb-10">{slide.titulo}</p>
+                      <div className="flex-1 space-y-5">
+                        {(slide.itens ?? []).map((it, i) => (
+                          <div key={i} className="flex items-center gap-5">
+                            <span className={`w-14 h-14 rounded-full ${theme.chip} flex items-center justify-center text-2xl font-black flex-shrink-0`}>{i + 1}</span>
+                            <p className="text-2xl font-semibold">{it}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {slide.tipo === "conteudo" && (
+                    <div className="relative flex-1 flex flex-col">
+                      <p className="text-5xl font-black leading-tight">{slide.titulo}</p>
+                      {slide.subtitulo && <p className={`text-2xl ${theme.accent} mt-2 mb-6`}>{slide.subtitulo}</p>}
+                      <div className="flex-1 space-y-4 mt-6">
+                        {(slide.bullets ?? []).map((b, i) => (
+                          <div key={i} className="flex items-start gap-4">
+                            <span className={`w-3 h-3 rounded-full ${theme.chip} flex-shrink-0 mt-3`} />
+                            <p className="text-2xl leading-snug">{b}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {slide.destaque && (
+                        <div className={`mt-6 px-6 py-4 rounded-xl bg-white/15 backdrop-blur border-2 ${theme.border}`}>
+                          <p className="text-xl font-black">{slide.destaque}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {slide.tipo === "comparacao" && (
+                    <div className="relative flex-1 flex flex-col">
+                      <p className="text-5xl font-black leading-tight mb-8">{slide.titulo}</p>
+                      <div className="flex-1 grid grid-cols-2 gap-6">
+                        {[slide.esquerda, slide.direita].filter(Boolean).map((col, ci) => (
+                          <div key={ci} className="rounded-xl bg-white/10 p-6 backdrop-blur">
+                            <p className={`text-lg font-black ${theme.accent} uppercase tracking-wider mb-4`}>{col.titulo}</p>
+                            <div className="space-y-3">
+                              {(col?.itens ?? []).map((it, i) => (
+                                <div key={i} className="flex items-start gap-3">
+                                  <span className="w-2 h-2 rounded-full bg-white flex-shrink-0 mt-3" />
+                                  <p className="text-lg leading-snug">{it}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {slide.tipo === "citacao" && (
+                    <div className="relative flex-1 flex flex-col justify-center">
+                      <Quote className={`w-16 h-16 ${theme.accent} mb-6`} />
+                      <p className="text-4xl font-bold italic leading-snug">"{slide.texto}"</p>
+                      {slide.autor && <p className={`text-xl ${theme.accent} mt-8`}>— {slide.autor}</p>}
+                    </div>
+                  )}
+                  {slide.tipo === "encerramento" && (
+                    <div className="relative flex-1 flex flex-col justify-center items-center text-center">
+                      <p className={`text-xl font-black uppercase tracking-wider ${theme.accent}`}>Conclusão</p>
+                      <p className="text-5xl font-black mt-3 mb-6">{slide.titulo}</p>
+                      <p className="text-2xl leading-snug max-w-[80%]">{slide.mensagem}</p>
+                      {slide.dicaEnem && (
+                        <div className={`mt-8 px-6 py-3 rounded-xl bg-white/20 border-2 ${theme.border}`}>
+                          <p className="text-lg font-bold"><span className="font-black">📝 ENEM:</span> {slide.dicaEnem}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div className="absolute bottom-4 right-6 text-sm font-bold opacity-60">{idx + 1} / {total}</div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </div>
+
+          {/* Setas laterais grandes */}
+          <button
+            onClick={() => setIdx(Math.max(0, idx - 1))}
+            disabled={idx === 0}
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center disabled:opacity-20"
+            aria-label="Anterior"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <button
+            onClick={() => setIdx(Math.min(total - 1, idx + 1))}
+            disabled={idx >= total - 1}
+            className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center disabled:opacity-20"
+            aria-label="Próximo"
+          >
+            <ChevronRight className="w-6 h-6" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

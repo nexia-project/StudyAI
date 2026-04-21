@@ -407,12 +407,12 @@ export default function Home() {
   useEffect(() => {
     try {
       const completedCount = Object.values(completedTopics).filter(Boolean).length;
-      const diasTotal = planResult?.plano?.dias?.length ?? 0;
+      const diasTotal = planResult?.dias?.length ?? 0;
       const ultimosTopicos: string[] = [];
-      if (planResult?.plano?.dias) {
-        for (const dia of planResult.plano.dias) {
+      if (planResult?.dias) {
+        for (const dia of planResult.dias) {
           for (const topico of dia.topicos || []) {
-            if (ultimosTopicos.length < 5) ultimosTopicos.push(topico.titulo || topico.nome || "");
+            if (ultimosTopicos.length < 5) ultimosTopicos.push((topico as any).titulo || (topico as any).nome || "");
           }
         }
       }
@@ -420,7 +420,7 @@ export default function Home() {
         nome: studentProfile?.nome,
         serie: studentProfile?.serie || formData.serie,
         objetivo: studentProfile?.objetivo,
-        materia: planResult?.plano?.materia || formData.texto?.slice(0, 60),
+        materia: planResult?.materia || formData.texto?.slice(0, 60),
         diasCompletos: completedCount,
         diasTotal: diasTotal || undefined,
         xp: earnedXp,

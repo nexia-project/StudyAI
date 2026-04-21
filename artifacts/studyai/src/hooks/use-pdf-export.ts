@@ -88,11 +88,9 @@ export async function exportStudyPlanPDF(plan: StudyPlan): Promise<void> {
   doc.setFillColor(pr, pg, pb);
   doc.rect(0, 6, 210, 72, "F");
 
-  // Dark overlay bottom
-  doc.setFillColor(0, 0, 0);
-  doc.setGlobalAlpha(0.15);
-  doc.rect(0, 60, 210, 18, "F");
-  doc.setGlobalAlpha(1);
+  // Dark overlay bottom (simulate transparency with a near-black blended color)
+  doc.setFillColor(20, 15, 10);
+  doc.rect(0, 68, 210, 10, "F");
 
   // Title
   doc.setFontSize(28);

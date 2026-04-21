@@ -6,11 +6,117 @@ import {
   ArrowLeft, Brain, BookOpen, LogIn, RefreshCw, Sparkles,
   Upload, X, FileText, CheckCircle, Lock, ChevronRight,
   Loader2, Trash2, GraduationCap, BookMarked, User2,
-  FolderOpen, Plus,
+  FolderOpen, Plus, ZoomIn, ZoomOut, Maximize2,
 } from "lucide-react";
 import { AppNav } from "@/components/AppNav";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+// ── Pannable + zoomable wrapper for SVG mind maps ──────────────────────────
+// Lets the student drag (mouse + touch) and pinch/scroll-zoom on the canvas.
+// Solves the "minWidth: 600 squashed on mobile" problem and gives a
+// best-in-class explorer feel similar to NotebookLM / Whimsical.
+function PannableSvg({ children, height = 600 }: { children: React.ReactNode; height?: number }) {
+  const [scale, setScale] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const dragRef = useRef<{ startX: number; startY: number; baseX: number; baseY: number } | null>(null);
+  const pinchRef = useRef<{ d0: number; s0: number } | null>(null);
+
+  const dist = (a: Touch, b: Touch) =>
+    Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+
+  const onWheel = (e: React.WheelEvent) => {
+    if (!e.ctrlKey && Math.abs(e.deltaY) < 4) return;
+    e.preventDefault();
+    setScale(s => Math.min(2.5, Math.max(0.4, s * (e.deltaY > 0 ? 0.93 : 1.075))));
+  };
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    dragRef.current = { startX: e.clientX, startY: e.clientY, baseX: pan.x, baseY: pan.y };
+  };
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!dragRef.current) return;
+    setPan({
+      x: dragRef.current.baseX + (e.clientX - dragRef.current.startX),
+      y: dragRef.current.baseY + (e.clientY - dragRef.current.startY),
+    });
+  };
+  const endDrag = () => { dragRef.current = null; };
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      dragRef.current = {
+        startX: e.touches[0].clientX, startY: e.touches[0].clientY,
+        baseX: pan.x, baseY: pan.y,
+      };
+    } else if (e.touches.length === 2) {
+      pinchRef.current = { d0: dist(e.touches[0], e.touches[1]), s0: scale };
+      dragRef.current = null;
+    }
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && pinchRef.current) {
+      const d = dist(e.touches[0], e.touches[1]);
+      setScale(Math.min(2.5, Math.max(0.4, pinchRef.current.s0 * (d / pinchRef.current.d0))));
+    } else if (e.touches.length === 1 && dragRef.current) {
+      setPan({
+        x: dragRef.current.baseX + (e.touches[0].clientX - dragRef.current.startX),
+        y: dragRef.current.baseY + (e.touches[0].clientY - dragRef.current.startY),
+      });
+    }
+  };
+  const onTouchEnd = () => { dragRef.current = null; pinchRef.current = null; };
+
+  const reset = () => { setScale(1); setPan({ x: 0, y: 0 }); };
+
+  return (
+    <div className="relative w-full" style={{ height }}>
+      <div
+        className="w-full h-full overflow-hidden touch-none cursor-grab active:cursor-grabbing select-none bg-gradient-to-br from-slate-50 to-violet-50/30 rounded-xl"
+        onWheel={onWheel}
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={endDrag}
+        onMouseLeave={endDrag}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
+        <div
+          className="w-full h-full flex items-center justify-center"
+          style={{
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
+            transformOrigin: "center center",
+            transition: dragRef.current || pinchRef.current ? "none" : "transform 0.18s ease",
+          }}
+        >
+          {children}
+        </div>
+      </div>
+      {/* Floating zoom controls */}
+      <div className="absolute bottom-3 right-3 flex flex-col gap-1.5 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-xl shadow-md p-1">
+        <button onClick={() => setScale(s => Math.min(2.5, s * 1.2))}
+          aria-label="Aumentar"
+          className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-600">
+          <ZoomIn className="w-4 h-4" />
+        </button>
+        <button onClick={() => setScale(s => Math.max(0.4, s * 0.85))}
+          aria-label="Diminuir"
+          className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-600">
+          <ZoomOut className="w-4 h-4" />
+        </button>
+        <button onClick={reset}
+          aria-label="Centralizar"
+          className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-600">
+          <Maximize2 className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="absolute bottom-3 left-3 text-[10px] text-slate-400 font-medium hidden sm:block bg-white/80 backdrop-blur-sm px-2 py-1 rounded-md">
+        Arraste para mover • Roda do mouse / pinça para zoom
+      </div>
+    </div>
+  );
+}
 
 const SUBJECT_COLORS: Record<string, string> = {
   "matemática": "#6366f1", "português": "#ec4899", "história": "#f59e0b",
@@ -237,8 +343,8 @@ function MindMapSVG({
 
   return (
     <>
-      <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
-        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minWidth: 600 }}>
+      <PannableSvg height={520}>
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "100%", maxWidth: W }}>
           <defs>
             <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
               <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.12" />
@@ -248,7 +354,7 @@ function MindMapSVG({
             <MindMapNode key={node.id} node={node} x={x} y={y} parentX={parentX} parentY={parentY} onClick={setSelectedNode} />
           ))}
         </svg>
-      </div>
+      </PannableSvg>
 
       {/* Rich drawer for clicked nodes */}
       <AnimatePresence>
@@ -1126,8 +1232,8 @@ export default function MapaMentalPage() {
                     <span className="flex items-center gap-1"><Lock className="w-2.5 h-2.5" /> sem estudo</span>
                   </div>
                 </div>
-                <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
-                  <svg ref={svgRef} width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minWidth: 600 }}>
+                <PannableSvg height={560}>
+                  <svg ref={svgRef} width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "100%", maxWidth: W }}>
                     <defs>
                       <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
                         <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.12" />
@@ -1137,7 +1243,7 @@ export default function MapaMentalPage() {
                       <MindMapNode key={node.id} node={node} x={x} y={y} parentX={parentX} parentY={parentY} onClick={setSelectedNode} />
                     ))}
                   </svg>
-                </div>
+                </PannableSvg>
                 <div className="px-6 py-4 border-t border-border bg-secondary/20 flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <span><strong className="text-foreground">{mindData.children.length}</strong> matérias</span>

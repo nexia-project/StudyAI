@@ -72,8 +72,8 @@ Every new AI feature added to ANY surface MUST also be reflected in:
 `GET /api/teacher/turmas/:id/insights` returns: per-student `trilha.{mat,port}.{level,sessions,accuracy}`, `diagnosticCompleted` flag, `ai.{tiagao,notebook,mapa}` usage counts, plus `summary.{avgLevelMat,avgLevelPort,diagnosticCompleted,weakTopics[],aiAdoption}`.
 
 ### Open TODOs (next round, by priority)
-1. **Mobile parity**: add `(tabs)/trilha.tsx` (with Diagnostic), Notebook screen (PDF upload + RAG chat + Study Guide + Podcast), MapaMental screen (read-only PannableSvg).
-2. **Instituição AI dashboard**: replicate the `aiFeatures`/`weakTopics`/`trilhaBySubject` panels in `Instituicao.tsx` aggregated across all turmas of the institution.
+1. ✅ **Mobile parity – Trilha tab** delivered (`(tabs)/trilha.tsx` reading `/api/trilha/status`). Pending: full Notebook screen (PDF upload + RAG chat + Podcast) and MapaMental viewer (read-only PannableSvg) on mobile.
+2. ✅ **Instituição AI dashboard** delivered: new `/api/institution/:id/ai-stats` endpoint + "Inteligência IA" tab in `Instituicao.tsx` with KPIs, AI feature adoption grid, Trilha by subject (BarChart) and content breakdown (PieChart), all scoped to the institution's students.
 3. **Professor's own Notebook**: scope `knowledge_documents` queries by `uploaded_by = req.userId` and surface a "Caderno IA do Professor" tab in `Professor.tsx` (RAG over class material).
 4. **Citações inline + filtro por documento** no chat do Notebook do aluno.
 

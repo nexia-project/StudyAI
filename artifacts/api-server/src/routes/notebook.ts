@@ -26,6 +26,156 @@ const gpt = new OpenAI({
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
+// ─── Multi-Notebook schema (cadernos) ─────────────────────────────────────────
+let _schemaReady = false;
+async function ensureNotebooksSchema() {
+  if (_schemaReady) return;
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS notebooks (
+      id SERIAL PRIMARY KEY,
+      user_id VARCHAR NOT NULL,
+      title VARCHAR(120) NOT NULL DEFAULT 'Caderno',
+      persona TEXT DEFAULT '',
+      goals TEXT DEFAULT '',
+      color VARCHAR(20) DEFAULT 'indigo',
+      emoji VARCHAR(8) DEFAULT '📘',
+      is_default BOOLEAN DEFAULT false,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_notebooks_user ON notebooks(user_id)`);
+  await db.execute(sql`ALTER TABLE knowledge_documents ADD COLUMN IF NOT EXISTS notebook_id INTEGER`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_knowdocs_notebook ON knowledge_documents(notebook_id)`);
+  _schemaReady = true;
+}
+
+async function getOrCreateDefaultNotebook(userId: string): Promise<number> {
+  await ensureNotebooksSchema();
+  const existing = await db.execute(sql`
+    SELECT id FROM notebooks WHERE user_id = ${userId} AND is_default = true LIMIT 1
+  `);
+  if (existing.rows.length) return (existing.rows[0] as any).id;
+
+  const created = await db.execute(sql`
+    INSERT INTO notebooks (user_id, title, color, emoji, is_default)
+    VALUES (${userId}, 'Caderno Padrão', 'indigo', '📘', true)
+    RETURNING id
+  `);
+  const newId = (created.rows[0] as any).id as number;
+
+  // Migra docs órfãos do usuário pro caderno padrão
+  await db.execute(sql`
+    UPDATE knowledge_documents
+       SET notebook_id = ${newId}
+     WHERE uploaded_by = ${userId} AND notebook_id IS NULL
+  `);
+  return newId;
+}
+
+async function resolveNotebookId(userId: string, raw: any): Promise<number> {
+  const n = Number(raw);
+  if (Number.isFinite(n) && n > 0) {
+    const owns = await db.execute(sql`
+      SELECT id FROM notebooks WHERE id = ${n} AND user_id = ${userId} LIMIT 1
+    `);
+    if (owns.rows.length) return n;
+  }
+  return getOrCreateDefaultNotebook(userId);
+}
+
+async function getNotebookContext(notebookId: number): Promise<{ persona: string; goals: string; title: string } | null> {
+  const r = await db.execute(sql`
+    SELECT title, persona, goals FROM notebooks WHERE id = ${notebookId} LIMIT 1
+  `);
+  if (!r.rows.length) return null;
+  const row = r.rows[0] as any;
+  return { title: row.title || "", persona: row.persona || "", goals: row.goals || "" };
+}
+
+// ─── Cadernos CRUD ────────────────────────────────────────────────────────────
+router.get("/notebook/cadernos", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  try {
+    await getOrCreateDefaultNotebook(req.userId);
+    const r = await db.execute(sql`
+      SELECT n.id, n.title, n.persona, n.goals, n.color, n.emoji, n.is_default,
+             n.created_at, n.updated_at,
+             (SELECT COUNT(*)::int FROM knowledge_documents
+                WHERE notebook_id = n.id AND (is_chunk IS NULL OR is_chunk = false)) AS docs_count
+      FROM notebooks n
+      WHERE n.user_id = ${req.userId}
+      ORDER BY n.is_default DESC, n.updated_at DESC
+    `);
+    res.json([...r.rows]);
+  } catch (e) {
+    req.log?.error({ err: e }, "list cadernos");
+    res.status(500).json({ erro: "Erro ao listar cadernos" });
+  }
+});
+
+router.post("/notebook/cadernos", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  await ensureNotebooksSchema();
+  const { title, persona, goals, color, emoji } = req.body ?? {};
+  if (!title?.trim()) { res.status(400).json({ erro: "Título obrigatório" }); return; }
+  try {
+    const r = await db.execute(sql`
+      INSERT INTO notebooks (user_id, title, persona, goals, color, emoji)
+      VALUES (${req.userId}, ${String(title).slice(0, 120)},
+              ${String(persona ?? "").slice(0, 5000)},
+              ${String(goals ?? "").slice(0, 5000)},
+              ${color ?? 'indigo'}, ${emoji ?? '📘'})
+      RETURNING id, title, persona, goals, color, emoji, is_default, created_at, updated_at
+    `);
+    res.json(r.rows[0]);
+  } catch (e) {
+    req.log?.error({ err: e }, "create caderno");
+    res.status(500).json({ erro: "Erro ao criar caderno" });
+  }
+});
+
+router.patch("/notebook/cadernos/:id", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ erro: "ID inválido" }); return; }
+  const { title, persona, goals, color, emoji } = req.body ?? {};
+  try {
+    const r = await db.execute(sql`
+      UPDATE notebooks SET
+        title = COALESCE(${title ?? null}, title),
+        persona = COALESCE(${persona ?? null}, persona),
+        goals = COALESCE(${goals ?? null}, goals),
+        color = COALESCE(${color ?? null}, color),
+        emoji = COALESCE(${emoji ?? null}, emoji),
+        updated_at = NOW()
+      WHERE id = ${id} AND user_id = ${req.userId}
+      RETURNING id, title, persona, goals, color, emoji, is_default
+    `);
+    if (!r.rows.length) { res.status(404).json({ erro: "Caderno não encontrado" }); return; }
+    res.json(r.rows[0]);
+  } catch (e) {
+    res.status(500).json({ erro: "Erro ao atualizar caderno" });
+  }
+});
+
+router.delete("/notebook/cadernos/:id", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ erro: "ID inválido" }); return; }
+  try {
+    const check = await db.execute(sql`SELECT is_default FROM notebooks WHERE id = ${id} AND user_id = ${req.userId}`);
+    if (!check.rows.length) { res.status(404).json({ erro: "Caderno não encontrado" }); return; }
+    if ((check.rows[0] as any).is_default) { res.status(400).json({ erro: "Não é possível excluir o Caderno Padrão" }); return; }
+    const def = await getOrCreateDefaultNotebook(req.userId);
+    await db.execute(sql`UPDATE knowledge_documents SET notebook_id = ${def} WHERE notebook_id = ${id} AND uploaded_by = ${req.userId}`);
+    await db.execute(sql`DELETE FROM notebooks WHERE id = ${id} AND user_id = ${req.userId}`);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ erro: "Erro ao excluir caderno" });
+  }
+});
+
 // ─── Text extraction ──────────────────────────────────────────────────────────
 async function extractText(file: Express.Multer.File): Promise<string> {
   const mime = file.mimetype;
@@ -74,11 +224,13 @@ async function saveDocWithChunks(
   sourceType: "pdf" | "text" | "url",
   sourceRef?: string,
   fileSizeKb?: number,
+  notebookId?: number,
 ): Promise<number> {
+  const nbId = notebookId ?? await getOrCreateDefaultNotebook(userId);
   // 1. Save main doc
   const result = await db.execute(sql`
-    INSERT INTO knowledge_documents (title, content_text, uploaded_by, source_file, file_size_kb, language)
-    VALUES (${title}, ${contentText.slice(0, 100_000)}, ${userId}, ${sourceRef ?? null}, ${fileSizeKb ?? null}, 'pt')
+    INSERT INTO knowledge_documents (title, content_text, uploaded_by, source_file, file_size_kb, language, notebook_id)
+    VALUES (${title}, ${contentText.slice(0, 100_000)}, ${userId}, ${sourceRef ?? null}, ${fileSizeKb ?? null}, 'pt', ${nbId})
     RETURNING id
   `);
   const docId = (result.rows[0] as any).id as number;
@@ -163,9 +315,10 @@ router.post("/notebook/upload-file", upload.single("file"), validateFileUpload, 
       return;
     }
     const chunks = chunkText(text);
+    const nbId = await resolveNotebookId(req.userId, req.body.cadernoId);
     const docId = await saveDocWithChunks(
       req.userId, title, text, "pdf",
-      req.file.originalname, Math.round(req.file.size / 1024),
+      req.file.originalname, Math.round(req.file.size / 1024), nbId,
     );
     res.json({ id: docId, title, chars: text.length, chunks: chunks.length, message: `✅ "${title}" adicionado — ${chunks.length} trechos indexados` });
   } catch (e) {
@@ -177,12 +330,13 @@ router.post("/notebook/upload-file", upload.single("file"), validateFileUpload, 
 // ─── POST /api/notebook/upload-text ──────────────────────────────────────────
 router.post("/notebook/upload-text", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
-  const { title, content } = req.body as { title: string; content: string };
+  const { title, content, cadernoId } = req.body as { title: string; content: string; cadernoId?: number };
   if (!title || !content) { res.status(400).json({ erro: "Título e conteúdo obrigatórios" }); return; }
 
   try {
     const chunks = chunkText(content);
-    const docId = await saveDocWithChunks(req.userId, title, content, "text");
+    const nbId = await resolveNotebookId(req.userId, cadernoId);
+    const docId = await saveDocWithChunks(req.userId, title, content, "text", undefined, undefined, nbId);
     res.json({ id: docId, title, chars: content.length, chunks: chunks.length, message: `✅ "${title}" adicionado` });
   } catch (e) {
     console.error("notebook upload-text:", e);
@@ -193,7 +347,7 @@ router.post("/notebook/upload-text", async (req: Request, res: Response) => {
 // ─── POST /api/notebook/upload-url ───────────────────────────────────────────
 router.post("/notebook/upload-url", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
-  const { url, title } = req.body as { url: string; title?: string };
+  const { url, title, cadernoId } = req.body as { url: string; title?: string; cadernoId?: number };
   if (!url) { res.status(400).json({ erro: "URL obrigatória" }); return; }
 
   try {
@@ -225,7 +379,8 @@ router.post("/notebook/upload-url", async (req: Request, res: Response) => {
 
     const docTitle = title || new URL(url).hostname;
     const chunks = chunkText(text);
-    const docId = await saveDocWithChunks(req.userId, docTitle, text, "url", url);
+    const nbId = await resolveNotebookId(req.userId, cadernoId);
+    const docId = await saveDocWithChunks(req.userId, docTitle, text, "url", url, undefined, nbId);
     res.json({ id: docId, title: docTitle, chars: text.length, chunks: chunks.length, message: `✅ "${docTitle}" importado` });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Erro";
@@ -239,11 +394,13 @@ router.post("/notebook/upload-url", async (req: Request, res: Response) => {
 router.get("/notebook/docs", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
   try {
+    const nbId = await resolveNotebookId(req.userId, req.query.cadernoId);
     const docs = await db.execute(sql`
-      SELECT id, title, source_file, file_size_kb,
+      SELECT id, title, source_file, file_size_kb, notebook_id,
              created_at, LENGTH(content_text) as content_length
       FROM knowledge_documents
       WHERE uploaded_by = ${req.userId}
+        AND notebook_id = ${nbId}
         AND (is_chunk IS NULL OR is_chunk = false)
       ORDER BY created_at DESC
       LIMIT 50
@@ -271,10 +428,19 @@ router.delete("/notebook/docs/:id", async (req: Request, res: Response) => {
 // ─── POST /api/notebook/chat ──────────────────────────────────────────────────
 router.post("/notebook/chat", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
-  const { pergunta, docIds } = req.body as { pergunta: string; docIds?: number[] };
+  const { pergunta, docIds, cadernoId } = req.body as { pergunta: string; docIds?: number[]; cadernoId?: number };
   if (!pergunta?.trim()) { res.status(400).json({ erro: "Pergunta obrigatória" }); return; }
 
   try {
+    // Persona/goals do caderno (se houver)
+    let personaBlock = "";
+    if (cadernoId) {
+      const nbId = await resolveNotebookId(req.userId, cadernoId);
+      const ctx = await getNotebookContext(nbId);
+      if (ctx && (ctx.persona || ctx.goals)) {
+        personaBlock = `\n\nCONTEXTO DO CADERNO "${ctx.title}":\n${ctx.persona ? `Persona/foco: ${ctx.persona.slice(0, 2000)}` : ""}${ctx.goals ? `\nObjetivos do aluno: ${ctx.goals.slice(0, 2000)}` : ""}\nUse este contexto para personalizar a explicação (nível, exemplos, prioridades).`;
+      }
+    }
     const chunks = await ragSearch(req.userId, docIds?.length ? docIds : null, pergunta, 8);
 
     if (!chunks.length) {
@@ -301,7 +467,7 @@ Responda em português brasileiro, de forma clara, didática e objetiva.
 Use EXCLUSIVAMENTE as fontes abaixo para responder. Não invente informações.
 Cite as fontes usando [Fonte N] quando usar uma informação específica.
 Se a pergunta não puder ser respondida com base nas fontes, diga isso claramente.
-Ao final, se relevante, acrescente uma dica específica sobre como esse tema cai no ENEM.
+Ao final, se relevante, acrescente uma dica específica sobre como esse tema cai no ENEM.${personaBlock}
 
 FONTES DISPONÍVEIS:
 ${context}`,

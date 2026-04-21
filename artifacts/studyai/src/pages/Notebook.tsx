@@ -23,6 +23,18 @@ import { AppNav } from "@/components/AppNav";
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 // ─── Types ─────────────────────────────────────────────────────────────────
+interface Caderno {
+  id: number;
+  title: string;
+  persona: string;
+  goals: string;
+  color: string;
+  emoji: string;
+  is_default: boolean;
+  docs_count?: number;
+  created_at?: string;
+  updated_at?: string;
+}
 interface Doc {
   id: number;
   title: string;
@@ -30,6 +42,7 @@ interface Doc {
   file_size_kb: number | null;
   created_at: string;
   content_length: number;
+  notebook_id?: number;
 }
 interface ChatMsg {
   role: "user" | "assistant";
@@ -679,6 +692,14 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
 export default function Notebook() {
   const [, navigate] = useLocation();
 
+  // Cadernos
+  const [cadernos, setCadernos] = useState<Caderno[]>([]);
+  const [activeCaderno, setActiveCaderno] = useState<Caderno | null>(null);
+  const [showCadernoModal, setShowCadernoModal] = useState<"new" | "edit" | null>(null);
+  const [cadernoForm, setCadernoForm] = useState<{ title: string; persona: string; goals: string; emoji: string; color: string }>({
+    title: "", persona: "", goals: "", emoji: "📘", color: "indigo",
+  });
+
   const [docs, setDocs] = useState<Doc[]>([]);
   const [selectedDocIds, setSelectedDocIds] = useState<number[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
@@ -710,23 +731,78 @@ export default function Notebook() {
   // Slides nav
   const [slideIdx, setSlideIdx] = useState(0);
 
-  const loadDocs = useCallback(async () => {
+  const loadCadernos = useCallback(async () => {
+    try {
+      const r = await fetch(`${BASE_URL}/api/notebook/cadernos`, { credentials: "include" });
+      if (r.ok) {
+        const raw = await r.json();
+        const data: Caderno[] = Array.isArray(raw) ? raw : [];
+        setCadernos(data);
+        setActiveCaderno(prev => prev ? (data.find(c => c.id === prev.id) ?? data[0] ?? null) : (data[0] ?? null));
+      }
+    } catch { /* silent */ }
+  }, []);
+
+  const loadDocs = useCallback(async (cadernoId?: number) => {
     setLoadingDocs(true);
     try {
-      const r = await fetch(`${BASE_URL}/api/notebook/docs`, { credentials: "include" });
+      const qs = cadernoId ? `?cadernoId=${cadernoId}` : "";
+      const r = await fetch(`${BASE_URL}/api/notebook/docs${qs}`, { credentials: "include" });
       if (r.ok) {
         const raw = await r.json();
         const data: Doc[] = Array.isArray(raw) ? raw : (Array.isArray(raw?.rows) ? raw.rows : []);
         setDocs(data);
-        if (data.length && selectedDocIds.length === 0) {
-          setSelectedDocIds([data[0].id]);
-        }
+        setSelectedDocIds(data.length ? [data[0].id] : []);
       }
     } catch { /* silent */ }
     finally { setLoadingDocs(false); }
-  }, []); // eslint-disable-line
+  }, []);
 
-  useEffect(() => { loadDocs(); }, [loadDocs]);
+  useEffect(() => { loadCadernos(); }, [loadCadernos]);
+  useEffect(() => { loadDocs(activeCaderno?.id); }, [loadDocs, activeCaderno?.id]);
+
+  const saveCaderno = useCallback(async () => {
+    if (!cadernoForm.title.trim()) return;
+    const isEdit = showCadernoModal === "edit" && activeCaderno;
+    const url = isEdit
+      ? `${BASE_URL}/api/notebook/cadernos/${activeCaderno!.id}`
+      : `${BASE_URL}/api/notebook/cadernos`;
+    const r = await fetch(url, {
+      method: isEdit ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(cadernoForm),
+    });
+    if (r.ok) {
+      const saved = await r.json();
+      setShowCadernoModal(null);
+      await loadCadernos();
+      if (!isEdit && saved?.id) setActiveCaderno(saved);
+    }
+  }, [cadernoForm, showCadernoModal, activeCaderno, loadCadernos]);
+
+  const deleteCaderno = useCallback(async (id: number) => {
+    if (!confirm("Excluir este caderno? Os documentos voltarão para o caderno padrão.")) return;
+    await fetch(`${BASE_URL}/api/notebook/cadernos/${id}`, { method: "DELETE", credentials: "include" });
+    await loadCadernos();
+  }, [loadCadernos]);
+
+  const openEditCaderno = useCallback(() => {
+    if (!activeCaderno) return;
+    setCadernoForm({
+      title: activeCaderno.title,
+      persona: activeCaderno.persona ?? "",
+      goals: activeCaderno.goals ?? "",
+      emoji: activeCaderno.emoji ?? "📘",
+      color: activeCaderno.color ?? "indigo",
+    });
+    setShowCadernoModal("edit");
+  }, [activeCaderno]);
+
+  const openNewCaderno = useCallback(() => {
+    setCadernoForm({ title: "", persona: "", goals: "", emoji: "📘", color: "indigo" });
+    setShowCadernoModal("new");
+  }, []);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
   const handleFileUpload = useCallback(async (file: File) => {
@@ -735,6 +811,7 @@ export default function Notebook() {
     const form = new FormData();
     form.append("file", file);
     form.append("title", file.name.replace(/\.[^.]+$/, ""));
+    if (activeCaderno?.id) form.append("cadernoId", String(activeCaderno.id));
     try {
       const r = await fetch(`${BASE_URL}/api/notebook/upload-file`, { method: "POST", body: form, credentials: "include" });
       const data = await r.json();
@@ -755,7 +832,7 @@ export default function Notebook() {
     try {
       const r = await fetch(`${BASE_URL}/api/notebook/upload-text`, {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-        body: JSON.stringify({ title: uploadTitle, content: uploadText }),
+        body: JSON.stringify({ title: uploadTitle, content: uploadText, cadernoId: activeCaderno?.id }),
       });
       const data = await r.json();
       if (r.ok) {
@@ -772,7 +849,7 @@ export default function Notebook() {
     try {
       const r = await fetch(`${BASE_URL}/api/notebook/upload-url`, {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-        body: JSON.stringify({ url: uploadUrl, title: uploadTitle || undefined }),
+        body: JSON.stringify({ url: uploadUrl, title: uploadTitle || undefined, cadernoId: activeCaderno?.id }),
       });
       const data = await r.json();
       if (r.ok) {
@@ -805,6 +882,7 @@ export default function Notebook() {
         body: JSON.stringify({
           pergunta: q,
           docIds: restrictToSelected && selectedDocIds.length ? selectedDocIds : null,
+          cadernoId: activeCaderno?.id,
         }),
       });
       const data = await r.json();
@@ -812,7 +890,7 @@ export default function Notebook() {
       else { setMessages(m => [...m, { role: "assistant", text: `Erro: ${data.erro ?? "tente novamente"}` }]); }
     } catch { setMessages(m => [...m, { role: "assistant", text: "Erro de conexão. Tente novamente." }]); }
     finally { setChatLoading(false); }
-  }, [inputMsg, chatLoading, selectedDocIds]);
+  }, [inputMsg, chatLoading, selectedDocIds, restrictToSelected, activeCaderno]);
 
   const runTool = useCallback(async (tool: Tool, docId?: number) => {
     const targetDocId = docId ?? selectedDocIds[0];
@@ -877,7 +955,37 @@ export default function Notebook() {
   // ─── SOURCES PANEL ─────────────────────────────────────────────────────────
   const SourcesPanel = (
     <div className="flex flex-col h-full bg-white border-r border-slate-200">
-      <div className="px-4 py-3 border-b border-slate-100 flex-shrink-0">
+      {/* Cadernos picker */}
+      <div className="px-3 pt-3 pb-2 border-b border-slate-100 flex-shrink-0">
+        <div className="flex items-center justify-between mb-1.5">
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Caderno</p>
+          <button onClick={openNewCaderno} title="Novo caderno"
+            className="w-5 h-5 rounded-md bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700">
+            <Plus className="w-3 h-3" />
+          </button>
+        </div>
+        <div className="flex gap-1.5 overflow-x-auto -mx-1 px-1 pb-1 scrollbar-thin">
+          {cadernos.map(c => (
+            <button key={c.id} onClick={() => setActiveCaderno(c)}
+              className={`flex-shrink-0 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 border ${
+                activeCaderno?.id === c.id
+                  ? "bg-indigo-600 border-indigo-600 text-white shadow-sm"
+                  : "bg-white border-slate-200 text-slate-700 hover:border-indigo-300"
+              }`}>
+              <span>{c.emoji ?? "📘"}</span>
+              <span className="max-w-[90px] truncate">{c.title}</span>
+            </button>
+          ))}
+        </div>
+        {activeCaderno && (
+          <button onClick={openEditCaderno}
+            className="mt-1.5 w-full text-left text-[10px] text-slate-500 hover:text-indigo-600 truncate flex items-center gap-1">
+            <Sparkles className="w-3 h-3 flex-shrink-0" />
+            {activeCaderno.persona ? activeCaderno.persona.slice(0, 50) + "…" : "Definir persona/objetivos…"}
+          </button>
+        )}
+      </div>
+      <div className="px-4 py-2.5 border-b border-slate-100 flex-shrink-0">
         <p className="text-xs font-black text-slate-800 uppercase tracking-wider">Fontes</p>
         <p className="text-[10px] text-slate-400 mt-0.5">Selecione para usar no chat e ferramentas</p>
       </div>
@@ -1477,6 +1585,67 @@ export default function Notebook() {
           {mobilePanel === "tools"   && ToolsPanel}
         </div>
       </div>
+
+      {/* Caderno modal */}
+      <AnimatePresence>
+        {showCadernoModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+            onClick={() => setShowCadernoModal(null)}>
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="font-black text-slate-800">
+                  {showCadernoModal === "new" ? "Novo caderno" : "Editar caderno"}
+                </h3>
+                <button onClick={() => setShowCadernoModal(null)} className="text-slate-400 hover:text-slate-700">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-5 space-y-3">
+                <div className="flex gap-2">
+                  <input value={cadernoForm.emoji} onChange={e => setCadernoForm(f => ({ ...f, emoji: e.target.value.slice(0, 2) }))}
+                    className="w-14 px-2 py-2 rounded-lg border border-slate-200 text-center text-2xl" />
+                  <input value={cadernoForm.title} onChange={e => setCadernoForm(f => ({ ...f, title: e.target.value }))}
+                    placeholder="Nome do caderno (ex: ENEM Biologia)"
+                    className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-indigo-400" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1 block">Persona / foco do tutor</label>
+                  <textarea value={cadernoForm.persona} onChange={e => setCadernoForm(f => ({ ...f, persona: e.target.value }))}
+                    placeholder="Ex: Explique como se eu fosse aluno do 3º ano, com foco em ENEM, usando exemplos do cotidiano brasileiro."
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-indigo-400" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1 block">Objetivos do aluno</label>
+                  <textarea value={cadernoForm.goals} onChange={e => setCadernoForm(f => ({ ...f, goals: e.target.value }))}
+                    placeholder="Ex: Quero atingir 750+ em Ciências da Natureza no ENEM 2026."
+                    rows={2}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-indigo-400" />
+                </div>
+              </div>
+              <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                {showCadernoModal === "edit" && activeCaderno && !activeCaderno.is_default ? (
+                  <button onClick={() => { deleteCaderno(activeCaderno.id); setShowCadernoModal(null); }}
+                    className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1">
+                    <Trash2 className="w-3.5 h-3.5" /> Excluir
+                  </button>
+                ) : <span />}
+                <div className="flex gap-2">
+                  <button onClick={() => setShowCadernoModal(null)}
+                    className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-100">Cancelar</button>
+                  <button onClick={saveCaderno} disabled={!cadernoForm.title.trim()}
+                    className="px-4 py-2 rounded-lg text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                    Salvar
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

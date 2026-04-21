@@ -1,13 +1,9 @@
 /**
- * /api/notebook — StudyAI Notebook (RAG completo)
+ * /api/notebook — StudyAI Notebook (RAG sem embeddings: busca textual robusta)
  *
- * Funcionalidades:
- * - Upload de PDF / texto / URL com geração automática de embeddings
- * - Chat RAG: cosine similarity → top-k chunks → GPT-4o grounded
- * - Auto-overview: resumo + tópicos-chave + FAQ ao adicionar fonte
- * - Guia de Estudo: pares Q&A do documento
- * - Geração de flashcards a partir do documento
- * - Geração de questões ENEM-style a partir do documento
+ * Usa Replit AI Integrations proxy (GPT-4o-mini) para toda geração de texto.
+ * RAG implementado com busca por palavras-chave + full-text search no Postgres.
+ * Sem dependência de OPENAI_API_KEY ou DEEPSEEK_API_KEY.
  */
 
 import { Router, type IRouter, type Request, type Response } from "express";
@@ -20,25 +16,14 @@ import { validateFileUpload } from "../middlewares/security";
 
 const _require = createRequire(import.meta.url);
 const router: IRouter = Router();
-// openai — usado exclusivamente para embeddings (text-embedding-3-small)
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-// deepseek — usado para geração de texto (overview, flashcards, questões, chat RAG)
-const deepseek = new OpenAI({
-  apiKey: process.env.DEEPSEEK_API_KEY ?? "",
-  baseURL: "https://api.deepseek.com",
-});
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
-// ─── Cosine similarity ────────────────────────────────────────────────────────
-function cosineSimilarity(a: number[], b: number[]): number {
-  let dot = 0, magA = 0, magB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    magA += a[i] * a[i];
-    magB += b[i] * b[i];
-  }
-  return dot / (Math.sqrt(magA) * Math.sqrt(magB) + 1e-10);
-}
+// ─── AI client via Replit AI Integrations proxy ────────────────────────────
+const gpt = new OpenAI({
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? "dummy",
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+});
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 // ─── Text extraction ──────────────────────────────────────────────────────────
 async function extractText(file: Express.Multer.File): Promise<string> {
@@ -80,18 +65,8 @@ function chunkText(text: string, size = 800, overlap = 120): string[] {
   return chunks;
 }
 
-// ─── Get embeddings (batch) ───────────────────────────────────────────────────
-async function embedChunks(chunks: string[]): Promise<number[][]> {
-  if (chunks.length === 0) return [];
-  const response = await openai.embeddings.create({
-    model: "text-embedding-3-small",
-    input: chunks.map(c => c.slice(0, 8000)), // max tokens per chunk
-  });
-  return response.data.map(d => d.embedding);
-}
-
-// ─── Save doc + embeddings to DB ─────────────────────────────────────────────
-async function saveDocWithEmbeddings(
+// ─── Save doc + text chunks to DB (sem embeddings) ───────────────────────────
+async function saveDocWithChunks(
   userId: string,
   title: string,
   contentText: string,
@@ -100,68 +75,84 @@ async function saveDocWithEmbeddings(
   fileSizeKb?: number,
 ): Promise<number> {
   // 1. Save main doc
-  const [doc] = await db.execute<{ id: number }>(sql`
+  const result = await db.execute(sql`
     INSERT INTO knowledge_documents (title, content_text, uploaded_by, source_file, file_size_kb, language)
     VALUES (${title}, ${contentText.slice(0, 100_000)}, ${userId}, ${sourceRef ?? null}, ${fileSizeKb ?? null}, 'pt')
     RETURNING id
   `);
-  const docId = doc.id;
+  const docId = (result.rows[0] as any).id as number;
 
-  // 2. Chunk + embed in background
+  // 2. Save chunks without embeddings (using notebook_embeddings table for compatibility)
   const chunks = chunkText(contentText);
-  const batchSize = 20;
-  for (let i = 0; i < chunks.length; i += batchSize) {
-    const batch = chunks.slice(i, i + batchSize);
-    const embeddings = await embedChunks(batch);
-    for (let j = 0; j < batch.length; j++) {
-      await db.execute(sql`
-        INSERT INTO notebook_embeddings (user_id, doc_id, chunk_text, chunk_index, embedding, source_title)
-        VALUES (${userId}, ${docId}, ${batch[j]}, ${i + j}, ${JSON.stringify(embeddings[j])}, ${title})
-      `);
-    }
+  for (let i = 0; i < chunks.length; i++) {
+    await db.execute(sql`
+      INSERT INTO notebook_embeddings (user_id, doc_id, chunk_text, chunk_index, source_title)
+      VALUES (${userId}, ${docId}, ${chunks[i]}, ${i}, ${title})
+      ON CONFLICT DO NOTHING
+    `);
   }
 
   return docId;
 }
 
-// ─── RAG: find top-k relevant chunks ─────────────────────────────────────────
+// ─── RAG: keyword-based search ────────────────────────────────────────────────
 async function ragSearch(
   userId: string,
   docIds: number[] | null,
   query: string,
-  topK = 6,
-): Promise<Array<{ text: string; title: string; similarity: number }>> {
-  const [queryEmb] = await embedChunks([query]);
+  topK = 8,
+): Promise<Array<{ text: string; title: string }>> {
+  // Extract keywords from query (simple but effective)
+  const stopWords = new Set(["o", "a", "os", "as", "um", "uma", "de", "da", "do", "e", "que", "em", "para", "com", "por", "se", "me", "te", "nos", "isso", "isto", "esse", "esta", "este", "como", "qual", "quais", "quando", "onde", "quem", "por", "que", "não", "sim", "mais", "mas", "ou", "e", "é"]);
+  const keywords = query
+    .toLowerCase()
+    .replace(/[^\w\sáâãàéêèíîìóôõòúûùç]/g, " ")
+    .split(/\s+/)
+    .filter(w => w.length > 3 && !stopWords.has(w))
+    .slice(0, 6);
 
-  // Get all embeddings for user (or specific docs)
-  const rows = await db.execute<{
-    chunk_text: string;
-    source_title: string;
-    embedding: string;
-  }>(sql`
-    SELECT chunk_text, source_title, embedding
+  if (keywords.length === 0) {
+    // Fallback: just return first N chunks
+    const rows = await db.execute(sql`
+      SELECT chunk_text, source_title FROM notebook_embeddings
+      WHERE user_id = ${userId}
+      ${docIds && docIds.length > 0 ? sql`AND doc_id = ANY(${docIds}::int[])` : sql``}
+      ORDER BY chunk_index ASC
+      LIMIT ${topK}
+    `);
+    return (rows.rows as any[]).map(r => ({ text: r.chunk_text, title: r.source_title ?? "Documento" }));
+  }
+
+  // Build ILIKE conditions for each keyword
+  const conditions = keywords.map(kw => sql`chunk_text ILIKE ${"%" + kw + "%"}`);
+  const orCondition = conditions.reduce((acc, cond) => sql`${acc} OR ${cond}`);
+
+  const rows = await db.execute(sql`
+    SELECT chunk_text, source_title,
+      (${conditions.reduce((acc, cond) => sql`${acc} + (CASE WHEN ${cond} THEN 1 ELSE 0 END)`, sql`0`)}) as score
     FROM notebook_embeddings
     WHERE user_id = ${userId}
-    ${docIds ? sql`AND doc_id = ANY(${docIds})` : sql``}
-    AND embedding IS NOT NULL
-    LIMIT 2000
+    ${docIds && docIds.length > 0 ? sql`AND doc_id = ANY(${docIds}::int[])` : sql``}
+    AND (${orCondition})
+    ORDER BY score DESC, chunk_index ASC
+    LIMIT ${topK * 2}
   `);
 
-  if (!rows.length) return [];
+  const results = rows.rows as any[];
 
-  const scored = rows
-    .map(r => {
-      const emb = typeof r.embedding === "string" ? JSON.parse(r.embedding) : r.embedding;
-      return {
-        text: r.chunk_text,
-        title: r.source_title ?? "Documento",
-        similarity: cosineSimilarity(queryEmb, emb as number[]),
-      };
-    })
-    .sort((a, b) => b.similarity - a.similarity)
-    .slice(0, topK);
+  // Deduplicate by first 100 chars
+  const seen = new Set<string>();
+  const deduped = results.filter(r => {
+    const key = r.chunk_text.slice(0, 100);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 
-  return scored;
+  return deduped.slice(0, topK).map(r => ({
+    text: r.chunk_text,
+    title: r.source_title ?? "Documento",
+  }));
 }
 
 // ─── POST /api/notebook/upload-file ──────────────────────────────────────────
@@ -173,17 +164,18 @@ router.post("/notebook/upload-file", upload.single("file"), validateFileUpload, 
   try {
     const text = await extractText(req.file);
     if (!text || text.length < 20) {
-      res.status(400).json({ erro: "Não foi possível extrair texto do arquivo" });
+      res.status(400).json({ erro: "Não foi possível extrair texto do arquivo. Use um PDF com texto selecionável (não escaneado)." });
       return;
     }
-    const docId = await saveDocWithEmbeddings(
+    const chunks = chunkText(text);
+    const docId = await saveDocWithChunks(
       req.userId, title, text, "pdf",
       req.file.originalname, Math.round(req.file.size / 1024),
     );
-    res.json({ id: docId, title, chars: text.length, chunks: chunkText(text).length });
+    res.json({ id: docId, title, chars: text.length, chunks: chunks.length, message: `✅ "${title}" adicionado — ${chunks.length} trechos indexados` });
   } catch (e) {
     console.error("notebook upload-file:", e);
-    res.status(500).json({ erro: "Erro ao processar arquivo" });
+    res.status(500).json({ erro: "Erro ao processar arquivo. Tente novamente." });
   }
 });
 
@@ -194,8 +186,9 @@ router.post("/notebook/upload-text", async (req: Request, res: Response) => {
   if (!title || !content) { res.status(400).json({ erro: "Título e conteúdo obrigatórios" }); return; }
 
   try {
-    const docId = await saveDocWithEmbeddings(req.userId, title, content, "text");
-    res.json({ id: docId, title, chars: content.length, chunks: chunkText(content).length });
+    const chunks = chunkText(content);
+    const docId = await saveDocWithChunks(req.userId, title, content, "text");
+    res.json({ id: docId, title, chars: content.length, chunks: chunks.length, message: `✅ "${title}" adicionado` });
   } catch (e) {
     console.error("notebook upload-text:", e);
     res.status(500).json({ erro: "Erro ao processar texto" });
@@ -216,12 +209,16 @@ router.post("/notebook/upload-url", async (req: Request, res: Response) => {
       headers: { "User-Agent": "Mozilla/5.0 (compatible; StudyAI/1.0)" },
     });
     clearTimeout(timeout);
+    if (!r.ok) {
+      res.status(422).json({ erro: `Não foi possível acessar a URL (código ${r.status})` });
+      return;
+    }
     const html = await r.text();
-    // Strip HTML tags
     const text = html
       .replace(/<script[\s\S]*?<\/script>/gi, " ")
       .replace(/<style[\s\S]*?<\/style>/gi, " ")
       .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
       .replace(/\s{2,}/g, " ")
       .trim()
       .slice(0, 150_000);
@@ -232,12 +229,14 @@ router.post("/notebook/upload-url", async (req: Request, res: Response) => {
     }
 
     const docTitle = title || new URL(url).hostname;
-    const docId = await saveDocWithEmbeddings(req.userId, docTitle, text, "url", url);
-    res.json({ id: docId, title: docTitle, chars: text.length, chunks: chunkText(text).length });
+    const chunks = chunkText(text);
+    const docId = await saveDocWithChunks(req.userId, docTitle, text, "url", url);
+    res.json({ id: docId, title: docTitle, chars: text.length, chunks: chunks.length, message: `✅ "${docTitle}" importado` });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Erro";
     console.error("notebook upload-url:", msg);
-    res.status(500).json({ erro: `Não foi possível acessar a URL: ${msg}` });
+    if (msg.includes("abort")) { res.status(422).json({ erro: "URL demorou muito para responder (timeout de 15s)" }); }
+    else { res.status(500).json({ erro: `Não foi possível acessar a URL: ${msg}` }); }
   }
 });
 
@@ -245,10 +244,7 @@ router.post("/notebook/upload-url", async (req: Request, res: Response) => {
 router.get("/notebook/docs", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
   try {
-    const docs = await db.execute<{
-      id: number; title: string; source_file: string | null;
-      file_size_kb: number | null; created_at: string; content_length: number;
-    }>(sql`
+    const docs = await db.execute(sql`
       SELECT id, title, source_file, file_size_kb,
              created_at, LENGTH(content_text) as content_length
       FROM knowledge_documents
@@ -257,7 +253,7 @@ router.get("/notebook/docs", async (req: Request, res: Response) => {
       ORDER BY created_at DESC
       LIMIT 50
     `);
-    res.json([...docs]);
+    res.json([...docs.rows]);
   } catch (e) {
     res.status(500).json({ erro: "Erro ao buscar documentos" });
   }
@@ -267,7 +263,9 @@ router.get("/notebook/docs", async (req: Request, res: Response) => {
 router.delete("/notebook/docs/:id", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
   const docId = parseInt(req.params.id);
+  if (isNaN(docId)) { res.status(400).json({ erro: "ID inválido" }); return; }
   try {
+    await db.execute(sql`DELETE FROM notebook_embeddings WHERE doc_id = ${docId} AND user_id = ${req.userId}`);
     await db.execute(sql`DELETE FROM knowledge_documents WHERE id = ${docId} AND uploaded_by = ${req.userId}`);
     res.json({ ok: true });
   } catch (e) {
@@ -282,35 +280,35 @@ router.post("/notebook/chat", async (req: Request, res: Response) => {
   if (!pergunta?.trim()) { res.status(400).json({ erro: "Pergunta obrigatória" }); return; }
 
   try {
-    const chunks = await ragSearch(req.userId, docIds ?? null, pergunta, 6);
+    const chunks = await ragSearch(req.userId, docIds?.length ? docIds : null, pergunta, 8);
 
     if (!chunks.length) {
       res.json({
-        resposta: "Não encontrei documentos suficientes para responder. Adicione pelo menos um documento primeiro.",
+        resposta: "Não encontrei documentos para responder. Adicione pelo menos um documento primeiro usando os botões de PDF, Texto ou URL.",
         fontes: [],
       });
       return;
     }
 
     const context = chunks
-      .map((c, i) => `[Fonte ${i + 1} — "${c.title}" (relevância: ${(c.similarity * 100).toFixed(0)}%)]\n${c.text}`)
+      .map((c, i) => `[Fonte ${i + 1} — "${c.title}"]\n${c.text}`)
       .join("\n\n---\n\n");
 
-    const completion = await deepseek.chat.completions.create({
-      model: "deepseek-chat",
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
       temperature: 0.2,
-      max_tokens: 1200,
+      max_tokens: 1500,
       messages: [
         {
           role: "system",
-          content: `Você é o Professor Tiagão, assistente de estudos especialista em preparação para o ENEM e vestibulares.
-Responda com base EXCLUSIVAMENTE nos trechos abaixo (não invente informações que não estão nas fontes).
-Se a resposta não estiver nos trechos, diga "Essa informação não consta nos documentos adicionados."
-Cite a fonte usando [Fonte N] quando usar uma informação específica.
-Resposta em PT-BR, direta, didática, máximo 4 parágrafos.
-Ao final, se houver dica para ENEM relacionada ao tema, adicione em negrito.
+          content: `Você é o Professor Tiagão, assistente de estudos especialista em preparação para ENEM e vestibulares brasileiros.
+Responda em português brasileiro, de forma clara, didática e objetiva.
+Use EXCLUSIVAMENTE as fontes abaixo para responder. Não invente informações.
+Cite as fontes usando [Fonte N] quando usar uma informação específica.
+Se a pergunta não puder ser respondida com base nas fontes, diga isso claramente.
+Ao final, se relevante, acrescente uma dica específica sobre como esse tema cai no ENEM.
 
-FONTES:
+FONTES DISPONÍVEIS:
 ${context}`,
         },
         { role: "user", content: pergunta },
@@ -318,17 +316,35 @@ ${context}`,
     });
 
     const resposta = completion.choices[0].message.content ?? "";
-    const fontes = chunks.map((c, i) => ({
-      numero: i + 1,
-      titulo: c.title,
-      trecho: c.text.slice(0, 200) + "...",
-      relevancia: Math.round(c.similarity * 100),
-    }));
+
+    // Build unique sources cited
+    const fontesCitadas = new Map<number, { numero: number; titulo: string; trecho: string }>();
+    const fonteRegex = /\[Fonte (\d+)\]/g;
+    let match;
+    while ((match = fonteRegex.exec(resposta)) !== null) {
+      const n = parseInt(match[1]);
+      if (chunks[n - 1] && !fontesCitadas.has(n)) {
+        fontesCitadas.set(n, {
+          numero: n,
+          titulo: chunks[n - 1].title,
+          trecho: chunks[n - 1].text.slice(0, 200) + "...",
+        });
+      }
+    }
+
+    // If no citations detected, show all sources used
+    const fontes = fontesCitadas.size > 0
+      ? Array.from(fontesCitadas.values())
+      : chunks.slice(0, 3).map((c, i) => ({
+          numero: i + 1,
+          titulo: c.title,
+          trecho: c.text.slice(0, 200) + "...",
+        }));
 
     res.json({ resposta, fontes });
   } catch (e) {
     console.error("notebook chat:", e);
-    res.status(500).json({ erro: "Erro ao processar pergunta" });
+    res.status(500).json({ erro: "Erro ao processar pergunta. Verifique sua conexão e tente novamente." });
   }
 });
 
@@ -338,55 +354,49 @@ router.post("/notebook/overview", async (req: Request, res: Response) => {
   const { docId } = req.body as { docId: number };
 
   try {
-    // Check cache
-    const cached = await db.execute<{ summary: string; key_topics: string; faq: string }>(sql`
+    // Cache check
+    const cached = await db.execute(sql`
       SELECT summary, key_topics, faq FROM notebook_overviews
       WHERE user_id = ${req.userId} AND doc_id = ${docId}
       LIMIT 1
     `);
-    if (cached.length > 0 && cached[0].summary) {
+    const cachedRow = (cached.rows as any[])[0];
+    if (cachedRow?.summary) {
       res.json({
-        summary: cached[0].summary,
-        keyTopics: typeof cached[0].key_topics === "string" ? JSON.parse(cached[0].key_topics) : cached[0].key_topics,
-        faq: typeof cached[0].faq === "string" ? JSON.parse(cached[0].faq) : cached[0].faq,
+        summary: cachedRow.summary,
+        keyTopics: typeof cachedRow.key_topics === "string" ? JSON.parse(cachedRow.key_topics) : cachedRow.key_topics,
+        faq: typeof cachedRow.faq === "string" ? JSON.parse(cachedRow.faq) : cachedRow.faq,
       });
       return;
     }
 
-    // Get doc content
-    const docs = await db.execute<{ content_text: string; title: string }>(sql`
+    const docs = await db.execute(sql`
       SELECT content_text, title FROM knowledge_documents
       WHERE id = ${docId} AND uploaded_by = ${req.userId}
       LIMIT 1
     `);
-    if (!docs.length) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
-    const { content_text, title } = docs[0];
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
-    const completion = await deepseek.chat.completions.create({
-      model: "deepseek-chat",
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
       temperature: 0.3,
       max_tokens: 2000,
       messages: [
         {
           role: "system",
-          content: `Você é um especialista em análise pedagógica para o ENEM e vestibulares.
-Analise o documento e retorne APENAS um JSON válido:
+          content: `Analise o documento e retorne APENAS um JSON válido, sem markdown:
 {
-  "summary": "Resumo em 3-5 frases do que o documento trata",
-  "keyTopics": ["tópico 1", "tópico 2", "tópico 3", "tópico 4", "tópico 5"],
+  "summary": "Resumo em 3-5 frases claras e didáticas do que o documento trata",
+  "keyTopics": ["tópico 1", "tópico 2", "tópico 3", "tópico 4", "tópico 5", "tópico 6"],
   "faq": [
-    { "q": "Pergunta frequente 1?", "a": "Resposta concisa 1" },
-    { "q": "Pergunta frequente 2?", "a": "Resposta concisa 2" },
-    { "q": "Pergunta frequente 3?", "a": "Resposta concisa 3" },
-    { "q": "Pergunta frequente 4?", "a": "Resposta concisa 4" },
-    { "q": "Pergunta frequente 5?", "a": "Resposta concisa 5" }
+    { "q": "Pergunta sobre o conteúdo?", "a": "Resposta concisa e direta" }
   ]
-}`,
+}
+Gere 5-6 tópicos-chave e 5 perguntas frequentes relevantes para estudo.
+Foco em preparação para ENEM/vestibular.`,
         },
-        {
-          role: "user",
-          content: `Título: "${title}"\n\nConteúdo:\n${content_text.slice(0, 12_000)}`,
-        },
+        { role: "user", content: `Título: "${row.title}"\n\nConteúdo:\n${row.content_text.slice(0, 14_000)}` },
       ],
     });
 
@@ -395,16 +405,18 @@ Analise o documento e retorne APENAS um JSON válido:
     const parsed = JSON.parse(clean);
 
     // Cache
-    await db.execute(sql`
-      INSERT INTO notebook_overviews (user_id, doc_id, summary, key_topics, faq)
-      VALUES (${req.userId}, ${docId}, ${parsed.summary}, ${JSON.stringify(parsed.keyTopics)}, ${JSON.stringify(parsed.faq)})
-      ON CONFLICT DO NOTHING
-    `);
+    try {
+      await db.execute(sql`
+        INSERT INTO notebook_overviews (user_id, doc_id, summary, key_topics, faq)
+        VALUES (${req.userId}, ${docId}, ${parsed.summary}, ${JSON.stringify(parsed.keyTopics)}, ${JSON.stringify(parsed.faq)})
+        ON CONFLICT DO NOTHING
+      `);
+    } catch { /* cache non-critical */ }
 
     res.json({ summary: parsed.summary, keyTopics: parsed.keyTopics, faq: parsed.faq });
   } catch (e) {
     console.error("notebook overview:", e);
-    res.status(500).json({ erro: "Erro ao gerar overview" });
+    res.status(500).json({ erro: "Erro ao gerar visão geral" });
   }
 });
 
@@ -414,41 +426,38 @@ router.post("/notebook/study-guide", async (req: Request, res: Response) => {
   const { docId } = req.body as { docId: number };
 
   try {
-    const docs = await db.execute<{ content_text: string; title: string }>(sql`
+    const docs = await db.execute(sql`
       SELECT content_text, title FROM knowledge_documents
       WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
     `);
-    if (!docs.length) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
-    const { content_text, title } = docs[0];
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
-    const completion = await deepseek.chat.completions.create({
-      model: "deepseek-chat",
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
       temperature: 0.4,
       max_tokens: 3000,
       messages: [
         {
           role: "system",
-          content: `Você é professor especialista em ENEM. Crie um guia de estudo completo.
-Retorne APENAS JSON:
+          content: `Você é professor especialista em ENEM e vestibulares. Crie um guia de estudo completo.
+Retorne APENAS JSON válido, sem markdown:
 {
-  "titulo": "Guia de Estudo: [título]",
+  "titulo": "Guia de Estudo: [assunto]",
   "introducao": "Frase motivacional sobre o tema",
   "questoes": [
     {
       "tipo": "conceito|aplicacao|comparacao|analise",
-      "pergunta": "Pergunta de estudo?",
-      "resposta": "Resposta detalhada com exemplos",
-      "dicaEnem": "Como esse tema cai no ENEM?"
+      "pergunta": "Pergunta de estudo profunda?",
+      "resposta": "Resposta detalhada com exemplos do mundo real",
+      "dicaEnem": "Como e com que frequência esse tema cai no ENEM"
     }
   ],
   "cronogramaSugerido": ["Dia 1: ...", "Dia 2: ...", "Dia 3: ..."]
 }
-Gere 8-10 questões variadas. Foque em compreensão profunda.`,
+Gere 8-10 questões variadas cobrindo todo o documento.`,
         },
-        {
-          role: "user",
-          content: `Tema: "${title}"\n\nConteúdo:\n${content_text.slice(0, 12_000)}`,
-        },
+        { role: "user", content: `Tema: "${row.title}"\n\nConteúdo:\n${row.content_text.slice(0, 14_000)}` },
       ],
     });
 
@@ -457,7 +466,7 @@ Gere 8-10 questões variadas. Foque em compreensão profunda.`,
     res.json(JSON.parse(clean));
   } catch (e) {
     console.error("notebook study-guide:", e);
-    res.status(500).json({ erro: "Erro ao gerar guia" });
+    res.status(500).json({ erro: "Erro ao gerar guia de estudo" });
   }
 });
 
@@ -467,28 +476,27 @@ router.post("/notebook/flashcards", async (req: Request, res: Response) => {
   const { docId, quantidade = 15 } = req.body as { docId: number; quantidade?: number };
 
   try {
-    const docs = await db.execute<{ content_text: string; title: string }>(sql`
+    const docs = await db.execute(sql`
       SELECT content_text, title FROM knowledge_documents
       WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
     `);
-    if (!docs.length) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
-    const { content_text, title } = docs[0];
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
-    const completion = await deepseek.chat.completions.create({
-      model: "deepseek-chat",
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
       temperature: 0.5,
       max_tokens: 3000,
       messages: [
         {
           role: "system",
-          content: `Crie ${quantidade} flashcards de estudo. Retorne APENAS JSON:
-{"flashcards": [{"frente": "pergunta", "verso": "resposta clara e completa", "materia": "área do conhecimento", "dificuldade": "facil|medio|dificil"}]}
-Varie a dificuldade. Priorize o que cai no ENEM.`,
+          content: `Crie ${quantidade} flashcards de estudo de alta qualidade. Retorne APENAS JSON:
+{"flashcards": [
+  {"frente": "Pergunta clara e específica", "verso": "Resposta completa com contexto e exemplos", "materia": "área do conhecimento", "dificuldade": "facil|medio|dificil"}
+]}
+Varie a dificuldade (40% fácil, 40% médio, 20% difícil). Priorize o que cai no ENEM.`,
         },
-        {
-          role: "user",
-          content: `Tema: "${title}"\n\nConteúdo:\n${content_text.slice(0, 10_000)}`,
-        },
+        { role: "user", content: `Tema: "${row.title}"\n\n${row.content_text.slice(0, 12_000)}` },
       ],
     });
 
@@ -507,27 +515,31 @@ router.post("/notebook/questoes", async (req: Request, res: Response) => {
   const { docId, quantidade = 5 } = req.body as { docId: number; quantidade?: number };
 
   try {
-    const docs = await db.execute<{ content_text: string; title: string }>(sql`
+    const docs = await db.execute(sql`
       SELECT content_text, title FROM knowledge_documents
       WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
     `);
-    if (!docs.length) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
-    const { content_text, title } = docs[0];
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
-    const completion = await deepseek.chat.completions.create({
-      model: "deepseek-chat",
-      temperature: 0.5,
-      max_tokens: 3000,
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.6,
+      max_tokens: 3500,
       messages: [
         {
           role: "system",
-          content: `Crie ${quantidade} questões no estilo ENEM (5 alternativas A-E). Retorne APENAS JSON:
-{"questoes": [{"enunciado": "texto", "alternativas": {"A": "","B": "","C": "","D": "","E": ""}, "gabarito": "A", "explicacao": "por que é A"}]}`,
+          content: `Crie ${quantidade} questões no estilo exato do ENEM (5 alternativas A-E, contextualização prévia, linguagem formal). Retorne APENAS JSON:
+{"questoes": [
+  {
+    "enunciado": "Contexto + enunciado completo no estilo ENEM",
+    "alternativas": {"A": "texto", "B": "texto", "C": "texto", "D": "texto", "E": "texto"},
+    "gabarito": "A",
+    "explicacao": "Explicação detalhada de por que a resposta é correta e por que as outras estão erradas"
+  }
+]}`,
         },
-        {
-          role: "user",
-          content: `Tema: "${title}"\n\nConteúdo:\n${content_text.slice(0, 10_000)}`,
-        },
+        { role: "user", content: `Tema: "${row.title}"\n\n${row.content_text.slice(0, 12_000)}` },
       ],
     });
 
@@ -546,41 +558,38 @@ router.post("/notebook/mapa-mental", async (req: Request, res: Response) => {
   const { docId } = req.body as { docId: number };
 
   try {
-    const docs = await db.execute<{ content_text: string; title: string }>(sql`
+    const docs = await db.execute(sql`
       SELECT content_text, title FROM knowledge_documents
       WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
     `);
-    if (!docs.length) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
-    const { content_text, title } = docs[0];
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
-    const completion = await deepseek.chat.completions.create({
-      model: "deepseek-chat",
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
       temperature: 0.2,
-      max_tokens: 2000,
+      max_tokens: 2500,
       messages: [
         {
           role: "system",
-          content: `Crie um mapa mental completo e detalhado. Retorne APENAS JSON:
+          content: `Crie um mapa mental completo e detalhado. Retorne APENAS JSON válido:
 {
-  "subject": "Tema principal",
+  "subject": "Tema principal do documento",
   "color": "#6366f1",
   "topics": [
     {
-      "name": "Tópico 1",
+      "name": "Tópico Principal",
       "color": "#ec4899",
       "subtopics": [
-        { "name": "Subtópico 1.1", "detail": "detalhe curto" },
-        { "name": "Subtópico 1.2", "detail": "detalhe curto" }
+        { "name": "Subtópico específico", "detail": "detalhe ou definição curta" }
       ]
     }
   ]
 }
-Gere 5-8 tópicos principais, cada um com 3-5 subtópicos. Use cores variadas.`,
+Use estas cores: #6366f1 #ec4899 #f59e0b #10b981 #3b82f6 #8b5cf6 #06b6d4 #f97316
+Gere 6-8 tópicos principais, cada um com 3-5 subtópicos.`,
         },
-        {
-          role: "user",
-          content: `Documento: "${title}"\n\n${content_text.slice(0, 12_000)}`,
-        },
+        { role: "user", content: `Documento: "${row.title}"\n\n${row.content_text.slice(0, 14_000)}` },
       ],
     });
 
@@ -593,52 +602,107 @@ Gere 5-8 tópicos principais, cada um com 3-5 subtópicos. Use cores variadas.`,
   }
 });
 
+// ─── POST /api/notebook/podcast ──────────────────────────────────────────────
+// Feature exclusiva: Geração de roteiro de podcast educativo (como NotebookLM Audio Overview)
+router.post("/notebook/podcast", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { docId } = req.body as { docId: number };
+
+  try {
+    const docs = await db.execute(sql`
+      SELECT content_text, title FROM knowledge_documents
+      WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
+    `);
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
+
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.7,
+      max_tokens: 3500,
+      messages: [
+        {
+          role: "system",
+          content: `Você vai criar um roteiro de podcast educativo em português brasileiro, estilo conversa natural entre dois apresentadores:
+- ANA: professora entusiasta, explica conceitos de forma clara e usa analogias
+- MARCOS: estudante curioso do ENEM, faz perguntas inteligentes, às vezes surpreso com descobertas
+
+Retorne APENAS JSON válido:
+{
+  "titulo": "Título do episódio (criativo e envolvente)",
+  "subtitulo": "Matéria | Nível: ENEM/Vestibular",
+  "duracao": "XX minutos (estimado)",
+  "roteiro": [
+    { "speaker": "ANA", "fala": "texto natural da fala" },
+    { "speaker": "MARCOS", "fala": "texto natural da fala" }
+  ],
+  "destaques": ["ponto chave 1", "ponto chave 2", "ponto chave 3"]
+}
+
+O roteiro deve:
+- Ter 12-18 falas alternando entre os dois
+- Começar com uma introdução cativante que desperta curiosidade
+- Cobrir os principais conceitos do documento de forma progressiva
+- Incluir perguntas retóricas, exemplos cotidianos e conexões com o ENEM
+- Terminar com um resumo dos pontos principais e dica de estudo
+- Usar linguagem natural, não formal — como um podcast real`,
+        },
+        { role: "user", content: `Documento: "${row.title}"\n\n${row.content_text.slice(0, 15_000)}` },
+      ],
+    });
+
+    const raw = completion.choices[0].message.content ?? "{}";
+    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    res.json(JSON.parse(clean));
+  } catch (e) {
+    console.error("notebook podcast:", e);
+    res.status(500).json({ erro: "Erro ao gerar podcast" });
+  }
+});
+
 // ─── POST /api/notebook/tiagao-explica ───────────────────────────────────────
 router.post("/notebook/tiagao-explica", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
   const { docId } = req.body as { docId: number };
 
   try {
-    const docs = await db.execute<{ content_text: string; title: string }>(sql`
+    const docs = await db.execute(sql`
       SELECT content_text, title FROM knowledge_documents
       WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
     `);
-    if (!docs.length) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
-    const { content_text, title } = docs[0];
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
-    const completion = await deepseek.chat.completions.create({
-      model: "deepseek-chat",
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
       temperature: 0.4,
       max_tokens: 3000,
       messages: [
         {
           role: "system",
-          content: `Você é o Professor Tiagão. Crie uma aula sobre o documento para a lousa.
-Retorne APENAS JSON com o formato da aula:
+          content: `Você é o Professor Tiagão. Crie uma aula completa na lousa sobre o documento.
+Retorne APENAS JSON válido:
 {
-  "titulo": "string",
-  "subtitulo": "string — foco ENEM",
+  "titulo": "Título da aula",
+  "subtitulo": "Foco ENEM",
   "etapas": [
     {
       "id": 1,
-      "narracao": "4-6 frases didáticas e animadas em PT-BR",
+      "narracao": "4-6 frases didáticas, animadas e diretas em PT-BR",
       "elementos": [
         {"tipo": "titulo", "texto": "string", "cor": "#1e1b4b"},
-        {"tipo": "texto", "texto": "explicação completa"},
-        {"tipo": "destaque", "texto": "conceito-chave", "cor": "#bbf7d0", "corTexto": "#166534"},
-        {"tipo": "exemplo", "texto": "exemplo real", "cor": "#dbeafe"},
-        {"tipo": "seta", "texto": "item importante", "cor": "#6366f1"}
+        {"tipo": "texto", "texto": "explicação completa e clara"},
+        {"tipo": "destaque", "texto": "conceito-chave importante", "cor": "#bbf7d0", "corTexto": "#166534"},
+        {"tipo": "exemplo", "texto": "exemplo concreto do mundo real", "cor": "#dbeafe"},
+        {"tipo": "seta", "texto": "→ ponto importante para lembrar", "cor": "#6366f1"}
       ],
       "duracao": 30
     }
   ]
 }
-Gere 4-5 etapas cobrindo todo o conteúdo do documento.`,
+Gere 4-5 etapas cobrindo todo o conteúdo de forma progressiva.`,
         },
-        {
-          role: "user",
-          content: `Documento: "${title}"\n\n${content_text.slice(0, 10_000)}`,
-        },
+        { role: "user", content: `Documento: "${row.title}"\n\n${row.content_text.slice(0, 12_000)}` },
       ],
     });
 
@@ -646,8 +710,7 @@ Gere 4-5 etapas cobrindo todo o conteúdo do documento.`,
     const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     const aula = JSON.parse(clean);
 
-    // Store in localStorage via response (frontend will navigate to /aula-ia with this data)
-    res.json({ aula, titulo: title });
+    res.json({ aula, titulo: row.title });
   } catch (e) {
     console.error("notebook tiagao-explica:", e);
     res.status(500).json({ erro: "Erro ao gerar aula" });

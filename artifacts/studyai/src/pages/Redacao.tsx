@@ -5,7 +5,7 @@ import { useSubscription, startCheckout } from "@/hooks/useSubscription";
 import {
   ArrowLeft, PenLine, Sparkles, CheckCircle2, AlertCircle,
   Loader2, Share2, Check, Star, ChevronDown, ChevronUp, Volume2, VolumeX,
-  History, Plus,
+  History, Plus, ImageIcon,
 } from "lucide-react";
 import { AppNav } from "@/components/AppNav";
 
@@ -68,6 +68,8 @@ export default function Redacao() {
   const [ttsPlaying, setTtsPlaying] = useState(false);
   const [activeTab, setActiveTab] = useState<"nova" | "historico">("nova");
   const [historico, setHistorico] = useState<RedacaoHistorico[]>([]);
+  const [temaImagem, setTemaImagem] = useState<string | null>(null);
+  const [loadingTemaImg, setLoadingTemaImg] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -138,6 +140,32 @@ export default function Redacao() {
       setError(e.message || "Erro ao corrigir. Tente novamente.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function gerarImagemTema() {
+    if (!tema.trim() || loadingTemaImg) return;
+    setLoadingTemaImg(true);
+    setTemaImagem(null);
+    try {
+      const res = await fetch(`${BASE_URL_R}/api/gemini/gerar-imagem`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          topico: tema.trim(),
+          contexto: "Tema de redação ENEM — realidade social brasileira",
+          estilo: "infografico",
+        }),
+      });
+      const data = await res.json();
+      if (data.b64_json) {
+        setTemaImagem(`data:${data.mimeType};base64,${data.b64_json}`);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setLoadingTemaImg(false);
     }
   }
 
@@ -347,7 +375,7 @@ export default function Redacao() {
 
               {/* Try again */}
               <button
-                onClick={() => { setResult(null); setTexto(""); setTema(""); }}
+                onClick={() => { setResult(null); setTexto(""); setTema(""); setTemaImagem(null); }}
                 className="w-full py-3 rounded-2xl border-2 border-slate-200 text-slate-500 font-bold text-sm hover:bg-slate-50 transition-colors"
               >
                 ✏️ Corrigir outra redação
@@ -387,14 +415,61 @@ export default function Redacao() {
               )}
 
               <div>
-                <label className="text-sm font-black text-slate-700 mb-2 block">Tema da Redação <span className="text-slate-400 font-semibold">(opcional)</span></label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-black text-slate-700">Tema da Redação <span className="text-slate-400 font-semibold">(opcional)</span></label>
+                  {tema.trim().length > 5 && !temaImagem && (
+                    <button
+                      onClick={gerarImagemTema}
+                      disabled={loadingTemaImg}
+                      className="flex items-center gap-1.5 text-xs font-bold text-violet-600 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-full transition-all disabled:opacity-50"
+                    >
+                      {loadingTemaImg ? (
+                        <><Loader2 className="w-3 h-3 animate-spin" /> Gerando...</>
+                      ) : (
+                        <><ImageIcon className="w-3 h-3" /> Visualizar Tema</>
+                      )}
+                    </button>
+                  )}
+                  {temaImagem && (
+                    <button
+                      onClick={() => setTemaImagem(null)}
+                      className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      Fechar imagem
+                    </button>
+                  )}
+                </div>
                 <input
                   type="text"
                   value={tema}
-                  onChange={(e) => setTema(e.target.value)}
+                  onChange={(e) => { setTema(e.target.value); setTemaImagem(null); }}
                   placeholder="Ex: Desafios para a democratização do acesso à internet no Brasil"
                   className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 text-sm font-medium transition-all"
                 />
+                <AnimatePresence>
+                  {temaImagem && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8, height: 0 }}
+                      animate={{ opacity: 1, y: 0, height: "auto" }}
+                      exit={{ opacity: 0, y: -8, height: 0 }}
+                      className="mt-3 overflow-hidden"
+                    >
+                      <div className="rounded-2xl overflow-hidden border border-violet-100 shadow-md">
+                        <img
+                          src={temaImagem}
+                          alt={`Visualização do tema: ${tema}`}
+                          className="w-full object-cover max-h-72"
+                        />
+                        <div className="bg-gradient-to-r from-violet-50 to-indigo-50 px-4 py-2.5 flex items-center gap-2">
+                          <ImageIcon className="w-3.5 h-3.5 text-violet-400" />
+                          <p className="text-xs text-violet-600 font-semibold">
+                            Infográfico do tema gerado por IA — use como inspiração para seus repertórios
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               <div>

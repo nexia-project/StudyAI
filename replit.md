@@ -38,6 +38,11 @@ StudyAI is built as a `pnpm` monorepo using TypeScript, Node.js 24, and Express 
 - `Notebook.tsx`: Added `credentials: "include"` to all fetch calls (fixes 401 Unauthorized errors)
 - `feed.ts`: Community feed now filters out poor simulado results (< 40% score or < 5 questions) to avoid displaying test data
 
+**Gemini Image Generation Expansion (April 2026):**
+- `Flashcards.tsx`: Added "Ilustrar com IA" button visible when a flashcard is flipped — generates a Gemini educational diagram for the concept. Image cached per card ID so it doesn't regenerate on revisit.
+- `Redacao.tsx`: Added "Visualizar Tema" button next to the essay topic input — generates an infographic about the ENEM theme to inspire repertórios. Button appears dynamically when theme has text; image has animated entrance and "Fechar imagem" control.
+- `Home.tsx`: Added auto-generated visual banner when a study plan is created — calls Gemini with `estilo: "ilustracao"` using the plan's subject. Shows loading state during generation, then displays the illustration with a themed caption. Cleared on plan reset.
+
 **Key Features and Modules:**
 
 - **Professor Tiagão (Agente IA)**: Universal AI assistant with persistent memory (`tiagao_memory` table), OpenAI Function Calling (tools: `navegar`, `abrir_aula_ia`, `criar_flashcards`, `iniciar_simulado`, `criar_cronograma`, `salvar_memoria`), and real-time action execution. Adapts to user roles (student, teacher, researcher, etc.) and learns from each conversation.

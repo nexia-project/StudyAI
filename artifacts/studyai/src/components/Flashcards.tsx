@@ -13,6 +13,7 @@ import {
   Layers,
   Zap,
   Trophy,
+  ImageIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -76,6 +77,30 @@ export function FlashcardsModal({
   const [unknown, setUnknown] = useState<Set<number>>(new Set());
   const [finished, setFinished] = useState(false);
   const [started, setStarted] = useState(false);
+  const [cardImages, setCardImages] = useState<Record<number, string>>({});
+  const [loadingImageId, setLoadingImageId] = useState<number | null>(null);
+
+  async function generateCardImage(cardId: number, frente: string, verso: string) {
+    if (loadingImageId !== null) return;
+    setLoadingImageId(cardId);
+    try {
+      const topico = `${frente}: ${verso}`.slice(0, 200);
+      const res = await fetch(`${BASE_URL}api/gemini/gerar-imagem`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ topico, contexto: materia, estilo: "diagrama" }),
+      });
+      const data = await res.json();
+      if (data.b64_json) {
+        setCardImages((prev) => ({ ...prev, [cardId]: `data:${data.mimeType};base64,${data.b64_json}` }));
+      }
+    } catch {
+      // fail silently
+    } finally {
+      setLoadingImageId(null);
+    }
+  }
 
   // Save flashcard session when finished
   useEffect(() => {
@@ -388,6 +413,43 @@ export function FlashcardsModal({
                   Pense na resposta antes de revelar
                 </p>
               )}
+
+              {/* AI Illustration (shown when flipped) */}
+              <AnimatePresence>
+                {flipped && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="flex flex-col gap-2"
+                  >
+                    {cardImages[card.id] ? (
+                      <div className="rounded-2xl overflow-hidden border border-violet-100 shadow-sm">
+                        <img
+                          src={cardImages[card.id]}
+                          alt={`Ilustração: ${card.frente}`}
+                          className="w-full object-cover max-h-56"
+                        />
+                        <p className="text-center text-[10px] text-gray-400 font-medium py-1.5 bg-gray-50">
+                          Ilustração gerada por IA para memorização visual
+                        </p>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => generateCardImage(card.id, card.frente, card.verso)}
+                        disabled={loadingImageId !== null}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl border-2 border-dashed border-violet-200 hover:border-violet-400 hover:bg-violet-50 text-violet-500 font-bold text-sm transition-all disabled:opacity-50"
+                      >
+                        {loadingImageId === card.id ? (
+                          <><Loader2 className="w-4 h-4 animate-spin" /> Gerando ilustração...</>
+                        ) : (
+                          <><ImageIcon className="w-4 h-4" /> Ilustrar com IA</>
+                        )}
+                      </button>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Action buttons */}
               <AnimatePresence>

@@ -258,6 +258,8 @@ export default function Home() {
   const [resumaoData, setResumaData] = useState<any>(null);
   const [resumaoLoading, setResumaLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [planBanner, setPlanBanner] = useState<string | null>(null);
+  const [loadingPlanBanner, setLoadingPlanBanner] = useState(false);
   const exerciciosRef = useRef<HTMLDivElement>(null);
 
   // Save plan to DB for authenticated users
@@ -578,8 +580,31 @@ export default function Home() {
     setResumaExpanded(true);
     setResumaData(null);
     setResumaLoading(false);
+    setPlanBanner(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  useEffect(() => {
+    if (!planResult?.materia) return;
+    setPlanBanner(null);
+    setLoadingPlanBanner(true);
+    const topico = planResult.materia;
+    const contexto = planResult.resumoDoConteudo?.slice(0, 200) ?? "";
+    fetch("/api/gemini/gerar-imagem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ topico, contexto, estilo: "ilustracao" }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.b64_json) {
+          setPlanBanner(`data:${data.mimeType};base64,${data.b64_json}`);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingPlanBanner(false));
+  }, [planResult?.materia]);
 
   const generateResumo = async (plan: StudyPlan, conteudo: string) => {
     setResumaLoading(true);
@@ -1245,6 +1270,33 @@ export default function Home() {
                   )}
                 </div>
               </div>
+
+              {/* AI VISUAL BANNER */}
+              {(planBanner || loadingPlanBanner) && (
+                <div className="rounded-[2rem] overflow-hidden shadow-xl border border-white/10 relative">
+                  {loadingPlanBanner && !planBanner && (
+                    <div className="flex items-center justify-center gap-3 py-16 bg-gradient-to-r from-slate-100 to-slate-50">
+                      <div className="w-8 h-8 rounded-full border-4 border-violet-400 border-t-transparent animate-spin" />
+                      <p className="text-sm font-bold text-slate-500">Gerando ilustração do seu plano...</p>
+                    </div>
+                  )}
+                  {planBanner && (
+                    <>
+                      <img
+                        src={planBanner}
+                        alt={`Ilustração visual: ${planResult.materia}`}
+                        className="w-full object-cover max-h-72"
+                      />
+                      <div className="px-5 py-3 flex items-center gap-2" style={{ background: `linear-gradient(90deg, ${planResult.cor}15, transparent)` }}>
+                        <span className="text-lg">{planResult.emoji}</span>
+                        <p className="text-sm font-bold text-slate-700">
+                          Ilustração gerada por IA sobre <span style={{ color: planResult.cor }}>{planResult.materia}</span>
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
 
               {/* RESUMÃO ESTRATÉGICO */}
               <div className="bg-white rounded-[2rem] border-2 overflow-hidden shadow-xl" style={{ borderColor: planResult.cor }}>

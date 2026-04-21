@@ -109,13 +109,25 @@ const TOOL_CONFIG: Record<Tool, { label: string; icon: React.ElementType; color:
 };
 
 const COLOR_MAP: Record<string, string> = {
-  indigo: "bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100",
-  violet: "bg-violet-50 border-violet-200 text-violet-700 hover:bg-violet-100",
-  pink:   "bg-pink-50 border-pink-200 text-pink-700 hover:bg-pink-100",
-  amber:  "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100",
-  green:  "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100",
-  blue:   "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100",
-  rose:   "bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100",
+  indigo: "bg-indigo-50/60 border-indigo-200 text-indigo-700",
+  violet: "bg-violet-50/60 border-violet-200 text-violet-700",
+  pink:   "bg-pink-50/60   border-pink-200   text-pink-700",
+  amber:  "bg-amber-50/60  border-amber-200  text-amber-700",
+  green:  "bg-emerald-50/60 border-emerald-200 text-emerald-700",
+  blue:   "bg-blue-50/60   border-blue-200   text-blue-700",
+  rose:   "bg-rose-50/60   border-rose-200   text-rose-700",
+  fuchsia:"bg-fuchsia-50/60 border-fuchsia-200 text-fuchsia-700",
+};
+
+const ICON_TINT: Record<string, string> = {
+  indigo: "text-indigo-500 bg-indigo-100",
+  violet: "text-violet-500 bg-violet-100",
+  pink:   "text-pink-500   bg-pink-100",
+  amber:  "text-amber-600  bg-amber-100",
+  green:  "text-emerald-500 bg-emerald-100",
+  blue:   "text-blue-500   bg-blue-100",
+  rose:   "text-rose-500   bg-rose-100",
+  fuchsia:"text-fuchsia-500 bg-fuchsia-100",
 };
 
 // ─── Mind Map Renderer ─────────────────────────────────────────────────────

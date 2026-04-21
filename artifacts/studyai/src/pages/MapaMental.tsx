@@ -676,7 +676,7 @@ function UploadModal({
         <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="text-lg font-black text-foreground">
-              {forProfessor ? "Carregar Material do Professor" : "Carregar Documento"}
+              {forProfessor ? "Anexar Material da Turma" : "Carregar Documento"}
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">O sistema cria um mapa mental automaticamente</p>
           </div>
@@ -1003,7 +1003,7 @@ export default function MapaMentalPage() {
   const TABS = [
     { id: "aluno" as const, label: "Meus Estudos", icon: GraduationCap },
     { id: "materias" as const, label: "Por Matéria", icon: BookMarked },
-    { id: "professor" as const, label: "Portal Professor", icon: User2 },
+    { id: "professor" as const, label: "Material da Turma", icon: User2 },
   ];
 
   return (

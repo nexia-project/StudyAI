@@ -36,6 +36,15 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WhatsAppBanner } from "@/components/WhatsAppBanner";
 import { VoiceProfessor } from "@/components/VoiceProfessor";
 import { CookieConsent } from "@/components/CookieConsent";
+
+// Hide the floating Tiagão on full-immersive lesson pages so two voices never overlap.
+function VoiceProfessorGate() {
+  const [location] = useLocation();
+  // Routes where the lesson itself uses TTS — suppress floating professor.
+  const HIDE_ON = ["/aula-ia", "/notebook"];
+  if (HIDE_ON.some(p => location.startsWith(p))) return null;
+  return <VoiceProfessor />;
+}
 import { useStudyAuth } from "@/hooks/useStudyAuth";
 
 const queryClient = new QueryClient({
@@ -273,7 +282,7 @@ function ClerkProviderWithRoutes() {
         <TooltipProvider>
           <WhatsAppBanner />
           <Router />
-          <VoiceProfessor />
+          <VoiceProfessorGate />
           <CookieConsent />
           <Toaster />
         </TooltipProvider>

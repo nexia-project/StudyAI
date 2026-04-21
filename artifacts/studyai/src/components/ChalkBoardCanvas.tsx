@@ -31,6 +31,9 @@ interface Props {
   elementos: BoardElement[];
   playing: boolean;
   speedMultiplier?: number;
+  /** When provided, the writing pace is scaled so the board finishes drawing exactly
+   *  when the narration finishes. Pass the audio duration in milliseconds. */
+  audioDurationMs?: number;
   onFirstChar?: () => void;
   onAllDone?: () => void;
 }
@@ -52,14 +55,15 @@ interface ElStyle {
   underlineColor?: string;
 }
 
+// Slower, calmer base speeds — adjusted via audioDurationMs prop to match narration
 const STYLES: Record<BoardElement["tipo"], ElStyle> = {
-  titulo:    { fontSize: 30, fontWeight: "700", color: "#1e1b4b", lineHeight: 44, msPerChar: 55, pauseAfter: 650, hasUnderline: true, underlineColor: "#F59E0B" },
-  formula:   { fontSize: 25, fontWeight: "700", color: "#6D28D9", lineHeight: 42, msPerChar: 75, pauseAfter: 900, bgColor: "#FEF9C3", padding: 12, hasBorder: "#FDE047" },
-  texto:     { fontSize: 21, fontWeight: "400", color: "#374151", lineHeight: 34, msPerChar: 25, pauseAfter: 350 },
-  destaque:  { fontSize: 21, fontWeight: "700", color: "#065F46", lineHeight: 34, msPerChar: 38, pauseAfter: 480, bgColor: "#D1FAE5", textColor: "#065F46", padding: 10, hasBorder: "#6EE7B7" },
-  seta:      { fontSize: 21, fontWeight: "400", color: "#4338CA", lineHeight: 34, msPerChar: 26, pauseAfter: 320, hasArrow: true },
-  separador: { fontSize: 0,  fontWeight: "400", color: "#D1D5DB", lineHeight: 22, msPerChar: 0,  pauseAfter: 160 },
-  exemplo:   { fontSize: 20, fontWeight: "400", color: "#1e40af", lineHeight: 34, msPerChar: 30, pauseAfter: 520, bgColor: "#DBEAFE", padding: 12, hasBorder: "#93C5FD" },
+  titulo:    { fontSize: 30, fontWeight: "700", color: "#1e1b4b", lineHeight: 44, msPerChar: 95,  pauseAfter: 900,  hasUnderline: true, underlineColor: "#F59E0B" },
+  formula:   { fontSize: 25, fontWeight: "700", color: "#6D28D9", lineHeight: 42, msPerChar: 130, pauseAfter: 1200, bgColor: "#FEF9C3", padding: 12, hasBorder: "#FDE047" },
+  texto:     { fontSize: 21, fontWeight: "400", color: "#374151", lineHeight: 34, msPerChar: 60,  pauseAfter: 600 },
+  destaque:  { fontSize: 21, fontWeight: "700", color: "#065F46", lineHeight: 34, msPerChar: 75,  pauseAfter: 700, bgColor: "#D1FAE5", textColor: "#065F46", padding: 10, hasBorder: "#6EE7B7" },
+  seta:      { fontSize: 21, fontWeight: "400", color: "#4338CA", lineHeight: 34, msPerChar: 60,  pauseAfter: 500, hasArrow: true },
+  separador: { fontSize: 0,  fontWeight: "400", color: "#D1D5DB", lineHeight: 22, msPerChar: 0,   pauseAfter: 250 },
+  exemplo:   { fontSize: 20, fontWeight: "400", color: "#1e40af", lineHeight: 34, msPerChar: 65,  pauseAfter: 700, bgColor: "#DBEAFE", padding: 12, hasBorder: "#93C5FD" },
 };
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -309,9 +313,12 @@ function drawElement(
 
 // ─── Component ──────────────────────────────────────────────────────────────
 export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
-  ({ elementos, playing, speedMultiplier = 1, onFirstChar, onAllDone }, ref) => {
+  ({ elementos, playing, speedMultiplier = 1, audioDurationMs, onFirstChar, onAllDone }, ref) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+    // syncFactor scales every drawing tick so the board finishes when narration finishes.
+    // <1 = faster than base, >1 = slower. Recomputed when audio duration is known.
+    const syncFactorRef = useRef<number>(1);
 
     const stateRef = useRef({
       elIdx: 0,
@@ -429,7 +436,7 @@ export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
         }
 
         st.msAccum += dt;
-        const msPerChar = Math.max(1, s.msPerChar / speedMultiplier);
+        const msPerChar = Math.max(1, (s.msPerChar * syncFactorRef.current) / speedMultiplier);
         const add = Math.floor(st.msAccum / msPerChar);
         if (add > 0) {
           st.msAccum -= add * msPerChar;
@@ -495,6 +502,28 @@ export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
     }, [elementos, playing, animate, redraw]);
 
     useImperativeHandle(ref, () => ({ restart: () => setup() }), [setup]);
+
+    // Recompute syncFactor whenever the audio duration becomes known.
+    // Goal: total drawing time ≈ audioDurationMs.
+    useEffect(() => {
+      if (!audioDurationMs || audioDurationMs <= 0) {
+        syncFactorRef.current = 1;
+        return;
+      }
+      // Estimate base total drawing time from the elementos
+      let baseTotalMs = 0;
+      for (const el of elementos) {
+        const s = STYLES[el.tipo];
+        const len = (el.texto?.length ?? 0);
+        baseTotalMs += len * s.msPerChar + s.pauseAfter;
+      }
+      if (baseTotalMs <= 0) return;
+      // Reserve ~15% buffer so writing finishes slightly before audio ends
+      const targetMs = audioDurationMs * 0.92;
+      const factor = targetMs / baseTotalMs;
+      // Clamp so we never render unreadably fast or impossibly slow
+      syncFactorRef.current = Math.max(0.6, Math.min(3.5, factor));
+    }, [audioDurationMs, elementos]);
 
     useEffect(() => {
       document.fonts.ready.then(() => setup());

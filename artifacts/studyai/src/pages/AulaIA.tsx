@@ -104,10 +104,13 @@ export default function AulaIA() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const [audioLoading, setAudioLoading] = useState(false);
+  const [audioDurationMs, setAudioDurationMs] = useState<number | undefined>(undefined);
   const [charState, setCharState] = useState<CharacterState>("idle");
 
   // Track which step audio has been fetched for (to avoid double-fetch on resume)
   const audioStepRef = useRef<number>(-1);
+  // Reentrancy guard: bumps on every fetch so stale fetches abort themselves
+  const fetchTokenRef = useRef<number>(0);
 
   // ── question ──
   const [pergunta, setPergunta] = useState("");
@@ -174,28 +177,53 @@ export default function AulaIA() {
   const playNarration = useCallback(async (texto: string, stepIdx: number) => {
     if (!texto) return;
     if (muted) return; // canvas will still draw since audioLoading stays false
+
+    // ── Hard-stop any audio currently playing or loading (prevents duplicate voices) ──
+    fetchTokenRef.current += 1;
+    const myToken = fetchTokenRef.current;
+    if (audioRef.current) {
+      try { audioRef.current.pause(); } catch { /* ignore */ }
+      audioRef.current.removeAttribute("src");
+      audioRef.current.load();
+    }
+    setAudioDurationMs(undefined);
     setAudioLoading(true);
+
     try {
       const r = await fetch("/api/voice-tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: texto }),
       });
+      // Bail out if a newer request superseded us
+      if (myToken !== fetchTokenRef.current) return;
       if (!r.ok) throw new Error("TTS error");
       const blob = await r.blob();
+      // Bail again — fetch awaits can yield enough time for a step change
+      if (myToken !== fetchTokenRef.current) return;
+
       const url = URL.createObjectURL(blob);
       if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
       audioUrlRef.current = url;
-      if (audioRef.current) {
-        audioRef.current.src = url;
-        audioRef.current.playbackRate = velocidade;
-        // Only play if this step is still the current one and still playing
-        if (audioStepRef.current === stepIdx) {
-          await audioRef.current.play();
-        }
+
+      if (audioRef.current && audioStepRef.current === stepIdx) {
+        const audio = audioRef.current;
+        // Capture duration once metadata loads, then feed it to the canvas for sync
+        const onMeta = () => {
+          if (myToken !== fetchTokenRef.current) return;
+          if (isFinite(audio.duration) && audio.duration > 0) {
+            setAudioDurationMs(audio.duration * 1000);
+          }
+        };
+        audio.addEventListener("loadedmetadata", onMeta, { once: true });
+        audio.src = url;
+        audio.playbackRate = velocidade;
+        await audio.play();
       }
     } catch { /* silent — canvas will still draw */ }
-    finally { setAudioLoading(false); }
+    finally {
+      if (myToken === fetchTokenRef.current) setAudioLoading(false);
+    }
   }, [muted, velocidade]);
 
   // ── update playback speed ─────────────────────────────────────────────────
@@ -538,8 +566,11 @@ export default function AulaIA() {
         {/* ── LOUSA ── */}
         <div className="flex-1 flex flex-col min-h-0 p-3 sm:p-5 gap-3">
 
+          {/* Lousa + (opcional) painel de imagem lateral */}
+          <div className="flex-1 flex flex-col md:flex-row gap-3 min-h-0">
+
           {/* ── CANVAS BOARD ── */}
-          <div className="flex-1 relative rounded-3xl shadow-lg overflow-hidden min-h-[360px]"
+          <div className={`relative rounded-3xl shadow-lg overflow-hidden min-h-[360px] transition-all ${imagemGerada ? "md:flex-1" : "flex-1"}`}
             style={{ border: "2px solid #E8E0C8", background: "#FFFEF5" }}>
 
             <AnimatePresence mode="wait">
@@ -556,6 +587,7 @@ export default function AulaIA() {
                     elementos={etapa.elementos}
                     playing={canvasPlaying}
                     speedMultiplier={velocidade}
+                    audioDurationMs={audioDurationMs}
                     onAllDone={() => setBoardAllDone(true)}
                   />
                 )}
@@ -580,37 +612,6 @@ export default function AulaIA() {
             </div>
 
             {/* Overlay: imagem gerada pelo Gemini */}
-            <AnimatePresence>
-              {imagemGerada && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="absolute inset-0 z-30 bg-white/97 backdrop-blur-sm flex flex-col">
-                  <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-4 h-4 rounded-full bg-violet-500 flex items-center justify-center">
-                        <ImageIcon className="w-2.5 h-2.5 text-white" />
-                      </div>
-                      <span className="text-xs font-bold text-slate-700 truncate max-w-[200px]">{imagemGerada.topico}</span>
-                      <span className="text-[9px] text-violet-500 font-semibold bg-violet-50 px-1.5 py-0.5 rounded-full">Gemini</span>
-                    </div>
-                    <button onClick={() => setImagemGerada(null)}
-                      className="w-5 h-5 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center">
-                      <X className="w-3 h-3 text-slate-500" />
-                    </button>
-                  </div>
-                  <div className="flex-1 overflow-hidden flex items-center justify-center p-2">
-                    <img
-                      src={imagemGerada.src}
-                      alt={`Ilustração: ${imagemGerada.topico}`}
-                      className="max-h-full max-w-full object-contain rounded-xl"
-                    />
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
             {/* Estado: carregando áudio */}
             <AnimatePresence>
               {isPlaying && audioLoading && (
@@ -638,6 +639,42 @@ export default function AulaIA() {
               )}
             </AnimatePresence>
           </div>
+
+          {/* ── PAINEL DE IMAGEM (lateral, responsivo) ── */}
+          <AnimatePresence>
+            {imagemGerada && (
+              <motion.div
+                initial={{ opacity: 0, x: 30, width: 0 }}
+                animate={{ opacity: 1, x: 0, width: "auto" }}
+                exit={{ opacity: 0, x: 30, width: 0 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                className="md:w-[42%] md:max-w-[480px] md:min-w-[280px] flex flex-col rounded-3xl shadow-lg overflow-hidden bg-white border border-violet-100"
+              >
+                <div className="flex items-center justify-between px-3 py-2 border-b border-violet-100 bg-violet-50/50">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <div className="w-4 h-4 rounded-full bg-violet-500 flex items-center justify-center flex-shrink-0">
+                      <ImageIcon className="w-2.5 h-2.5 text-white" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-700 truncate">{imagemGerada.topico}</span>
+                    <span className="text-[9px] text-violet-600 font-semibold bg-white px-1.5 py-0.5 rounded-full flex-shrink-0">IA</span>
+                  </div>
+                  <button onClick={() => setImagemGerada(null)}
+                    className="w-5 h-5 rounded-full bg-white hover:bg-slate-100 flex items-center justify-center flex-shrink-0">
+                    <X className="w-3 h-3 text-slate-500" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-auto flex items-center justify-center p-3 bg-gradient-to-br from-slate-50 to-violet-50/30">
+                  <img
+                    src={imagemGerada.src}
+                    alt={`Ilustração: ${imagemGerada.topico}`}
+                    className="max-h-full max-w-full object-contain rounded-xl shadow-sm"
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          </div>{/* /lousa+imagem flex */}
 
           {/* ── CONTROLES ── */}
           <div className="flex flex-col gap-2">

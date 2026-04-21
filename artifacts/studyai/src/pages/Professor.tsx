@@ -14,7 +14,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Section = "dashboard" | "turmas" | "alunos" | "conteudos" | "pesquisa" | "provas" | "banco" | "atividades" | "assistente" | "relatorios";
+type Section = "dashboard" | "turmas" | "alunos" | "conteudos" | "pesquisa" | "caderno" | "provas" | "banco" | "atividades" | "assistente" | "relatorios";
 type ExamMode = "classica" | "mundo" | "fraquezas";
 type VisualStyle = "enem" | "infantil" | "tecnico" | "aventura";
 
@@ -53,6 +53,7 @@ const NAV = [
   { id: "alunos" as Section, label: "Alunos", icon: UserCircle },
   { id: "conteudos" as Section, label: "Criador de Conteúdo", icon: Wand2 },
   { id: "pesquisa" as Section, label: "Central de Pesquisa", icon: Microscope },
+  { id: "caderno" as Section, label: "Caderno IA do Professor", icon: BookOpen, external: "/notebook" },
   { id: "provas" as Section, label: "Gerador de Provas", icon: FileQuestion },
   { id: "banco" as Section, label: "Banco de Questões", icon: Database },
   { id: "atividades" as Section, label: "Atividades", icon: ClipboardList },
@@ -336,8 +337,11 @@ export default function ProfessorPage() {
           </div>
         </div>
         <nav className="flex-1 py-3 overflow-y-auto space-y-0.5 px-2">
-          {NAV.map(item => (
-            <button key={item.id} onClick={() => { setSection(item.id); setSidebarOpen(false); }}
+          {NAV.map((item: any) => (
+            <button key={item.id} onClick={() => {
+              if (item.external) { navigate(item.external); return; }
+              setSection(item.id); setSidebarOpen(false);
+            }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all
                 ${section === item.id ? "bg-indigo-600/20 text-indigo-300" : "text-white/40 hover:text-white hover:bg-white/5"}`}>
               <item.icon className="w-4 h-4 flex-shrink-0" />

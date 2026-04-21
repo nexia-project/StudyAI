@@ -55,15 +55,17 @@ interface ElStyle {
   underlineColor?: string;
 }
 
-// Slower, calmer base speeds — adjusted via audioDurationMs prop to match narration
+// Calmer, more human-paced writing speeds — adjusted via audioDurationMs prop.
+// Lower bound clamp (in syncFactorRef) prevents going faster than baseline so the
+// student can actually follow letter-by-letter, like a real teacher on a board.
 const STYLES: Record<BoardElement["tipo"], ElStyle> = {
-  titulo:    { fontSize: 30, fontWeight: "700", color: "#1e1b4b", lineHeight: 44, msPerChar: 95,  pauseAfter: 900,  hasUnderline: true, underlineColor: "#F59E0B" },
-  formula:   { fontSize: 25, fontWeight: "700", color: "#6D28D9", lineHeight: 42, msPerChar: 130, pauseAfter: 1200, bgColor: "#FEF9C3", padding: 12, hasBorder: "#FDE047" },
-  texto:     { fontSize: 21, fontWeight: "400", color: "#374151", lineHeight: 34, msPerChar: 60,  pauseAfter: 600 },
-  destaque:  { fontSize: 21, fontWeight: "700", color: "#065F46", lineHeight: 34, msPerChar: 75,  pauseAfter: 700, bgColor: "#D1FAE5", textColor: "#065F46", padding: 10, hasBorder: "#6EE7B7" },
-  seta:      { fontSize: 21, fontWeight: "400", color: "#4338CA", lineHeight: 34, msPerChar: 60,  pauseAfter: 500, hasArrow: true },
-  separador: { fontSize: 0,  fontWeight: "400", color: "#D1D5DB", lineHeight: 22, msPerChar: 0,   pauseAfter: 250 },
-  exemplo:   { fontSize: 20, fontWeight: "400", color: "#1e40af", lineHeight: 34, msPerChar: 65,  pauseAfter: 700, bgColor: "#DBEAFE", padding: 12, hasBorder: "#93C5FD" },
+  titulo:    { fontSize: 30, fontWeight: "700", color: "#1e1b4b", lineHeight: 44, msPerChar: 145, pauseAfter: 1400, hasUnderline: true, underlineColor: "#F59E0B" },
+  formula:   { fontSize: 25, fontWeight: "700", color: "#6D28D9", lineHeight: 42, msPerChar: 195, pauseAfter: 1800, bgColor: "#FEF9C3", padding: 12, hasBorder: "#FDE047" },
+  texto:     { fontSize: 21, fontWeight: "400", color: "#374151", lineHeight: 34, msPerChar: 95,  pauseAfter: 950 },
+  destaque:  { fontSize: 21, fontWeight: "700", color: "#065F46", lineHeight: 34, msPerChar: 115, pauseAfter: 1100, bgColor: "#D1FAE5", textColor: "#065F46", padding: 10, hasBorder: "#6EE7B7" },
+  seta:      { fontSize: 21, fontWeight: "400", color: "#4338CA", lineHeight: 34, msPerChar: 95,  pauseAfter: 850, hasArrow: true },
+  separador: { fontSize: 0,  fontWeight: "400", color: "#D1D5DB", lineHeight: 22, msPerChar: 0,   pauseAfter: 400 },
+  exemplo:   { fontSize: 20, fontWeight: "400", color: "#1e40af", lineHeight: 34, msPerChar: 100, pauseAfter: 1100, bgColor: "#DBEAFE", padding: 12, hasBorder: "#93C5FD" },
 };
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -521,8 +523,9 @@ export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
       // Reserve ~15% buffer so writing finishes slightly before audio ends
       const targetMs = audioDurationMs * 0.92;
       const factor = targetMs / baseTotalMs;
-      // Clamp so we never render unreadably fast or impossibly slow
-      syncFactorRef.current = Math.max(0.6, Math.min(3.5, factor));
+      // Clamp: never go BELOW the calmer baseline (factor >= 1) — student must follow.
+      // Allow stretching (up to 3.5x) when the narration is very long.
+      syncFactorRef.current = Math.max(1.0, Math.min(3.5, factor));
     }, [audioDurationMs, elementos]);
 
     useEffect(() => {

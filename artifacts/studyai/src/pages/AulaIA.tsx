@@ -99,6 +99,7 @@ export default function AulaIA() {
   const [muted, setMuted] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [boardAllDone, setBoardAllDone] = useState(false);
+  const [audioEnded, setAudioEnded] = useState(false);
 
   // ── audio ──
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -231,23 +232,20 @@ export default function AulaIA() {
     if (audioRef.current) audioRef.current.playbackRate = velocidade;
   }, [velocidade]);
 
-  // ── auto-advance when audio ends ─────────────────────────────────────────
+  // ── audio ended → mark step as ready, NEVER auto-advance ─────────────────
+  // Student must explicitly click "Próxima" so they have time to absorb the lesson.
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     const handleEnd = () => {
-      if (!aula || !isPlaying) return;
-      const next = etapaAtual + 1;
-      if (next < aula.etapas.length) {
-        setTimeout(() => irParaEtapa(next, true), 800);
-      } else {
-        setIsPlaying(false);
-        setCharState("idle");
-      }
+      if (!aula) return;
+      setAudioEnded(true);
+      setIsPlaying(false);
+      setCharState("idle");
     };
     audio.addEventListener("ended", handleEnd);
     return () => audio.removeEventListener("ended", handleEnd);
-  }, [aula, etapaAtual, isPlaying]); // eslint-disable-line
+  }, [aula]); // eslint-disable-line
 
   // ── go to step ───────────────────────────────────────────────────────────
   const irParaEtapa = useCallback((idx: number, autoPlay = false) => {
@@ -255,6 +253,7 @@ export default function AulaIA() {
     setEtapaAtual(idx);
     setBoardKey(k => k + 1);
     setBoardAllDone(false);
+    setAudioEnded(false);
     setResposta(null);
     if (audioRef.current) {
       audioRef.current.pause();
@@ -703,11 +702,41 @@ export default function AulaIA() {
                   ? <Loader2 className="w-6 h-6 animate-spin" />
                   : <Play className="w-6 h-6 ml-0.5" />}
               </motion.button>
-              <button onClick={() => irParaEtapa(Math.min(totalEtapas - 1, etapaAtual + 1))}
-                disabled={etapaAtual === totalEtapas - 1}
-                className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
-                <SkipForward className="w-4 h-4" />
-              </button>
+              {(() => {
+                const podeAvancar = etapaAtual < totalEtapas - 1;
+                const piscando = podeAvancar && (audioEnded || boardAllDone) && !isPlaying;
+                return (
+                  <div className="relative flex flex-col items-center">
+                    <motion.button
+                      onClick={() => irParaEtapa(Math.min(totalEtapas - 1, etapaAtual + 1))}
+                      disabled={!podeAvancar}
+                      animate={piscando ? {
+                        boxShadow: [
+                          "0 0 0 0 rgba(99,102,241,0)",
+                          "0 0 0 8px rgba(99,102,241,0.25)",
+                          "0 0 0 0 rgba(99,102,241,0)",
+                        ],
+                        scale: [1, 1.05, 1],
+                      } : { boxShadow: "0 0 0 0 rgba(99,102,241,0)", scale: 1 }}
+                      transition={piscando ? { repeat: Infinity, duration: 1.4 } : { duration: 0.2 }}
+                      className={`w-10 h-10 rounded-full border shadow-sm flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
+                        piscando
+                          ? "bg-indigo-500 text-white border-indigo-400 hover:bg-indigo-600"
+                          : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                      }`}>
+                      <SkipForward className="w-4 h-4" />
+                    </motion.button>
+                    {piscando && (
+                      <motion.span
+                        initial={{ opacity: 0, y: -2 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="absolute top-full mt-1 whitespace-nowrap text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                        Avance quando estiver pronto
+                      </motion.span>
+                    )}
+                  </div>
+                );
+              })()}
               <button
                 onClick={() => {
                   audioStepRef.current = -1;

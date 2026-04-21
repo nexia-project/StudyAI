@@ -88,7 +88,6 @@ async function saveDocWithChunks(
     await db.execute(sql`
       INSERT INTO notebook_embeddings (user_id, doc_id, chunk_text, chunk_index, source_title)
       VALUES (${userId}, ${docId}, ${chunks[i]}, ${i}, ${title})
-      ON CONFLICT DO NOTHING
     `);
   }
 
@@ -102,57 +101,52 @@ async function ragSearch(
   query: string,
   topK = 8,
 ): Promise<Array<{ text: string; title: string }>> {
-  // Extract keywords from query (simple but effective)
-  const stopWords = new Set(["o", "a", "os", "as", "um", "uma", "de", "da", "do", "e", "que", "em", "para", "com", "por", "se", "me", "te", "nos", "isso", "isto", "esse", "esta", "este", "como", "qual", "quais", "quando", "onde", "quem", "por", "que", "não", "sim", "mais", "mas", "ou", "e", "é"]);
+  // Extract meaningful keywords
+  const stopWords = new Set(["o","a","os","as","um","uma","de","da","do","e","que","em","para","com","por","se","me","te","nos","isso","isto","esse","esta","este","como","qual","quais","quando","onde","quem","não","sim","mais","mas","ou","é","foi","ser","ter","há","já","este","nesta","nesse","qual","seu","sua"]);
   const keywords = query
     .toLowerCase()
-    .replace(/[^\w\sáâãàéêèíîìóôõòúûùç]/g, " ")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
     .split(/\s+/)
-    .filter(w => w.length > 3 && !stopWords.has(w))
-    .slice(0, 6);
+    .filter(w => w.length > 2 && !stopWords.has(w))
+    .slice(0, 5);
 
+  const docFilter = docIds && docIds.length > 0 ? `AND doc_id = ANY(ARRAY[${docIds.join(",")}]::int[])` : "";
+
+  let queryStr: string;
   if (keywords.length === 0) {
-    // Fallback: just return first N chunks
-    const rows = await db.execute(sql`
+    // No keywords — return first topK chunks
+    queryStr = `
       SELECT chunk_text, source_title FROM notebook_embeddings
-      WHERE user_id = ${userId}
-      ${docIds && docIds.length > 0 ? sql`AND doc_id = ANY(${docIds}::int[])` : sql``}
-      ORDER BY chunk_index ASC
-      LIMIT ${topK}
-    `);
-    return (rows.rows as any[]).map(r => ({ text: r.chunk_text, title: r.source_title ?? "Documento" }));
+      WHERE user_id = $1 ${docFilter}
+      ORDER BY chunk_index ASC LIMIT ${topK}
+    `;
+  } else {
+    // Build ILIKE conditions for each keyword
+    const ilikeConditions = keywords.map(kw => `chunk_text ILIKE '%${kw.replace(/'/g, "''")}%'`).join(" OR ");
+    const scoreExpr = keywords.map(kw => `(CASE WHEN chunk_text ILIKE '%${kw.replace(/'/g, "''")}%' THEN 1 ELSE 0 END)`).join(" + ");
+    queryStr = `
+      SELECT chunk_text, source_title, (${scoreExpr}) as score
+      FROM notebook_embeddings
+      WHERE user_id = $1 ${docFilter} AND (${ilikeConditions})
+      ORDER BY score DESC, chunk_index ASC LIMIT ${topK * 2}
+    `;
   }
 
-  // Build ILIKE conditions for each keyword
-  const conditions = keywords.map(kw => sql`chunk_text ILIKE ${"%" + kw + "%"}`);
-  const orCondition = conditions.reduce((acc, cond) => sql`${acc} OR ${cond}`);
-
-  const rows = await db.execute(sql`
-    SELECT chunk_text, source_title,
-      (${conditions.reduce((acc, cond) => sql`${acc} + (CASE WHEN ${cond} THEN 1 ELSE 0 END)`, sql`0`)}) as score
-    FROM notebook_embeddings
-    WHERE user_id = ${userId}
-    ${docIds && docIds.length > 0 ? sql`AND doc_id = ANY(${docIds}::int[])` : sql``}
-    AND (${orCondition})
-    ORDER BY score DESC, chunk_index ASC
-    LIMIT ${topK * 2}
-  `);
-
+  const rows = await db.execute(sql.raw(queryStr.replace("$1", `'${userId.replace(/'/g, "''")}'`)));
   const results = rows.rows as any[];
 
-  // Deduplicate by first 100 chars
+  // Deduplicate
   const seen = new Set<string>();
-  const deduped = results.filter(r => {
-    const key = r.chunk_text.slice(0, 100);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-
-  return deduped.slice(0, topK).map(r => ({
-    text: r.chunk_text,
-    title: r.source_title ?? "Documento",
-  }));
+  return results
+    .filter(r => {
+      const key = String(r.chunk_text).slice(0, 100);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, topK)
+    .map(r => ({ text: String(r.chunk_text), title: String(r.source_title ?? "Documento") }));
 }
 
 // ─── POST /api/notebook/upload-file ──────────────────────────────────────────

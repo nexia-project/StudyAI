@@ -108,23 +108,113 @@ export default function SimuladoEnemPage() {
 
   if (!isPremium) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-6 p-8 bg-gradient-to-br from-violet-50 to-indigo-50">
-        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-violet-200">
-          <span className="text-4xl">📝</span>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50/40 to-indigo-50/40">
+        {/* Header */}
+        <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-slate-100">
+          <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
+            <button onClick={() => navigate("/app")} className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-100 text-slate-600 font-semibold text-sm transition-colors">
+              <ArrowLeft className="w-4 h-4" />
+              Voltar
+            </button>
+          </div>
         </div>
-        <div className="text-center">
-          <h1 className="text-2xl font-black text-slate-800 mb-2">Simulado ENEM Completo</h1>
-          <p className="text-slate-500 max-w-sm">Simule os 4 dias do ENEM com questões no padrão oficial, cronômetro e gabarito. Recurso exclusivo Premium.</p>
+
+        <div className="max-w-5xl mx-auto px-4 py-12">
+          {/* Hero */}
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 bg-violet-100 text-violet-700 text-xs font-bold px-3 py-1.5 rounded-full mb-6 uppercase tracking-wider">
+              <Lock className="w-3.5 h-3.5" />
+              Recurso Premium
+            </div>
+            <h1 className="text-4xl md:text-5xl font-black text-slate-800 mb-4 tracking-tight">
+              Simulado ENEM Completo
+            </h1>
+            <p className="text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed">
+              Simule os 4 dias do ENEM no mesmo padrão oficial — com cronômetro, gabarito comentado e análise de desempenho por área de conhecimento.
+            </p>
+          </div>
+
+          {/* Preview Cards — 4 dias do ENEM */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+            {DIAS_INFO.map((d) => (
+              <div key={d.dia} className={`rounded-2xl p-5 ${d.bg} border ${d.border} relative overflow-hidden`}>
+                <div className="absolute top-3 right-3 opacity-20 text-4xl">{d.emoji}</div>
+                <div className={`text-xs font-black uppercase tracking-wider mb-2 ${d.text}`}>Dia {d.dia}</div>
+                <div className="text-base font-black text-slate-800 mb-1">{d.nome}</div>
+                <div className="text-xs text-slate-500 leading-relaxed">{d.materias}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Features list + CTA */}
+          <div className="grid md:grid-cols-2 gap-8 items-start">
+            <div className="space-y-4">
+              <h2 className="text-xl font-black text-slate-800 mb-6">O que está incluso</h2>
+              {[
+                { icon: BookOpen, title: "Questões no padrão ENEM", desc: "Até 45 questões por área, geradas com contextos e linguagem oficial INEP" },
+                { icon: Clock, title: "Cronômetro por sessão", desc: "Simule as condições reais — tempo controlado por área de conhecimento" },
+                { icon: CheckCircle2, title: "Gabarito comentado", desc: "Cada alternativa explicada com justificativa detalhada após a submissão" },
+                { icon: Trophy, title: "Análise de desempenho", desc: "Pontuação por matéria, taxa de acerto e identificação de pontos fracos" },
+                { icon: RefreshCw, title: "Simulados ilimitados", desc: "Refaça quantas vezes quiser com novas questões geradas pela IA" },
+              ].map(({ icon: Icon, title, desc }) => (
+                <div key={title} className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-5 h-5 text-violet-600" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-800 text-sm">{title}</p>
+                    <p className="text-slate-500 text-sm leading-relaxed">{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Pricing card */}
+            <div className="bg-white rounded-3xl border border-violet-100 shadow-xl shadow-violet-100/50 p-8 sticky top-24">
+              <div className="text-center mb-6">
+                <p className="text-sm font-bold text-violet-600 uppercase tracking-wider mb-2">StudyAI Premium</p>
+                <div className="flex items-end justify-center gap-1 mb-1">
+                  <span className="text-5xl font-black text-slate-800">R$29</span>
+                  <span className="text-2xl font-black text-slate-800">,90</span>
+                  <span className="text-slate-400 text-sm font-medium mb-1.5">/mês</span>
+                </div>
+                <p className="text-xs text-slate-400">ou R$249/ano — economize 30%</p>
+              </div>
+
+              <div className="space-y-2.5 mb-8">
+                {[
+                  "Simulados ENEM completos (4 dias)",
+                  "Professor Tiagão por voz ilimitado",
+                  "Caderno com RAG e busca semântica",
+                  "Flashcards com repetição espaçada",
+                  "Correção de redação ENEM (5 competências)",
+                  "Aula com Professor na lousa interativa",
+                ].map((f) => (
+                  <div key={f} className="flex items-center gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-violet-500 flex-shrink-0" />
+                    <span className="text-sm text-slate-700">{f}</span>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={async () => { setCheckoutLoading(true); try { await startCheckout(); } catch { navigate("/pricing"); } finally { setCheckoutLoading(false); } }}
+                disabled={checkoutLoading}
+                className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-black text-base shadow-lg shadow-violet-200 hover:opacity-90 transition-opacity disabled:opacity-60"
+              >
+                {checkoutLoading ? (
+                  <><Loader2 className="w-5 h-5 animate-spin" /> Aguarde...</>
+                ) : (
+                  <>Assinar Premium — R$29,90/mês</>
+                )}
+              </button>
+
+              <p className="text-center text-xs text-slate-400 mt-4">
+                Cancele quando quiser. Sem fidelidade.
+              </p>
+            </div>
+          </div>
         </div>
-        <button
-          onClick={async () => { setCheckoutLoading(true); try { await startCheckout(); } catch { navigate("/pricing"); } finally { setCheckoutLoading(false); } }}
-          disabled={checkoutLoading}
-          className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-black shadow-lg hover:opacity-90 transition-opacity"
-        >
-          <Lock className="w-5 h-5" />
-          {checkoutLoading ? "Aguarde..." : "Assinar Premium — R$29,90/mês"}
-        </button>
-        <button onClick={() => navigate("/app")} className="text-sm text-slate-400 hover:text-slate-600">← Voltar</button>
       </div>
     );
   }

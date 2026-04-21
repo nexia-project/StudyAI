@@ -30,6 +30,7 @@ export default function Slide1_Capa() {
 
       <div className="absolute bottom-0 left-0 right-0 px-[8vw] py-[2.5vh] flex justify-between items-center" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
         <span className="font-body" style={{ fontSize: "1.4vw", color: "#94A3B8" }}>study.ia.br</span>
+        <span className="font-body" style={{ fontSize: "1.2vw", color: "#475569" }}>01 / 17</span>
         <span className="font-body" style={{ fontSize: "1.4vw", color: "#94A3B8" }}>Abril 2026</span>
       </div>
     </div>

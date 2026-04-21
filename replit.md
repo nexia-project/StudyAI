@@ -31,6 +31,13 @@ StudyAI is built as a `pnpm` monorepo using TypeScript, Node.js 24, and Express 
 - **Real-time Communication**: Voice chat features utilize `SpeechRecognition` and `SpeechSynthesis` for an interactive tutor experience, streaming responses from the AI.
 - **Knowledge Base Integration**: AI tutors can access an internal knowledge base, enhancing the relevance and accuracy of responses by incorporating curated content.
 
+**Professionalism Improvements (April 2026):**
+- `Home.tsx`: Heading changed "Crie seu Plano Mágico" → "Seu Plano de Estudos"; subtitle updated to professional copy; loading phases cleaned of emojis
+- `SimuladoEnem.tsx`: Premium paywall completely rebuilt into a proper feature showcase (4 ENEM days preview cards, feature list, pricing card with full benefits)
+- `AulaIA.tsx`: Tiagão image container fixed — uses CSS background-image with zoom/crop to avoid transparent PNG issues
+- `Notebook.tsx`: Added `credentials: "include"` to all fetch calls (fixes 401 Unauthorized errors)
+- `feed.ts`: Community feed now filters out poor simulado results (< 40% score or < 5 questions) to avoid displaying test data
+
 **Key Features and Modules:**
 
 - **Professor Tiagão (Agente IA)**: Universal AI assistant with persistent memory (`tiagao_memory` table), OpenAI Function Calling (tools: `navegar`, `abrir_aula_ia`, `criar_flashcards`, `iniciar_simulado`, `criar_cronograma`, `salvar_memoria`), and real-time action execution. Adapts to user roles (student, teacher, researcher, etc.) and learns from each conversation.

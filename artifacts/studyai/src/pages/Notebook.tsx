@@ -298,7 +298,7 @@ export default function Notebook() {
   const loadDocs = useCallback(async () => {
     setLoadingDocs(true);
     try {
-      const r = await fetch(`${BASE_URL}/api/notebook/docs`);
+      const r = await fetch(`${BASE_URL}/api/notebook/docs`, { credentials: "include" });
       if (r.ok) {
         const raw = await r.json();
         const data: Doc[] = Array.isArray(raw) ? raw : (Array.isArray(raw?.rows) ? raw.rows : []);
@@ -325,7 +325,7 @@ export default function Notebook() {
     form.append("file", file);
     form.append("title", file.name.replace(/\.[^.]+$/, ""));
     try {
-      const r = await fetch(`${BASE_URL}/api/notebook/upload-file`, { method: "POST", body: form });
+      const r = await fetch(`${BASE_URL}/api/notebook/upload-file`, { method: "POST", body: form, credentials: "include" });
       const data = await r.json();
       if (r.ok) {
         setUploadMsg({ ok: true, text: `✓ "${data.title}" adicionado (${data.chunks} partes indexadas)` });
@@ -347,6 +347,7 @@ export default function Notebook() {
       const r = await fetch(`${BASE_URL}/api/notebook/upload-text`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ title: uploadTitle, content: uploadText }),
       });
       const data = await r.json();
@@ -371,6 +372,7 @@ export default function Notebook() {
       const r = await fetch(`${BASE_URL}/api/notebook/upload-url`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ url: uploadUrl, title: uploadTitle || undefined }),
       });
       const data = await r.json();
@@ -389,7 +391,7 @@ export default function Notebook() {
 
   // ── Delete doc ──
   const handleDelete = useCallback(async (id: number) => {
-    await fetch(`${BASE_URL}/api/notebook/docs/${id}`, { method: "DELETE" });
+    await fetch(`${BASE_URL}/api/notebook/docs/${id}`, { method: "DELETE", credentials: "include" });
     setSelectedDocIds(ids => ids.filter(i => i !== id));
     await loadDocs();
   }, [loadDocs]);
@@ -412,6 +414,7 @@ export default function Notebook() {
       const r = await fetch(`${BASE_URL}/api/notebook/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ pergunta: q, docIds: selectedDocIds.length ? selectedDocIds : null }),
       });
       const data = await r.json();
@@ -437,6 +440,7 @@ export default function Notebook() {
         const r = await fetch(`${BASE_URL}/api/notebook/tiagao-explica`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ docId: targetDocId }),
         });
         const data = await r.json();
@@ -469,6 +473,7 @@ export default function Notebook() {
       const r = await fetch(`${BASE_URL}${endpoints[tool]}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ docId: targetDocId }),
       });
       const data = await r.json();

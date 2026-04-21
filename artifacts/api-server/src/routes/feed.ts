@@ -73,6 +73,8 @@ router.get("/feed", async (req, res) => {
 
     for (const s of recentSimulados) {
       const pct = Math.round((s.score / s.total) * 100);
+      // Only show results with at least 40% to avoid showing poor test results in the feed
+      if (pct < 40 || s.total < 5) continue;
       const emoji = pct >= 80 ? "🏆" : pct >= 60 ? "🎯" : "📝";
       events.push({
         id: `sim-${s.id}`,
@@ -80,7 +82,7 @@ router.get("/feed", async (req, res) => {
         displayName: s.firstName ?? "Estudante",
         profileImageUrl: s.profileImageUrl,
         materia: s.materia,
-        detail: `${s.score}/${s.total} no Simulado (${pct}%)`,
+        detail: `${s.score}/${s.total} questões no Simulado (${pct}%)`,
         emoji,
         color: pct >= 80 ? "text-yellow-400" : pct >= 60 ? "text-violet-400" : "text-blue-400",
         timestamp: s.createdAt,

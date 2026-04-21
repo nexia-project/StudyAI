@@ -12,17 +12,17 @@ export default function Slide12_DashboardAluno() {
         <div className="grid grid-cols-3 gap-[1.5vw] flex-1">
           <div className="col-span-2 grid grid-rows-2 gap-[1.5vw]">
             <div className="rounded-[1vw] p-[1.8vw]" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
-              <p className="font-display font-bold mb-[1.5vh]" style={{ fontSize: "1.3vw", color: "#94A3B8" }}>Progresso por Materia</p>
+              <p className="font-display font-bold mb-[1.5vh]" style={{ fontSize: "1.3vw", color: "#94A3B8" }}>Progresso por Matéria</p>
               <div className="flex flex-col gap-[1vh]">
                 <div className="flex items-center gap-[1vw]">
-                  <span className="font-body w-[8vw] flex-shrink-0" style={{ fontSize: "1.1vw", color: "#CBD5E1" }}>Matematica</span>
+                  <span className="font-body w-[8vw] flex-shrink-0" style={{ fontSize: "1.1vw", color: "#CBD5E1" }}>Matemática</span>
                   <div className="flex-1 rounded-full h-[1vh]" style={{ background: "rgba(255,255,255,0.08)" }}>
                     <div className="h-full rounded-full" style={{ width: "78%", background: "linear-gradient(90deg, #6366F1, #8B5CF6)" }} />
                   </div>
                   <span className="font-display font-bold w-[3vw] text-right" style={{ fontSize: "1.2vw", color: "#6366F1" }}>78%</span>
                 </div>
                 <div className="flex items-center gap-[1vw]">
-                  <span className="font-body w-[8vw] flex-shrink-0" style={{ fontSize: "1.1vw", color: "#CBD5E1" }}>Portugues</span>
+                  <span className="font-body w-[8vw] flex-shrink-0" style={{ fontSize: "1.1vw", color: "#CBD5E1" }}>Português</span>
                   <div className="flex-1 rounded-full h-[1vh]" style={{ background: "rgba(255,255,255,0.08)" }}>
                     <div className="h-full rounded-full" style={{ width: "91%", background: "linear-gradient(90deg, #10B981, #0D9488)" }} />
                   </div>
@@ -36,7 +36,7 @@ export default function Slide12_DashboardAluno() {
                   <span className="font-display font-bold w-[3vw] text-right" style={{ fontSize: "1.2vw", color: "#F59E0B" }}>65%</span>
                 </div>
                 <div className="flex items-center gap-[1vw]">
-                  <span className="font-body w-[8vw] flex-shrink-0" style={{ fontSize: "1.1vw", color: "#CBD5E1" }}>Historia</span>
+                  <span className="font-body w-[8vw] flex-shrink-0" style={{ fontSize: "1.1vw", color: "#CBD5E1" }}>História</span>
                   <div className="flex-1 rounded-full h-[1vh]" style={{ background: "rgba(255,255,255,0.08)" }}>
                     <div className="h-full rounded-full" style={{ width: "83%", background: "linear-gradient(90deg, #EF4444, #DC2626)" }} />
                   </div>
@@ -46,7 +46,7 @@ export default function Slide12_DashboardAluno() {
             </div>
 
             <div className="rounded-[1vw] p-[1.8vw]" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
-              <p className="font-display font-bold mb-[1.5vh]" style={{ fontSize: "1.3vw", color: "#94A3B8" }}>Heatmap de Estudo — Ultimos 30 Dias</p>
+              <p className="font-display font-bold mb-[1.5vh]" style={{ fontSize: "1.3vw", color: "#94A3B8" }}>Heatmap de Estudo — Últimos 30 Dias</p>
               <div className="flex gap-[0.4vw] flex-wrap">
                 <div className="rounded-[0.2vw]" style={{ width: "2.4vw", height: "2.4vw", background: "rgba(99,102,241,0.2)" }} />
                 <div className="rounded-[0.2vw]" style={{ width: "2.4vw", height: "2.4vw", background: "rgba(99,102,241,0.6)" }} />
@@ -89,11 +89,11 @@ export default function Slide12_DashboardAluno() {
               <div className="mt-[1vh] rounded-full h-[0.8vh]" style={{ background: "rgba(255,255,255,0.1)" }}>
                 <div className="h-full rounded-full" style={{ width: "68%", background: "linear-gradient(90deg, #F59E0B, #F97316)" }} />
               </div>
-              <p className="font-body mt-[0.5vh]" style={{ fontSize: "1vw", color: "#64748B" }}>68% para Nivel 12</p>
+              <p className="font-body mt-[0.5vh]" style={{ fontSize: "1vw", color: "#64748B" }}>68% para Nível 12</p>
             </div>
 
             <div className="rounded-[1vw] p-[1.8vw] flex-1" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
-              <p className="font-display font-bold mb-[1.5vh]" style={{ fontSize: "1.3vw", color: "#94A3B8" }}>Proximas Revisoes</p>
+              <p className="font-display font-bold mb-[1.5vh]" style={{ fontSize: "1.3vw", color: "#94A3B8" }}>Próximas Revisões</p>
               <div className="flex flex-col gap-[1.2vh]">
                 <div className="flex items-center gap-[1vw] rounded-[0.5vw] p-[0.8vw]" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
                   <div className="w-[0.8vw] h-[0.8vw] rounded-full flex-shrink-0" style={{ background: "#EF4444" }} />
@@ -105,8 +105,8 @@ export default function Slide12_DashboardAluno() {
                 <div className="flex items-center gap-[1vw] rounded-[0.5vw] p-[0.8vw]" style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)" }}>
                   <div className="w-[0.8vw] h-[0.8vw] rounded-full flex-shrink-0" style={{ background: "#F59E0B" }} />
                   <div className="flex-1">
-                    <p className="font-body" style={{ fontSize: "1.1vw", color: "#F1F5F9" }}>Celula Animal — Bio.</p>
-                    <p className="font-body" style={{ fontSize: "0.9vw", color: "#64748B" }}>Amanha</p>
+                    <p className="font-body" style={{ fontSize: "1.1vw", color: "#F1F5F9" }}>Célula Animal — Bio.</p>
+                    <p className="font-body" style={{ fontSize: "0.9vw", color: "#64748B" }}>Amanhã</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-[1vw] rounded-[0.5vw] p-[0.8vw]" style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)" }}>
@@ -143,6 +143,7 @@ export default function Slide12_DashboardAluno() {
 
       <div className="absolute bottom-0 left-0 right-0 px-[8vw] py-[2vh] flex justify-between items-center" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         <span className="font-display font-bold" style={{ fontSize: "1.4vw", color: "#6366F1" }}>StudyAI</span>
+        <span className="font-body" style={{ fontSize: "1.2vw", color: "#475569" }}>09 / 17</span>
         <span className="font-body" style={{ fontSize: "1.3vw", color: "#475569" }}>study.ia.br</span>
       </div>
     </div>

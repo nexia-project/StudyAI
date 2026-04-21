@@ -13,7 +13,7 @@ export default function Slide6_Caderno() {
             <span className="font-display font-bold tracking-wider uppercase" style={{ fontSize: "1.2vw", color: "#F59E0B" }}>Retrieval-Augmented Generation</span>
           </div>
           <p className="font-body leading-relaxed" style={{ fontSize: "1.6vw", color: "#94A3B8" }}>
-            Upload de documentos, busca semantica por embeddings e ferramentas de IA integradas diretamente nas anotacoes do aluno.
+            Upload de documentos, busca semântica por embeddings e ferramentas de IA integradas diretamente nas anotações do aluno.
           </p>
         </div>
 
@@ -24,17 +24,17 @@ export default function Slide6_Caderno() {
           </div>
 
           <div className="rounded-[1vw] px-[2.5vw] py-[2.2vh]" style={{ background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)" }}>
-            <p className="font-display font-semibold mb-[0.6vh]" style={{ fontSize: "1.6vw", color: "#F1F5F9" }}>Busca semantica</p>
-            <p className="font-body" style={{ fontSize: "1.3vw", color: "#94A3B8" }}>Respostas baseadas nos proprios materiais do estudante</p>
+            <p className="font-display font-semibold mb-[0.6vh]" style={{ fontSize: "1.6vw", color: "#F1F5F9" }}>Busca Semântica</p>
+            <p className="font-body" style={{ fontSize: "1.3vw", color: "#94A3B8" }}>Respostas baseadas nos próprios materiais do estudante</p>
           </div>
 
           <div className="rounded-[1vw] px-[2.5vw] py-[2.2vh]" style={{ background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)" }}>
             <p className="font-display font-semibold mb-[0.6vh]" style={{ fontSize: "1.6vw", color: "#F1F5F9" }}>Ferramentas de IA</p>
-            <p className="font-body" style={{ fontSize: "1.3vw", color: "#94A3B8" }}>Resumo, pontos-chave, flashcards e questoes a partir das notas</p>
+            <p className="font-body" style={{ fontSize: "1.3vw", color: "#94A3B8" }}>Resumo, pontos-chave, flashcards e questões a partir das notas</p>
           </div>
 
           <div className="rounded-[1vw] px-[2.5vw] py-[2.2vh]" style={{ background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.2)" }}>
-            <p className="font-display font-semibold mb-[0.6vh]" style={{ fontSize: "1.6vw", color: "#F1F5F9" }}>Organizacao por materia</p>
+            <p className="font-display font-semibold mb-[0.6vh]" style={{ fontSize: "1.6vw", color: "#F1F5F9" }}>Organização por Matéria</p>
             <p className="font-body" style={{ fontSize: "1.3vw", color: "#94A3B8" }}>Tags por disciplina, busca full-text e auto-save</p>
           </div>
         </div>
@@ -42,6 +42,7 @@ export default function Slide6_Caderno() {
 
       <div className="absolute bottom-0 left-0 right-0 px-[8vw] py-[2vh] flex justify-between items-center" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         <span className="font-display font-bold" style={{ fontSize: "1.4vw", color: "#6366F1" }}>StudyAI</span>
+        <span className="font-body" style={{ fontSize: "1.2vw", color: "#475569" }}>08 / 17</span>
         <span className="font-body" style={{ fontSize: "1.3vw", color: "#475569" }}>study.ia.br</span>
       </div>
     </div>

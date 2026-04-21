@@ -380,7 +380,16 @@ export default function AulaIA() {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 200 }}
             className="mb-6 relative">
-            <TiagaoCharacter state="idle" size={140} showLabel={false} />
+            <div
+              className="w-40 h-40 rounded-3xl overflow-hidden shadow-xl shadow-indigo-200 border-2 border-indigo-100"
+              style={{
+                backgroundImage: "url(/tiagao-character.png)",
+                backgroundSize: "220%",
+                backgroundPosition: "center 30%",
+                backgroundRepeat: "no-repeat",
+                backgroundColor: "#f0eaff",
+              }}
+            />
             <motion.div
               animate={{ scale: [1, 1.15, 1], opacity: [0.8, 1, 0.8] }}
               transition={{ repeat: Infinity, duration: 2.5 }}

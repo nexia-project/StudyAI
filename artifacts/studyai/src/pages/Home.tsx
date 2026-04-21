@@ -73,13 +73,13 @@ const GRADES = [
 ];
 
 const LOADING_PHASES = [
-  { until: 8,  msg: "Analisando seu conteúdo... 🔍" },
-  { until: 25, msg: "Identificando tópicos principais... 🗺️" },
-  { until: 45, msg: "Criando dias de estudo... 📅" },
-  { until: 65, msg: "Adicionando exercícios e desafios... 🎮" },
-  { until: 82, msg: "Gerando gabaritos e dicas... 💡" },
-  { until: 95, msg: "Finalizando seu plano... ✨" },
-  { until: 100, msg: "Quase pronto! 🚀" },
+  { until: 8,  msg: "Analisando o conteúdo..." },
+  { until: 25, msg: "Identificando os tópicos principais..." },
+  { until: 45, msg: "Estruturando os dias de estudo..." },
+  { until: 65, msg: "Criando exercícios e atividades..." },
+  { until: 82, msg: "Gerando gabaritos comentados..." },
+  { until: 95, msg: "Finalizando seu plano..." },
+  { until: 100, msg: "Quase pronto..." },
 ];
 
 function buildConteudoTextoFromPlan(plan: any): string {
@@ -771,19 +771,19 @@ export default function Home() {
           {studentProfile?.nome && studentProfile.nome !== "Herói" ? (
             <>
               <p className="text-base md:text-lg font-bold text-primary/70 mb-1 tracking-wide">
-                Olá, {studentProfile.nome}! 👋
+                Olá, {studentProfile.nome}!
               </p>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-black text-foreground mb-4 tracking-tight">
-                Crie seu <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-accent to-pink-500 animate-gradient-x">Plano Mágico</span>
+                Seu <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-accent to-pink-500 animate-gradient-x">Plano de Estudos</span>
               </h1>
             </>
           ) : (
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-black text-foreground mb-4 tracking-tight">
-              Crie seu <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-accent to-pink-500 animate-gradient-x">Plano Mágico</span>
+              Seu <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-accent to-pink-500 animate-gradient-x">Plano de Estudos</span>
             </h1>
           )}
           <p className="text-lg md:text-xl text-muted-foreground font-medium">
-            Transforme estudos chatos em missões épicas com nossa IA gamificada.
+            Diga o que vai estudar — a IA monta seu roteiro completo com exercícios e cronograma.
           </p>
         </motion.div>
       )}

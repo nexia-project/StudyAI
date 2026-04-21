@@ -15,10 +15,64 @@ const claude = new Anthropic({
 // OpenAI como fallback
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// ─── Calibração de dificuldade conforme o estilo escolhido pelo aluno ─────────
+function difficultyProfile(estilo: string): {
+  nivelLabel: string;
+  publico: string;
+  rigor: string;
+  exemplos: string;
+  vocabulario: string;
+} {
+  const e = (estilo || "").toLowerCase();
+  if (e.includes("simples") || e.includes("fundamental") || e.includes("básic")) {
+    return {
+      nivelLabel: "iniciante (Ensino Fundamental / introdução total ao tema)",
+      publico: "alunos do Fundamental II ou que estão vendo o assunto pela primeira vez",
+      rigor: "BAIXO — explique como se fosse para uma criança de 12 anos. Sem jargão. Use analogias do dia a dia.",
+      exemplos: "exemplos cotidianos (cozinha, futebol, redes sociais, jogos). NÃO use questões de prova.",
+      vocabulario: "palavras simples, frases curtas, evite termos técnicos sem explicar.",
+    };
+  }
+  if (e.includes("vestibular") || e.includes("fuvest") || e.includes("unicamp") || e.includes("ita")) {
+    return {
+      nivelLabel: "avançado (Vestibulares de elite — FUVEST, UNICAMP, ITA, UNESP)",
+      publico: "candidatos que já dominam o básico e querem profundidade conceitual",
+      rigor: "ALTO — exija demonstrações, justifique fórmulas, mostre casos limites e pegadinhas clássicas.",
+      exemplos: "questões reais de FUVEST/UNICAMP/ITA dos últimos 5 anos. Cite o ano e a banca.",
+      vocabulario: "vocabulário técnico-acadêmico, mas sempre explicado na primeira ocorrência.",
+    };
+  }
+  if (e.includes("concurso") || e.includes("cespe") || e.includes("cebraspe") || e.includes("fcc")) {
+    return {
+      nivelLabel: "concurso público (estilo CEBRASPE/CESPE, FCC, FGV, VUNESP)",
+      publico: "concurseiros que precisam de objetividade e pegadinhas de banca",
+      rigor: "ALTO no detalhe legal/normativo. Foco em literalidade, exceções e jurisprudência quando cabível.",
+      exemplos: "itens estilo CEBRASPE (Certo/Errado) e múltipla escolha FCC. Mostre a pegadinha típica.",
+      vocabulario: "linguagem formal, técnica, com referências a leis/normas quando aplicável.",
+    };
+  }
+  // Default = ENEM
+  return {
+    nivelLabel: "médio-ENEM (Ensino Médio com olhar para o ENEM)",
+    publico: "estudantes do 2º/3º ano do EM que vão prestar ENEM",
+    rigor: "MÉDIO — equilibre conceito e aplicação. Mostre interdisciplinaridade (a marca do ENEM).",
+    exemplos: "questões reais do ENEM (2018-2024). Cite o ano. Destaque a habilidade BNCC quando possível.",
+    vocabulario: "claro, contextualizado, sempre conectando à realidade brasileira.",
+  };
+}
+
 // ─── Gerar aula com Claude (melhor qualidade educacional) ─────────────────────
 async function gerarAulaComClaude(topico: string, estilo: string, nivel: string): Promise<string> {
+  const prof = difficultyProfile(estilo);
   const systemPrompt = `Você é o Professor Tiagão, tutor educacional brasileiro especialista em ${estilo}.
-Crie uma aula DETALHADA e DIDÁTICA. Cada etapa é escrita letra por letra na lousa — o aluno lê no ritmo da escrita, então use textos completos e explicativos.
+
+🎯 PÚBLICO-ALVO: ${prof.publico}
+📊 NÍVEL DE DIFICULDADE: ${prof.nivelLabel}
+⚖️ RIGOR EXIGIDO: ${prof.rigor}
+🧪 TIPO DE EXEMPLO: ${prof.exemplos}
+🗣️ VOCABULÁRIO: ${prof.vocabulario}
+
+Crie uma aula DETALHADA e DIDÁTICA respeitando RIGOROSAMENTE o nível acima — o aluno escolheu este nível, então a aula DEVE soar diferente conforme a escolha. Cada etapa é escrita letra por letra na lousa — o aluno lê no ritmo da escrita, então use textos completos e explicativos.
 
 ESTRUTURA DE CADA ETAPA:
 1. "narracao": O que Tiagão FALA enquanto escreve (4-6 frases, coloquial PT-BR, animado, explica cada detalhe)
@@ -39,7 +93,8 @@ REGRAS DE QUALIDADE:
 - Exemplos: sempre do contexto ${estilo} (ENEM 2023, vestibulares, situação do dia a dia)
 - Linguagem: "Olha só...", "Repara que...", "Aqui está o pulo do gato:", "Isso cai muito no ENEM!"
 - Máximo 6 etapas por aula, mínimo 4
-- Nível: ${nivel}
+- Nível adicional: ${nivel}
+- IMPORTANTE: a aula DEVE refletir o nível "${prof.nivelLabel}" — se for Simples, NADA de questão de prova; se for Vestibular/Concurso, exija profundidade.
 
 RETORNE SOMENTE JSON VÁLIDO, sem texto extra, sem markdown:
 {
@@ -78,7 +133,9 @@ RETORNE SOMENTE JSON VÁLIDO, sem texto extra, sem markdown:
 
 // ─── Fallback: gerar aula com OpenAI ─────────────────────────────────────────
 async function gerarAulaComOpenAI(topico: string, estilo: string, nivel: string): Promise<string> {
+  const prof = difficultyProfile(estilo);
   const systemPrompt = `Você é o Professor Tiagão, tutor educacional brasileiro especialista em ${estilo}.
+Público: ${prof.publico}. Nível: ${prof.nivelLabel}. Rigor: ${prof.rigor}. Exemplos: ${prof.exemplos}. Vocabulário: ${prof.vocabulario}.
 Crie uma aula DETALHADA e DIDÁTICA em JSON. Retorne APENAS o JSON, sem texto extra.
 {
   "titulo": "string",
@@ -98,7 +155,7 @@ Crie uma aula DETALHADA e DIDÁTICA em JSON. Retorne APENAS o JSON, sem texto ex
     }
   ]
 }
-Nível: ${nivel}. Máx 6 etapas, mín 4. Exemplos do contexto ${estilo}.`;
+Nível: ${nivel}. Máx 6 etapas, mín 4. Exemplos do contexto ${estilo}. RESPEITE rigorosamente o nível "${prof.nivelLabel}".`;
 
   const completion = await openai.chat.completions.create({
     model: "gpt-4o",

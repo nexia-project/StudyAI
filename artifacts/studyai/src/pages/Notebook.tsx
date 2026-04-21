@@ -155,7 +155,7 @@ function MindMapView({ map }: { map: MindMap }) {
         </div>
       </div>
       <div className="space-y-2">
-        {map.topics.map((topic, i) => (
+        {(map.topics ?? []).map((topic, i) => (
           <div key={i} className="rounded-xl border overflow-hidden" style={{ borderColor: (topic.color || "#6366f1") + "40" }}>
             <button
               onClick={() => setExpanded(s => { const ns = new Set(s); ns.has(i) ? ns.delete(i) : ns.add(i); return ns; })}
@@ -257,7 +257,7 @@ function QuestaViewer({ questoes }: { questoes: Questao[] }) {
       </div>
       <p className="text-sm text-slate-800 font-medium leading-snug mb-3">{q.enunciado}</p>
       <div className="space-y-1.5">
-        {Object.entries(q.alternativas).map(([key, text]) => {
+        {Object.entries(q.alternativas ?? {}).map(([key, text]) => {
           const correct = selected && key === q.gabarito;
           const wrong = selected && selected === key && key !== q.gabarito;
           return (
@@ -302,33 +302,77 @@ function QuestaViewer({ questoes }: { questoes: Questao[] }) {
   );
 }
 
-// ─── Podcast Viewer ───────────────────────────────────────────────────────────
+// ─── Podcast Viewer (TTS REAL: ANA=nova, MARCOS=onyx) ────────────────────────
 function PodcastViewer({ podcast }: { podcast: PodcastRoteiro }) {
   const [playing, setPlaying] = useState(false);
   const [currentIdx, setCurrentIdx] = useState(-1);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [loading, setLoading] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const tokenRef = useRef(0);
+  const roteiro = podcast.roteiro ?? [];
 
-  const playNext = useCallback((idx: number) => {
-    if (idx >= podcast.roteiro.length) { setPlaying(false); setCurrentIdx(-1); return; }
-    setCurrentIdx(idx);
-    const wordCount = podcast.roteiro[idx].fala.split(" ").length;
-    const duration = Math.max(2000, wordCount * 280); // ~250ms per word
-    timerRef.current = setTimeout(() => playNext(idx + 1), duration);
-  }, [podcast.roteiro]);
-
-  const startPlay = useCallback(() => {
+  const playFromIdx = useCallback(async (startIdx: number) => {
+    const myToken = ++tokenRef.current;
     setPlaying(true);
-    setCurrentIdx(0);
-    playNext(0);
-  }, [playNext]);
-
-  const stopPlay = useCallback(() => {
+    for (let i = startIdx; i < roteiro.length; i++) {
+      if (myToken !== tokenRef.current) return;
+      setCurrentIdx(i);
+      setLoading(true);
+      const linha = roteiro[i];
+      const voice = linha.speaker === "ANA" ? "nova" : "onyx";
+      try {
+        const r = await fetch("/api/voice-tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: linha.fala, voice }),
+        });
+        if (myToken !== tokenRef.current) return;
+        if (!r.ok) throw new Error("tts");
+        const blob = await r.blob();
+        if (myToken !== tokenRef.current) return;
+        const url = URL.createObjectURL(blob);
+        const audio = audioRef.current ?? new Audio();
+        audioRef.current = audio;
+        audio.src = url;
+        setLoading(false);
+        await new Promise<void>((resolve) => {
+          const cleanup = () => {
+            audio.removeEventListener("ended", onEnd);
+            audio.removeEventListener("error", onEnd);
+            URL.revokeObjectURL(url);
+          };
+          const onEnd = () => { cleanup(); resolve(); };
+          audio.addEventListener("ended", onEnd, { once: true });
+          audio.addEventListener("error", onEnd, { once: true });
+          audio.play().catch(() => { cleanup(); resolve(); });
+        });
+        if (myToken !== tokenRef.current) return;
+      } catch {
+        // se falhar TTS, espera tempo proporcional ao texto e segue
+        setLoading(false);
+        const ms = Math.max(1500, linha.fala.split(" ").length * 220);
+        await new Promise(res => setTimeout(res, ms));
+        if (myToken !== tokenRef.current) return;
+      }
+    }
     setPlaying(false);
     setCurrentIdx(-1);
-    if (timerRef.current) clearTimeout(timerRef.current);
+  }, [roteiro]);
+
+  const startPlay = useCallback(() => { playFromIdx(0); }, [playFromIdx]);
+
+  const stopPlay = useCallback(() => {
+    tokenRef.current++; // invalida loop atual
+    setPlaying(false);
+    setLoading(false);
+    setCurrentIdx(-1);
+    if (audioRef.current) { try { audioRef.current.pause(); } catch {} }
   }, []);
 
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  useEffect(() => () => {
+    tokenRef.current++;
+    if (audioRef.current) { try { audioRef.current.pause(); } catch {} }
+  }, []);
 
   return (
     <div className="p-3 space-y-3">
@@ -370,12 +414,14 @@ function PodcastViewer({ podcast }: { podcast: PodcastRoteiro }) {
         className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-all ${
           playing ? "bg-rose-100 border-2 border-rose-300 text-rose-700" : "bg-rose-500 text-white hover:bg-rose-600"
         }`}>
-        {playing ? <><Pause className="w-4 h-4" /> Pausar leitura</> : <><Play className="w-4 h-4" /> Simular leitura</>}
+        {playing
+          ? <><Pause className="w-4 h-4" /> {loading ? "Carregando voz…" : "Pausar podcast"}</>
+          : <><Play className="w-4 h-4" /> Ouvir podcast (vozes reais)</>}
       </button>
 
       {/* Roteiro */}
       <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-        {podcast.roteiro.map((linha, i) => {
+        {(podcast.roteiro ?? []).map((linha, i) => {
           const isAna = linha.speaker === "ANA";
           const isActive = currentIdx === i;
           return (
@@ -403,7 +449,7 @@ function PodcastViewer({ podcast }: { podcast: PodcastRoteiro }) {
         <div>
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Pontos-chave</p>
           <div className="space-y-1">
-            {podcast.destaques.map((d, i) => (
+            {(podcast.destaques ?? []).map((d, i) => (
               <div key={i} className="flex items-start gap-1.5 text-[11px] text-slate-700">
                 <span className="text-rose-400 font-black flex-shrink-0">•</span>
                 {d}
@@ -433,7 +479,7 @@ function TimelineView({ t }: { t: Timeline }) {
 
       <div className="relative pl-5">
         <div className="absolute left-2 top-1 bottom-1 w-0.5 bg-gradient-to-b from-amber-300 via-orange-300 to-rose-300" />
-        {t.eventos.map((ev, i) => (
+        {(t.eventos ?? []).map((ev, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, x: -8 }}
@@ -558,7 +604,7 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
                 <p className={`text-[10px] font-black uppercase tracking-wider ${theme.accent} mb-1`}>Agenda</p>
                 <p className="text-base font-black mb-3">{slide.titulo}</p>
                 <div className="flex-1 space-y-1.5">
-                  {slide.itens.map((it, i) => (
+                  {(slide.itens ?? []).map((it, i) => (
                     <div key={i} className="flex items-center gap-2.5">
                       <span className={`w-6 h-6 rounded-full ${theme.chip} flex items-center justify-center text-[11px] font-black flex-shrink-0`}>{i + 1}</span>
                       <p className="text-xs font-semibold">{it}</p>
@@ -573,7 +619,7 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
                 <p className="text-base font-black leading-tight">{slide.titulo}</p>
                 {slide.subtitulo && <p className={`text-[11px] ${theme.accent} mb-2`}>{slide.subtitulo}</p>}
                 <div className="flex-1 space-y-1.5 mt-2">
-                  {slide.bullets.map((b, i) => (
+                  {(slide.bullets ?? []).map((b, i) => (
                     <div key={i} className="flex items-start gap-2">
                       <span className={`w-1.5 h-1.5 rounded-full ${theme.chip} flex-shrink-0 mt-1.5`} />
                       <p className="text-xs leading-snug">{b}</p>
@@ -592,11 +638,11 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
               <div className="flex-1 flex flex-col">
                 <p className="text-base font-black leading-tight mb-3">{slide.titulo}</p>
                 <div className="flex-1 grid grid-cols-2 gap-2">
-                  {[slide.esquerda, slide.direita].map((col, ci) => (
+                  {[slide.esquerda, slide.direita].filter(Boolean).map((col, ci) => (
                     <div key={ci} className="rounded-lg bg-white/10 p-2.5 backdrop-blur">
                       <p className={`text-[10px] font-black ${theme.accent} uppercase tracking-wider mb-1.5`}>{col.titulo}</p>
                       <div className="space-y-1">
-                        {col.itens.map((it, i) => (
+                        {(col?.itens ?? []).map((it, i) => (
                           <div key={i} className="flex items-start gap-1.5">
                             <span className="w-1 h-1 rounded-full bg-white flex-shrink-0 mt-1.5" />
                             <p className="text-[11px] leading-snug">{it}</p>
@@ -645,7 +691,7 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
           <ChevronLeft className="w-3.5 h-3.5" />
         </button>
         <div className="flex-1 flex gap-0.5">
-          {deck.slides.map((_, i) => (
+          {(deck.slides ?? []).map((_, i) => (
             <button
               key={i}
               onClick={() => setIdx(i)}
@@ -664,7 +710,7 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
 
       {/* Thumbnails / index */}
       <div className="grid grid-cols-3 gap-1.5 mt-1">
-        {deck.slides.map((s, i) => {
+        {(deck.slides ?? []).map((s, i) => {
           const t = s.tipo === "capa" ? "Capa"
             : s.tipo === "agenda" ? "Agenda"
             : s.tipo === "comparacao" ? "Comparação"

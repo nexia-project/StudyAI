@@ -880,17 +880,22 @@ async function ttsElevenLabs(text: string): Promise<Buffer> {
 // ─── TTS ──────────────────────────────────────────────────────────────────────
 router.post("/voice-tts", async (req, res) => {
   try {
-    const { text } = req.body as { text: string };
+    const { text, voice } = req.body as { text: string; voice?: string };
     if (!text?.trim()) {
       res.status(400).json({ erro: "text é obrigatório" });
       return;
     }
 
+    // Voz solicitada (default Tiagão = onyx). Vozes OpenAI: alloy, echo, fable, onyx, nova, shimmer.
+    const allowed = new Set(["alloy", "echo", "fable", "onyx", "nova", "shimmer"]);
+    const chosen = (voice && allowed.has(voice)) ? voice : "onyx";
+
     res.setHeader("Content-Type", "audio/mpeg");
     res.setHeader("Cache-Control", "no-cache");
 
-    // 1ª tentativa: ElevenLabs (melhor qualidade, latência ~300 ms)
-    if (process.env.ELEVENLABS_API_KEY) {
+    // 1ª tentativa: ElevenLabs SOMENTE para a voz padrão (Tiagão); para vozes específicas
+    // (ex.: nova/onyx do podcast), vamos direto no OpenAI para respeitar a escolha do speaker.
+    if (process.env.ELEVENLABS_API_KEY && !voice) {
       try {
         const buf = await ttsElevenLabs(text);
         res.end(buf);
@@ -900,10 +905,10 @@ router.post("/voice-tts", async (req, res) => {
       }
     }
 
-    // Fallback: OpenAI TTS-1 (onyx)
+    // OpenAI TTS-1 com a voz escolhida
     const mp3 = await openai.audio.speech.create({
       model: "tts-1",
-      voice: "onyx",
+      voice: chosen as any,
       input: text.trim().slice(0, 1000),
       response_format: "mp3",
       speed: 1.15,

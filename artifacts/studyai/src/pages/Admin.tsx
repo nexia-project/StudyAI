@@ -383,9 +383,9 @@ export default function AdminPage() {
     const name = [u.firstName, u.lastName].filter(Boolean).join(" ").toLowerCase();
     const q = searchQ.toLowerCase();
     const matchSearch = !q || name.includes(q) || (u.email ?? "").toLowerCase().includes(q);
-    if (activeSection === "alunos") return matchSearch && (!u.role || u.role === "student");
-    if (activeSection === "professores") return matchSearch && u.role === "teacher";
-    if (activeSection === "instituicoes") return matchSearch && (u.role === "institution_admin" || u.role === "government");
+    if (activeSection === "alunos") return matchSearch && u.role !== "teacher" && u.role !== "institution_admin" && u.role !== "government";
+    if (activeSection === "professores") return matchSearch && (u.role === "teacher" || u.role === "admin");
+    if (activeSection === "instituicoes") return matchSearch && (u.role === "institution_admin" || u.role === "government" || u.role === "admin");
     return matchSearch;
   });
 

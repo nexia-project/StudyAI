@@ -37,6 +37,7 @@ import trilhaRouter from "./trilha";
 import notebookRouter from "./notebook";
 import geminiRouter from "./gemini";
 import openaiImageRouter from "./openai-image";
+import studioIaRouter from "./studio-ia";
 
 const router: IRouter = Router();
 
@@ -78,5 +79,6 @@ router.use(trilhaRouter);
 router.use(notebookRouter);
 router.use(geminiRouter);
 router.use(openaiImageRouter);
+router.use(studioIaRouter);
 
 export default router;

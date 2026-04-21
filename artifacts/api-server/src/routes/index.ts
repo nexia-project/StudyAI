@@ -36,6 +36,7 @@ import aulaIaRouter from "./aula-ia";
 import trilhaRouter from "./trilha";
 import notebookRouter from "./notebook";
 import geminiRouter from "./gemini";
+import openaiImageRouter from "./openai-image";
 
 const router: IRouter = Router();
 
@@ -76,5 +77,6 @@ router.use(aulaIaRouter);
 router.use(trilhaRouter);
 router.use(notebookRouter);
 router.use(geminiRouter);
+router.use(openaiImageRouter);
 
 export default router;

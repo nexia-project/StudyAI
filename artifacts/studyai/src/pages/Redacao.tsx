@@ -148,14 +148,15 @@ export default function Redacao() {
     setLoadingTemaImg(true);
     setTemaImagem(null);
     try {
-      const res = await fetch(`${BASE_URL_R}/api/gemini/gerar-imagem`, {
+      const res = await fetch(`${BASE_URL_R}/api/openai/gerar-imagem`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
           topico: tema.trim(),
-          contexto: "Tema de redação ENEM — realidade social brasileira",
+          contexto: "Tema de redação ENEM — realidade social brasileira, questão social contemporânea",
           estilo: "infografico",
+          size: "1536x1024",
         }),
       });
       const data = await res.json();

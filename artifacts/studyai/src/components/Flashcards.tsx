@@ -85,11 +85,11 @@ export function FlashcardsModal({
     setLoadingImageId(cardId);
     try {
       const topico = `${frente}: ${verso}`.slice(0, 200);
-      const res = await fetch(`${BASE_URL}api/gemini/gerar-imagem`, {
+      const res = await fetch(`${BASE_URL}api/openai/gerar-imagem`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ topico, contexto: materia, estilo: "diagrama" }),
+        body: JSON.stringify({ topico, contexto: materia, estilo: "diagrama", size: "1024x1024" }),
       });
       const data = await res.json();
       if (data.b64_json) {

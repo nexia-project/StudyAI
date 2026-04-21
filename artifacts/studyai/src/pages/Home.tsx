@@ -29,6 +29,8 @@ import {
   XCircle,
   PlayCircle,
   Download,
+  Wand2,
+  ImageIcon,
   Link,
   UserCircle,
   Pencil,
@@ -260,6 +262,8 @@ export default function Home() {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [planBanner, setPlanBanner] = useState<string | null>(null);
   const [loadingPlanBanner, setLoadingPlanBanner] = useState(false);
+  const [wallpaperUrl, setWallpaperUrl] = useState<string | null>(null);
+  const [loadingWallpaper, setLoadingWallpaper] = useState(false);
   const exerciciosRef = useRef<HTMLDivElement>(null);
 
   // Save plan to DB for authenticated users
@@ -581,20 +585,22 @@ export default function Home() {
     setResumaData(null);
     setResumaLoading(false);
     setPlanBanner(null);
+    setWallpaperUrl(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   useEffect(() => {
     if (!planResult?.materia) return;
     setPlanBanner(null);
+    setWallpaperUrl(null);
     setLoadingPlanBanner(true);
     const topico = planResult.materia;
-    const contexto = planResult.resumoDoConteudo?.slice(0, 200) ?? "";
-    fetch("/api/gemini/gerar-imagem", {
+    const contexto = planResult.resumoDoConteudo?.slice(0, 300) ?? "";
+    fetch("/api/openai/gerar-imagem", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ topico, contexto, estilo: "ilustracao" }),
+      body: JSON.stringify({ topico, contexto, estilo: "capa", size: "1536x1024" }),
     })
       .then(r => r.json())
       .then(data => {
@@ -605,6 +611,33 @@ export default function Home() {
       .catch(() => {})
       .finally(() => setLoadingPlanBanner(false));
   }, [planResult?.materia]);
+
+  async function gerarWallpaper() {
+    if (!planResult || loadingWallpaper) return;
+    setLoadingWallpaper(true);
+    setWallpaperUrl(null);
+    try {
+      const sonho = planResult.mensagemMotivacional?.slice(0, 120) ?? planResult.materia;
+      const res = await fetch("/api/openai/gerar-wallpaper", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          sonho,
+          materia: planResult.materia,
+          nome: planResult.aluno,
+        }),
+      });
+      const data = await res.json();
+      if (data.b64_json) {
+        setWallpaperUrl(`data:${data.mimeType};base64,${data.b64_json}`);
+      }
+    } catch {
+      // fail silently
+    } finally {
+      setLoadingWallpaper(false);
+    }
+  }
 
   const generateResumo = async (plan: StudyPlan, conteudo: string) => {
     setResumaLoading(true);
@@ -1297,6 +1330,73 @@ export default function Home() {
                   )}
                 </div>
               )}
+
+              {/* WALLPAPER MOTIVACIONAL */}
+              <div className="bg-white rounded-[2rem] border border-slate-100 shadow-lg overflow-hidden">
+                <div className="px-6 py-5 flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl" style={{ backgroundColor: `${planResult.cor}18` }}>
+                      🖼️
+                    </div>
+                    <div>
+                      <h3 className="font-black text-gray-900">Wallpaper Motivacional</h3>
+                      <p className="text-xs text-gray-400 font-medium">Arte cinematic gerada por IA para deixar no fundo de tela</p>
+                    </div>
+                  </div>
+                  {!wallpaperUrl && (
+                    <button
+                      onClick={gerarWallpaper}
+                      disabled={loadingWallpaper}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-white font-black text-sm transition-all hover:opacity-90 hover:scale-[1.02] active:scale-95 disabled:opacity-50 shadow-lg"
+                      style={{ background: `linear-gradient(135deg, ${planResult.cor}, #1e1b4b)` }}
+                    >
+                      {loadingWallpaper ? (
+                        <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> Gerando...</>
+                      ) : (
+                        <><Wand2 className="w-4 h-4" /> Criar Wallpaper</>
+                      )}
+                    </button>
+                  )}
+                </div>
+                <AnimatePresence>
+                  {wallpaperUrl && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                    >
+                      <img
+                        src={wallpaperUrl}
+                        alt="Wallpaper motivacional"
+                        className="w-full object-cover"
+                        style={{ maxHeight: "300px" }}
+                      />
+                      <div className="px-6 py-3 flex items-center justify-between gap-3 bg-gray-50">
+                        <p className="text-xs text-gray-500 font-medium">
+                          Wallpaper 16:9 gerado por IA — salve como fundo de tela para manter o foco!
+                        </p>
+                        <div className="flex gap-2">
+                          <a
+                            href={wallpaperUrl}
+                            download={`wallpaper-${planResult.materia.replace(/\s+/g, "-")}.png`}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white font-bold text-xs shadow transition-all hover:opacity-90"
+                            style={{ background: `linear-gradient(135deg, ${planResult.cor}, #1e1b4b)` }}
+                          >
+                            <Download className="w-3.5 h-3.5" /> Baixar
+                          </a>
+                          <button
+                            onClick={gerarWallpaper}
+                            disabled={loadingWallpaper}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold text-xs transition-all"
+                          >
+                            <Wand2 className="w-3 h-3" /> Novo
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
               {/* RESUMÃO ESTRATÉGICO */}
               <div className="bg-white rounded-[2rem] border-2 overflow-hidden shadow-xl" style={{ borderColor: planResult.cor }}>

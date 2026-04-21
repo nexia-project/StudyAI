@@ -6,7 +6,12 @@ import {
   Shield, Plus, Mail, TrendingUp, Target, Zap, FileText, Settings,
   CheckCircle, XCircle, Copy, Check, Palette, Link2, Clock, AlertTriangle,
   ChevronRight, Trash2, UserCheck, UserX, Send, Lock, Eye, EyeOff,
+  Brain, Sparkles, BookOpen, Mic, Wand2, Layers,
 } from "lucide-react";
+import {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
+  PieChart, Pie, Cell, Legend,
+} from "recharts";
 import { Button } from "@/components/ui/button";
 import { useStudyAuth } from "@/hooks/useStudyAuth";
 
@@ -213,6 +218,173 @@ export function InstituicaoLoginPage() {
 }
 
 // ─── Main institution portal ──────────────────────────────────────────────────
+// ─── INTELIGÊNCIA IA TAB ─────────────────────────────────────────────────────
+interface InstAIStats {
+  scope: { studentCount: number; turmaCount: number };
+  aiFeatures: { feature: string; uses: number; users: number; last7d: number }[];
+  trilhaBySubject: { subject: string; students: number; avgLevel: number; maxLevel: number }[];
+  diagnosticsCompleted30d: number;
+  notebookDocsTotal: number; notebookStorageMb: number; notebookOverviewsTotal: number;
+  contentBreakdown: { label: string; value: number; color: string }[];
+}
+
+function InstituicaoIATab({ institutionId, primaryColor }: { institutionId: string; primaryColor: string }) {
+  const [stats, setStats] = useState<InstAIStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`${BASE}/api/institution/${institutionId}/ai-stats`, { credentials: "include" })
+      .then(async r => {
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? "Erro");
+        return r.json();
+      })
+      .then(setStats)
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [institutionId]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin" />
+      </div>
+    );
+  }
+  if (error || !stats) {
+    return <div className="text-center py-12 text-red-300">{error ?? "Sem dados"}</div>;
+  }
+
+  if (stats.scope.studentCount === 0) {
+    return (
+      <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-12 text-center">
+        <Brain className="w-12 h-12 text-slate-500 mx-auto mb-3" />
+        <h3 className="text-white font-bold mb-1">Nenhum aluno matriculado ainda</h3>
+        <p className="text-slate-400 text-sm">Adicione alunos às turmas para ver o uso de IA da instituição.</p>
+      </div>
+    );
+  }
+
+  const featureIcon: Record<string, any> = {
+    "Tiagão (Voz)": Mic, "Trilha do Mestre": Target, "Notebook (RAG)": BookOpen,
+    "Mapa Mental": Layers, "Redação": FileText, "Flashcards": Sparkles,
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Hero */}
+      <div className="rounded-2xl p-5 border border-indigo-500/30 bg-gradient-to-br from-indigo-900/40 to-violet-900/30">
+        <div className="flex items-center gap-3 mb-1">
+          <Brain className="w-5 h-5 text-indigo-300" />
+          <h2 className="text-white font-bold text-lg">Inteligência IA da Instituição</h2>
+        </div>
+        <p className="text-slate-300 text-sm">
+          Métricas de uso das features de IA pelos <strong className="text-white">{stats.scope.studentCount}</strong> alunos
+          em <strong className="text-white">{stats.scope.turmaCount}</strong> turmas.
+        </p>
+      </div>
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: "Diagnósticos (30d)", value: stats.diagnosticsCompleted30d, icon: Target, color: "text-emerald-400" },
+          { label: "Documentos Notebook", value: stats.notebookDocsTotal, icon: BookOpen, color: "text-blue-400" },
+          { label: "Storage RAG", value: `${stats.notebookStorageMb} MB`, icon: Layers, color: "text-violet-400" },
+          { label: "Overviews gerados", value: stats.notebookOverviewsTotal, icon: Wand2, color: "text-amber-400" },
+        ].map(k => (
+          <div key={k.label} className="bg-slate-800/60 border border-slate-700 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-2">
+              <k.icon className={`w-4 h-4 ${k.color}`} />
+            </div>
+            <p className="text-2xl font-black text-white">{k.value}</p>
+            <p className="text-xs text-slate-400 mt-0.5">{k.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* AI features grid */}
+      <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-5">
+        <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-amber-400" /> Adoção por Feature de IA
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {stats.aiFeatures.map(f => {
+            const Icon = featureIcon[f.feature] ?? Brain;
+            return (
+              <div key={f.feature} className="bg-slate-900/60 border border-slate-700 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon className="w-4 h-4 text-indigo-300" />
+                  <span className="text-white font-semibold text-sm">{f.feature}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <p className="text-lg font-black text-white">{f.uses}</p>
+                    <p className="text-[10px] text-slate-500 uppercase">Usos</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-black text-emerald-400">{f.users}</p>
+                    <p className="text-[10px] text-slate-500 uppercase">Alunos</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-black text-amber-400">{f.last7d}</p>
+                    <p className="text-[10px] text-slate-500 uppercase">7 dias</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Trilha by subject */}
+        <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-5">
+          <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+            <Target className="w-4 h-4 text-emerald-400" /> Trilha do Mestre por Matéria
+          </h3>
+          {stats.trilhaBySubject.length === 0 ? (
+            <p className="text-slate-500 text-sm text-center py-8">Nenhum aluno iniciou a Trilha ainda.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={stats.trilhaBySubject}>
+                <CartesianGrid stroke="#334155" strokeDasharray="3 3" />
+                <XAxis dataKey="subject" tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                <YAxis domain={[0, 5]} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                <Tooltip contentStyle={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 8 }} />
+                <Bar dataKey="avgLevel" name="Nível médio" fill={primaryColor} radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Content breakdown */}
+        <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-5">
+          <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+            <Layers className="w-4 h-4 text-violet-400" /> Conteúdo Gerado pela Instituição
+          </h3>
+          {stats.contentBreakdown.every(c => c.value === 0) ? (
+            <p className="text-slate-500 text-sm text-center py-8">Sem conteúdo gerado ainda.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={240}>
+              <PieChart>
+                <Pie data={stats.contentBreakdown.filter(c => c.value > 0)} dataKey="value" nameKey="label"
+                  cx="50%" cy="50%" outerRadius={80} label={false}>
+                  {stats.contentBreakdown.filter(c => c.value > 0).map((c, i) => (
+                    <Cell key={i} fill={c.color} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 8 }} />
+                <Legend wrapperStyle={{ fontSize: 11, color: "#94a3b8" }} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function InstituicaoPage() {
   const [, navigate] = useLocation();
   const { isAuthenticated, isLoading: authLoading, user } = useStudyAuth();
@@ -416,6 +588,7 @@ export default function InstituicaoPage() {
     { id: "overview", label: "Visão Geral", icon: BarChart2 },
     { id: "turmas", label: "Turmas", icon: GraduationCap, count: turmas.length },
     { id: "membros", label: "Membros", icon: Users, count: members.length, badge: pendingMembers.length },
+    { id: "ia", label: "Inteligência IA", icon: Brain },
     { id: "relatorios", label: "Relatórios", icon: FileText },
     ...(isAdmin ? [{ id: "configuracoes", label: "Config.", icon: Settings }] : []),
   ] as const;
@@ -712,6 +885,11 @@ export default function InstituicaoPage() {
               </div>
             )}
           </div>
+        )}
+
+        {/* ─── INTELIGÊNCIA IA ─── */}
+        {activeTab === "ia" && (
+          <InstituicaoIATab institutionId={institution.id} primaryColor={primaryColor} />
         )}
 
         {/* ─── RELATÓRIOS ─── */}

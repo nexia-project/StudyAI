@@ -396,4 +396,93 @@ router.get("/institution/:id/report", async (req: Request, res: Response) => {
   });
 });
 
+// ─── AI usage metrics scoped to institution ──────────────────────────────────
+router.get("/institution/:id/ai-stats", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isInstitutionAdmin(req.userId!, req.params.id))) { res.status(403).json({ error: "Acesso negado" }); return; }
+
+  try {
+    const turmas = await db.select({ id: turmasTable.id }).from(turmasTable).where(eq(turmasTable.institutionId, req.params.id));
+    const turmaIds = turmas.map(t => t.id);
+    const memberships = turmaIds.length
+      ? await db.select({ studentId: turmaMembershipsTable.studentId }).from(turmaMembershipsTable).where(inArray(turmaMembershipsTable.turmaId, turmaIds))
+      : [];
+    const studentIds = [...new Set(memberships.map(m => m.studentId))];
+
+    if (!studentIds.length) {
+      res.json({
+        scope: { studentCount: 0, turmaCount: turmas.length },
+        aiFeatures: [],
+        trilhaBySubject: [],
+        diagnosticsCompleted30d: 0,
+        notebookDocsTotal: 0, notebookStorageMb: 0, notebookOverviewsTotal: 0,
+        contentBreakdown: [],
+      });
+      return;
+    }
+
+    const idsArr = sql`(${sql.join(studentIds.map(id => sql`${id}`), sql`,`)})`;
+
+    const [
+      trilhaProgressRows, trilhaSessions7d, diagnostics30d,
+      notebookDocs, notebookOverviews, notebookOverviews7d,
+      mindmapsUserDoc,
+      tiagaoConv, tiagaoConv7d,
+      redacoesTotal, redacoes7d,
+      flashcardsRev7d,
+      simStats,
+    ] = await Promise.all([
+      db.execute(sql`SELECT subject, COUNT(*)::int AS cnt, ROUND(AVG(level)::numeric, 1)::float AS avg_level, MAX(level)::int AS max_level FROM trilha_mestre_progress WHERE user_id IN ${idsArr} GROUP BY subject`),
+      db.execute(sql`SELECT COUNT(*)::int AS count, COUNT(DISTINCT user_id)::int AS users FROM trilha_mestre_sessions WHERE user_id IN ${idsArr} AND created_at >= NOW() - INTERVAL '7 days'`),
+      db.execute(sql`SELECT COUNT(DISTINCT user_id)::int AS count FROM trilha_mestre_sessions WHERE user_id IN ${idsArr} AND level = 5 AND created_at >= NOW() - INTERVAL '30 days'`),
+      db.execute(sql`SELECT COUNT(*)::int AS count, COALESCE(SUM(file_size_kb), 0)::int AS total_kb FROM knowledge_documents WHERE user_id IN ${idsArr} AND (is_chunk = false OR is_chunk IS NULL)`),
+      db.execute(sql`SELECT COUNT(*)::int AS count FROM notebook_overviews WHERE user_id IN ${idsArr}`),
+      db.execute(sql`SELECT COUNT(*)::int AS count FROM notebook_overviews WHERE user_id IN ${idsArr} AND created_at >= NOW() - INTERVAL '7 days'`),
+      db.execute(sql`SELECT COUNT(*)::int AS count, COUNT(DISTINCT user_id)::int AS users FROM user_doc_mindmaps WHERE user_id IN ${idsArr}`),
+      db.execute(sql`SELECT COUNT(*)::int AS count, COUNT(DISTINCT user_id)::int AS users FROM tiagao_conversations WHERE user_id IN ${idsArr}`),
+      db.execute(sql`SELECT COUNT(*)::int AS count FROM tiagao_conversations WHERE user_id IN ${idsArr} AND created_at >= NOW() - INTERVAL '7 days'`),
+      db.execute(sql`SELECT COUNT(*)::int AS count, COUNT(DISTINCT user_id)::int AS users FROM redacoes WHERE user_id IN ${idsArr}`),
+      db.execute(sql`SELECT COUNT(*)::int AS count FROM redacoes WHERE user_id IN ${idsArr} AND created_at >= NOW() - INTERVAL '7 days'`),
+      db.execute(sql`SELECT COUNT(*)::int AS count FROM flashcard_reviews WHERE user_id IN ${idsArr} AND updated_at >= NOW() - INTERVAL '7 days'`),
+      db.execute(sql`SELECT COUNT(*)::int AS count FROM simulado_results WHERE user_id IN ${idsArr}`),
+    ]);
+
+    const totalDocsKb = (notebookDocs.rows[0] as any)?.total_kb ?? 0;
+    const contentBreakdown = [
+      { label: "Documentos (PDF/Texto)", value: totalDocsKb, color: "#3b82f6" },
+      { label: "Mapas Mentais", value: (mindmapsUserDoc.rows[0] as any)?.count ?? 0, color: "#a855f7" },
+      { label: "Simulados realizados", value: (simStats.rows[0] as any)?.count ?? 0, color: "#f59e0b" },
+      { label: "Notebook Overviews", value: (notebookOverviews.rows[0] as any)?.count ?? 0, color: "#10b981" },
+      { label: "Redações", value: (redacoesTotal.rows[0] as any)?.count ?? 0, color: "#ef4444" },
+    ];
+
+    const aiFeatures = [
+      { feature: "Tiagão (Voz)", uses: (tiagaoConv.rows[0] as any)?.count ?? 0, users: (tiagaoConv.rows[0] as any)?.users ?? 0, last7d: (tiagaoConv7d.rows[0] as any)?.count ?? 0 },
+      { feature: "Trilha do Mestre", uses: (trilhaSessions7d.rows[0] as any)?.count ?? 0, users: (trilhaSessions7d.rows[0] as any)?.users ?? 0, last7d: (trilhaSessions7d.rows[0] as any)?.count ?? 0 },
+      { feature: "Notebook (RAG)", uses: (notebookOverviews.rows[0] as any)?.count ?? 0, users: 0, last7d: (notebookOverviews7d.rows[0] as any)?.count ?? 0 },
+      { feature: "Mapa Mental", uses: (mindmapsUserDoc.rows[0] as any)?.count ?? 0, users: (mindmapsUserDoc.rows[0] as any)?.users ?? 0, last7d: 0 },
+      { feature: "Redação", uses: (redacoesTotal.rows[0] as any)?.count ?? 0, users: (redacoesTotal.rows[0] as any)?.users ?? 0, last7d: (redacoes7d.rows[0] as any)?.count ?? 0 },
+      { feature: "Flashcards", uses: (flashcardsRev7d.rows[0] as any)?.count ?? 0, users: 0, last7d: (flashcardsRev7d.rows[0] as any)?.count ?? 0 },
+    ];
+
+    const trilhaBySubject = (trilhaProgressRows.rows as any[]).map(r => ({
+      subject: r.subject, students: r.cnt, avgLevel: r.avg_level, maxLevel: r.max_level,
+    }));
+
+    res.json({
+      scope: { studentCount: studentIds.length, turmaCount: turmas.length },
+      aiFeatures,
+      trilhaBySubject,
+      diagnosticsCompleted30d: (diagnostics30d.rows[0] as any)?.count ?? 0,
+      notebookDocsTotal: (notebookDocs.rows[0] as any)?.count ?? 0,
+      notebookStorageMb: Math.round(totalDocsKb / 1024),
+      notebookOverviewsTotal: (notebookOverviews.rows[0] as any)?.count ?? 0,
+      contentBreakdown,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Error fetching institution AI stats");
+    res.status(500).json({ error: "Erro ao buscar métricas de IA" });
+  }
+});
+
 export default router;

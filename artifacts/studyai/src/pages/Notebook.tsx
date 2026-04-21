@@ -15,7 +15,7 @@ import {
   CheckCircle, AlertCircle, Star, StickyNote, HelpCircle,
   ExternalLink, ArrowLeft, RefreshCw, Mic, Play, Pause,
   Volume2, Users, Clock, Presentation, Lock, Unlock, Quote, Printer,
-  Sparkles, Download,
+  Sparkles, Download, Youtube, Image as ImageIcon,
 } from "lucide-react";
 import { TiagaoCharacter } from "@/components/TiagaoCharacter";
 import { AppNav } from "@/components/AppNav";
@@ -704,13 +704,17 @@ export default function Notebook() {
   const [selectedDocIds, setSelectedDocIds] = useState<number[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
 
-  const [uploadMode, setUploadMode] = useState<"file" | "text" | "url" | null>(null);
+  const [uploadMode, setUploadMode] = useState<"file" | "text" | "url" | "youtube" | "wikipedia" | "audio" | "image" | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadText, setUploadText] = useState("");
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadUrl, setUploadUrl] = useState("");
+  const [uploadYtUrl, setUploadYtUrl] = useState("");
+  const [uploadWiki, setUploadWiki] = useState("");
   const [uploadMsg, setUploadMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<HTMLInputElement>(null);
+  const imageRef = useRef<HTMLInputElement>(null);
 
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [inputMsg, setInputMsg] = useState("");
@@ -860,6 +864,76 @@ export default function Notebook() {
     finally { setUploading(false); }
   }, [uploadUrl, uploadTitle, loadDocs]);
 
+  const handleYoutubeUpload = useCallback(async () => {
+    if (!uploadYtUrl.trim()) return;
+    setUploading(true);
+    try {
+      const r = await fetch(`${BASE_URL}/api/notebook/upload-youtube`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify({ url: uploadYtUrl, title: uploadTitle || undefined, cadernoId: activeCaderno?.id }),
+      });
+      const data = await r.json();
+      if (r.ok) {
+        setUploadMsg({ ok: true, text: data.message ?? "✓ Vídeo importado" });
+        setUploadYtUrl(""); setUploadTitle(""); await loadDocs(); setUploadMode(null);
+      } else { setUploadMsg({ ok: false, text: data.erro ?? "Erro" }); }
+    } catch { setUploadMsg({ ok: false, text: "Erro de conexão" }); }
+    finally { setUploading(false); }
+  }, [uploadYtUrl, uploadTitle, loadDocs, activeCaderno]);
+
+  const handleWikipediaUpload = useCallback(async () => {
+    if (!uploadWiki.trim()) return;
+    setUploading(true);
+    try {
+      const r = await fetch(`${BASE_URL}/api/notebook/upload-wikipedia`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify({ titulo: uploadWiki, cadernoId: activeCaderno?.id }),
+      });
+      const data = await r.json();
+      if (r.ok) {
+        setUploadMsg({ ok: true, text: data.message ?? "✓ Artigo importado" });
+        setUploadWiki(""); await loadDocs(); setUploadMode(null);
+      } else { setUploadMsg({ ok: false, text: data.erro ?? "Erro" }); }
+    } catch { setUploadMsg({ ok: false, text: "Erro de conexão" }); }
+    finally { setUploading(false); }
+  }, [uploadWiki, loadDocs, activeCaderno]);
+
+  const handleAudioUpload = useCallback(async (file: File) => {
+    setUploading(true);
+    setUploadMsg(null);
+    const form = new FormData();
+    form.append("audio", file);
+    form.append("title", file.name.replace(/\.[^.]+$/, ""));
+    if (activeCaderno?.id) form.append("cadernoId", String(activeCaderno.id));
+    try {
+      const r = await fetch(`${BASE_URL}/api/notebook/upload-audio`, { method: "POST", body: form, credentials: "include" });
+      const data = await r.json();
+      if (r.ok) {
+        setUploadMsg({ ok: true, text: data.message ?? "✓ Áudio transcrito" });
+        await loadDocs(); setUploadMode(null);
+      } else { setUploadMsg({ ok: false, text: data.erro ?? "Erro" }); }
+    } catch { setUploadMsg({ ok: false, text: "Erro de conexão" }); }
+    finally { setUploading(false); }
+  }, [loadDocs, activeCaderno]);
+
+  const handleImageUpload = useCallback(async (file: File) => {
+    setUploading(true);
+    setUploadMsg(null);
+    const form = new FormData();
+    form.append("image", file);
+    form.append("title", file.name.replace(/\.[^.]+$/, ""));
+    if (activeCaderno?.id) form.append("cadernoId", String(activeCaderno.id));
+    try {
+      const r = await fetch(`${BASE_URL}/api/notebook/upload-image`, { method: "POST", body: form, credentials: "include" });
+      const data = await r.json();
+      if (r.ok) {
+        setUploadMsg({ ok: true, text: data.message ?? "✓ Imagem processada" });
+        await loadDocs(); setUploadMode(null);
+      } else { setUploadMsg({ ok: false, text: data.erro ?? "Erro" }); }
+    } catch { setUploadMsg({ ok: false, text: "Erro de conexão" }); }
+    finally { setUploading(false); }
+  }, [loadDocs, activeCaderno]);
+
   const handleDelete = useCallback(async (id: number) => {
     await fetch(`${BASE_URL}/api/notebook/docs/${id}`, { method: "DELETE", credentials: "include" });
     setSelectedDocIds(ids => ids.filter(i => i !== id));
@@ -874,10 +948,10 @@ export default function Notebook() {
     if (!inputMsg.trim() || chatLoading) return;
     const q = inputMsg.trim();
     setInputMsg("");
-    setMessages(m => [...m, { role: "user", text: q }]);
+    setMessages(m => [...m, { role: "user", text: q }, { role: "assistant", text: "" }]);
     setChatLoading(true);
     try {
-      const r = await fetch(`${BASE_URL}/api/notebook/chat`, {
+      const r = await fetch(`${BASE_URL}/api/notebook/chat-stream`, {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
         body: JSON.stringify({
           pergunta: q,
@@ -885,11 +959,53 @@ export default function Notebook() {
           cadernoId: activeCaderno?.id,
         }),
       });
-      const data = await r.json();
-      if (r.ok) { setMessages(m => [...m, { role: "assistant", text: data.resposta, fontes: data.fontes }]); }
-      else { setMessages(m => [...m, { role: "assistant", text: `Erro: ${data.erro ?? "tente novamente"}` }]); }
-    } catch { setMessages(m => [...m, { role: "assistant", text: "Erro de conexão. Tente novamente." }]); }
-    finally { setChatLoading(false); }
+      if (!r.ok || !r.body) {
+        const data = await r.json().catch(() => ({ erro: "Erro" }));
+        setMessages(m => { const c = [...m]; c[c.length - 1] = { role: "assistant", text: `Erro: ${data.erro ?? "tente novamente"}` }; return c; });
+        setChatLoading(false);
+        return;
+      }
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let textAcc = "";
+      let allSources: any[] = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const events = buf.split("\n\n");
+        buf = events.pop() || "";
+        for (const evt of events) {
+          const lines = evt.split("\n");
+          let event = "message", data = "";
+          for (const ln of lines) {
+            if (ln.startsWith("event:")) event = ln.slice(6).trim();
+            else if (ln.startsWith("data:")) data += ln.slice(5).trim();
+          }
+          if (!data) continue;
+          try {
+            const parsed = JSON.parse(data);
+            if (event === "chunk") {
+              textAcc += parsed.text || "";
+              setMessages(m => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], text: textAcc, fontes: allSources }; return c; });
+            } else if (event === "sources") {
+              allSources = parsed;
+              setMessages(m => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], text: textAcc, fontes: allSources }; return c; });
+            } else if (event === "done") {
+              if (parsed.fontes) {
+                setMessages(m => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], text: textAcc, fontes: parsed.fontes }; return c; });
+              }
+            } else if (event === "error") {
+              setMessages(m => { const c = [...m]; c[c.length - 1] = { role: "assistant", text: `Erro: ${parsed.erro ?? "stream"}` }; return c; });
+            }
+          } catch { /* skip malformed */ }
+        }
+      }
+    } catch {
+      setMessages(m => { const c = [...m]; c[c.length - 1] = { role: "assistant", text: "Erro de conexão. Tente novamente." }; return c; });
+    } finally { setChatLoading(false); }
   }, [inputMsg, chatLoading, selectedDocIds, restrictToSelected, activeCaderno]);
 
   const runTool = useCallback(async (tool: Tool, docId?: number) => {
@@ -992,14 +1108,18 @@ export default function Notebook() {
 
       {/* Upload buttons */}
       <div className="p-3 border-b border-slate-100 flex-shrink-0">
-        <div className="flex gap-1.5">
+        <div className="grid grid-cols-4 gap-1.5">
           {[
             { mode: "file" as const, icon: FileText, label: "PDF" },
             { mode: "text" as const, icon: StickyNote, label: "Texto" },
             { mode: "url"  as const, icon: Link2,    label: "URL" },
+            { mode: "youtube" as const, icon: Youtube, label: "YouTube" },
+            { mode: "wikipedia" as const, icon: BookOpen, label: "Wiki" },
+            { mode: "audio" as const, icon: Mic, label: "Áudio" },
+            { mode: "image" as const, icon: ImageIcon, label: "Imagem" },
           ].map(({ mode, icon: Icon, label }) => (
             <button key={mode} onClick={() => setUploadMode(m => m === mode ? null : mode)}
-              className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-xl border text-[10px] font-bold transition-all ${
+              className={`flex flex-col items-center gap-1 py-2 rounded-xl border text-[10px] font-bold transition-all ${
                 uploadMode === mode ? "bg-indigo-600 border-indigo-600 text-white" : "border-slate-200 text-slate-600 hover:border-indigo-300 hover:bg-indigo-50"
               }`}>
               <Icon className="w-3.5 h-3.5" />
@@ -1053,6 +1173,61 @@ export default function Notebook() {
                       className="w-full py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold disabled:opacity-40 flex items-center justify-center gap-1.5">
                       {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ExternalLink className="w-3.5 h-3.5" />}
                       Importar URL
+                    </button>
+                  </>
+                )}
+                {uploadMode === "youtube" && (
+                  <>
+                    <input value={uploadYtUrl} onChange={e => setUploadYtUrl(e.target.value)}
+                      placeholder="https://youtube.com/watch?v=... *"
+                      className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-indigo-400" />
+                    <input value={uploadTitle} onChange={e => setUploadTitle(e.target.value)}
+                      placeholder="Título (opcional)"
+                      className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-indigo-400" />
+                    <button onClick={handleYoutubeUpload} disabled={uploading || !uploadYtUrl.trim()}
+                      className="w-full py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold disabled:opacity-40 flex items-center justify-center gap-1.5">
+                      {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Youtube className="w-3.5 h-3.5" />}
+                      Importar transcrição
+                    </button>
+                    <p className="text-[10px] text-slate-400">Apenas vídeos com legendas em PT</p>
+                  </>
+                )}
+                {uploadMode === "wikipedia" && (
+                  <>
+                    <input value={uploadWiki} onChange={e => setUploadWiki(e.target.value)}
+                      placeholder="Ex: Revolução Industrial, Mitose, Romantismo *"
+                      className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-indigo-400" />
+                    <button onClick={handleWikipediaUpload} disabled={uploading || !uploadWiki.trim()}
+                      className="w-full py-1.5 rounded-xl bg-slate-700 text-white text-xs font-bold disabled:opacity-40 flex items-center justify-center gap-1.5">
+                      {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BookOpen className="w-3.5 h-3.5" />}
+                      Importar artigo
+                    </button>
+                    <p className="text-[10px] text-slate-400">Wikipedia em português</p>
+                  </>
+                )}
+                {uploadMode === "audio" && (
+                  <>
+                    <input type="file" ref={audioRef} className="hidden"
+                      accept="audio/*,.mp3,.m4a,.wav,.ogg,.webm"
+                      onChange={e => e.target.files?.[0] && handleAudioUpload(e.target.files[0])} />
+                    <button onClick={() => audioRef.current?.click()} disabled={uploading}
+                      className="w-full border-2 border-dashed border-purple-300 rounded-xl p-4 text-xs text-purple-600 font-medium hover:bg-purple-50 flex flex-col items-center gap-2">
+                      {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Mic className="w-5 h-5" />}
+                      {uploading ? "Transcrevendo... aguarde" : "Clique para enviar áudio"}
+                      {!uploading && <span className="text-[10px] text-slate-400">MP3, M4A, WAV — Whisper transcreve em PT</span>}
+                    </button>
+                  </>
+                )}
+                {uploadMode === "image" && (
+                  <>
+                    <input type="file" ref={imageRef} className="hidden"
+                      accept="image/*"
+                      onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0])} />
+                    <button onClick={() => imageRef.current?.click()} disabled={uploading}
+                      className="w-full border-2 border-dashed border-amber-300 rounded-xl p-4 text-xs text-amber-700 font-medium hover:bg-amber-50 flex flex-col items-center gap-2">
+                      {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ImageIcon className="w-5 h-5" />}
+                      {uploading ? "Extraindo texto... aguarde" : "Clique para enviar foto / página"}
+                      {!uploading && <span className="text-[10px] text-slate-400">JPG, PNG — Vision IA extrai texto e descreve</span>}
                     </button>
                   </>
                 )}

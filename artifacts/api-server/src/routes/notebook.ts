@@ -221,7 +221,7 @@ async function saveDocWithChunks(
   userId: string,
   title: string,
   contentText: string,
-  sourceType: "pdf" | "text" | "url",
+  sourceType: "pdf" | "text" | "url" | "youtube" | "wikipedia" | "audio" | "image",
   sourceRef?: string,
   fileSizeKb?: number,
   notebookId?: number,
@@ -426,6 +426,126 @@ router.delete("/notebook/docs/:id", async (req: Request, res: Response) => {
 });
 
 // ─── POST /api/notebook/chat ──────────────────────────────────────────────────
+// ─── POST /api/notebook/upload-youtube ───────────────────────────────────────
+router.post("/notebook/upload-youtube", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { url, title, cadernoId } = req.body as { url: string; title?: string; cadernoId?: number };
+  if (!url) { res.status(400).json({ erro: "URL do YouTube obrigatória" }); return; }
+  try {
+    const idMatch = url.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([A-Za-z0-9_-]{11})/);
+    if (!idMatch) { res.status(400).json({ erro: "URL do YouTube inválida" }); return; }
+    const videoId = idMatch[1];
+
+    const { YoutubeTranscript } = _require("youtube-transcript");
+    let segments: Array<{ text: string }> = [];
+    try {
+      segments = await YoutubeTranscript.fetchTranscript(videoId, { lang: "pt" });
+    } catch {
+      try { segments = await YoutubeTranscript.fetchTranscript(videoId, { lang: "pt-BR" }); }
+      catch { segments = await YoutubeTranscript.fetchTranscript(videoId); }
+    }
+    const text = segments.map(s => s.text).join(" ").replace(/\s{2,}/g, " ").trim();
+    if (text.length < 50) { res.status(422).json({ erro: "Vídeo sem legendas disponíveis" }); return; }
+
+    const docTitle = title || `YouTube — ${videoId}`;
+    const nbId = await resolveNotebookId(req.userId, cadernoId);
+    const docId = await saveDocWithChunks(req.userId, docTitle, text, "youtube", url, undefined, nbId);
+    res.json({ id: docId, title: docTitle, chars: text.length, message: `✅ Transcrição importada (${text.length} caracteres)` });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Erro";
+    console.error("notebook upload-youtube:", msg);
+    res.status(500).json({ erro: `Não foi possível obter a transcrição: ${msg}` });
+  }
+});
+
+// ─── POST /api/notebook/upload-wikipedia ─────────────────────────────────────
+router.post("/notebook/upload-wikipedia", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { titulo, cadernoId } = req.body as { titulo: string; cadernoId?: number };
+  if (!titulo?.trim()) { res.status(400).json({ erro: "Título do artigo obrigatório" }); return; }
+  try {
+    const t = encodeURIComponent(titulo.trim().replace(/ /g, "_"));
+    const r = await fetch(`https://pt.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&format=json&redirects=1&titles=${t}&origin=*`);
+    if (!r.ok) { res.status(422).json({ erro: "Wikipedia indisponível" }); return; }
+    const data: any = await r.json();
+    const pages = data?.query?.pages || {};
+    const page: any = Object.values(pages)[0];
+    if (!page || page.missing !== undefined) { res.status(404).json({ erro: "Artigo não encontrado" }); return; }
+    const text = (page.extract || "").trim();
+    if (text.length < 100) { res.status(422).json({ erro: "Artigo muito curto ou vazio" }); return; }
+
+    const docTitle = `Wikipedia — ${page.title || titulo}`;
+    const nbId = await resolveNotebookId(req.userId, cadernoId);
+    const docId = await saveDocWithChunks(req.userId, docTitle, text, "wikipedia", `https://pt.wikipedia.org/wiki/${t}`, undefined, nbId);
+    res.json({ id: docId, title: docTitle, chars: text.length, message: `✅ Artigo "${page.title}" importado` });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Erro";
+    console.error("notebook upload-wikipedia:", msg);
+    res.status(500).json({ erro: `Erro ao buscar artigo: ${msg}` });
+  }
+});
+
+// ─── POST /api/notebook/upload-audio ─────────────────────────────────────────
+router.post("/notebook/upload-audio", upload.single("audio"), async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const file = req.file;
+  if (!file) { res.status(400).json({ erro: "Arquivo de áudio obrigatório" }); return; }
+  try {
+    const audioFile = new File([file.buffer], file.originalname || "audio.m4a", { type: file.mimetype || "audio/m4a" });
+    const transcription = await gpt.audio.transcriptions.create({
+      file: audioFile,
+      model: "whisper-1",
+      language: "pt",
+    });
+    const text = (transcription.text || "").trim();
+    if (text.length < 20) { res.status(422).json({ erro: "Áudio sem fala detectável" }); return; }
+
+    const docTitle = (req.body?.title as string) || file.originalname || "Áudio transcrito";
+    const cadernoId = req.body?.cadernoId;
+    const nbId = await resolveNotebookId(req.userId, cadernoId);
+    const docId = await saveDocWithChunks(req.userId, docTitle, text, "audio", file.originalname, Math.round(file.size / 1024), nbId);
+    res.json({ id: docId, title: docTitle, chars: text.length, message: `✅ Áudio transcrito (${text.length} caracteres)` });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Erro";
+    console.error("notebook upload-audio:", msg);
+    res.status(500).json({ erro: `Erro ao transcrever áudio: ${msg}` });
+  }
+});
+
+// ─── POST /api/notebook/upload-image ─────────────────────────────────────────
+router.post("/notebook/upload-image", upload.single("image"), async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const file = req.file;
+  if (!file) { res.status(400).json({ erro: "Arquivo de imagem obrigatório" }); return; }
+  try {
+    const b64 = file.buffer.toString("base64");
+    const mime = file.mimetype || "image/jpeg";
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_tokens: 2500,
+      messages: [
+        { role: "system", content: "Você extrai TODO o texto visível na imagem (OCR), preservando estrutura, parágrafos, listas, fórmulas. Se for diagrama/gráfico, descreva exaustivamente. Responda apenas com o conteúdo extraído, sem comentários." },
+        { role: "user", content: [
+          { type: "image_url", image_url: { url: `data:${mime};base64,${b64}`, detail: "high" } },
+          { type: "text", text: "Extraia o conteúdo desta imagem em texto estruturado, em português." },
+        ]},
+      ],
+    });
+    const text = (completion.choices[0]?.message?.content || "").trim();
+    if (text.length < 20) { res.status(422).json({ erro: "Não foi possível extrair texto da imagem" }); return; }
+
+    const docTitle = (req.body?.title as string) || file.originalname || "Imagem (OCR)";
+    const cadernoId = req.body?.cadernoId;
+    const nbId = await resolveNotebookId(req.userId, cadernoId);
+    const docId = await saveDocWithChunks(req.userId, docTitle, text, "image", file.originalname, Math.round(file.size / 1024), nbId);
+    res.json({ id: docId, title: docTitle, chars: text.length, message: `✅ Texto extraído da imagem (${text.length} caracteres)` });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Erro";
+    console.error("notebook upload-image:", msg);
+    res.status(500).json({ erro: `Erro ao processar imagem: ${msg}` });
+  }
+});
+
 router.post("/notebook/chat", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
   const { pergunta, docIds, cadernoId } = req.body as { pergunta: string; docIds?: number[]; cadernoId?: number };
@@ -509,6 +629,114 @@ ${context}`,
   } catch (e) {
     console.error("notebook chat:", e);
     res.status(500).json({ erro: "Erro ao processar pergunta. Verifique sua conexão e tente novamente." });
+  }
+});
+
+// ─── POST /api/notebook/chat-stream (SSE streaming) ──────────────────────────
+router.post("/notebook/chat-stream", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { pergunta, docIds, cadernoId } = req.body as { pergunta: string; docIds?: number[]; cadernoId?: number };
+  if (!pergunta?.trim()) { res.status(400).json({ erro: "Pergunta obrigatória" }); return; }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders?.();
+
+  const send = (event: string, data: unknown) => {
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
+  try {
+    let personaBlock = "";
+    if (cadernoId) {
+      const nbId = await resolveNotebookId(req.userId, cadernoId);
+      const ctx = await getNotebookContext(nbId);
+      if (ctx && (ctx.persona || ctx.goals)) {
+        personaBlock = `\n\nCONTEXTO DO CADERNO "${ctx.title}":\n${ctx.persona ? `Persona/foco: ${ctx.persona.slice(0, 2000)}` : ""}${ctx.goals ? `\nObjetivos do aluno: ${ctx.goals.slice(0, 2000)}` : ""}\nUse este contexto para personalizar a explicação.`;
+      }
+    }
+
+    const chunks = await ragSearch(req.userId, docIds?.length ? docIds : null, pergunta, 8);
+    if (!chunks.length) {
+      send("chunk", { text: "Não encontrei documentos para responder. Adicione pelo menos uma fonte primeiro." });
+      send("done", { fontes: [] });
+      res.end();
+      return;
+    }
+
+    const context = chunks.map((c, i) => `[Fonte ${i + 1} — "${c.title}"]\n${c.text}`).join("\n\n---\n\n");
+
+    // Send sources index up-front so frontend can render placeholders
+    send("sources", chunks.map((c, i) => ({
+      numero: i + 1,
+      titulo: c.title,
+      trecho: c.text.slice(0, 200) + (c.text.length > 200 ? "…" : ""),
+      trechoCompleto: c.text,
+    })));
+
+    const stream = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.2,
+      max_tokens: 1500,
+      stream: true,
+      messages: [
+        {
+          role: "system",
+          content: `Você é o Professor Tiagão, assistente de estudos para ENEM e vestibulares brasileiros.
+Responda em português brasileiro, claro e didático.
+Use EXCLUSIVAMENTE as fontes abaixo. Não invente.
+Cite fontes com [Fonte N] sempre que usar uma informação específica.
+Se não puder responder com base nas fontes, diga claramente.${personaBlock}
+
+FONTES DISPONÍVEIS:
+${context}`,
+        },
+        { role: "user", content: pergunta },
+      ],
+    });
+
+    let full = "";
+    for await (const part of stream) {
+      const delta = part.choices[0]?.delta?.content || "";
+      if (delta) {
+        full += delta;
+        send("chunk", { text: delta });
+      }
+    }
+
+    // Build cited sources from final text
+    const fontesCitadas = new Map<number, { numero: number; titulo: string; trecho: string; trechoCompleto: string }>();
+    const fonteRegex = /\[Fonte (\d+)\]/g;
+    let match;
+    while ((match = fonteRegex.exec(full)) !== null) {
+      const n = parseInt(match[1]);
+      if (chunks[n - 1] && !fontesCitadas.has(n)) {
+        const ftext = chunks[n - 1].text;
+        fontesCitadas.set(n, {
+          numero: n,
+          titulo: chunks[n - 1].title,
+          trecho: ftext.slice(0, 200) + (ftext.length > 200 ? "…" : ""),
+          trechoCompleto: ftext,
+        });
+      }
+    }
+    const fontes = fontesCitadas.size > 0
+      ? Array.from(fontesCitadas.values())
+      : chunks.slice(0, 3).map((c, i) => ({
+          numero: i + 1,
+          titulo: c.title,
+          trecho: c.text.slice(0, 200) + (c.text.length > 200 ? "…" : ""),
+          trechoCompleto: c.text,
+        }));
+
+    send("done", { fontes });
+    res.end();
+  } catch (e) {
+    console.error("notebook chat-stream:", e);
+    send("error", { erro: "Erro ao processar pergunta" });
+    res.end();
   }
 });
 

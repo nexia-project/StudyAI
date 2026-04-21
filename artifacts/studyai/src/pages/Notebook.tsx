@@ -1050,6 +1050,12 @@ export default function Notebook() {
   // Slides nav
   const [slideIdx, setSlideIdx] = useState(0);
 
+  // Artefatos salvos do doc atual
+  type SavedArtifact = { id: number; kind: string; title: string; created_at: string };
+  const [savedArtifacts, setSavedArtifacts] = useState<SavedArtifact[]>([]);
+  // Lightbox para ampliar infográfico
+  const [infoFull, setInfoFull] = useState<string | null>(null);
+
   const loadCadernos = useCallback(async () => {
     try {
       const r = await fetch(`${BASE_URL}/api/notebook/cadernos`, { credentials: "include" });
@@ -1079,6 +1085,54 @@ export default function Notebook() {
 
   useEffect(() => { loadCadernos(); }, [loadCadernos]);
   useEffect(() => { loadDocs(activeCaderno?.id); }, [loadDocs, activeCaderno?.id]);
+
+  // Carrega artefatos salvos do primeiro doc selecionado
+  useEffect(() => {
+    const docId = selectedDocIds[0];
+    if (!docId) { setSavedArtifacts([]); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch(`${BASE_URL}/api/notebook/docs/${docId}/artifacts`, { credentials: "include" });
+        if (r.ok && !cancelled) {
+          const raw = await r.json();
+          const list: SavedArtifact[] = Array.isArray(raw) ? raw : (Array.isArray(raw?.rows) ? raw.rows : []);
+          setSavedArtifacts(list);
+        } else if (!cancelled) {
+          setSavedArtifacts([]);
+        }
+      } catch { if (!cancelled) setSavedArtifacts([]); }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedDocIds]);
+
+  const openSavedArtifact = useCallback(async (a: SavedArtifact) => {
+    try {
+      const r = await fetch(`${BASE_URL}/api/notebook/artifacts/${a.id}`, { credentials: "include" });
+      if (!r.ok) return;
+      const data = await r.json();
+      const payload = data?.payload ?? data;
+      const kindToTool: Record<string, Tool> = {
+        slides: "slides", podcast: "podcast", timeline: "timeline",
+        infografico: "infografico", "mapa-mental": "mapa-mental",
+        flashcards: "flashcards", questoes: "questoes", "study-guide": "study-guide",
+        overview: "overview",
+      };
+      const tool = kindToTool[a.kind];
+      if (!tool) return;
+      setActiveTool(tool);
+      setToolResult(payload);
+      setToolError(null);
+    } catch { /* silent */ }
+  }, []);
+
+  const deleteSavedArtifact = useCallback(async (id: number) => {
+    if (!confirm("Remover este artefato salvo?")) return;
+    try {
+      await fetch(`${BASE_URL}/api/notebook/artifacts/${id}`, { method: "DELETE", credentials: "include" });
+      setSavedArtifacts(prev => prev.filter(a => a.id !== id));
+    } catch { /* silent */ }
+  }, []);
 
   const saveCaderno = useCallback(async () => {
     if (!cadernoForm.title.trim()) return;
@@ -1820,6 +1874,41 @@ export default function Notebook() {
           </div>
         ) : (
           <div className="space-y-1.5">
+            {/* Artefatos já gerados — chips clicáveis para reabrir */}
+            {savedArtifacts.length > 0 && (
+              <div className="mb-2 p-2 rounded-xl bg-emerald-50 border border-emerald-200">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Archive className="w-3 h-3 text-emerald-600" />
+                  <p className="text-[10px] font-black text-emerald-800 uppercase tracking-wider">Já gerados ({savedArtifacts.length})</p>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {savedArtifacts.map(a => {
+                    const cfg = TOOL_CONFIG[(a.kind as Tool)];
+                    const Icon = cfg?.icon ?? FileText;
+                    return (
+                      <div key={a.id} className="group inline-flex items-center bg-white border border-emerald-200 rounded-lg overflow-hidden hover:border-emerald-400 transition-all">
+                        <button
+                          onClick={() => openSavedArtifact(a)}
+                          className="flex items-center gap-1 px-2 py-1 hover:bg-emerald-50 text-[10px] font-bold text-slate-700"
+                          title={`Reabrir ${cfg?.label ?? a.kind} — ${a.title}`}
+                        >
+                          <Icon className="w-3 h-3 text-emerald-600" />
+                          <span className="truncate max-w-[100px]">{cfg?.label ?? a.kind}</span>
+                        </button>
+                        <button
+                          onClick={() => deleteSavedArtifact(a.id)}
+                          className="px-1 py-1 hover:bg-rose-50 text-rose-400 hover:text-rose-600"
+                          title="Remover artefato"
+                        >
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {(Object.entries(TOOL_CONFIG) as [Tool, typeof TOOL_CONFIG[Tool]][]).map(([key, cfg]) => {
               const Icon = cfg.icon;
               const isActive = activeTool === key;
@@ -2001,12 +2090,22 @@ export default function Notebook() {
                       <p className="text-[11px] text-slate-500 truncate">{r.subtitulo}</p>
                       <span className="inline-block mt-1 text-[9px] uppercase tracking-wide bg-fuchsia-100 text-fuchsia-700 px-1.5 py-0.5 rounded font-bold">{r.estilo}</span>
                     </div>
-                    <a href={dataUrl} download={`infografico-${r.titulo.replace(/\s+/g, "-")}.png`}
-                       className="flex-shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold bg-slate-900 text-white px-2 py-1.5 rounded-lg hover:bg-slate-700">
-                      <Download className="w-3 h-3" /> PNG
-                    </a>
+                    <div className="flex flex-col gap-1 flex-shrink-0">
+                      <button onClick={() => setInfoFull(dataUrl)}
+                              className="inline-flex items-center gap-1 text-[10px] font-semibold bg-fuchsia-600 text-white px-2 py-1.5 rounded-lg hover:bg-fuchsia-700">
+                        <Maximize2 className="w-3 h-3" /> Ampliar
+                      </button>
+                      <a href={dataUrl} download={`infografico-${r.titulo.replace(/\s+/g, "-")}.png`}
+                         className="inline-flex items-center gap-1 text-[10px] font-semibold bg-slate-900 text-white px-2 py-1.5 rounded-lg hover:bg-slate-700">
+                        <Download className="w-3 h-3" /> PNG
+                      </a>
+                    </div>
                   </div>
-                  <img src={dataUrl} alt={r.titulo} className="w-full rounded-lg border border-slate-200 shadow-sm" />
+                  <button onClick={() => setInfoFull(dataUrl)} className="block w-full bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
+                    <img src={dataUrl} alt={r.titulo}
+                         className="w-full max-h-[60vh] object-contain mx-auto cursor-zoom-in hover:opacity-95 transition-opacity" />
+                  </button>
+                  <p className="text-[10px] text-slate-400 text-center">Clique para ampliar</p>
                 </div>
               );
             })()}
@@ -2136,6 +2235,38 @@ export default function Notebook() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Lightbox infográfico */}
+      {infoFull && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 cursor-zoom-out"
+          onClick={() => setInfoFull(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <button
+            onClick={(e) => { e.stopPropagation(); setInfoFull(null); }}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center"
+            aria-label="Fechar"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <img
+            src={infoFull}
+            alt="Infográfico ampliado"
+            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <a
+            href={infoFull}
+            download="infografico.png"
+            onClick={(e) => e.stopPropagation()}
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 inline-flex items-center gap-2 bg-white text-slate-900 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-100"
+          >
+            <Download className="w-4 h-4" /> Baixar PNG
+          </a>
+        </div>
+      )}
     </div>
   );
 }

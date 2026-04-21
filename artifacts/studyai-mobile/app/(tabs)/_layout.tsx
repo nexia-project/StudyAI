@@ -27,6 +27,14 @@ function NativeTabLayout() {
         <Icon sf={{ default: "target", selected: "target" }} />
         <Label>Trilha</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="notebook">
+        <Icon sf={{ default: "doc.text", selected: "doc.text.fill" }} />
+        <Label>Caderno</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="mapa-mental">
+        <Icon sf={{ default: "rectangle.connected.to.line.below", selected: "rectangle.connected.to.line.below" }} />
+        <Label>Mapa</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="ranking">
         <Icon sf={{ default: "trophy", selected: "trophy.fill" }} />
         <Label>Ranking</Label>
@@ -104,6 +112,22 @@ function ClassicTabLayout() {
           title: "Trilha",
           tabBarIcon: ({ color }) =>
             isIOS ? <SymbolView name="target" tintColor={color} size={24} /> : <Feather name="target" size={22} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="notebook"
+        options={{
+          title: "Caderno",
+          tabBarIcon: ({ color }) =>
+            isIOS ? <SymbolView name="doc.text" tintColor={color} size={24} /> : <Feather name="file-text" size={22} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="mapa-mental"
+        options={{
+          title: "Mapa",
+          tabBarIcon: ({ color }) =>
+            isIOS ? <SymbolView name="square.grid.3x3.middle.filled" tintColor={color} size={24} /> : <Feather name="git-branch" size={22} color={color} />,
         }}
       />
       <Tabs.Screen

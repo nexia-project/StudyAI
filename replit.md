@@ -50,7 +50,9 @@ StudyAI is built as a `pnpm` monorepo using TypeScript, Node.js 24, and Express 
 - **Caderno Digital**: Full-featured digital notebook at `/caderno`. Create/edit/delete notes with subject tags, auto-save, AI processing (resumo, key points, flashcards, questões), and search/filter by subject.
 - **Study Modules**: Includes study plans, simulated exams (ENEM), essay correction with 5-competency scoring, flashcards (SM-2 algorithm), Pomodoro timer, and performance heat map.
 - **Correção de Redação com Histórico**: Redação corrections saved to `redacoes` table. History tab shows past corrections with visual competency bars and scores.
-- **Mind Map (Mapa Mental)**: Visualizes study progress, allows document uploads and generates interactive mind maps.
+- **Mind Map (Mapa Mental)**: NotebookLM-style horizontal hierarchical tree (4 levels) with collapsible nodes, professional palette by depth.
+- **Infographic Generator (Infográfico)**: AI generates a real visual poster from any document. 6 styles (profissional, kawaii, científico, anime, esboço, minimalista) × 3 orientations. Endpoint: `POST /api/notebook/infografico`. PNG download in UI.
+- **Slides with AI hero images**: Cover image auto-generated; per-slide "Imagem IA" button calls `POST /api/notebook/slides/imagem` for editorial-quality background art.
 - **Admin Panel**: Comprehensive interface for managing users, finance, AI costs, content, database, integrations, and system settings.
 - **Teacher Module**: Tools for managing classes, students, tasks, and analyzing student performance.
 - **Institution Module**: Functionality for institutional oversight, managing teachers, and tracking aggregated data.

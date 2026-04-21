@@ -974,10 +974,39 @@ Bullets devem ser FRASES CURTAS (máx 12 palavras), nunca parágrafos.`,
     const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     const apresentacao = JSON.parse(clean);
 
+    // Generate cover hero image in background (non-blocking is hard in Express; do inline ~8s)
+    try {
+      const coverPrompt = `Editorial magazine cover illustration for an educational presentation IN BRAZILIAN PORTUGUESE titled "${apresentacao.titulo}".
+Style: clean modern flat design, sophisticated color palette matching the theme "${apresentacao.tema || "indigo"}", balanced composition, no readable text in image (we'll overlay it), abstract conceptual visual representing the subject. Professional editorial quality, suitable for a NotebookLM-style slide deck cover.`;
+      const coverBuf = await generateImageBuffer(coverPrompt, "1536x1024");
+      apresentacao.capaImagem = `data:image/png;base64,${coverBuf.toString("base64")}`;
+    } catch (imgErr) {
+      console.warn("Cover image generation failed:", imgErr);
+    }
+
     res.json({ apresentacao, titulo: row.title });
   } catch (e) {
     console.error("notebook slides:", e);
     res.status(500).json({ erro: "Erro ao gerar apresentação" });
+  }
+});
+
+// ─── POST /api/notebook/slides/imagem ────────────────────────────────────────
+// Gera imagem para um slide específico sob demanda
+router.post("/notebook/slides/imagem", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { titulo, bullets = [], tema = "indigo" } = req.body as {
+    titulo: string; bullets?: string[]; tema?: string;
+  };
+  try {
+    const prompt = `Editorial illustration for a presentation slide titled "${titulo}".
+Context bullets: ${bullets.slice(0, 3).join(" / ")}
+Style: clean modern flat vector illustration, sophisticated palette matching "${tema}" theme (no text overlay), abstract conceptual representation, white or soft background, professional NotebookLM-quality. Make it visually striking and educational.`;
+    const buf = await generateImageBuffer(prompt, "1536x1024");
+    res.json({ imagem: `data:image/png;base64,${buf.toString("base64")}` });
+  } catch (e: any) {
+    console.error("slide imagem:", e);
+    res.status(500).json({ erro: e.message ?? "Erro ao gerar imagem" });
   }
 });
 

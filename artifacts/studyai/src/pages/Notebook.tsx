@@ -452,6 +452,29 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
   const theme = SLIDE_THEMES[deck.tema ?? "indigo"];
   const slide = deck.slides[idx] ?? deck.slides[0];
   const total = deck.slides.length;
+  const capaImagem = (deck as any).capaImagem as string | undefined;
+
+  const [slideImages, setSlideImages] = useState<Record<number, string>>({});
+  const [imgLoading, setImgLoading] = useState<number | null>(null);
+  const currentImg = idx === 0 && capaImagem ? capaImagem : slideImages[idx];
+
+  async function generateSlideImage() {
+    if (imgLoading !== null) return;
+    setImgLoading(idx);
+    try {
+      const r = await fetch(`${BASE_URL}/api/notebook/slides/imagem`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify({
+          titulo: (slide as any).titulo ?? deck.titulo,
+          bullets: (slide as any).bullets ?? (slide as any).itens ?? [],
+          tema: deck.tema ?? "indigo",
+        }),
+      });
+      const d = await r.json();
+      if (d.imagem) setSlideImages(prev => ({ ...prev, [idx]: d.imagem }));
+    } catch {}
+    finally { setImgLoading(null); }
+  }
 
   const handlePrint = () => window.print();
 
@@ -462,9 +485,18 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
           <Presentation className="w-3.5 h-3.5 text-violet-500" />
           <span className="text-[10px] font-black text-slate-700 uppercase tracking-wider">Apresentação</span>
         </div>
-        <button onClick={handlePrint} className="flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-violet-600 px-2 py-1 rounded-md hover:bg-violet-50">
-          <Printer className="w-3 h-3" /> Imprimir / PDF
-        </button>
+        <div className="flex items-center gap-1">
+          {!currentImg && slide.tipo !== "capa" && (
+            <button onClick={generateSlideImage} disabled={imgLoading !== null}
+                    className="flex items-center gap-1 text-[10px] font-bold text-fuchsia-600 hover:text-fuchsia-700 px-2 py-1 rounded-md hover:bg-fuchsia-50 disabled:opacity-50">
+              {imgLoading === idx ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+              {imgLoading === idx ? "Gerando..." : "Imagem IA"}
+            </button>
+          )}
+          <button onClick={handlePrint} className="flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-violet-600 px-2 py-1 rounded-md hover:bg-violet-50">
+            <Printer className="w-3 h-3" /> Imprimir
+          </button>
+        </div>
       </div>
 
       {/* Slide canvas — 16:9 */}
@@ -478,14 +510,21 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
             transition={{ duration: 0.25 }}
             className={`absolute inset-0 rounded-2xl overflow-hidden shadow-xl bg-gradient-to-br ${theme.bg} text-white p-5 flex flex-col`}
           >
+            {/* Background image overlay (cover or generated for slide) */}
+            {currentImg && (
+              <>
+                <img src={currentImg} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-luminosity" />
+                <div className={`absolute inset-0 bg-gradient-to-br ${theme.bg} opacity-75`} />
+              </>
+            )}
             {slide.tipo === "capa" && (
-              <div className="flex-1 flex flex-col justify-center items-center text-center">
-                <div className={`w-10 h-10 rounded-full ${theme.chip} flex items-center justify-center mb-3`}>
+              <div className="relative flex-1 flex flex-col justify-center items-center text-center">
+                <div className={`w-10 h-10 rounded-full ${theme.chip} flex items-center justify-center mb-3 shadow-lg`}>
                   <BookOpen className="w-5 h-5 text-white" />
                 </div>
-                <p className="text-lg font-black leading-tight mb-1">{slide.titulo}</p>
-                {slide.subtitulo && <p className={`text-xs ${theme.accent}`}>{slide.subtitulo}</p>}
-                {deck.autor && <p className={`text-[10px] ${theme.accent} mt-3`}>por {deck.autor}</p>}
+                <p className="text-lg font-black leading-tight mb-1 drop-shadow">{slide.titulo}</p>
+                {slide.subtitulo && <p className={`text-xs ${theme.accent} drop-shadow`}>{slide.subtitulo}</p>}
+                {deck.autor && <p className={`text-[10px] ${theme.accent} mt-3 drop-shadow`}>por {deck.autor}</p>}
               </div>
             )}
 

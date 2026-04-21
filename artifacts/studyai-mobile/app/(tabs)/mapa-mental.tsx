@@ -93,6 +93,21 @@ export default function MapaMentalScreen() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.erro ?? "Erro");
+      // Backward-compat: backend may return {categories} (new) — flatten to {topics}
+      if (data.categories && !data.topics) {
+        const palette = ["#6366F1", "#10B981", "#F59E0B", "#EC4899", "#06B6D4", "#8B5CF6", "#EF4444", "#14B8A6"];
+        let i = 0;
+        data.topics = data.categories.flatMap((cat: any) =>
+          (cat.topics ?? []).map((t: any) => ({
+            name: t.name,
+            color: palette[i++ % palette.length],
+            subtopics: (t.subtopics ?? []).map((s: any) =>
+              typeof s === "string" ? { name: s } : { name: s.name, detail: s.detail }
+            ),
+          }))
+        );
+        if (!data.color) data.color = palette[0];
+      }
       setMapa(data);
       // Reset view
       scale.value = withSpring(0.55);

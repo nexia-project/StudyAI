@@ -311,17 +311,19 @@ ${context}`,
 
     const resposta = completion.choices[0].message.content ?? "";
 
-    // Build unique sources cited
-    const fontesCitadas = new Map<number, { numero: number; titulo: string; trecho: string }>();
+    // Build unique sources cited — keep FULL trecho for clickable citations
+    const fontesCitadas = new Map<number, { numero: number; titulo: string; trecho: string; trechoCompleto: string }>();
     const fonteRegex = /\[Fonte (\d+)\]/g;
     let match;
     while ((match = fonteRegex.exec(resposta)) !== null) {
       const n = parseInt(match[1]);
       if (chunks[n - 1] && !fontesCitadas.has(n)) {
+        const full = chunks[n - 1].text;
         fontesCitadas.set(n, {
           numero: n,
           titulo: chunks[n - 1].title,
-          trecho: chunks[n - 1].text.slice(0, 200) + "...",
+          trecho: full.slice(0, 200) + (full.length > 200 ? "…" : ""),
+          trechoCompleto: full,
         });
       }
     }
@@ -332,7 +334,8 @@ ${context}`,
       : chunks.slice(0, 3).map((c, i) => ({
           numero: i + 1,
           titulo: c.title,
-          trecho: c.text.slice(0, 200) + "...",
+          trecho: c.text.slice(0, 200) + (c.text.length > 200 ? "…" : ""),
+          trechoCompleto: c.text,
         }));
 
     res.json({ resposta, fontes });
@@ -708,6 +711,145 @@ Gere 4-5 etapas cobrindo todo o conteúdo de forma progressiva.`,
   } catch (e) {
     console.error("notebook tiagao-explica:", e);
     res.status(500).json({ erro: "Erro ao gerar aula" });
+  }
+});
+
+// ─── POST /api/notebook/timeline ─────────────────────────────────────────────
+router.post("/notebook/timeline", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { docId } = req.body as { docId: number };
+
+  try {
+    const docs = await db.execute(sql`
+      SELECT content_text, title FROM knowledge_documents
+      WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
+    `);
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
+
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.3,
+      max_tokens: 2500,
+      messages: [
+        {
+          role: "system",
+          content: `Você é o Professor Tiagão. Extraia uma LINHA DO TEMPO cronológica do documento.
+Útil para História, Biologia (evolução), Química (descobertas), Literatura (escolas literárias), etc.
+Se o documento não tiver natureza cronológica clara, infira marcos temáticos progressivos.
+Retorne APENAS JSON válido:
+{
+  "titulo": "Título da linha do tempo",
+  "tema": "tema principal",
+  "eventos": [
+    {
+      "data": "1500" ou "Século XIX" ou "Etapa 1",
+      "titulo": "Nome curto do evento",
+      "descricao": "2-3 frases didáticas explicando o evento",
+      "importancia": "alta" | "media" | "baixa",
+      "categoria": "string curta (ex: Político, Cultural, Científico)",
+      "dicaEnem": "frase curta sobre como cai no ENEM (opcional)"
+    }
+  ]
+}
+Gere 6-12 eventos em ordem cronológica.`,
+        },
+        { role: "user", content: `Documento: "${row.title}"\n\n${row.content_text.slice(0, 12_000)}` },
+      ],
+    });
+
+    const raw = completion.choices[0].message.content ?? "{}";
+    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const timeline = JSON.parse(clean);
+
+    res.json({ timeline });
+  } catch (e) {
+    console.error("notebook timeline:", e);
+    res.status(500).json({ erro: "Erro ao gerar linha do tempo" });
+  }
+});
+
+// ─── POST /api/notebook/slides ───────────────────────────────────────────────
+router.post("/notebook/slides", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { docId } = req.body as { docId: number };
+
+  try {
+    const docs = await db.execute(sql`
+      SELECT content_text, title FROM knowledge_documents
+      WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
+    `);
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
+
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.4,
+      max_tokens: 3500,
+      messages: [
+        {
+          role: "system",
+          content: `Você é o Professor Tiagão criando uma APRESENTAÇÃO PROFISSIONAL em slides sobre o documento.
+Pense como um designer de slides do NotebookLM: títulos curtos, hierarquia clara, bullets concisos.
+Retorne APENAS JSON válido:
+{
+  "titulo": "Título da apresentação (≤ 8 palavras)",
+  "subtitulo": "Subtítulo de uma linha",
+  "autor": "Professor Tiagão",
+  "tema": "indigo" | "rose" | "emerald" | "amber",
+  "slides": [
+    {
+      "tipo": "capa",
+      "titulo": "string",
+      "subtitulo": "string",
+      "icone": "BookOpen"
+    },
+    {
+      "tipo": "agenda",
+      "titulo": "Agenda",
+      "itens": ["item 1", "item 2", "item 3"]
+    },
+    {
+      "tipo": "conteudo",
+      "titulo": "string (≤ 6 palavras)",
+      "subtitulo": "string opcional",
+      "bullets": ["frase curta e potente", "outra frase", "..."],
+      "destaque": "frase de impacto opcional"
+    },
+    {
+      "tipo": "comparacao",
+      "titulo": "string",
+      "esquerda": {"titulo": "string", "itens": ["..."]},
+      "direita": {"titulo": "string", "itens": ["..."]}
+    },
+    {
+      "tipo": "citacao",
+      "texto": "citação direta do material",
+      "autor": "string opcional"
+    },
+    {
+      "tipo": "encerramento",
+      "titulo": "Conclusão",
+      "mensagem": "frase final de uma linha",
+      "dicaEnem": "como esse tema cai no ENEM"
+    }
+  ]
+}
+Gere 8-12 slides total. Comece com "capa", inclua 1 "agenda", varie os tipos, termine com "encerramento".
+Bullets devem ser FRASES CURTAS (máx 12 palavras), nunca parágrafos.`,
+        },
+        { role: "user", content: `Documento: "${row.title}"\n\n${row.content_text.slice(0, 12_000)}` },
+      ],
+    });
+
+    const raw = completion.choices[0].message.content ?? "{}";
+    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const apresentacao = JSON.parse(clean);
+
+    res.json({ apresentacao, titulo: row.title });
+  } catch (e) {
+    console.error("notebook slides:", e);
+    res.status(500).json({ erro: "Erro ao gerar apresentação" });
   }
 });
 

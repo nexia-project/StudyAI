@@ -10,11 +10,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import {
   Upload, FileText, Link2, MessageSquare, Brain, BookOpen,
-  Loader2, Trash2, Send, ChevronRight, X, Plus, Zap,
+  Loader2, Trash2, Send, ChevronRight, ChevronLeft, X, Plus, Zap,
   ClipboardList, Layers, GraduationCap, ChevronDown, ChevronUp,
   CheckCircle, AlertCircle, Star, StickyNote, HelpCircle,
   ExternalLink, ArrowLeft, RefreshCw, Mic, Play, Pause,
-  Volume2, Users,
+  Volume2, Users, Clock, Presentation, Lock, Unlock, Quote, Printer,
 } from "lucide-react";
 import { TiagaoCharacter } from "@/components/TiagaoCharacter";
 import { AppNav } from "@/components/AppNav";
@@ -33,7 +33,33 @@ interface Doc {
 interface ChatMsg {
   role: "user" | "assistant";
   text: string;
-  fontes?: Array<{ numero: number; titulo: string; trecho: string }>;
+  fontes?: Array<{ numero: number; titulo: string; trecho: string; trechoCompleto?: string }>;
+}
+interface Timeline {
+  titulo: string;
+  tema: string;
+  eventos: Array<{
+    data: string;
+    titulo: string;
+    descricao: string;
+    importancia?: "alta" | "media" | "baixa";
+    categoria?: string;
+    dicaEnem?: string;
+  }>;
+}
+interface Slides {
+  titulo: string;
+  subtitulo?: string;
+  autor?: string;
+  tema?: "indigo" | "rose" | "emerald" | "amber";
+  slides: Array<
+    | { tipo: "capa"; titulo: string; subtitulo?: string }
+    | { tipo: "agenda"; titulo: string; itens: string[] }
+    | { tipo: "conteudo"; titulo: string; subtitulo?: string; bullets: string[]; destaque?: string }
+    | { tipo: "comparacao"; titulo: string; esquerda: { titulo: string; itens: string[] }; direita: { titulo: string; itens: string[] } }
+    | { tipo: "citacao"; texto: string; autor?: string }
+    | { tipo: "encerramento"; titulo: string; mensagem: string; dicaEnem?: string }
+  >;
 }
 interface Overview {
   summary: string;
@@ -66,7 +92,7 @@ interface PodcastRoteiro {
   destaques: string[];
 }
 
-type Tool = "overview" | "study-guide" | "flashcards" | "questoes" | "mapa-mental" | "podcast" | "tiagao";
+type Tool = "overview" | "study-guide" | "flashcards" | "questoes" | "mapa-mental" | "podcast" | "tiagao" | "timeline" | "slides";
 
 const TOOL_CONFIG: Record<Tool, { label: string; icon: React.ElementType; color: string; desc: string; badge?: string }> = {
   overview:      { label: "Visão Geral",      icon: Star,          color: "indigo",   desc: "Resumo + tópicos-chave + FAQ" },
@@ -74,7 +100,9 @@ const TOOL_CONFIG: Record<Tool, { label: string; icon: React.ElementType; color:
   flashcards:    { label: "Flashcards",        icon: Layers,        color: "pink",     desc: "15 flashcards para memorizar" },
   questoes:      { label: "Questões ENEM",     icon: GraduationCap, color: "amber",    desc: "5 questões estilo ENEM" },
   "mapa-mental": { label: "Mapa Mental",       icon: Brain,         color: "green",    desc: "Mapa visual interativo" },
-  podcast:       { label: "Podcast",           icon: Mic,           color: "rose",     desc: "Conversa educativa sobre o doc", badge: "NOVO" },
+  podcast:       { label: "Podcast",           icon: Mic,           color: "rose",     desc: "Conversa educativa sobre o doc" },
+  timeline:      { label: "Linha do Tempo",    icon: Clock,         color: "amber",    desc: "Cronologia didática (História!)", badge: "NOVO" },
+  slides:        { label: "Apresentação",      icon: Presentation,  color: "violet",   desc: "Slides profissionais prontos", badge: "NOVO" },
   tiagao:        { label: "Tiagão na Lousa",   icon: Zap,           color: "blue",     desc: "Aula animada na lousa" },
 };
 
@@ -361,6 +389,239 @@ function PodcastViewer({ podcast }: { podcast: PodcastRoteiro }) {
   );
 }
 
+// ─── Timeline (linha do tempo) ────────────────────────────────────────────────
+function TimelineView({ t }: { t: Timeline }) {
+  const importanciaCor = { alta: "bg-rose-500", media: "bg-amber-500", baixa: "bg-slate-400" } as const;
+  return (
+    <div className="p-3 space-y-3">
+      <div className="bg-gradient-to-r from-amber-500 to-orange-600 rounded-2xl p-3 text-white">
+        <div className="flex items-center gap-2 mb-1">
+          <Clock className="w-4 h-4" />
+          <span className="text-[10px] font-black uppercase tracking-wider">Linha do Tempo</span>
+        </div>
+        <p className="font-black text-sm leading-tight">{t.titulo}</p>
+        {t.tema && <p className="text-[10px] text-amber-100 mt-0.5">{t.tema}</p>}
+        <p className="text-[10px] text-amber-100 mt-2">{t.eventos.length} eventos cronológicos</p>
+      </div>
+
+      <div className="relative pl-5">
+        <div className="absolute left-2 top-1 bottom-1 w-0.5 bg-gradient-to-b from-amber-300 via-orange-300 to-rose-300" />
+        {t.eventos.map((ev, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: i * 0.05 }}
+            className="relative mb-3"
+          >
+            <div className={`absolute -left-3.5 top-1 w-3 h-3 rounded-full ring-2 ring-white ${importanciaCor[ev.importancia ?? "media"]}`} />
+            <div className="bg-white rounded-xl border border-slate-200 p-2.5 hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-[10px] font-black text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md">{ev.data}</span>
+                {ev.categoria && (
+                  <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{ev.categoria}</span>
+                )}
+              </div>
+              <p className="text-xs font-black text-slate-800 leading-tight mb-1">{ev.titulo}</p>
+              <p className="text-[11px] text-slate-600 leading-relaxed">{ev.descricao}</p>
+              {ev.dicaEnem && (
+                <div className="mt-2 flex items-start gap-1.5 px-2 py-1.5 bg-indigo-50 rounded-lg border border-indigo-100">
+                  <GraduationCap className="w-3 h-3 text-indigo-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-indigo-700 leading-tight"><span className="font-black">ENEM:</span> {ev.dicaEnem}</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Slides (apresentação profissional) ──────────────────────────────────────
+const SLIDE_THEMES = {
+  indigo:  { bg: "from-indigo-600 to-purple-700",  accent: "text-indigo-200", chip: "bg-indigo-500", border: "border-indigo-400" },
+  rose:    { bg: "from-rose-600 to-pink-700",      accent: "text-rose-200",   chip: "bg-rose-500",   border: "border-rose-400" },
+  emerald: { bg: "from-emerald-600 to-teal-700",   accent: "text-emerald-200",chip: "bg-emerald-500",border: "border-emerald-400" },
+  amber:   { bg: "from-amber-500 to-orange-600",   accent: "text-amber-100",  chip: "bg-amber-500",  border: "border-amber-400" },
+} as const;
+
+function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: (n: number) => void }) {
+  const theme = SLIDE_THEMES[deck.tema ?? "indigo"];
+  const slide = deck.slides[idx] ?? deck.slides[0];
+  const total = deck.slides.length;
+
+  const handlePrint = () => window.print();
+
+  return (
+    <div className="p-3 space-y-2">
+      <div className="flex items-center justify-between px-1">
+        <div className="flex items-center gap-1.5">
+          <Presentation className="w-3.5 h-3.5 text-violet-500" />
+          <span className="text-[10px] font-black text-slate-700 uppercase tracking-wider">Apresentação</span>
+        </div>
+        <button onClick={handlePrint} className="flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-violet-600 px-2 py-1 rounded-md hover:bg-violet-50">
+          <Printer className="w-3 h-3" /> Imprimir / PDF
+        </button>
+      </div>
+
+      {/* Slide canvas — 16:9 */}
+      <div className="relative w-full" style={{ aspectRatio: "16/9" }}>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={idx}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.25 }}
+            className={`absolute inset-0 rounded-2xl overflow-hidden shadow-xl bg-gradient-to-br ${theme.bg} text-white p-5 flex flex-col`}
+          >
+            {slide.tipo === "capa" && (
+              <div className="flex-1 flex flex-col justify-center items-center text-center">
+                <div className={`w-10 h-10 rounded-full ${theme.chip} flex items-center justify-center mb-3`}>
+                  <BookOpen className="w-5 h-5 text-white" />
+                </div>
+                <p className="text-lg font-black leading-tight mb-1">{slide.titulo}</p>
+                {slide.subtitulo && <p className={`text-xs ${theme.accent}`}>{slide.subtitulo}</p>}
+                {deck.autor && <p className={`text-[10px] ${theme.accent} mt-3`}>por {deck.autor}</p>}
+              </div>
+            )}
+
+            {slide.tipo === "agenda" && (
+              <div className="flex-1 flex flex-col">
+                <p className={`text-[10px] font-black uppercase tracking-wider ${theme.accent} mb-1`}>Agenda</p>
+                <p className="text-base font-black mb-3">{slide.titulo}</p>
+                <div className="flex-1 space-y-1.5">
+                  {slide.itens.map((it, i) => (
+                    <div key={i} className="flex items-center gap-2.5">
+                      <span className={`w-6 h-6 rounded-full ${theme.chip} flex items-center justify-center text-[11px] font-black flex-shrink-0`}>{i + 1}</span>
+                      <p className="text-xs font-semibold">{it}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {slide.tipo === "conteudo" && (
+              <div className="flex-1 flex flex-col">
+                <p className="text-base font-black leading-tight">{slide.titulo}</p>
+                {slide.subtitulo && <p className={`text-[11px] ${theme.accent} mb-2`}>{slide.subtitulo}</p>}
+                <div className="flex-1 space-y-1.5 mt-2">
+                  {slide.bullets.map((b, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <span className={`w-1.5 h-1.5 rounded-full ${theme.chip} flex-shrink-0 mt-1.5`} />
+                      <p className="text-xs leading-snug">{b}</p>
+                    </div>
+                  ))}
+                </div>
+                {slide.destaque && (
+                  <div className={`mt-3 px-3 py-2 rounded-lg bg-white/15 backdrop-blur border ${theme.border}`}>
+                    <p className="text-[11px] font-black">{slide.destaque}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {slide.tipo === "comparacao" && (
+              <div className="flex-1 flex flex-col">
+                <p className="text-base font-black leading-tight mb-3">{slide.titulo}</p>
+                <div className="flex-1 grid grid-cols-2 gap-2">
+                  {[slide.esquerda, slide.direita].map((col, ci) => (
+                    <div key={ci} className="rounded-lg bg-white/10 p-2.5 backdrop-blur">
+                      <p className={`text-[10px] font-black ${theme.accent} uppercase tracking-wider mb-1.5`}>{col.titulo}</p>
+                      <div className="space-y-1">
+                        {col.itens.map((it, i) => (
+                          <div key={i} className="flex items-start gap-1.5">
+                            <span className="w-1 h-1 rounded-full bg-white flex-shrink-0 mt-1.5" />
+                            <p className="text-[11px] leading-snug">{it}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {slide.tipo === "citacao" && (
+              <div className="flex-1 flex flex-col justify-center">
+                <Quote className={`w-6 h-6 ${theme.accent} mb-2`} />
+                <p className="text-sm font-bold italic leading-snug">"{slide.texto}"</p>
+                {slide.autor && <p className={`text-[10px] ${theme.accent} mt-3`}>— {slide.autor}</p>}
+              </div>
+            )}
+
+            {slide.tipo === "encerramento" && (
+              <div className="flex-1 flex flex-col justify-center items-center text-center">
+                <p className={`text-[10px] font-black uppercase tracking-wider ${theme.accent}`}>Conclusão</p>
+                <p className="text-base font-black mt-1 mb-2">{slide.titulo}</p>
+                <p className="text-xs leading-snug max-w-[90%]">{slide.mensagem}</p>
+                {slide.dicaEnem && (
+                  <div className={`mt-3 px-3 py-1.5 rounded-lg bg-white/20 border ${theme.border}`}>
+                    <p className="text-[10px] font-bold"><span className="font-black">📝 ENEM:</span> {slide.dicaEnem}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="absolute bottom-2 right-3 text-[9px] font-bold opacity-60">{idx + 1} / {total}</div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Controls */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setIdx(Math.max(0, idx - 1))}
+          disabled={idx === 0}
+          className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30"
+        >
+          <ChevronLeft className="w-3.5 h-3.5" />
+        </button>
+        <div className="flex-1 flex gap-0.5">
+          {deck.slides.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setIdx(i)}
+              className={`flex-1 h-1.5 rounded-full transition-colors ${i === idx ? "bg-violet-500" : i < idx ? "bg-violet-200" : "bg-slate-200"}`}
+            />
+          ))}
+        </div>
+        <button
+          onClick={() => setIdx(Math.min(total - 1, idx + 1))}
+          disabled={idx >= total - 1}
+          className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30"
+        >
+          <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Thumbnails / index */}
+      <div className="grid grid-cols-3 gap-1.5 mt-1">
+        {deck.slides.map((s, i) => {
+          const t = s.tipo === "capa" ? "Capa"
+            : s.tipo === "agenda" ? "Agenda"
+            : s.tipo === "comparacao" ? "Comparação"
+            : s.tipo === "citacao" ? "Citação"
+            : s.tipo === "encerramento" ? "Conclusão"
+            : (s as { titulo?: string }).titulo ?? "Slide";
+          return (
+            <button
+              key={i}
+              onClick={() => setIdx(i)}
+              className={`text-left p-1.5 rounded-md border text-[9px] font-semibold truncate transition-all ${
+                i === idx ? "bg-violet-50 border-violet-300 text-violet-700" : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+              }`}
+            >
+              <span className="font-black mr-1">{i + 1}.</span>{t}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function Notebook() {
   const [, navigate] = useLocation();
@@ -388,6 +649,13 @@ export default function Notebook() {
   const [toolError, setToolError] = useState<string | null>(null);
 
   const [mobilePanel, setMobilePanel] = useState<"sources" | "chat" | "tools">("chat");
+
+  // Citações clicáveis: msgIdx + numero da fonte → expandida
+  const [openFonte, setOpenFonte] = useState<{ msgIdx: number; numero: number } | null>(null);
+  // Toggle "perguntar só sobre os documentos selecionados"
+  const [restrictToSelected, setRestrictToSelected] = useState(true);
+  // Slides nav
+  const [slideIdx, setSlideIdx] = useState(0);
 
   const loadDocs = useCallback(async () => {
     setLoadingDocs(true);
@@ -481,7 +749,10 @@ export default function Notebook() {
     try {
       const r = await fetch(`${BASE_URL}/api/notebook/chat`, {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-        body: JSON.stringify({ pergunta: q, docIds: selectedDocIds.length ? selectedDocIds : null }),
+        body: JSON.stringify({
+          pergunta: q,
+          docIds: restrictToSelected && selectedDocIds.length ? selectedDocIds : null,
+        }),
       });
       const data = await r.json();
       if (r.ok) { setMessages(m => [...m, { role: "assistant", text: data.resposta, fontes: data.fontes }]); }
@@ -525,7 +796,10 @@ export default function Notebook() {
       questoes: "/api/notebook/questoes",
       "mapa-mental": "/api/notebook/mapa-mental",
       podcast: "/api/notebook/podcast",
+      timeline: "/api/notebook/timeline",
+      slides: "/api/notebook/slides",
     };
+    if (tool === "slides") setSlideIdx(0);
 
     try {
       const r = await fetch(`${BASE_URL}${endpoints[tool]}`, {
@@ -681,19 +955,44 @@ export default function Notebook() {
   // ─── CHAT PANEL ────────────────────────────────────────────────────────────
   const ChatPanel = (
     <div className="flex flex-col h-full bg-slate-50">
-      <div className="px-4 py-3 bg-white border-b border-slate-200 flex-shrink-0 flex items-center gap-3">
-        <div className="w-7 h-7">
-          <TiagaoCharacter state={chatLoading ? "thinking" : "idle"} size={28} showLabel={false} />
+      <div className="px-4 py-3 bg-white border-b border-slate-200 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-7 h-7">
+            <TiagaoCharacter state={chatLoading ? "thinking" : "idle"} size={28} showLabel={false} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-black text-slate-800 truncate">
+              {!restrictToSelected || selectedDocs.length === 0
+                ? `Todos os documentos (${docs.length})`
+                : selectedDocs.length === 1 ? `"${selectedDocs[0]?.title}"` : `${selectedDocs.length} fontes selecionadas`}
+            </p>
+            <p className="text-[10px] text-slate-400">Respostas exclusivamente baseadas no que você adicionou</p>
+          </div>
+          {messages.length > 0 && (
+            <button onClick={() => setMessages([])} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400" title="Limpar chat">
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
-        <div>
-          <p className="text-xs font-black text-slate-800">
-            {selectedDocs.length === 0 ? "Chat com todos os documentos" : selectedDocs.length === 1 ? `"${selectedDocs[0]?.title}"` : `${selectedDocs.length} fontes selecionadas`}
-          </p>
-          <p className="text-[10px] text-slate-400">Respostas baseadas nos seus documentos</p>
-        </div>
-        {messages.length > 0 && (
-          <button onClick={() => setMessages([])} className="ml-auto p-1.5 rounded-lg hover:bg-slate-100 text-slate-400" title="Limpar chat">
-            <RefreshCw className="w-3.5 h-3.5" />
+        {selectedDocIds.length > 0 && (
+          <button
+            onClick={() => setRestrictToSelected(v => !v)}
+            className={`mt-2 w-full flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[11px] font-semibold transition-all ${
+              restrictToSelected
+                ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"
+            }`}
+            title={restrictToSelected ? "Clique para perguntar em TODOS os documentos" : "Clique para perguntar SÓ nos documentos marcados"}
+          >
+            {restrictToSelected ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+            <span className="flex-1 text-left">
+              {restrictToSelected
+                ? `Perguntar só sobre ${selectedDocIds.length} ${selectedDocIds.length === 1 ? "fonte" : "fontes"} marcada${selectedDocIds.length === 1 ? "" : "s"}`
+                : "Perguntar sobre todos os documentos"}
+            </span>
+            <span className={`w-7 h-3.5 rounded-full relative transition-colors ${restrictToSelected ? "bg-indigo-500" : "bg-slate-300"}`}>
+              <span className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-white shadow transition-all ${restrictToSelected ? "left-3.5" : "left-0.5"}`} />
+            </span>
           </button>
         )}
       </div>
@@ -723,31 +1022,100 @@ export default function Notebook() {
           </div>
         )}
 
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} gap-2`}>
-            {msg.role === "assistant" && <div className="flex-shrink-0 mt-1"><TiagaoCharacter state="idle" size={28} showLabel={false} /></div>}
-            <div className="max-w-[82%] space-y-2">
-              <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-                msg.role === "user" ? "bg-indigo-600 text-white" : "bg-white border border-slate-200 text-slate-800"
-              }`}>
-                <p className="whitespace-pre-wrap">{msg.text}</p>
-              </div>
-              {msg.fontes && msg.fontes.length > 0 && (
-                <div className="space-y-1">
-                  {msg.fontes.slice(0, 3).map(f => (
-                    <div key={f.numero} className="flex items-start gap-1.5 px-2 py-1.5 bg-slate-100 rounded-xl">
-                      <span className="text-[10px] font-black text-indigo-600 flex-shrink-0">[{f.numero}]</span>
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-bold text-slate-700 truncate">{f.titulo}</p>
-                        <p className="text-[10px] text-slate-500 leading-tight line-clamp-1">{f.trecho}</p>
-                      </div>
-                    </div>
-                  ))}
+        {messages.map((msg, i) => {
+          // Renderiza texto com [Fonte N] como chips clicáveis
+          const fontesMap = new Map((msg.fontes ?? []).map(f => [f.numero, f]));
+          const parts = msg.role === "assistant"
+            ? msg.text.split(/(\[Fonte \d+\])/g).map((part, idx) => {
+                const m = part.match(/^\[Fonte (\d+)\]$/);
+                if (m) {
+                  const n = parseInt(m[1]);
+                  const f = fontesMap.get(n);
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setOpenFonte(o => o?.msgIdx === i && o?.numero === n ? null : { msgIdx: i, numero: n })}
+                      className={`inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 mx-0.5 rounded-md text-[10px] font-black align-baseline transition-all ${
+                        f ? "bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white cursor-pointer" : "bg-slate-100 text-slate-400"
+                      }`}
+                      title={f ? `Ver trecho de "${f.titulo}"` : "Fonte não disponível"}
+                      disabled={!f}
+                    >
+                      {n}
+                    </button>
+                  );
+                }
+                return <span key={idx}>{part}</span>;
+              })
+            : null;
+
+          const fonteAberta = openFonte?.msgIdx === i ? msg.fontes?.find(f => f.numero === openFonte.numero) : null;
+
+          return (
+            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} gap-2`}>
+              {msg.role === "assistant" && <div className="flex-shrink-0 mt-1"><TiagaoCharacter state="idle" size={28} showLabel={false} /></div>}
+              <div className="max-w-[82%] space-y-2">
+                <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                  msg.role === "user" ? "bg-indigo-600 text-white" : "bg-white border border-slate-200 text-slate-800"
+                }`}>
+                  <p className="whitespace-pre-wrap">{msg.role === "assistant" ? parts : msg.text}</p>
                 </div>
-              )}
+
+                {/* Trecho expandido (clicado) */}
+                <AnimatePresence>
+                  {fonteAberta && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4, height: 0 }}
+                      animate={{ opacity: 1, y: 0, height: "auto" }}
+                      exit={{ opacity: 0, y: -4, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-3 py-2.5 bg-indigo-50 border border-indigo-200 rounded-xl">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <Quote className="w-3 h-3 text-indigo-600" />
+                            <span className="text-[10px] font-black text-indigo-700 uppercase tracking-wider">Fonte {fonteAberta.numero}</span>
+                            <span className="text-[10px] font-bold text-slate-700">· {fonteAberta.titulo}</span>
+                          </div>
+                          <button onClick={() => setOpenFonte(null)} className="p-0.5 hover:bg-indigo-100 rounded">
+                            <X className="w-3 h-3 text-indigo-600" />
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-slate-700 leading-relaxed whitespace-pre-wrap">
+                          {fonteAberta.trechoCompleto ?? fonteAberta.trecho}
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Chips de citações da resposta */}
+                {msg.fontes && msg.fontes.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {msg.fontes.map(f => {
+                      const isOpen = openFonte?.msgIdx === i && openFonte?.numero === f.numero;
+                      return (
+                        <button
+                          key={f.numero}
+                          onClick={() => setOpenFonte(o => o?.msgIdx === i && o?.numero === f.numero ? null : { msgIdx: i, numero: f.numero })}
+                          className={`flex items-start gap-1.5 px-2 py-1.5 rounded-xl text-left transition-all max-w-full ${
+                            isOpen ? "bg-indigo-100 ring-1 ring-indigo-300" : "bg-slate-100 hover:bg-slate-200"
+                          }`}
+                        >
+                          <span className="text-[10px] font-black text-indigo-600 flex-shrink-0">[{f.numero}]</span>
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-bold text-slate-700 truncate">{f.titulo}</p>
+                            <p className="text-[10px] text-slate-500 leading-tight line-clamp-1">{f.trecho}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {chatLoading && (
           <div className="flex justify-start gap-2">
@@ -941,6 +1309,18 @@ export default function Notebook() {
             {activeTool === "podcast" && (() => {
               const r = toolResult as PodcastRoteiro;
               return r.titulo ? <PodcastViewer podcast={r} /> : null;
+            })()}
+
+            {activeTool === "timeline" && (() => {
+              const r = toolResult as { timeline: Timeline };
+              return r.timeline?.eventos?.length ? <TimelineView t={r.timeline} /> : null;
+            })()}
+
+            {activeTool === "slides" && (() => {
+              const r = toolResult as { apresentacao: Slides };
+              return r.apresentacao?.slides?.length
+                ? <SlidesView deck={r.apresentacao} idx={slideIdx} setIdx={setSlideIdx} />
+                : null;
             })()}
           </div>
         )}

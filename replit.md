@@ -57,7 +57,25 @@ StudyAI is built as a `pnpm` monorepo using TypeScript, Node.js 24, and Express 
 - **Government Module**: Provides aggregate educational metrics, weekly growth analysis, and tools for promoting user roles.
 
 **DB Tables (as of April 2026):**
-26 core tables + `tiagao_memory` + `tiagao_conversations` added for agent memory system.
+32 core tables. Includes `tiagao_memory`, `tiagao_conversations`, `trilha_mestre_progress`, `trilha_mestre_sessions`, `notebook_overviews`, `notebook_embeddings`, `knowledge_documents`, `professor_mindmaps`, `user_doc_mindmaps`, `caderno_notes`, `redacoes`.
+
+### Cross-Surface Sync Rule (LOCKED)
+Every new AI feature added to ANY surface MUST also be reflected in:
+1. **Admin** dashboard (`/admin/stats` aggregate metric + UI widget)
+2. **Professor** dashboard (per-turma adoption + per-student usage in `/teacher/turmas/:id/insights`)
+3. **Instituição** dashboard (institution-level rollup)
+4. **Mobile app** (`artifacts/studyai-mobile/`) — feature parity with web
+
+### Backend AI Metrics Endpoint
+`GET /api/admin/stats` now returns: `aiFeatures[]` (Tiagão, Trilha, Notebook, Mapa Mental, Redação, Flashcards), `trilhaBySubject`, `diagnosticsCompleted30d`, `notebookDocsTotal`, `notebookStorageMb`, `notebookOverviewsTotal`, `teacherContentTotal`, `contentBreakdown`, `institutionsTotal/Active`.
+
+`GET /api/teacher/turmas/:id/insights` returns: per-student `trilha.{mat,port}.{level,sessions,accuracy}`, `diagnosticCompleted` flag, `ai.{tiagao,notebook,mapa}` usage counts, plus `summary.{avgLevelMat,avgLevelPort,diagnosticCompleted,weakTopics[],aiAdoption}`.
+
+### Open TODOs (next round, by priority)
+1. **Mobile parity**: add `(tabs)/trilha.tsx` (with Diagnostic), Notebook screen (PDF upload + RAG chat + Study Guide + Podcast), MapaMental screen (read-only PannableSvg).
+2. **Instituição AI dashboard**: replicate the `aiFeatures`/`weakTopics`/`trilhaBySubject` panels in `Instituicao.tsx` aggregated across all turmas of the institution.
+3. **Professor's own Notebook**: scope `knowledge_documents` queries by `uploaded_by = req.userId` and surface a "Caderno IA do Professor" tab in `Professor.tsx` (RAG over class material).
+4. **Citações inline + filtro por documento** no chat do Notebook do aluno.
 
 ### External Dependencies
 

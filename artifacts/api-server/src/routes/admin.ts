@@ -196,12 +196,71 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
       ORDER BY study_date
     `);
 
+    // ─── NEW AI FEATURE METRICS ──────────────────────────────────────────────
+    // All run in parallel for speed
+    const [
+      trilhaProgressRows, trilhaSessions7d, diagnosticsToday,
+      notebookDocs, notebookOverviews, notebookOverviews7d,
+      mindmapsPro, mindmapsUserDoc,
+      tiagaoConv, tiagaoConv7d,
+      redacoesTotal, redacoes7d,
+      flashcardsRev7d,
+      teacherContentTotal,
+      institutionsTotal,
+    ] = await Promise.all([
+      db.execute(sql`SELECT subject, COUNT(*)::int AS cnt, ROUND(AVG(level)::numeric, 1)::float AS avg_level, MAX(level)::int AS max_level FROM trilha_mestre_progress GROUP BY subject`),
+      db.execute(sql`SELECT COUNT(*)::int AS count, COUNT(DISTINCT user_id)::int AS users FROM trilha_mestre_sessions WHERE created_at >= NOW() - INTERVAL '7 days'`),
+      db.execute(sql`SELECT COUNT(DISTINCT user_id)::int AS count FROM trilha_mestre_sessions WHERE level = 5 AND created_at >= NOW() - INTERVAL '30 days'`),
+      db.execute(sql`SELECT COUNT(*)::int AS count, COALESCE(SUM(file_size_kb), 0)::int AS total_kb FROM knowledge_documents WHERE is_chunk = false OR is_chunk IS NULL`),
+      db.execute(sql`SELECT COUNT(*)::int AS count FROM notebook_overviews`),
+      db.execute(sql`SELECT COUNT(*)::int AS count FROM notebook_overviews WHERE created_at >= NOW() - INTERVAL '7 days'`),
+      db.execute(sql`SELECT COUNT(*)::int AS count, COUNT(DISTINCT professor_id)::int AS users FROM professor_mindmaps`),
+      db.execute(sql`SELECT COUNT(*)::int AS count, COUNT(DISTINCT user_id)::int AS users FROM user_doc_mindmaps`),
+      db.execute(sql`SELECT COUNT(*)::int AS count, COUNT(DISTINCT user_id)::int AS users FROM tiagao_conversations`),
+      db.execute(sql`SELECT COUNT(*)::int AS count FROM tiagao_conversations WHERE created_at >= NOW() - INTERVAL '7 days'`),
+      db.execute(sql`SELECT COUNT(*)::int AS count, COUNT(DISTINCT user_id)::int AS users FROM redacoes`),
+      db.execute(sql`SELECT COUNT(*)::int AS count FROM redacoes WHERE created_at >= NOW() - INTERVAL '7 days'`),
+      db.execute(sql`SELECT COUNT(*)::int AS count FROM flashcard_reviews WHERE updated_at >= NOW() - INTERVAL '7 days'`),
+      db.execute(sql`SELECT COUNT(*)::int AS count FROM teacher_content`),
+      db.execute(sql`SELECT COUNT(*)::int AS count, COUNT(*) FILTER (WHERE is_active = true)::int AS active FROM instituicoes`),
+    ]);
+
+    // Storage breakdown for "Conteúdo & Banco"
+    const totalDocsKb = (notebookDocs.rows[0] as any)?.total_kb ?? 0;
+    const contentBreakdown = [
+      { label: "Documentos (PDF/Texto)", value: totalDocsKb, color: "#3b82f6" },
+      { label: "Mapas Mentais", value: ((mindmapsPro.rows[0] as any)?.count ?? 0) + ((mindmapsUserDoc.rows[0] as any)?.count ?? 0), color: "#a855f7" },
+      { label: "Questões ENEM", value: (topMaterias.rows as any[]).reduce((s, m) => s + (m.count ?? 0), 0), color: "#f59e0b" },
+      { label: "Notebook Overviews", value: (notebookOverviews.rows[0] as any)?.count ?? 0, color: "#10b981" },
+      { label: "Redações", value: (redacoesTotal.rows[0] as any)?.count ?? 0, color: "#ef4444" },
+    ];
+
+    // AI feature usage chart (engagement panel)
+    const aiFeatures = [
+      { feature: "Tiagão (Voz)", uses: (tiagaoConv.rows[0] as any)?.count ?? 0, users: (tiagaoConv.rows[0] as any)?.users ?? 0, last7d: (tiagaoConv7d.rows[0] as any)?.count ?? 0 },
+      { feature: "Trilha do Mestre", uses: (trilhaSessions7d.rows[0] as any)?.count ?? 0, users: (trilhaSessions7d.rows[0] as any)?.users ?? 0, last7d: (trilhaSessions7d.rows[0] as any)?.count ?? 0 },
+      { feature: "Notebook (RAG)", uses: (notebookOverviews.rows[0] as any)?.count ?? 0, users: 0, last7d: (notebookOverviews7d.rows[0] as any)?.count ?? 0 },
+      { feature: "Mapa Mental", uses: ((mindmapsPro.rows[0] as any)?.count ?? 0) + ((mindmapsUserDoc.rows[0] as any)?.count ?? 0), users: ((mindmapsPro.rows[0] as any)?.users ?? 0) + ((mindmapsUserDoc.rows[0] as any)?.users ?? 0), last7d: 0 },
+      { feature: "Redação", uses: (redacoesTotal.rows[0] as any)?.count ?? 0, users: (redacoesTotal.rows[0] as any)?.users ?? 0, last7d: (redacoes7d.rows[0] as any)?.count ?? 0 },
+      { feature: "Flashcards", uses: (flashcardsRev7d.rows[0] as any)?.count ?? 0, users: 0, last7d: (flashcardsRev7d.rows[0] as any)?.count ?? 0 },
+    ];
+
+    // Trilha breakdown by subject
+    const trilhaBySubject = (trilhaProgressRows.rows as any[]).map(r => ({
+      subject: r.subject,
+      students: r.cnt,
+      avgLevel: r.avg_level,
+      maxLevel: r.max_level,
+    }));
+
     res.json({
       totalUsers: (totalUsers.rows[0] as any)?.count ?? 0,
       todayNewUsers: (todayNewUsers.rows[0] as any)?.count ?? 0,
       premiumUsers: (premiumUsers.rows[0] as any)?.count ?? 0,
       teacherCount: (teacherCount.rows[0] as any)?.count ?? 0,
       govCount: (govCount.rows[0] as any)?.count ?? 0,
+      institutionsTotal: (institutionsTotal.rows[0] as any)?.count ?? 0,
+      institutionsActive: (institutionsTotal.rows[0] as any)?.active ?? 0,
       todayActive: (todayActive.rows[0] as any)?.count ?? 0,
       pendingRequests: (pendingReq.rows[0] as any)?.count ?? 0,
       plansPerDay: plansPerDay.rows,
@@ -210,6 +269,15 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
       recentUsers: recentUsers.rows,
       topMaterias: topMaterias.rows,
       activityHeatmap: activityHeatmap.rows,
+      // ─── New AI feature metrics ───────────────────────────────────────
+      aiFeatures,
+      trilhaBySubject,
+      diagnosticsCompleted30d: (diagnosticsToday.rows[0] as any)?.count ?? 0,
+      notebookDocsTotal: (notebookDocs.rows[0] as any)?.count ?? 0,
+      notebookStorageMb: Math.round(totalDocsKb / 1024),
+      notebookOverviewsTotal: (notebookOverviews.rows[0] as any)?.count ?? 0,
+      teacherContentTotal: (teacherContentTotal.rows[0] as any)?.count ?? 0,
+      contentBreakdown,
     });
   } catch (err) {
     req.log.error({ err }, "Error fetching admin stats");

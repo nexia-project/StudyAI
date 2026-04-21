@@ -1023,4 +1023,93 @@ router.get("/teacher/student/:studentId/detail", async (req: Request, res: Respo
   }
 });
 
+// ─── TURMA INSIGHTS — Trilha do Mestre + Diagnóstico por aluno ────────────────
+// Returns rich AI-driven insights about a turma so professors can act on data.
+// This closes the gap with NotebookLM-level dashboards: per-student level on
+// the Trilha (Mat/PT), diagnostic completion, recent AI usage, weak topics.
+router.get("/teacher/turmas/:id/insights", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
+
+  try {
+    const { id } = req.params;
+    const [turma] = await db.select().from(turmasTable).where(eq(turmasTable.id, id)).limit(1);
+    if (!turma || (turma.teacherId !== req.userId! && !isAdminUser(req.userId))) {
+      res.status(404).json({ error: "Turma não encontrada" }); return;
+    }
+    const memberships = await db.select({ studentId: turmaMembershipsTable.studentId })
+      .from(turmaMembershipsTable).where(eq(turmaMembershipsTable.turmaId, id));
+    const studentIds = memberships.map(m => m.studentId);
+    if (!studentIds.length) {
+      res.json({ students: [], summary: { totalStudents: 0, avgLevelMat: 0, avgLevelPort: 0,
+        diagnosticCompleted: 0, weakTopics: [], aiAdoption: { tiagao: 0, notebook: 0, mapa: 0 } } });
+      return;
+    }
+
+    // Build SQL IN list safely
+    const idList = sql.join(studentIds.map(s => sql`${s}`), sql`, `);
+
+    const [trilhaRows, diagnosticRows, tiagaoRows, notebookRows, mapaRows, studentRows, weakTopicsRows] = await Promise.all([
+      db.execute(sql`SELECT user_id, subject, level, total_sessions, total_correct, total_questions, current_streak, last_session_at FROM trilha_mestre_progress WHERE user_id IN (${idList})`),
+      db.execute(sql`SELECT DISTINCT user_id FROM trilha_mestre_sessions WHERE user_id IN (${idList}) AND level = 5`),
+      db.execute(sql`SELECT user_id, COUNT(*)::int AS cnt FROM tiagao_conversations WHERE user_id IN (${idList}) GROUP BY user_id`),
+      db.execute(sql`SELECT uploaded_by AS user_id, COUNT(*)::int AS cnt FROM knowledge_documents WHERE uploaded_by IN (${idList}) AND (is_chunk = false OR is_chunk IS NULL) GROUP BY uploaded_by`),
+      db.execute(sql`SELECT user_id, COUNT(*)::int AS cnt FROM user_doc_mindmaps WHERE user_id IN (${idList}) GROUP BY user_id`),
+      db.execute(sql`SELECT id, COALESCE(student_name, first_name || ' ' || last_name, email, 'Aluno') AS name, xp FROM users WHERE id IN (${idList})`),
+      db.execute(sql`SELECT materia AS topic, ROUND(AVG(CASE WHEN total > 0 THEN score::numeric/total*100 ELSE 0 END),0)::int AS avg_score, COUNT(*)::int AS attempts FROM simulado_results WHERE user_id IN (${idList}) GROUP BY materia HAVING AVG(CASE WHEN total > 0 THEN score::numeric/total*100 ELSE 0 END) < 60 ORDER BY avg_score ASC LIMIT 5`),
+    ]);
+
+    // Index per student
+    const trilhaMap: Record<string, any> = {};
+    (trilhaRows.rows as any[]).forEach(r => {
+      if (!trilhaMap[r.user_id]) trilhaMap[r.user_id] = {};
+      trilhaMap[r.user_id][r.subject] = r;
+    });
+    const diagDone = new Set((diagnosticRows.rows as any[]).map(r => r.user_id));
+    const tiagaoMap = Object.fromEntries((tiagaoRows.rows as any[]).map(r => [r.user_id, r.cnt]));
+    const notebookMap = Object.fromEntries((notebookRows.rows as any[]).map(r => [r.user_id, r.cnt]));
+    const mapaMap = Object.fromEntries((mapaRows.rows as any[]).map(r => [r.user_id, r.cnt]));
+
+    const students = (studentRows.rows as any[]).map(s => {
+      const t = trilhaMap[s.id] || {};
+      const mat = t.matematica || t["matemática"];
+      const port = t.portugues || t["português"];
+      const acc = (r: any) => r && r.total_questions > 0 ? Math.round((r.total_correct / r.total_questions) * 100) : 0;
+      return {
+        id: s.id, name: s.name, xp: s.xp ?? 0,
+        trilha: {
+          mat: { level: mat?.level ?? 0, sessions: mat?.total_sessions ?? 0, accuracy: acc(mat) },
+          port: { level: port?.level ?? 0, sessions: port?.total_sessions ?? 0, accuracy: acc(port) },
+        },
+        diagnosticCompleted: diagDone.has(s.id),
+        ai: {
+          tiagao: tiagaoMap[s.id] ?? 0,
+          notebook: notebookMap[s.id] ?? 0,
+          mapa: mapaMap[s.id] ?? 0,
+        },
+      };
+    });
+
+    const matLevels = students.map(s => s.trilha.mat.level).filter(l => l > 0);
+    const portLevels = students.map(s => s.trilha.port.level).filter(l => l > 0);
+    const summary = {
+      totalStudents: students.length,
+      avgLevelMat: matLevels.length ? Math.round(matLevels.reduce((a, b) => a + b, 0) / matLevels.length) : 0,
+      avgLevelPort: portLevels.length ? Math.round(portLevels.reduce((a, b) => a + b, 0) / portLevels.length) : 0,
+      diagnosticCompleted: students.filter(s => s.diagnosticCompleted).length,
+      weakTopics: weakTopicsRows.rows,
+      aiAdoption: {
+        tiagao: students.filter(s => s.ai.tiagao > 0).length,
+        notebook: students.filter(s => s.ai.notebook > 0).length,
+        mapa: students.filter(s => s.ai.mapa > 0).length,
+      },
+    };
+
+    res.json({ students: students.sort((a, b) => (b.trilha.mat.level + b.trilha.port.level) - (a.trilha.mat.level + a.trilha.port.level)), summary });
+  } catch (err) {
+    req.log.error({ err }, "Error fetching turma insights");
+    res.status(500).json({ error: "Erro ao carregar insights da turma" });
+  }
+});
+
 export default router;

@@ -10,6 +10,7 @@ import {
   AlertTriangle, TrendingUp, Zap, Calendar, RefreshCw, Star, Target,
   Search, Filter, ChevronDown, ChevronUp, Download, Bell, Eye, Award,
   CheckCircle2, XCircle, Clock, Flame, Mail, X, MessageCircle,
+  Brain, GraduationCap, Mic, Layers, Sparkles, Loader2, BookMarked,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -167,7 +168,9 @@ export default function ProfessorTurmaPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [ranking, setRanking] = useState<RankEntry[]>([]);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "alunos" | "tarefas" | "ranking">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "alunos" | "ia" | "tarefas" | "ranking">("dashboard");
+  const [insights, setInsights] = useState<any>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [copiedCode, setCopiedCode] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
@@ -316,9 +319,21 @@ export default function ProfessorTurmaPage() {
   const tabs = [
     { id: "dashboard" as const, label: "Dashboard", icon: BarChart2 },
     { id: "alunos" as const, label: "Alunos", icon: Users, count: students.length },
+    { id: "ia" as const, label: "Inteligência IA", icon: Sparkles },
     { id: "tarefas" as const, label: "Tarefas", icon: BookOpen, count: tasks.length },
     { id: "ranking" as const, label: "Ranking", icon: Trophy },
   ];
+
+  // Lazy-load insights when switching to the AI tab
+  useEffect(() => {
+    if (activeTab !== "ia" || insights || insightsLoading || !id) return;
+    setInsightsLoading(true);
+    fetch(`/api/teacher/turmas/${id}/insights`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setInsights(d))
+      .catch(() => setInsights({ students: [], summary: { totalStudents: 0 } }))
+      .finally(() => setInsightsLoading(false));
+  }, [activeTab, insights, insightsLoading, id]);
 
   const atRiskStudents = students.filter(s => s.status === "risco");
 
@@ -663,6 +678,154 @@ export default function ProfessorTurmaPage() {
                       );
                     })}
                   </div>
+                </>
+              )}
+            </motion.div>
+          )}
+
+          {/* ══════════════════════════════════════════
+              TAB: INTELIGÊNCIA IA — Trilha + Diagnóstico + AI usage
+          ══════════════════════════════════════════ */}
+          {activeTab === "ia" && (
+            <motion.div key="ia" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
+              {insightsLoading && (
+                <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center">
+                  <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mx-auto mb-3" />
+                  <p className="text-sm text-slate-500 font-semibold">Analisando dados da turma com IA…</p>
+                </div>
+              )}
+
+              {!insightsLoading && insights && (
+                <>
+                  {/* Summary */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="bg-gradient-to-br from-indigo-500 to-violet-600 text-white rounded-2xl p-4 shadow-lg">
+                      <GraduationCap className="w-5 h-5 opacity-80 mb-1" />
+                      <p className="text-2xl font-black">{insights.summary?.diagnosticCompleted ?? 0}<span className="text-sm font-normal opacity-70">/{insights.summary?.totalStudents ?? 0}</span></p>
+                      <p className="text-[11px] uppercase tracking-wide opacity-80 font-bold">Diagnóstico inicial</p>
+                    </div>
+                    <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] uppercase font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Trilha • Mat</span>
+                        <Brain className="w-4 h-4 text-blue-400" />
+                      </div>
+                      <p className="text-2xl font-black text-slate-800">Nv. {insights.summary?.avgLevelMat ?? 0}</p>
+                      <p className="text-[11px] text-slate-400">média da turma</p>
+                    </div>
+                    <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] uppercase font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">Trilha • PT</span>
+                        <BookMarked className="w-4 h-4 text-rose-400" />
+                      </div>
+                      <p className="text-2xl font-black text-slate-800">Nv. {insights.summary?.avgLevelPort ?? 0}</p>
+                      <p className="text-[11px] text-slate-400">média da turma</p>
+                    </div>
+                    <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] uppercase font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Adoção IA</span>
+                        <Sparkles className="w-4 h-4 text-emerald-400" />
+                      </div>
+                      <div className="space-y-1">
+                        {[
+                          { l: "Tiagão", v: insights.summary?.aiAdoption?.tiagao ?? 0, i: Mic },
+                          { l: "Notebook", v: insights.summary?.aiAdoption?.notebook ?? 0, i: BookOpen },
+                          { l: "Mapa Mental", v: insights.summary?.aiAdoption?.mapa ?? 0, i: Brain },
+                        ].map(r => (
+                          <div key={r.l} className="flex items-center gap-1.5 text-[11px]">
+                            <r.i className="w-3 h-3 text-slate-400" />
+                            <span className="text-slate-500 flex-1">{r.l}</span>
+                            <span className="font-bold text-slate-800">{r.v}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Weak topics */}
+                  {(insights.summary?.weakTopics ?? []).length > 0 && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-600" />
+                        <h3 className="font-black text-amber-900 text-sm">Pontos fracos da turma — recomendado revisar</h3>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {insights.summary.weakTopics.map((t: any) => (
+                          <div key={t.topic} className="bg-white border border-amber-200 rounded-xl px-3 py-1.5 flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-700">{t.topic}</span>
+                            <span className="text-[11px] font-black text-amber-700">{t.avg_score}%</span>
+                            <span className="text-[10px] text-slate-400">({t.attempts} tent.)</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Per-student table */}
+                  <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+                    <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                      <h3 className="font-black text-slate-800 text-sm">Trilha do Mestre por aluno</h3>
+                      <span className="text-[11px] text-slate-400">{insights.students?.length ?? 0} alunos</span>
+                    </div>
+                    {(insights.students ?? []).length === 0 ? (
+                      <div className="p-8 text-center text-sm text-slate-400">
+                        Nenhum aluno fez a Trilha ainda. Quando começarem, os níveis aparecem aqui.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-slate-50 text-[11px] uppercase text-slate-500 font-black">
+                            <tr>
+                              <th className="text-left px-4 py-2.5">Aluno</th>
+                              <th className="text-center px-2 py-2.5">Diagnóstico</th>
+                              <th className="text-center px-2 py-2.5">Mat (Nv/Acerto)</th>
+                              <th className="text-center px-2 py-2.5">PT (Nv/Acerto)</th>
+                              <th className="text-center px-2 py-2.5 hidden md:table-cell">Tiagão</th>
+                              <th className="text-center px-2 py-2.5 hidden md:table-cell">Notebook</th>
+                              <th className="text-center px-2 py-2.5 hidden md:table-cell">Mapa</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {insights.students.map((s: any) => (
+                              <tr key={s.id} className="border-t border-slate-50 hover:bg-slate-50/40">
+                                <td className="px-4 py-2.5">
+                                  <div className="font-bold text-slate-800 text-sm">{s.name}</div>
+                                  <div className="text-[11px] text-slate-400">{s.xp} XP</div>
+                                </td>
+                                <td className="text-center px-2 py-2.5">
+                                  {s.diagnosticCompleted
+                                    ? <CheckCircle2 className="w-4 h-4 text-emerald-500 inline" />
+                                    : <span className="text-[11px] text-slate-300">—</span>}
+                                </td>
+                                <td className="text-center px-2 py-2.5">
+                                  <div className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                                    <span className="text-xs font-black">{s.trilha.mat.level || "—"}</span>
+                                    {s.trilha.mat.sessions > 0 && (
+                                      <span className="text-[10px] opacity-70">{s.trilha.mat.accuracy}%</span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="text-center px-2 py-2.5">
+                                  <div className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-700 px-2 py-0.5 rounded-full">
+                                    <span className="text-xs font-black">{s.trilha.port.level || "—"}</span>
+                                    {s.trilha.port.sessions > 0 && (
+                                      <span className="text-[10px] opacity-70">{s.trilha.port.accuracy}%</span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="text-center px-2 py-2.5 hidden md:table-cell text-xs text-slate-600">{s.ai.tiagao || "—"}</td>
+                                <td className="text-center px-2 py-2.5 hidden md:table-cell text-xs text-slate-600">{s.ai.notebook || "—"}</td>
+                                <td className="text-center px-2 py-2.5 hidden md:table-cell text-xs text-slate-600">{s.ai.mapa || "—"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="text-[11px] text-slate-400 text-center">
+                    💡 Dica: clique na aba <strong>Tarefas</strong> e atribua um simulado focado nos pontos fracos.
+                  </p>
                 </>
               )}
             </motion.div>

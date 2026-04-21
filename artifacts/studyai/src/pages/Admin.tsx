@@ -389,20 +389,24 @@ export default function AdminPage() {
     return matchSearch;
   });
 
-  /* Mock data for sections without real APIs */
-  const mockIACosts = [
-    { model: "AOA", cost: 18000 }, { model: "OMO", cost: 22000 }, { model: "OM", cost: 8000 },
-    { model: "BIS", cost: 3000 }, { model: "kIA", cost: 12000 },
-  ];
-  const mockModels = [
-    { name: "GPT-4", pct: 58 }, { name: "Embeddings", pct: 32 }, { name: "Embeddings", pct: 10 }, { name: "GPT-4", pct: 9 },
-  ];
+  /* ── Charts derived from REAL backend metrics ──────────────────────── */
+  // IA & Custos: usage volume per AI feature (last 7d) — replaces hardcoded model bars
+  const aiCostsChart = (stats?.aiFeatures ?? []).map((f: any) => ({
+    model: f.feature.length > 7 ? f.feature.slice(0, 6) + "…" : f.feature,
+    cost: f.last7d || f.uses || 0,
+  }));
+  const aiFeaturesList = stats?.aiFeatures ?? [];
+  const totalAiUses = aiFeaturesList.reduce((s: number, f: any) => s + (f.uses || 0), 0) || 1;
+
   const mockRevData = stats?.plansPerDay?.map((d, i) => ({
     day: d.day.slice(5), revenue: (d.count * 8.2 + i * 120).toFixed(0),
   })) ?? [];
-  const contentPie = [
-    { name: "PDF", value: 40 }, { name: "Questões", value: 30 }, { name: "Mapas", value: 20 }, { name: "Vídeos", value: 10 },
-  ];
+
+  // Conteúdo & Banco: real breakdown from backend
+  const contentPie = (stats?.contentBreakdown ?? []).map((c: any) => ({
+    name: c.label.split(" ")[0], value: c.value,
+  })).filter((c: any) => c.value > 0);
+
   const mockPerf = stats?.newUsersPerDay?.map((d, i) => ({
     day: d.day.slice(5), minutos: Math.round(25 + i * 3 + Math.sin(i) * 8),
     xp: Math.round(d.count * 120 + i * 50),
@@ -725,33 +729,30 @@ export default function AdminPage() {
                 <Card title="IA & Custos" icon={Bot} iconColor="text-blue-400">
                   <p className="text-[10px] text-white/30 font-bold uppercase">Custos por modelo de IA</p>
                   <ResponsiveContainer width="100%" height={80}>
-                    <BarChart data={mockIACosts} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
+                    <BarChart data={aiCostsChart} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
                       <XAxis dataKey="model" tick={{ fill: "rgba(255,255,255,0.2)", fontSize: 8 }} />
                       <Tooltip contentStyle={{ background: "#1a1a2e", border: "none", borderRadius: 8, color: "#fff", fontSize: 10 }}
-                        formatter={(v: any) => [`$${(v / 1000).toFixed(1)}k`, "Custo"]} />
+                        formatter={(v: any) => [`${Number(v).toLocaleString("pt-BR")} usos`, "Últ. 7d"]} />
                       <Bar dataKey="cost" fill="#3b82f6" radius={[2, 2, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                   <div className="space-y-1 mt-1">
-                    {[
-                      { name: "GPT-4", pct: 58, color: "#8b5cf6" },
-                      { name: "Embeddings", pct: 32, color: "#3b82f6" },
-                      { name: "Custo total (mês)", pct: null, color: null, value: "~$15" },
-                    ].map(m => (
-                      <div key={m.name} className="flex items-center gap-2">
-                        <span className="text-[10px] text-white/50 w-20 truncate">{m.name}</span>
-                        {m.pct !== null ? (
-                          <>
-                            <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
-                              <div className="h-full rounded-full" style={{ width: `${m.pct}%`, backgroundColor: m.color ?? "#8b5cf6" }} />
-                            </div>
-                            <span className="text-[10px] text-white/40 w-6 text-right">{m.pct}%</span>
-                          </>
-                        ) : (
-                          <span className="text-[10px] font-black text-emerald-400">{m.value}</span>
-                        )}
-                      </div>
-                    ))}
+                    {aiFeaturesList.slice(0, 4).map((f: any) => {
+                      const pct = Math.round((f.uses / totalAiUses) * 100);
+                      return (
+                        <div key={f.feature} className="flex items-center gap-2">
+                          <span className="text-[10px] text-white/50 w-24 truncate">{f.feature}</span>
+                          <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-violet-500" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="text-[10px] text-white/40 w-6 text-right">{pct}%</span>
+                        </div>
+                      );
+                    })}
+                    <div className="flex items-center justify-between pt-1 border-t border-white/[0.06]">
+                      <span className="text-[10px] text-white/40">Total de usos (IA)</span>
+                      <span className="text-[10px] font-black text-emerald-400">{totalAiUses.toLocaleString("pt-BR")}</span>
+                    </div>
                   </div>
                 </Card>
 
@@ -773,8 +774,18 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <div className="bg-white/[0.04] rounded-xl p-3 flex items-center justify-between">
-                    <p className="text-[10px] text-white/40">Tamanho do banco de dados</p>
-                    <p className="text-xs font-black text-white">3.2 GB</p>
+                    <p className="text-[10px] text-white/40">Documentos no Notebook</p>
+                    <p className="text-xs font-black text-white">{(stats?.notebookDocsTotal ?? 0).toLocaleString("pt-BR")} <span className="text-[9px] text-white/40 font-normal">({stats?.notebookStorageMb ?? 0} MB)</span></p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div className="bg-white/[0.04] rounded-xl p-2">
+                      <p className="text-[9px] text-white/30">Resumos IA</p>
+                      <p className="text-xs font-black text-white">{stats?.notebookOverviewsTotal ?? 0}</p>
+                    </div>
+                    <div className="bg-white/[0.04] rounded-xl p-2">
+                      <p className="text-[9px] text-white/30">Mat. dos Profs</p>
+                      <p className="text-xs font-black text-white">{stats?.teacherContentTotal ?? 0}</p>
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <p className="text-[10px] text-white/30 font-bold uppercase">Matérias mais acessadas</p>

@@ -15,7 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
-import Svg, { Circle, G, Line, Rect, Text as SvgText } from "react-native-svg";
+import Svg, { G, Path, Rect, Text as SvgText, Circle } from "react-native-svg";
 import { API_BASE, useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -31,20 +31,45 @@ interface Subtopic {
 
 interface Topic {
   name: string;
-  color: string;
+  color?: string;
   subtopics: Subtopic[];
+}
+
+interface Category {
+  name: string;
+  topics: Topic[];
 }
 
 interface MapaMental {
   subject: string;
-  color: string;
-  topics: Topic[];
+  color?: string;
+  categories?: Category[];
+  topics?: Topic[]; // legacy
 }
 
-const MAP_W = 1400;
-const MAP_H = 1000;
-const CENTER_X = MAP_W / 2;
-const CENTER_Y = MAP_H / 2;
+interface TreeNode {
+  id: string;
+  label: string;
+  depth: number;
+  detail?: string;
+  parentTopic?: string;
+  children: TreeNode[];
+  x?: number;
+  y?: number;
+}
+
+// NotebookLM-style palette by depth
+const MM_PALETTE = [
+  { fill: "#C4C0E5", stroke: "#9893C9", text: "#312E5C", chip: "#6661A8" },
+  { fill: "#B8E3D2", stroke: "#7CC4A9", text: "#1F4F3F", chip: "#3F8C6F" },
+  { fill: "#C6E8F1", stroke: "#7FBED1", text: "#0E3F4D", chip: "#2D7E94" },
+  { fill: "#E8F1D4", stroke: "#BDD18C", text: "#3A4A1E", chip: "#6B8434" },
+];
+
+const NODE_W = 168;
+const NODE_H = 38;
+const COL_GAP = 50;
+const ROW_GAP = 12;
 
 export default function MapaMentalScreen() {
   const colors = useColors();
@@ -58,7 +83,8 @@ export default function MapaMentalScreen() {
   const [activeDoc, setActiveDoc] = useState<NotebookDoc | null>(null);
   const [mapa, setMapa] = useState<MapaMental | null>(null);
   const [loadingMapa, setLoadingMapa] = useState(false);
-  const [selectedSub, setSelectedSub] = useState<{ topic: Topic; sub: Subtopic } | null>(null);
+  const [selectedNode, setSelectedNode] = useState<{ label: string; detail?: string; parentTopic?: string; depth: number } | null>(null);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   // Pan + zoom shared values
   const scale = useSharedValue(0.6);
@@ -147,25 +173,67 @@ export default function MapaMentalScreen() {
     savedTy.value = 0;
   };
 
-  // Layout topics radially
-  const layoutNodes = (m: MapaMental) => {
-    const tCount = m.topics.length;
-    const tRadius = 280;
-    return m.topics.map((topic, i) => {
-      const angle = (i / tCount) * Math.PI * 2 - Math.PI / 2;
-      const tx = CENTER_X + Math.cos(angle) * tRadius;
-      const ty = CENTER_Y + Math.sin(angle) * tRadius;
-      const subs = topic.subtopics.map((sub, j) => {
-        const sCount = topic.subtopics.length;
-        const sAngle = angle + ((j - (sCount - 1) / 2) * 0.4);
-        const sRadius = 170;
-        return {
-          ...sub,
-          x: tx + Math.cos(sAngle) * sRadius,
-          y: ty + Math.sin(sAngle) * sRadius,
-        };
-      });
-      return { topic, x: tx, y: ty, subs };
+  // Build hierarchical tree from new {categories} or legacy {topics} shape
+  const buildTree = (m: MapaMental): TreeNode => {
+    const cats: Category[] = m.categories ?? (m.topics ? [{ name: m.subject, topics: m.topics }] : []);
+    return {
+      id: "root",
+      label: m.subject,
+      depth: 0,
+      children: cats.map((cat, ci) => ({
+        id: `c${ci}`,
+        label: cat.name,
+        depth: 1,
+        children: (cat.topics ?? []).map((t, ti) => ({
+          id: `c${ci}-t${ti}`,
+          label: t.name,
+          depth: 2,
+          children: (t.subtopics ?? []).map((s, si) => {
+            const isStr = typeof s === "string";
+            return {
+              id: `c${ci}-t${ti}-s${si}`,
+              label: isStr ? (s as unknown as string) : s.name,
+              detail: isStr ? undefined : s.detail,
+              depth: 3,
+              parentTopic: t.name,
+              children: [],
+            };
+          }),
+        })),
+      })),
+    };
+  };
+
+  // Tidy horizontal layout
+  const layoutTree = (root: TreeNode) => {
+    let yCursor = 0;
+    const all: TreeNode[] = [];
+    const walk = (n: TreeNode): number => {
+      n.x = 28 + n.depth * (NODE_W + COL_GAP);
+      const visible = collapsed.has(n.id) ? [] : n.children;
+      if (visible.length === 0) {
+        n.y = yCursor + NODE_H / 2;
+        yCursor += NODE_H + ROW_GAP;
+      } else {
+        const ys = visible.map(c => walk(c));
+        n.y = (ys[0] + ys[ys.length - 1]) / 2;
+      }
+      all.push(n);
+      return n.y!;
+    };
+    walk(root);
+    const maxDepth = Math.max(...all.map(n => n.depth));
+    const W = 28 + (maxDepth + 1) * (NODE_W + COL_GAP);
+    const H = Math.max(yCursor + 28, 400);
+    return { all, W, H };
+  };
+
+  const toggleCollapse = (id: string) => {
+    Haptics.selectionAsync();
+    setCollapsed(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
     });
   };
 
@@ -226,53 +294,78 @@ export default function MapaMentalScreen() {
       ) : (
         <GestureDetector gesture={composed}>
           <View style={{ flex: 1, overflow: "hidden" }}>
-            <Animated.View style={[{ width: MAP_W, height: MAP_H, position: "absolute", left: (screenW - MAP_W) / 2, top: (screenH - MAP_H) / 2 - 100 }, animStyle]}>
-              <Svg width={MAP_W} height={MAP_H} viewBox={`0 0 ${MAP_W} ${MAP_H}`}>
-                {/* Edges first */}
-                {layoutNodes(mapa).map((n, i) => (
-                  <G key={`e-${i}`}>
-                    <Line x1={CENTER_X} y1={CENTER_Y} x2={n.x} y2={n.y} stroke={n.topic.color} strokeWidth={3} opacity={0.6} />
-                    {n.subs.map((s, j) => (
-                      <Line key={j} x1={n.x} y1={n.y} x2={s.x} y2={s.y} stroke={n.topic.color} strokeWidth={1.5} opacity={0.4} />
-                    ))}
-                  </G>
-                ))}
-                {/* Center node */}
-                <Circle cx={CENTER_X} cy={CENTER_Y} r={80} fill={mapa.color ?? "#6366f1"} />
-                <SvgText
-                  x={CENTER_X} y={CENTER_Y + 6} fill="#fff" fontSize={20} fontWeight="bold" textAnchor="middle"
-                >
-                  {mapa.subject.length > 18 ? mapa.subject.slice(0, 16) + "…" : mapa.subject}
-                </SvgText>
-                {/* Topic + subtopic nodes */}
-                {layoutNodes(mapa).map((n, i) => (
-                  <G key={`n-${i}`}>
-                    <Rect
-                      x={n.x - 90} y={n.y - 26} width={180} height={52} rx={14} ry={14}
-                      fill={n.topic.color}
-                    />
-                    <SvgText
-                      x={n.x} y={n.y + 5} fill="#fff" fontSize={15} fontWeight="bold" textAnchor="middle"
-                    >
-                      {n.topic.name.length > 22 ? n.topic.name.slice(0, 20) + "…" : n.topic.name}
-                    </SvgText>
-                    {n.subs.map((s, j) => (
-                      <G key={j} onPress={() => { Haptics.selectionAsync(); setSelectedSub({ topic: n.topic, sub: s }); }}>
-                        <Rect
-                          x={s.x - 65} y={s.y - 18} width={130} height={36} rx={10} ry={10}
-                          fill="#fff" stroke={n.topic.color} strokeWidth={1.5}
-                        />
-                        <SvgText
-                          x={s.x} y={s.y + 4} fill={n.topic.color} fontSize={11} fontWeight="600" textAnchor="middle"
-                        >
-                          {s.name.length > 18 ? s.name.slice(0, 16) + "…" : s.name}
-                        </SvgText>
-                      </G>
-                    ))}
-                  </G>
-                ))}
-              </Svg>
-            </Animated.View>
+            {(() => {
+              const tree = buildTree(mapa);
+              const { all, W, H } = layoutTree(tree);
+              return (
+                <Animated.View style={[{ width: W, height: H, position: "absolute", left: (screenW - W) / 2, top: Math.max(40, (screenH - H) / 2 - 100) }, animStyle]}>
+                  <Svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
+                    {/* Edges */}
+                    {all.map(parent => {
+                      if (collapsed.has(parent.id)) return null;
+                      return parent.children.map(child => {
+                        const px = (parent.x ?? 0) + NODE_W;
+                        const py = parent.y ?? 0;
+                        const cx = child.x ?? 0;
+                        const cy = child.y ?? 0;
+                        const midX = (px + cx) / 2;
+                        const palette = MM_PALETTE[child.depth] ?? MM_PALETTE[3];
+                        return (
+                          <Path
+                            key={`e-${parent.id}-${child.id}`}
+                            d={`M${px},${py} C${midX},${py} ${midX},${cy} ${cx},${cy}`}
+                            fill="none"
+                            stroke={palette.stroke}
+                            strokeWidth={1.8}
+                            strokeOpacity={0.65}
+                          />
+                        );
+                      });
+                    })}
+                    {/* Nodes */}
+                    {all.map(n => {
+                      const palette = MM_PALETTE[n.depth] ?? MM_PALETTE[3];
+                      const x = n.x ?? 0;
+                      const y = (n.y ?? 0) - NODE_H / 2;
+                      const hasChildren = n.children.length > 0;
+                      const isCollapsed = collapsed.has(n.id);
+                      const maxLen = hasChildren ? 19 : 22;
+                      const label = n.label.length > maxLen ? n.label.slice(0, maxLen - 1) + "…" : n.label;
+                      return (
+                        <G key={n.id} x={x} y={y}>
+                          <Rect
+                            width={NODE_W} height={NODE_H} rx={9} ry={9}
+                            fill={palette.fill} stroke={palette.stroke} strokeWidth={1.2}
+                            onPress={n.depth > 0 ? () => {
+                              Haptics.selectionAsync();
+                              setSelectedNode({ label: n.label, detail: n.detail, parentTopic: n.parentTopic, depth: n.depth });
+                            } : undefined}
+                          />
+                          <SvgText
+                            x={hasChildren ? (NODE_W - 26) / 2 + 4 : NODE_W / 2}
+                            y={NODE_H / 2 + 4}
+                            fill={palette.text}
+                            fontSize={n.depth === 0 ? 12 : 11}
+                            fontWeight={n.depth <= 1 ? "700" : "600"}
+                            textAnchor="middle"
+                          >
+                            {label}
+                          </SvgText>
+                          {hasChildren && (
+                            <G x={NODE_W - 24} y={NODE_H / 2 - 9} onPress={() => toggleCollapse(n.id)}>
+                              <Circle cx={9} cy={9} r={9} fill="#fff" stroke={palette.chip} strokeWidth={1.2} />
+                              <SvgText x={9} y={13} textAnchor="middle" fontSize={11} fontWeight="700" fill={palette.chip}>
+                                {isCollapsed ? "›" : "‹"}
+                              </SvgText>
+                            </G>
+                          )}
+                        </G>
+                      );
+                    })}
+                  </Svg>
+                </Animated.View>
+              );
+            })()}
           </View>
         </GestureDetector>
       )}
@@ -334,24 +427,30 @@ export default function MapaMentalScreen() {
         </Pressable>
       </Modal>
 
-      {/* Subtopic detail modal */}
-      <Modal visible={!!selectedSub} transparent animationType="fade" onRequestClose={() => setSelectedSub(null)}>
-        <Pressable style={styles.modalBg} onPress={() => setSelectedSub(null)}>
-          <Pressable style={[styles.detailCard, { backgroundColor: colors.card, borderColor: selectedSub?.topic.color ?? colors.primary }]} onPress={e => e.stopPropagation()}>
-            {selectedSub && (
+      {/* Node detail modal */}
+      <Modal visible={!!selectedNode} transparent animationType="fade" onRequestClose={() => setSelectedNode(null)}>
+        <Pressable style={styles.modalBg} onPress={() => setSelectedNode(null)}>
+          <Pressable style={[styles.detailCard, { backgroundColor: colors.card, borderColor: MM_PALETTE[selectedNode?.depth ?? 3]?.chip ?? colors.primary }]} onPress={e => e.stopPropagation()}>
+            {selectedNode && (
               <>
-                <Text style={{ color: selectedSub.topic.color, fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 1, marginBottom: 6 }}>
-                  {selectedSub.topic.name.toUpperCase()}
-                </Text>
-                <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold", fontSize: 18, marginBottom: 8 }}>
-                  {selectedSub.sub.name}
-                </Text>
-                {selectedSub.sub.detail && (
-                  <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", lineHeight: 20 }}>
-                    {selectedSub.sub.detail}
+                {selectedNode.parentTopic && (
+                  <Text style={{ color: MM_PALETTE[selectedNode.depth].chip, fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 1, marginBottom: 6 }}>
+                    {selectedNode.parentTopic.toUpperCase()}
                   </Text>
                 )}
-                <Pressable onPress={() => setSelectedSub(null)} style={[styles.closeBtn, { backgroundColor: selectedSub.topic.color }]}>
+                <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold", fontSize: 18, marginBottom: 8 }}>
+                  {selectedNode.label}
+                </Text>
+                {selectedNode.detail ? (
+                  <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", lineHeight: 20 }}>
+                    {selectedNode.detail}
+                  </Text>
+                ) : (
+                  <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontStyle: "italic", fontSize: 12 }}>
+                    Toque no nó para expandir/colapsar e explore o mapa.
+                  </Text>
+                )}
+                <Pressable onPress={() => setSelectedNode(null)} style={[styles.closeBtn, { backgroundColor: MM_PALETTE[selectedNode.depth].chip }]}>
                   <Text style={{ color: "#fff", fontFamily: "Inter_600SemiBold" }}>Fechar</Text>
                 </Pressable>
               </>

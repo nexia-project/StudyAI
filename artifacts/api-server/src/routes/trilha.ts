@@ -180,6 +180,120 @@ router.post("/trilha/submit", requireAuth, async (req, res) => {
   }
 });
 
+// ── POST /api/trilha/diagnostic/generate ─────────────────────────────────────
+// Generates a 10-question initial placement test (5 Math + 5 Portuguese)
+// across difficulty checkpoints (levels 5, 15, 30, 50, 75) so we can place the
+// student at the right level instead of forcing everyone to start at 1.
+router.post("/trilha/diagnostic/generate", requireAuth, async (_req, res) => {
+  const CHECKPOINTS = [5, 15, 30, 50, 75];
+  const sysPromptFor = (subject: "matematica" | "portugues") => `Você é um gerador de questões de ${getSubjectLabel(subject)} para um TESTE DIAGNÓSTICO ENEM.
+Gere EXATAMENTE 5 questões de múltipla escolha — uma para cada checkpoint de dificuldade abaixo.
+Cada questão deve ser claramente do nível indicado (não mais fácil, não mais difícil).
+Checkpoints (use o nível exato fornecido como "level" da questão):
+${CHECKPOINTS.map((lv, i) => `Q${i + 1} → ${getCurriculo(subject, lv)}`).join("\n")}
+REGRAS:
+- Cada questão tem 5 alternativas (A, B, C, D, E), apenas UMA correta.
+- Explicação curta e clara.
+- Responda SOMENTE com JSON válido.`;
+
+  const userPrompt = `Retorne SOMENTE este JSON:
+{
+  "questions": [
+    {
+      "id": 1,
+      "level": 5,
+      "enunciado": "...",
+      "opcoes": {"A":"...","B":"...","C":"...","D":"...","E":"..."},
+      "correta": "A",
+      "explicacao": "..."
+    }
+  ]
+}`;
+
+  try {
+    const [mat, pt] = await Promise.all((["matematica", "portugues"] as const).map(async (subject) => {
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: sysPromptFor(subject) },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.6,
+        max_tokens: 2200,
+      });
+      const parsed = JSON.parse(completion.choices[0]?.message?.content || "{}");
+      const arr: any[] = Array.isArray(parsed.questions) ? parsed.questions : [];
+      return arr.slice(0, 5).map((q, i) => ({
+        ...q,
+        id: i + 1,
+        level: CHECKPOINTS[i],
+        subject,
+      }));
+    }));
+
+    if (mat.length !== 5 || pt.length !== 5) {
+      return res.status(500).json({ error: "Diagnóstico incompleto. Tente novamente." });
+    }
+
+    // Interleave so the student alternates subjects (less monotonous).
+    const questions: any[] = [];
+    for (let i = 0; i < 5; i++) { questions.push(mat[i]); questions.push(pt[i]); }
+    questions.forEach((q, i) => { q.id = i + 1; });
+
+    res.json({ questions, checkpoints: CHECKPOINTS });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/trilha/diagnostic/submit ───────────────────────────────────────
+// Body: { answers: [{ subject, level, correct }] }
+// Heuristic: per subject, level = highest CONSECUTIVE checkpoint answered correctly,
+// or 1 if the very first one was missed. Result is committed to trilha_mestre_progress.
+router.post("/trilha/diagnostic/submit", requireAuth, async (req, res) => {
+  const userId = (req as any).userId;
+  const answers: { subject: string; level: number; correct: boolean }[] = req.body?.answers || [];
+  if (!Array.isArray(answers) || answers.length === 0) {
+    return res.status(400).json({ error: "answers ausentes" });
+  }
+
+  function placeLevel(subj: "matematica" | "portugues") {
+    const subjAnswers = answers
+      .filter(a => a.subject === subj)
+      .sort((a, b) => a.level - b.level);
+    let placed = 1;
+    for (const a of subjAnswers) {
+      if (a.correct) placed = Math.max(placed, a.level);
+      else break; // first miss locks placement
+    }
+    return Math.max(1, Math.min(95, placed));
+  }
+
+  const matLevel = placeLevel("matematica");
+  const ptLevel = placeLevel("portugues");
+
+  try {
+    for (const [subject, level] of [["matematica", matLevel], ["portugues", ptLevel]] as const) {
+      await db.execute(sql`
+        INSERT INTO trilha_mestre_progress
+          (user_id, subject, level, total_sessions, total_correct, total_questions,
+           current_streak, best_streak, last_session_at)
+        VALUES (${userId}, ${subject}, ${level}, 0, 0, 0, 0, 0, NOW())
+        ON CONFLICT (user_id, subject) DO UPDATE SET
+          level = GREATEST(trilha_mestre_progress.level, ${level}),
+          updated_at = NOW()
+      `);
+    }
+    res.json({
+      matematica: { level: matLevel, topic: getCurriculo("matematica", matLevel) },
+      portugues: { level: ptLevel, topic: getCurriculo("portugues", ptLevel) },
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── GET /api/trilha/history/:subject ────────────────────────────────────────
 router.get("/trilha/history/:subject", requireAuth, async (req, res) => {
   const userId = (req as any).userId;

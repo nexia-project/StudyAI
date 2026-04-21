@@ -5,12 +5,12 @@ import { useLocation } from "wouter";
 import {
   Trophy, Clock, CheckCircle2, XCircle, ChevronRight,
   ArrowLeft, Star, TrendingUp, BookOpen, Calculator, RotateCcw,
-  Flame, Target, BarChart3, Lock
+  Flame, Target, BarChart3, Lock, Sparkles, Wand2
 } from "lucide-react";
 import { AppNav } from "@/components/AppNav";
 
 type Subject = "matematica" | "portugues";
-type Phase = "select" | "loading" | "session" | "result";
+type Phase = "select" | "loading" | "session" | "result" | "diagnostic-intro" | "diagnostic" | "diagnostic-result";
 
 interface Question {
   id: number;
@@ -18,6 +18,13 @@ interface Question {
   opcoes: { A: string; B: string; C: string; D: string; E: string };
   correta: string;
   explicacao: string;
+  level?: number;     // present on diagnostic questions
+  subject?: Subject;  // present on diagnostic questions
+}
+
+interface DiagnosticResult {
+  matematica: { level: number; topic: string };
+  portugues:  { level: number; topic: string };
 }
 
 interface Progress {
@@ -100,6 +107,7 @@ export default function TrilhaPage() {
   const [resultData, setResultData] = useState<{ score: number; total: number; passed: boolean; newLevel: number; level: number } | null>(null);
   const [showExplanation, setShowExplanation] = useState<Record<number, boolean>>({});
   const [loadError, setLoadError] = useState("");
+  const [diagnosticResult, setDiagnosticResult] = useState<DiagnosticResult | null>(null);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const apiBase = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -112,6 +120,56 @@ export default function TrilhaPage() {
       if (res.ok) setProgress(await res.json());
     } catch {}
   }, [isAuthenticated, apiBase]);
+
+  // First-timer = nunca completou nenhuma sessão em nenhuma das duas matérias
+  const isFirstTimer = !!progress
+    && (progress.matematica?.totalSessions || 0) === 0
+    && (progress.portugues?.totalSessions  || 0) === 0;
+
+  // ── DIAGNÓSTICO INICIAL ────────────────────────────────────────────────────
+  async function startDiagnostic() {
+    setPhase("loading");
+    setLoadError("");
+    setAnswers({}); setSubmitted({}); setShowExplanation({});
+    setElapsed(0); setCurrentQ(0);
+    try {
+      const res = await fetch(`${apiBase}/api/trilha/diagnostic/generate`, {
+        method: "POST", credentials: "include",
+      });
+      if (!res.ok) throw new Error((await res.json()).error || "Erro ao gerar diagnóstico");
+      const data = await res.json();
+      setQuestions(data.questions);
+      setPhase("diagnostic");
+    } catch (e: any) {
+      setLoadError(e.message || "Erro ao gerar diagnóstico");
+      setPhase("select");
+    }
+  }
+
+  async function finishDiagnostic() {
+    if (timerRef.current) clearInterval(timerRef.current);
+    const answersPayload = questions.map((q, i) => ({
+      subject: q.subject!,
+      level: q.level!,
+      correct: answers[i] === q.correta,
+    }));
+    try {
+      const res = await fetch(`${apiBase}/api/trilha/diagnostic/submit`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers: answersPayload }),
+      });
+      if (!res.ok) throw new Error("Falha ao salvar diagnóstico");
+      const data = await res.json();
+      setDiagnosticResult(data);
+      await loadProgress();
+      setPhase("diagnostic-result");
+    } catch (e: any) {
+      setLoadError(e.message || "Falha ao salvar diagnóstico");
+      setPhase("select");
+    }
+  }
 
   useEffect(() => { loadProgress(); }, [loadProgress]);
 
@@ -237,6 +295,41 @@ export default function TrilhaPage() {
                 <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 text-center">
                   {loadError}
                 </div>
+              )}
+
+              {/* ── DIAGNÓSTICO INICIAL (apenas para quem nunca fez sessão) ── */}
+              {isFirstTimer && (
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                  className="mb-6 relative overflow-hidden rounded-2xl shadow-lg"
+                  style={{ background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%)" }}
+                >
+                  <div className="absolute inset-0 opacity-20">
+                    <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white blur-3xl" />
+                    <div className="absolute -bottom-12 -left-12 w-44 h-44 rounded-full bg-white blur-3xl" />
+                  </div>
+                  <div className="relative p-5 sm:p-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center text-white">
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+                      <Wand2 className="w-7 h-7 sm:w-8 sm:h-8" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-black uppercase tracking-wider bg-white/25 backdrop-blur-sm px-2 py-0.5 rounded-full">Recomendado</span>
+                        <Sparkles className="w-3.5 h-3.5" />
+                      </div>
+                      <h3 className="font-black text-lg sm:text-xl mb-1">Diagnóstico Inicial</h3>
+                      <p className="text-xs sm:text-sm opacity-90 leading-relaxed">
+                        10 questões (5 Mat + 5 PT) em ~8 min. O Tiagão vai descobrir seu nível em cada matéria
+                        e te colocar no ponto certo da trilha — sem precisar começar do zero.
+                      </p>
+                    </div>
+                    <button
+                      onClick={startDiagnostic}
+                      className="w-full sm:w-auto px-5 py-3 rounded-xl bg-white text-indigo-600 font-black text-sm shadow-md hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 flex-shrink-0">
+                      Começar agora <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </motion.div>
               )}
 
               {/* Subject cards */}
@@ -506,6 +599,182 @@ export default function TrilhaPage() {
                   Todas respondidas — ver resultado agora
                 </button>
               )}
+            </motion.div>
+          )}
+
+          {/* ── DIAGNÓSTICO (sessão) ── */}
+          {phase === "diagnostic" && curQ && (
+            <motion.div key="diagnostic"
+              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }}>
+
+              {/* Top bar */}
+              <div className="flex items-center justify-between mb-4">
+                <button onClick={() => { setPhase("select"); setElapsed(0); }}
+                  className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors">
+                  <ArrowLeft className="w-4 h-4" /> Sair
+                </button>
+                <div className="flex items-center gap-3 sm:gap-4 text-sm">
+                  <span className="text-gray-400 font-medium">{currentQ + 1}/{questions.length}</span>
+                  <div className="flex items-center gap-1.5 text-gray-600 font-mono font-bold text-xs sm:text-sm">
+                    <Clock className="w-3.5 h-3.5 text-gray-400" /> {formatTime(elapsed)}
+                  </div>
+                </div>
+                <div className="px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold bg-gradient-to-r from-indigo-500 to-violet-600 text-white flex items-center gap-1">
+                  <Wand2 className="w-3 h-3" /> Diagnóstico
+                </div>
+              </div>
+
+              {/* Subject + level pill */}
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <span className={`px-2.5 py-1 rounded-full text-[11px] font-black ${SUBJECT_CONFIG[curQ.subject || "matematica"].colorLight}`}>
+                  {SUBJECT_CONFIG[curQ.subject || "matematica"].label}
+                </span>
+                <span className="text-[11px] text-gray-400">Nível {curQ.level}</span>
+              </div>
+
+              {/* Progress dots */}
+              <div className="flex gap-1.5 mb-6 flex-wrap">
+                {questions.map((_, i) => {
+                  const answered = !!answers[i];
+                  return (
+                    <div key={i}
+                      className={`h-2 flex-1 min-w-[16px] rounded-full transition-colors ${
+                        i === currentQ ? "bg-indigo-500"
+                        : answered ? "bg-indigo-300"
+                        : "bg-gray-200"
+                      }`}
+                    />
+                  );
+                })}
+              </div>
+
+              {/* Question card (no immediate feedback during diagnostic) */}
+              <AnimatePresence mode="wait">
+                <motion.div key={currentQ}
+                  initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.22 }}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-md p-5 sm:p-6 mb-4">
+                  <p className="text-gray-800 leading-relaxed font-medium text-sm sm:text-[15px] mb-5">{curQ.enunciado}</p>
+                  <div className="space-y-2.5">
+                    {OPCOES.map(opt => {
+                      const selected = answers[currentQ] === opt;
+                      return (
+                        <button key={opt}
+                          onClick={() => selectAnswer(currentQ, opt)}
+                          className={`w-full flex items-center gap-3 p-3 sm:p-3.5 rounded-xl border-2 text-left transition-all ${
+                            selected ? "border-indigo-400 bg-indigo-50"
+                            : "border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/50 cursor-pointer"
+                          }`}>
+                          <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black flex-shrink-0 ${
+                            selected ? "bg-indigo-500 text-white" : "bg-gray-100 text-gray-600"
+                          }`}>{opt}</span>
+                          <span className="text-sm leading-relaxed text-gray-700">{curQ.opcoes[opt]}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                {currentQ > 0 && (
+                  <button onClick={() => setCurrentQ(q => q - 1)}
+                    className="px-4 py-3.5 rounded-xl font-bold text-sm border-2 border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5">
+                    <ArrowLeft className="w-4 h-4" />
+                  </button>
+                )}
+                {currentQ < questions.length - 1 ? (
+                  <button
+                    onClick={() => setCurrentQ(q => q + 1)}
+                    disabled={!answers[currentQ]}
+                    className={`flex-1 py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                      answers[currentQ]
+                        ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:opacity-90 shadow-md"
+                        : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    }`}>
+                    Próxima <ChevronRight className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={finishDiagnostic}
+                    disabled={Object.keys(answers).length < questions.length}
+                    className={`flex-1 py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                      Object.keys(answers).length >= questions.length
+                        ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:opacity-90 shadow-md"
+                        : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    }`}>
+                    <Sparkles className="w-4 h-4" /> Ver meu nível
+                  </button>
+                )}
+              </div>
+
+              <p className="mt-4 text-center text-[11px] text-gray-400">
+                Sem feedback agora — vamos te mostrar o resultado completo no final.
+              </p>
+            </motion.div>
+          )}
+
+          {/* ── DIAGNÓSTICO (resultado) ── */}
+          {phase === "diagnostic-result" && diagnosticResult && (
+            <motion.div key="diagnostic-result"
+              initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}>
+
+              <div className="rounded-2xl p-6 sm:p-8 text-center mb-6 bg-gradient-to-br from-indigo-500 via-violet-600 to-pink-500 text-white shadow-xl relative overflow-hidden">
+                <div className="absolute inset-0 opacity-15">
+                  <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-white blur-3xl" />
+                  <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-white blur-3xl" />
+                </div>
+                <motion.img
+                  src="/tiagao-pointing.png" alt="Tiagão"
+                  className="relative w-24 sm:w-28 h-24 sm:h-28 object-contain mx-auto mb-3"
+                  style={{ filter: "drop-shadow(0 4px 20px rgba(0,0,0,0.3))" }}
+                  animate={{ y: [0, -8, 0] }}
+                  transition={{ repeat: Infinity, duration: 2.5 }}
+                />
+                <div className="relative">
+                  <div className="text-2xl sm:text-3xl font-black mb-1">Diagnóstico concluído! 🎯</div>
+                  <p className="text-sm opacity-90">Você está no ponto certo da trilha.</p>
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4 mb-6">
+                {(["matematica", "portugues"] as Subject[]).map(sub => {
+                  const cfg = SUBJECT_CONFIG[sub];
+                  const r = diagnosticResult[sub];
+                  const Icon = cfg.icon;
+                  return (
+                    <div key={sub}
+                      className={`relative bg-white rounded-2xl border-2 ${cfg.border} p-5 shadow-sm overflow-hidden`}>
+                      <div className={`absolute inset-0 bg-gradient-to-br ${cfg.gradient} opacity-50`} />
+                      <div className="relative">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${cfg.color} flex items-center justify-center shadow-md`}>
+                            <Icon className="w-5 h-5 text-white" />
+                          </div>
+                          <div className="text-right">
+                            <div className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Nível inicial</div>
+                            <div className="text-3xl font-black" style={{ color: cfg.accent }}>{r.level}</div>
+                          </div>
+                        </div>
+                        <div className="font-black text-gray-800 text-sm mb-1">{cfg.label}</div>
+                        <p className="text-xs text-gray-500 leading-relaxed">{getTopicName(sub, r.level)}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button onClick={() => { setDiagnosticResult(null); setPhase("select"); }}
+                  className="flex-1 py-3.5 rounded-xl font-bold text-sm border-2 border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
+                  <ArrowLeft className="w-4 h-4" /> Voltar para a trilha
+                </button>
+                <button onClick={() => { setDiagnosticResult(null); startSession("matematica"); }}
+                  className="flex-1 py-3.5 rounded-xl font-bold text-sm bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:opacity-90 shadow-md flex items-center justify-center gap-2">
+                  Praticar agora <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </motion.div>
           )}
 

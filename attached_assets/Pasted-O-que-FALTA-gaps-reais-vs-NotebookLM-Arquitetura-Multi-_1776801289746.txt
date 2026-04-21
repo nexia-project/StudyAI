@@ -1,0 +1,73 @@
+O que FALTA (gaps reais vs NotebookLM)
+Arquitetura
+❌ Multi-notebook por usuário (cada usuário hoje tem 1 só)
+❌ Persona/Goals por caderno (até 5000 chars)
+❌ Histórico de conversas múltiplas por caderno
+❌ Streaming SSE de respostas (hoje é resposta única)
+Ingestão (hoje só PDF + TXT)
+❌ DOCX (mammoth)
+❌ YouTube transcript
+❌ Áudio MP3/M4A → Whisper
+❌ CSV / XLSX (papaparse + xlsx)
+❌ Imagem → OCR (temos OCR mas não como fonte)
+❌ URL pública (Readability)
+❌ PPTX
+❌ EPUB
+❌ Google Docs / Google Sheets via link
+❌ Texto colado direto
+Studio (hoje espalhado em telas)
+✅ Resumo, Flashcards, Quiz, Mapa Mental, Podcast — temos mas avulsos
+❌ Guia de Estudo
+❌ Timeline (linha do tempo)
+❌ Data Tables (tabelas extraídas)
+❌ Slides editáveis slide-a-slide + export PPTX
+❌ Infográfico
+❌ Relatórios formatados
+❌ Video Overview narrado
+❌ Modo interativo do podcast (pausar e perguntar)
+Web Research
+❌ Fast Research (Tavily/Serper)
+❌ Deep Research (agente autônomo)
+❌ Discover (sugestão de fontes)
+Compartilhamento
+❌ Compartilhar caderno (view/edit, link público)
+❌ Compartilhar Studio outputs
+Plano de Execução — 8 fases, sem quebrar nada
+Estratégia inquebrável: transformar o "Notebook" atual em multi-notebook mantendo migração automática (todo usuário existente recebe um "Caderno Padrão" com seus docs atuais). Cada feature antiga vira um Studio output dentro do caderno, mas continua acessível pelas telas standalone (Trilha, Simulado, Redação, Aula com Tiagão) — dupla porta de entrada.
+
+Fase	Conteúdo	Tamanho
+A — Fundação	Schema multi-notebook, migração de docs existentes, layout 3-colunas (Sidebar + Centro + Studio), Persona/Goals por caderno	Grande
+B — Ingestão	DOCX, YouTube, Áudio (Whisper), CSV/XLSX, Imagem-OCR, URL, PPTX, EPUB, Google Docs, paste de texto	Médio
+C — Studio Completo	Guia de Estudo, Timeline, Data Tables, Slides editáveis + PPTX export, Infográfico, Relatório, Video Overview, Podcast interativo	Grande
+D — Chat Pro	Streaming SSE, citações [1][2] inline com sidebar destacando trecho, histórico múltiplo, persona injetada	Médio
+E — Deep Research	Fast Research (10 fontes web), Deep Research (agente: plano→busca→compila→importa), Discover	Grande (precisa secret Tavily/Serper)
+F — Compartilhamento	Share caderno (view/edit), share Studio outputs públicos, integração com turmas	Pequeno-Médio
+G — Mobile Parity	Multi-notebook no mobile, Studio compacto, podcast interativo, todos novos formatos de fonte	Médio
+H — Polish	Onboarding tour, drag&drop visual, skeleton screens, dark mode polido, animações Framer Motion, responsivo	Médio
+Como o "preservar tudo" funciona na prática
+Feature antiga	Vira no novo modelo
+Tiagão (voz onyx)	Persona padrão do Caderno + continua acessível como modal flutuante em qualquer tela
+Aula com Tiagão (lousa)	Vira Studio output "Aula ao vivo" + página /aula-ia standalone
+Trilha do Mestre	Página standalone /trilha (não tocada) — independente de cadernos
+Simulado ENEM / Adaptativo	Standalone + opção "Quiz scopado por este caderno" no Studio
+Redação	Standalone + botão "Corrigir como redação" se a fonte for texto do aluno
+Mobile app	Recebe paridade mas mantém estrutura de tabs atual
+Stripe / planos / webhook	Intocado
+OCR câmera	Vira tipo de fonte "Foto" do caderno
+Gamification (XP/streak)	Intocado + ganha XP por uso de Studio
+Sala de Estudos / Cronograma	Intocado
+Slides institucional	Intocado (artifact separado)
+Notebook do Professor	Funde com multi-notebook (cada professor tem seus N cadernos)
+Decisões que preciso de você
+Antes de começar, 3 questões:
+
+Secrets externos para Deep Research (FASE E) — vou precisar de uma chave Tavily (mais barata) ou Serper. Topa pedir? Sem isso, FASE E fica bloqueada (mas as outras 7 fases rodam normal).
+
+Onde quero o roll-out — três opções:
+
+(A) Faseado em ondas: entrego A→H em sequência, validando cada fase. Mais seguro, mais lento.
+(B) Big bang em batches grandes: A+B+D juntos, depois C+F, depois E+G+H. Mais rápido, mais arrojado.
+(C) Você escolhe a ordem: começar pelo que mais te interessa.
+Migração dos cadernos atuais — todo usuário existente vai ganhar 1 "Caderno Padrão" com os PDFs que já subiu. Confirma que pode fazer? (não perde nada — só agrupa o que já existe num container)
+
+Me dá o OK (e responde as 3 perguntas) que parto pra cima. Minha sugestão: opção (B) big bang, começando por A+B+D (multi-notebook + ingestão completa + chat streaming) — isso já entrega 70% da experiência NotebookLM em uma rodada só.

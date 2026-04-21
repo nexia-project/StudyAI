@@ -282,77 +282,232 @@ function layoutTree(root: MindNode, cx: number, cy: number) {
 }
 
 // ─── Generic Mind Map SVG from JSON ───────────────────────────────────────────
+// ─── NEW: NotebookLM-style horizontal hierarchical mind map ───────────────────
+// Palette by depth: lavender root → mint cat → sky topic → leaf-green subtopic
+const MM_PALETTE = [
+  { fill: "#C4C0E5", stroke: "#9893C9", text: "#312E5C", chip: "#6661A8" }, // depth 0
+  { fill: "#B8E3D2", stroke: "#7CC4A9", text: "#1F4F3F", chip: "#3F8C6F" }, // depth 1
+  { fill: "#C6E8F1", stroke: "#7FBED1", text: "#0E3F4D", chip: "#2D7E94" }, // depth 2
+  { fill: "#E8F1D4", stroke: "#BDD18C", text: "#3A4A1E", chip: "#6B8434" }, // depth 3
+];
+
+interface MMTreeNode {
+  id: string; label: string; depth: number; detail?: string;
+  children: MMTreeNode[]; collapsed: boolean; raw?: any;
+  x?: number; y?: number;
+}
+
 function MindMapSVG({
   mapJson, rootLabel, onStudy,
 }: {
-  mapJson: { subject: string; topics: Array<{ name: string; subtopics: string[] }> };
+  mapJson: any;
   rootLabel?: string;
   onStudy?: (topic: string) => void;
 }) {
   const [selectedNode, setSelectedNode] = useState<MindNode | null>(null);
   const [docTab, setDocTab] = useState<"estudar" | "videos" | "buscar">("estudar");
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [, navigate] = useLocation();
-  const color = getColor(mapJson.subject);
-  const W = 920; const H = 680;
 
-  // Build tree with parent info
-  const topicsData = mapJson.topics.slice(0, 10);
-  const root: MindNode = {
-    id: "root",
-    label: rootLabel || mapJson.subject,
-    color,
-    level: 0,
-    hasContent: true,
-    source: "document",
-    children: topicsData.map((topic, ti) => ({
-      id: `t${ti}`,
-      label: topic.name,
-      color,
-      level: 1,
-      hasContent: true,
-      source: "document" as const,
-      contentMeta: { topics: (topic.subtopics || []).slice(0, 5) },
-      children: (topic.subtopics || []).slice(0, 5).map((sub, si) => ({
-        id: `t${ti}s${si}`,
-        label: sub,
-        color,
-        level: 2,
-        hasContent: true,
-        source: "document" as const,
-        contentMeta: { topics: [topic.name] }, // parent topic
-        children: [],
-      })),
-    })),
+  // Normalize: support BOTH new {categories} and legacy {topics} shapes
+  const normalizeData = useCallback(() => {
+    const subject = rootLabel || mapJson.subject || "Mapa Mental";
+    const cats = mapJson.categories ?? (mapJson.topics ? [{ name: subject, topics: mapJson.topics }] : []);
+    return { subject, cats };
+  }, [mapJson, rootLabel]);
+
+  const { subject, cats } = normalizeData();
+
+  // Build tree with stable IDs
+  const buildTree = useCallback((): MMTreeNode => {
+    const root: MMTreeNode = {
+      id: "root", label: subject, depth: 0,
+      collapsed: false, children: cats.map((cat: any, ci: number) => {
+        const catId = `c${ci}`;
+        return {
+          id: catId, label: cat.name, depth: 1,
+          collapsed: collapsed.has(catId),
+          children: (cat.topics ?? []).map((t: any, ti: number) => {
+            const tId = `${catId}-t${ti}`;
+            return {
+              id: tId, label: t.name, depth: 2,
+              collapsed: collapsed.has(tId),
+              children: (t.subtopics ?? []).map((s: any, si: number) => {
+                const isStr = typeof s === "string";
+                return {
+                  id: `${tId}-s${si}`,
+                  label: isStr ? s : (s.name || ""),
+                  depth: 3,
+                  detail: isStr ? undefined : s.detail,
+                  collapsed: false, children: [],
+                  raw: { parentTopic: t.name, parentCategory: cat.name },
+                };
+              }),
+            };
+          }),
+        };
+      }),
+    };
+    return root;
+  }, [subject, cats, collapsed]);
+
+  const tree = buildTree();
+
+  // ── Layout: tidy horizontal tree ─────────────────────────────────────
+  const NODE_W = 200;
+  const NODE_H = 38;
+  const COL_GAP = 64;
+  const ROW_GAP = 14;
+
+  const layout = useCallback((root: MMTreeNode) => {
+    let yCursor = 0;
+    const allNodes: MMTreeNode[] = [];
+    const walk = (n: MMTreeNode): { y: number } => {
+      n.x = 32 + n.depth * (NODE_W + COL_GAP);
+      const visibleKids = n.collapsed ? [] : n.children;
+      if (visibleKids.length === 0) {
+        n.y = yCursor + NODE_H / 2;
+        yCursor += NODE_H + ROW_GAP;
+      } else {
+        const childYs = visibleKids.map(c => walk(c).y);
+        n.y = (childYs[0] + childYs[childYs.length - 1]) / 2;
+      }
+      allNodes.push(n);
+      return { y: n.y };
+    };
+    walk(root);
+    const maxDepth = Math.max(...allNodes.map(n => n.depth));
+    const W = 32 + (maxDepth + 1) * (NODE_W + COL_GAP);
+    const H = Math.max(yCursor + 32, 400);
+    return { allNodes, W, H };
+  }, []);
+
+  const { allNodes, W, H } = layout(tree);
+
+  // ── Toggle collapse ──────────────────────────────────────────────────
+  const toggle = (id: string) => {
+    setCollapsed(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
 
-  const positions = layoutTree(root, W / 2, H / 2);
+  // ── Click handler: open drawer for leaf or topic ─────────────────────
+  const handleNodeClick = (n: MMTreeNode) => {
+    if (n.depth === 0) return;
+    const palette = MM_PALETTE[n.depth] ?? MM_PALETTE[3];
+    const adapted: MindNode = {
+      id: n.id,
+      label: n.label,
+      color: palette.chip,
+      level: n.depth >= 2 ? 2 : 1,
+      hasContent: true,
+      source: "document",
+      contentMeta: {
+        topics: n.depth === 3
+          ? [n.raw?.parentTopic ?? ""]
+          : (n.children.map(c => c.label)),
+      },
+      children: [],
+    };
+    setSelectedNode(adapted);
+  };
 
-  // Find subtopics for a clicked topic node
+  function handleStudy() {
+    const query = selectedNode ? `Explica o tópico "${selectedNode.label}" de ${subject}` : "";
+    navigate(`/app?q=${encodeURIComponent(query)}`);
+  }
+
+  // For drawer compat
   const topicSubtopics = selectedNode?.level === 1
-    ? (topicsData.find(t => t.name === selectedNode.label)?.subtopics ?? selectedNode.contentMeta?.topics ?? [])
+    ? (selectedNode.contentMeta?.topics ?? [])
     : [];
-  // Parent topic for a subtopic node
   const parentTopic = selectedNode?.level === 2
     ? (selectedNode.contentMeta?.topics?.[0] ?? "")
     : "";
 
-  function handleStudy() {
-    const query = selectedNode ? `Explica o tópico "${selectedNode.label}" de ${mapJson.subject}` : "";
-    navigate(`/app?q=${encodeURIComponent(query)}`);
-  }
-
   return (
     <>
-      <PannableSvg height={520}>
-        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "100%", maxWidth: W }}>
+      <PannableSvg height={560}>
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "100%", minWidth: W }}>
           <defs>
-            <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.12" />
+            <filter id="mm-shadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="1" stdDeviation="1.5" floodOpacity="0.08" />
             </filter>
           </defs>
-          {positions.map(({ node, x, y, parentX, parentY }) => (
-            <MindMapNode key={node.id} node={node} x={x} y={y} parentX={parentX} parentY={parentY} onClick={setSelectedNode} />
-          ))}
+
+          {/* Edges first (behind nodes) */}
+          {allNodes.map(parent => {
+            if (parent.collapsed) return null;
+            return parent.children.map(child => {
+              const px = (parent.x ?? 0) + NODE_W;
+              const py = parent.y ?? 0;
+              const cx = child.x ?? 0;
+              const cy = child.y ?? 0;
+              const midX = (px + cx) / 2;
+              const palette = MM_PALETTE[child.depth] ?? MM_PALETTE[3];
+              return (
+                <path
+                  key={`e-${parent.id}-${child.id}`}
+                  d={`M${px},${py} C${midX},${py} ${midX},${cy} ${cx},${cy}`}
+                  fill="none"
+                  stroke={palette.stroke}
+                  strokeWidth={1.8}
+                  strokeOpacity={0.65}
+                />
+              );
+            });
+          })}
+
+          {/* Nodes */}
+          {allNodes.map(n => {
+            const palette = MM_PALETTE[n.depth] ?? MM_PALETTE[3];
+            const x = n.x ?? 0;
+            const y = (n.y ?? 0) - NODE_H / 2;
+            const hasChildren = n.children.length > 0;
+            const isCollapsed = n.collapsed;
+            const clickable = n.depth > 0;
+            return (
+              <g key={n.id} transform={`translate(${x},${y})`}>
+                <rect
+                  width={NODE_W} height={NODE_H} rx={9} ry={9}
+                  fill={palette.fill}
+                  stroke={palette.stroke}
+                  strokeWidth={1.2}
+                  filter="url(#mm-shadow)"
+                  style={{ cursor: clickable ? "pointer" : "default" }}
+                  onClick={() => clickable && handleNodeClick(n)}
+                />
+                <text
+                  x={hasChildren ? (NODE_W - 30) / 2 + 8 : NODE_W / 2}
+                  y={NODE_H / 2 + 4}
+                  textAnchor="middle"
+                  fontSize={n.depth === 0 ? 13 : 12}
+                  fontWeight={n.depth <= 1 ? 600 : 500}
+                  fill={palette.text}
+                  style={{ pointerEvents: "none", userSelect: "none", fontFamily: "Inter, system-ui, sans-serif" }}
+                >
+                  {n.label.length > (hasChildren ? 22 : 25) ? n.label.slice(0, hasChildren ? 21 : 24) + "…" : n.label}
+                </text>
+
+                {/* Collapse/expand toggle */}
+                {hasChildren && (
+                  <g
+                    transform={`translate(${NODE_W - 26}, ${NODE_H / 2 - 9})`}
+                    style={{ cursor: "pointer" }}
+                    onClick={(e) => { e.stopPropagation(); toggle(n.id); }}
+                  >
+                    <circle cx={9} cy={9} r={9} fill="white" stroke={palette.chip} strokeWidth={1.2} />
+                    <text x={9} y={13} textAnchor="middle" fontSize={11} fontWeight={700} fill={palette.chip}
+                      style={{ pointerEvents: "none", userSelect: "none" }}>
+                      {isCollapsed ? "›" : "‹"}
+                    </text>
+                  </g>
+                )}
+              </g>
+            );
+          })}
         </svg>
       </PannableSvg>
 

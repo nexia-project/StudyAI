@@ -13,6 +13,7 @@ import multer from "multer";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { validateFileUpload } from "../middlewares/security";
+import { generateImageBuffer } from "@workspace/integrations-openai-ai-server/image";
 
 const _require = createRequire(import.meta.url);
 const router: IRouter = Router();
@@ -565,34 +566,50 @@ router.post("/notebook/mapa-mental", async (req: Request, res: Response) => {
     const completion = await gpt.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0.2,
-      max_tokens: 2500,
+      max_tokens: 3500,
       messages: [
         {
           role: "system",
-          content: `Crie um mapa mental completo e detalhado. Retorne APENAS JSON válido:
+          content: `Você cria mapas mentais HIERÁRQUICOS de 4 níveis no estilo NotebookLM.
+Retorne APENAS JSON válido com esta estrutura:
 {
-  "subject": "Tema principal do documento",
-  "color": "#6366f1",
-  "topics": [
+  "subject": "Tema central curto (max 4 palavras)",
+  "categories": [
     {
-      "name": "Tópico Principal",
-      "color": "#ec4899",
-      "subtopics": [
-        { "name": "Subtópico específico", "detail": "detalhe ou definição curta" }
+      "name": "Categoria nível 2 (max 4 palavras)",
+      "topics": [
+        {
+          "name": "Tópico nível 3 (max 5 palavras)",
+          "subtopics": [
+            { "name": "Subtópico folha (max 6 palavras)", "detail": "1-2 frases explicando" }
+          ]
+        }
       ]
     }
   ]
 }
-Use estas cores: #6366f1 #ec4899 #f59e0b #10b981 #3b82f6 #8b5cf6 #06b6d4 #f97316
-Gere 6-8 tópicos principais, cada um com 3-5 subtópicos.`,
+Regras OBRIGATÓRIAS:
+- 2 a 4 categorias principais
+- 2 a 5 tópicos por categoria
+- 3 a 6 subtópicos por tópico
+- Nomes CURTOS, sem pontuação final
+- Detail factual extraído do documento (sem inventar)
+- Estrutura limpa, hierárquica, sem repetição entre níveis
+- NÃO inclua cores (frontend define paleta)`,
         },
-        { role: "user", content: `Documento: "${row.title}"\n\n${row.content_text.slice(0, 14_000)}` },
+        { role: "user", content: `Documento: "${row.title}"\n\n${row.content_text.slice(0, 16_000)}` },
       ],
     });
 
     const raw = completion.choices[0].message.content ?? "{}";
     const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    res.json(JSON.parse(clean));
+    const parsed = JSON.parse(clean);
+
+    // Backward-compat: se vier no formato antigo (topics direto), envelopa em uma categoria
+    if (parsed.topics && !parsed.categories) {
+      parsed.categories = [{ name: parsed.subject, topics: parsed.topics }];
+    }
+    res.json(parsed);
   } catch (e) {
     console.error("notebook mapa-mental:", e);
     res.status(500).json({ erro: "Erro ao gerar mapa mental" });
@@ -766,6 +783,117 @@ Gere 6-12 eventos em ordem cronológica.`,
   } catch (e) {
     console.error("notebook timeline:", e);
     res.status(500).json({ erro: "Erro ao gerar linha do tempo" });
+  }
+});
+
+// ─── POST /api/notebook/infografico ──────────────────────────────────────────
+// Gera infográfico visual profissional a partir do documento (estilo NotebookLM)
+router.post("/notebook/infografico", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { docId, estilo = "profissional", orientacao = "quadrado" } = req.body as {
+    docId: number;
+    estilo?: "kawaii" | "profissional" | "cientifico" | "anime" | "esboco" | "minimalista";
+    orientacao?: "quadrado" | "paisagem" | "retrato";
+  };
+
+  try {
+    const docs = await db.execute(sql`
+      SELECT content_text, title FROM knowledge_documents
+      WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
+    `);
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
+
+    // Step 1: extract a tight visual brief from the document
+    const briefCompletion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.3,
+      max_tokens: 1200,
+      messages: [
+        {
+          role: "system",
+          content: `Você é diretor de arte criando um briefing visual para um infográfico educacional profissional.
+Retorne APENAS JSON:
+{
+  "titulo": "Título principal curto (max 8 palavras)",
+  "subtitulo": "Subtítulo explicativo (max 15 palavras)",
+  "secoes": [
+    { "rotulo": "Nome da seção (max 4 palavras)", "elementos": ["fato 1 curto", "fato 2 curto", "fato 3 curto"] }
+  ],
+  "paleta_sugerida": ["#hex1", "#hex2", "#hex3"],
+  "icones_chave": ["substantivo concreto 1", "substantivo concreto 2", "substantivo concreto 3"]
+}
+Regras:
+- 2 a 4 seções principais (lados do infográfico)
+- 3 a 5 elementos por seção, MUITO concisos
+- Ícones devem ser objetos visuais concretos (não conceitos abstratos)`,
+        },
+        { role: "user", content: `Documento: "${row.title}"\n\n${row.content_text.slice(0, 12_000)}` },
+      ],
+    });
+    const briefRaw = briefCompletion.choices[0].message.content ?? "{}";
+    const brief = JSON.parse(briefRaw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
+
+    // Step 2: build the image generation prompt with style
+    const styleSheet: Record<string, string> = {
+      kawaii: "ultra cute kawaii illustration style, pastel colors (mint, pink, lavender, cream), soft rounded shapes, smiling characters with rosy cheeks, hand-drawn outlines, sparkles and hearts, friendly playful mood",
+      profissional: "modern flat infographic design, clean vector illustration, balanced composition, corporate-friendly palette (deep blue, teal, warm orange accents), clear typography, professional editorial style, business magazine quality",
+      cientifico: "academic scientific diagram style, precise technical illustration, labeled anatomical or molecular illustrations, muted scholarly palette (navy, sage, ochre, ivory), textbook quality, accurate proportions",
+      anime: "Japanese anime / manga educational poster style, vibrant cel-shaded illustrations, expressive characters, dynamic composition, bold colors, manga panel inspired layout",
+      esboco: "hand-drawn pencil sketch infographic, doodle bullet journal aesthetic, monochromatic with accent watercolor washes, handwritten labels, paper texture, cozy notebook feel",
+      minimalista: "minimalist line-art infographic, ultra clean, lots of whitespace, single accent color on neutral background, geometric shapes, Swiss design influence, sophisticated and calm",
+    };
+    const styleDesc = styleSheet[estilo] ?? styleSheet.profissional;
+
+    const sectionsText = (brief.secoes ?? []).map((s: any, i: number) =>
+      `${i + 1}. "${s.rotulo}": ${(s.elementos ?? []).join(" / ")}`
+    ).join("\n");
+
+    const prompt = `Create a professional educational infographic poster IN BRAZILIAN PORTUGUESE.
+
+STYLE: ${styleDesc}
+
+TITLE (large, top center): "${brief.titulo}"
+SUBTITLE (below title): "${brief.subtitulo}"
+
+LAYOUT: ${(brief.secoes?.length ?? 2) <= 2 ? "two side-by-side columns separated by a vertical divider" : "grid of 3-4 quadrants with clear section boundaries"}
+
+SECTIONS to display (each with its own visual area, label as a header pill, and bulleted facts):
+${sectionsText}
+
+VISUAL ELEMENTS to include: ${(brief.icones_chave ?? []).join(", ")}
+
+REQUIREMENTS:
+- All text MUST be in Brazilian Portuguese, clearly legible, no spelling errors
+- Use the title exactly as written
+- Each section labeled with its rotulo as a colored badge or header
+- Include illustrative icons or characters that represent the topic
+- Cohesive color palette throughout
+- Bottom right corner: small "StudyAI" watermark
+- High visual hierarchy: title is dominant, sections have equal weight
+- DO NOT include lorem ipsum or filler text — use the exact facts provided`;
+
+    const sizeMap: Record<string, "1024x1024" | "1536x1024" | "1024x1536"> = {
+      quadrado: "1024x1024",
+      paisagem: "1536x1024",
+      retrato: "1024x1536",
+    };
+    const size = sizeMap[orientacao] ?? "1024x1024";
+
+    const buffer = await generateImageBuffer(prompt, size);
+    const b64_json = buffer.toString("base64");
+
+    res.json({
+      b64_json,
+      mimeType: "image/png",
+      titulo: brief.titulo,
+      subtitulo: brief.subtitulo,
+      estilo,
+      orientacao,
+    });
+  } catch (e: any) {
+    console.error("notebook infografico:", e);
+    res.status(500).json({ erro: e.message ?? "Erro ao gerar infográfico" });
   }
 });
 

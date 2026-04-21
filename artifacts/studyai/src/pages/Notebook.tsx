@@ -15,6 +15,7 @@ import {
   CheckCircle, AlertCircle, Star, StickyNote, HelpCircle,
   ExternalLink, ArrowLeft, RefreshCw, Mic, Play, Pause,
   Volume2, Users, Clock, Presentation, Lock, Unlock, Quote, Printer,
+  Sparkles, Download,
 } from "lucide-react";
 import { TiagaoCharacter } from "@/components/TiagaoCharacter";
 import { AppNav } from "@/components/AppNav";
@@ -92,7 +93,7 @@ interface PodcastRoteiro {
   destaques: string[];
 }
 
-type Tool = "overview" | "study-guide" | "flashcards" | "questoes" | "mapa-mental" | "podcast" | "tiagao" | "timeline" | "slides";
+type Tool = "overview" | "study-guide" | "flashcards" | "questoes" | "mapa-mental" | "podcast" | "tiagao" | "timeline" | "slides" | "infografico";
 
 const TOOL_CONFIG: Record<Tool, { label: string; icon: React.ElementType; color: string; desc: string; badge?: string }> = {
   overview:      { label: "Visão Geral",      icon: Star,          color: "indigo",   desc: "Resumo + tópicos-chave + FAQ" },
@@ -103,6 +104,7 @@ const TOOL_CONFIG: Record<Tool, { label: string; icon: React.ElementType; color:
   podcast:       { label: "Podcast",           icon: Mic,           color: "rose",     desc: "Conversa educativa sobre o doc" },
   timeline:      { label: "Linha do Tempo",    icon: Clock,         color: "amber",    desc: "Cronologia didática (História!)", badge: "NOVO" },
   slides:        { label: "Apresentação",      icon: Presentation,  color: "violet",   desc: "Slides profissionais prontos", badge: "NOVO" },
+  infografico:   { label: "Infográfico",        icon: Sparkles,      color: "fuchsia",  desc: "Pôster visual gerado por IA",   badge: "NOVO" },
   tiagao:        { label: "Tiagão na Lousa",   icon: Zap,           color: "blue",     desc: "Aula animada na lousa" },
 };
 
@@ -798,13 +800,19 @@ export default function Notebook() {
       podcast: "/api/notebook/podcast",
       timeline: "/api/notebook/timeline",
       slides: "/api/notebook/slides",
+      infografico: "/api/notebook/infografico",
     };
     if (tool === "slides") setSlideIdx(0);
 
     try {
+      const body: any = { docId: targetDocId };
+      if (tool === "infografico") {
+        body.estilo = (window as any).__infograficoEstilo ?? "profissional";
+        body.orientacao = (window as any).__infograficoOrientacao ?? "quadrado";
+      }
       const r = await fetch(`${BASE_URL}${endpoints[tool]}`, {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-        body: JSON.stringify({ docId: targetDocId }),
+        body: JSON.stringify(body),
       });
       const data = await r.json();
       if (r.ok) { setToolResult(data); }
@@ -1321,6 +1329,28 @@ export default function Notebook() {
               return r.apresentacao?.slides?.length
                 ? <SlidesView deck={r.apresentacao} idx={slideIdx} setIdx={setSlideIdx} />
                 : null;
+            })()}
+
+            {activeTool === "infografico" && (() => {
+              const r = toolResult as { b64_json: string; mimeType: string; titulo: string; subtitulo: string; estilo: string };
+              if (!r.b64_json) return null;
+              const dataUrl = `data:${r.mimeType};base64,${r.b64_json}`;
+              return (
+                <div className="bg-white rounded-xl border border-slate-200 p-3 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-sm text-slate-900 truncate">{r.titulo}</h3>
+                      <p className="text-[11px] text-slate-500 truncate">{r.subtitulo}</p>
+                      <span className="inline-block mt-1 text-[9px] uppercase tracking-wide bg-fuchsia-100 text-fuchsia-700 px-1.5 py-0.5 rounded font-bold">{r.estilo}</span>
+                    </div>
+                    <a href={dataUrl} download={`infografico-${r.titulo.replace(/\s+/g, "-")}.png`}
+                       className="flex-shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold bg-slate-900 text-white px-2 py-1.5 rounded-lg hover:bg-slate-700">
+                      <Download className="w-3 h-3" /> PNG
+                    </a>
+                  </div>
+                  <img src={dataUrl} alt={r.titulo} className="w-full rounded-lg border border-slate-200 shadow-sm" />
+                </div>
+              );
             })()}
           </div>
         )}

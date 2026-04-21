@@ -1,0 +1,682 @@
+Crie uma aplicação web fullstack chamada "Study.IA" — uma plataforma de pesquisa e estudo com IA que replica TODAS as funcionalidades do Google NotebookLM e adiciona recursos profissionais para estudantes, professores e reitores/coordenadores acadêmicos.
+
+=============================================
+STACK TÉCNICA
+=============================================
+- Frontend: Next.js 14 (App Router) + Tailwind CSS + shadcn/ui + Framer Motion
+- Backend: Next.js API Routes + Prisma ORM
+- Banco de dados: PostgreSQL (Neon ou Supabase) com extensão pgvector para embeddings
+- Auth: NextAuth.js (Google OAuth + email/senha)
+- IA: API OpenAI (GPT-4o / GPT-4o-mini) para chat, análise e geração
+- Embeddings: text-embedding-3-small da OpenAI
+- TTS (Text-to-Speech): OpenAI TTS API (vozes alloy e nova para o podcast)
+- STT (Speech-to-Text): OpenAI Whisper API para transcrição de áudios
+- OCR: Tesseract.js para extração de texto de imagens
+- PDF parsing: pdf-parse para extração de texto de PDFs
+- DOCX parsing: mammoth para leitura de arquivos Word
+- CSV/XLSX parsing: papaparse e xlsx
+- PPTX parsing: pptxgenjs para leitura e geração de slides
+- Visualização: React Flow (mapas mentais), Recharts (gráficos), Mermaid (diagramas)
+- Storage: Supabase Storage para uploads de arquivos
+- Real-time: Server-Sent Events para streaming de respostas da IA
+- Deploy: otimizado para Replit
+
+=============================================
+CONCEITO CENTRAL — IDÊNTICO AO NOTEBOOKLM
+=============================================
+
+O sistema funciona com "Cadernos" (Notebooks). Cada caderno é um espaço isolado onde o usuário adiciona FONTES (documentos, links, áudios, vídeos). A IA RESPONDE APENAS com base nas fontes adicionadas ao caderno. NUNCA inventa informação. Toda resposta inclui CITAÇÕES CLICÁVEIS que levam ao trecho exato do documento fonte.
+
+=============================================
+TIPOS DE FONTES SUPORTADAS (Upload)
+=============================================
+1. PDF — extrai texto completo com pdf-parse, preserva número de páginas
+2. Google Docs — importação via link público (fetch + parse do HTML)
+3. Google Slides — importação via link público
+4. Links de páginas web — fetch do conteúdo, extração de texto limpo
+5. Transcrições de vídeos YouTube — extração via link do YouTube (usar ytdl-core ou API de legendas), importa APENAS a transcrição com timestamps
+6. Arquivos de áudio (MP3, WAV, M4A) — transcrição automática com Whisper API
+7. Documentos Word (.docx) — parsing com mammoth
+8. Planilhas Google Sheets / CSV / XLSX — parsing e conversão para texto estruturado
+9. Imagens (PNG, JPG, WEBP) — OCR com Tesseract.js para extrair texto
+10. Arquivos EPUB — parsing de e-books
+11. Arquivos de texto (.txt, .md)
+12. Arquivos PowerPoint (.pptx) — extração de texto dos slides
+
+Limites:
+- Plano gratuito: até 100 cadernos, 50 fontes por caderno
+- Máximo por arquivo: 200MB ou 500.000 palavras
+
+=============================================
+SISTEMA RAG (Retrieval-Augmented Generation)
+=============================================
+
+Este é o CORAÇÃO do sistema. Implementar EXATAMENTE assim:
+
+1. INGESTÃO: Quando o usuário faz upload de uma fonte:
+   a) Extrair todo o texto do documento
+   b) Fazer CHUNKING: dividir o texto em chunks de ~500 tokens com overlap de 50 tokens
+   c) Para cada chunk, salvar: texto, número da página/posição, ID do documento fonte
+   d) Gerar EMBEDDING de cada chunk usando text-embedding-3-small da OpenAI
+   e) Armazenar embeddings no PostgreSQL com pgvector
+
+2. BUSCA: Quando o usuário faz uma pergunta no chat:
+   a) Gerar embedding da pergunta do usuário
+   b) Fazer busca de similaridade vetorial (cosine similarity) nos chunks do caderno
+   c) Retornar os top 10-20 chunks mais relevantes
+   d) Montar o contexto com os chunks recuperados
+
+3. GERAÇÃO: Enviar para a IA:
+   a) System prompt: "Você é um assistente de pesquisa. Responda APENAS com base no contexto fornecido. Se a informação não estiver no contexto, diga que não encontrou nas fontes. SEMPRE cite suas fontes usando [1], [2], etc."
+   b) Contexto: os chunks recuperados, cada um identificado com [fonte: nome_do_documento, página X]
+   c) Pergunta do usuário
+   d) Retornar resposta com citações
+
+4. CITAÇÕES: Cada número de citação [1], [2] etc na resposta deve ser CLICÁVEL. Ao clicar, abre um popup/sidebar mostrando o trecho exato do documento original de onde veio a informação, com destaque no texto.
+
+=============================================
+JANELA DE CONTEXTO
+=============================================
+- Suportar contexto de até 1 MILHÃO de tokens (usar GPT-4o-128k com múltiplas chamadas se necessário, ou implementar context window management inteligente)
+- Saved Chat History: conversas ficam salvas e o usuário pode retomar de onde parou
+- Em cadernos compartilhados, o histórico de chat é PRIVADO para cada usuário
+
+=============================================
+CUSTOM GOALS / PERSONAS (Configuração do Caderno)
+=============================================
+- Cada caderno tem uma configuração de "Meta/Persona" com até 5.000 caracteres
+- O usuário define como a IA deve se comportar naquele caderno específico
+- Exemplos: "Aja como um professor paciente de física", "Seja um revisor rigoroso de artigos acadêmicos", "Explique como se eu fosse um estudante do ensino médio"
+- Acessível via ícone de engrenagem no painel de chat
+- A persona é injetada no system prompt de toda interação naquele caderno
+
+=============================================
+PAINEL "STUDIO" — GERAÇÃO DE CONTEÚDO
+=============================================
+
+O Studio é um painel lateral onde o usuário pode GERAR diferentes tipos de conteúdo a partir das fontes do caderno. Implementar TODOS estes outputs:
+
+### 1. RESUMOS
+- Resumo executivo (5 bullets)
+- Resumo detalhado (parágrafos)
+- Resumo por tópicos
+- Com citações das fontes
+
+### 2. GUIA DE ESTUDO
+- Geração automática de guia de estudo completo com tópicos, explicações e referências
+- Formatado em Markdown bonito
+
+### 3. FLASHCARDS
+- IA gera pares pergunta/resposta a partir do material
+- Interface de flashcard interativa (virar carta, marcar fácil/médio/difícil)
+- Sistema de repetição espaçada (algoritmo SM-2) para revisar nos momentos certos
+- Exportável
+
+### 4. QUIZZES
+- Geração automática de quizzes com base nas fontes
+- Tipos: múltipla escolha, verdadeiro/falso, dissertativa curta
+- Correção automática com explicação de cada resposta (citando a fonte)
+- Score e histórico de tentativas
+
+### 5. MAPA MENTAL
+- IA analisa as fontes e gera um mapa mental interativo
+- Usar React Flow para renderizar
+- Nós são tópicos, conexões são relações entre conceitos
+- Drag, zoom, expand/collapse de nós
+- Exportável como imagem PNG
+
+### 6. LINHA DO TEMPO
+- Se o conteúdo tiver eventos cronológicos, gerar timeline visual interativa
+- Cada evento com data, título, descrição e citação da fonte
+
+### 7. DATA TABLES (Tabelas de Dados)
+- IA converte informação qualitativa dos documentos em tabelas estruturadas
+- Ex: comparação entre conceitos, produtos, estudos
+- Editável pelo usuário
+- Exportável como CSV/Google Sheets
+
+### 8. AUDIO OVERVIEW (PODCAST) ⭐ FUNCIONALIDADE PRINCIPAL
+- Dois "apresentadores" virtuais discutem o conteúdo do caderno em formato podcast
+- Usar OpenAI TTS com duas vozes diferentes (alloy e nova)
+- Formatos disponíveis:
+  a) "Deep Dive" — análise profunda e detalhada (15-20 min)
+  b) "Brief" — resumo rápido (3-5 min)
+  c) "Debate" — os apresentadores debatem diferentes perspectivas
+  d) "Aula" — formato de aula expositiva
+- A IA gera o SCRIPT da conversa primeiro, depois converte em áudio
+- O script deve ser natural, com interjeições, perguntas entre os hosts, exemplos
+- MODO INTERATIVO: o usuário pode "entrar" na conversa:
+  a) Botão "Participar" durante a reprodução
+  b) O áudio pausa
+  c) O usuário faz uma pergunta (texto ou voz)
+  d) Os hosts respondem com base nas fontes
+  e) O podcast continua de onde parou
+- Player de áudio com controles (play, pause, velocidade 0.5x a 2x, pular 10s)
+- Download do áudio em MP3
+- Suporte a múltiplos idiomas (pelo menos PT-BR e EN)
+
+### 9. VIDEO OVERVIEW
+- Geração de apresentação narrada a partir das fontes
+- Slides gerados automaticamente com texto + narração em áudio
+- Estilos visuais selecionáveis: Clássico, Quadro Branco, Aquarela, Retrô, Minimalista, Anime
+- Formatos: Explicador (longo) ou Brief (curto)
+- Steering prompt opcional para focar em aspecto específico
+- Download do vídeo ou compartilhamento por link
+- Usar HTML Canvas ou similar para renderizar os slides em vídeo com transições suaves
+
+### 10. GERAÇÃO DE SLIDES / APRESENTAÇÃO
+- IA gera deck de slides a partir das fontes
+- EDIÇÃO POR SLIDE: o usuário pode pedir "corrija o slide 3", "torne o slide 5 mais conciso" sem regenerar o deck todo
+- Múltiplas edições em fila antes de regenerar
+- Exportação como PPTX (PowerPoint)
+- Temas visuais selecionáveis
+
+### 11. INFOGRÁFICOS
+- Geração de infográficos visuais a partir dos dados/informações das fontes
+- Diferentes estilos de layout
+- Exportável como imagem
+
+### 12. RELATÓRIOS / DOCUMENTOS
+- Geração de relatórios estruturados, memos, briefings
+- Templates: relatório acadêmico, blog post, resumo executivo, plano de aula
+- Exportável como PDF ou DOCX
+
+=============================================
+DEEP RESEARCH (Pesquisa Profunda na Web)
+=============================================
+
+Funcionalidade AGENTIC que pesquisa a web automaticamente:
+
+1. No painel de fontes, opção "Web" como tipo de fonte
+2. Dois modos:
+   a) FAST RESEARCH: busca rápida, retorna ~10 fontes web relevantes para o usuário revisar e importar
+   b) DEEP RESEARCH: pesquisa profunda e automática:
+      - O usuário digita um tópico
+      - O agente cria um PLANO DE PESQUISA
+      - Pesquisa centenas de fontes na web (usar API de busca: Serper, Tavily ou SearXNG)
+      - Compila um RELATÓRIO completo com citações
+      - O usuário pode adicionar o relatório e suas fontes ao caderno com 1 clique
+      - Funciona em background enquanto o usuário continua trabalhando
+      - Barra de progresso mostrando o andamento
+
+=============================================
+DISCOVER (Descoberta de Fontes)
+=============================================
+- O sistema sugere automaticamente até 10 fontes web relevantes baseadas no conteúdo do caderno
+- O usuário revisa e escolhe quais adicionar ao caderno
+- Atualiza conforme novas fontes são adicionadas
+
+=============================================
+FUNCIONALIDADE DE COMPARTILHAMENTO
+=============================================
+- Compartilhar cadernos com outros usuários via link ou email
+- Permissões: visualizar ou editar
+- Em cadernos compartilhados, cada usuário tem seu próprio histórico de chat privado
+- Compartilhar outputs do Studio (áudios, vídeos, quizzes) via link público
+
+=============================================
+PERFIS DE USUÁRIO E FUNCIONALIDADES EXTRAS
+=============================================
+
+### PERFIL: ESTUDANTE
+- Tudo acima +
+- Dashboard pessoal com: cadernos recentes, progresso de estudo, metas
+- Pomodoro timer integrado com tracking de horas por caderno/matéria
+- Modo "Me explica como se eu tivesse 5 anos" (simplificação extrema)
+- Modo "Preparação para prova" (gera simulado completo)
+- Estatísticas de estudo: horas, quizzes, flashcards revisados
+- Metas semanais de estudo configuráveis
+
+### PERFIL: PROFESSOR
+- Tudo do estudante +
+- Criação de TURMAS com código de convite
+- Upload de materiais para turmas (IA processa e disponibiliza para alunos)
+- Geração automática de planos de aula a partir de ementa/conteúdo
+- Banco de questões inteligente com tags e níveis de dificuldade
+- Criação de provas e exercícios com IA
+- Dashboard de desempenho dos alunos (tempo de estudo, scores de quiz, engajamento)
+- Correção assistida por IA de trabalhos e redações
+- Gerador de rubrica de avaliação automática
+- Atribuição de cadernos/materiais para turmas
+
+### PERFIL: REITOR / COORDENADOR
+- Tudo do professor +
+- Painel administrativo com visão macro institucional
+- Métricas gerais: engajamento por turma, professor, curso, período
+- Relatórios exportáveis (PDF/Excel) de desempenho acadêmico
+- Gestão de professores, turmas e cursos
+- Análise preditiva: alunos em risco de reprovação/evasão (IA analisa padrões de uso)
+- Configurações institucionais: logo, nome, cores, domínio personalizado
+- Gestão de licenças e planos
+
+=============================================
+UI/UX — DESIGN E LAYOUT
+=============================================
+
+Layout principal (página do caderno):
+┌─────────────────────────────────────────────────────┐
+│ Header: Logo Study.IA | Busca | Notificações | User │
+├──────────┬──────────────────────┬───────────────────┤
+│          │                      │                   │
+│ Sidebar  │   Área Principal     │  Studio Panel     │
+│          │                      │  (colapsável)     │
+│ - Cadernos│  Fontes do caderno  │                   │
+│ - Turmas │  (lista de docs)     │  - Resumo         │
+│ - Favoritos│                    │  - Flashcards     │
+│ - Config │  ─────────────────   │  - Quiz           │
+│          │                      │  - Mapa Mental    │
+│          │  Chat com IA         │  - Audio Overview  │
+│          │  (com citações)      │  - Video Overview  │
+│          │                      │  - Slides         │
+│          │  [Digite pergunta...] │  - Data Table     │
+│          │                      │  - Timeline       │
+│          │                      │  - Infográfico    │
+│          │                      │  - Relatório      │
+├──────────┴──────────────────────┴───────────────────┤
+│ Footer                                               │
+└─────────────────────────────────────────────────────┘
+
+Especificações visuais:
+- Design clean e profissional (inspiração: Notion + Linear + NotebookLM)
+- Dark mode e Light mode com toggle
+- Sidebar colapsável
+- Layout 100% responsivo (mobile-first)
+- Animações sutis com Framer Motion (hover, transições de página, loading)
+- Skeleton screens em todos os carregamentos
+- Toast notifications para feedback
+- Modais para confirmações e previews
+- Drag and drop para upload de arquivos
+- Onboarding guiado no primeiro acesso (tour interativo)
+
+Paleta de cores:
+- Primária: #1a365d (azul profundo)
+- Secundária: #38a169 (verde)
+- Accent: #6366f1 (índigo para elementos interativos)
+- Background light: #fafafa
+- Background dark: #0f172a
+- Texto: #1e293b (light) / #e2e8f0 (dark)
+
+Tipografia:
+- Font: Inter para UI, JetBrains Mono para código/dados
+
+=============================================
+BANCO DE DADOS — SCHEMA COMPLETO
+=============================================
+
+// Prisma Schema
+
+model User {
+  id              String   @id @default(cuid())
+  name            String
+  email           String   @unique
+  password        String?
+  avatar          String?
+  role            Role     @default(STUDENT) // STUDENT, TEACHER, RECTOR
+  institutionId   String?
+  institution     Institution? @relation(fields: [institutionId], references: [id])
+  notebooks       Notebook[]
+  conversations   Conversation[]
+  studySessions   StudySession[]
+  classMembers    ClassMember[]
+  quizAttempts    QuizAttempt[]
+  flashcardReviews FlashcardReview[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Institution {
+  id        String   @id @default(cuid())
+  name      String
+  logo      String?
+  colors    Json?
+  domain    String?
+  users     User[]
+  classes   Class[]
+  createdAt DateTime @default(now())
+}
+
+model Notebook {
+  id            String   @id @default(cuid())
+  title         String
+  description   String?
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  persona       String?  @db.Text // até 5000 chars para Goals/Persona
+  sources       Source[]
+  conversations Conversation[]
+  flashcardSets FlashcardSet[]
+  quizzes       Quiz[]
+  studioOutputs StudioOutput[]
+  sharedWith    NotebookShare[]
+  classId       String?
+  class         Class?   @relation(fields: [classId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Source {
+  id          String     @id @default(cuid())
+  notebookId  String
+  notebook    Notebook   @relation(fields: [notebookId], references: [id])
+  filename    String
+  type        SourceType // PDF, DOCX, WEB, YOUTUBE, AUDIO, IMAGE, CSV, XLSX, EPUB, TXT, PPTX, GOOGLE_DOC, GOOGLE_SHEET
+  originalUrl String?
+  storagePath String?
+  content     String     @db.Text
+  metadata    Json?      // páginas, duração, timestamps etc
+  chunks      Chunk[]
+  fileSize    Int?
+  createdAt   DateTime   @default(now())
+}
+
+model Chunk {
+  id        String   @id @default(cuid())
+  sourceId  String
+  source    Source   @relation(fields: [sourceId], references: [id])
+  text      String   @db.Text
+  embedding Unsupported("vector(1536)")  // pgvector
+  pageNumber Int?
+  position  Int      // ordem no documento
+  metadata  Json?
+}
+
+model Conversation {
+  id          String    @id @default(cuid())
+  notebookId  String
+  notebook    Notebook  @relation(fields: [notebookId], references: [id])
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  messages    Message[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Message {
+  id              String       @id @default(cuid())
+  conversationId  String
+  conversation    Conversation @relation(fields: [conversationId], references: [id])
+  role            MessageRole  // USER, ASSISTANT
+  content         String       @db.Text
+  citations       Json?        // [{sourceId, chunkId, text, page}]
+  createdAt       DateTime     @default(now())
+}
+
+model FlashcardSet {
+  id          String     @id @default(cuid())
+  notebookId  String
+  notebook    Notebook   @relation(fields: [notebookId], references: [id])
+  title       String
+  flashcards  Flashcard[]
+  createdAt   DateTime   @default(now())
+}
+
+model Flashcard {
+  id              String    @id @default(cuid())
+  flashcardSetId  String
+  flashcardSet    FlashcardSet @relation(fields: [flashcardSetId], references: [id])
+  front           String    @db.Text
+  back            String    @db.Text
+  difficulty      Float     @default(2.5) // SM-2 easiness factor
+  interval        Int       @default(0)   // dias até próxima revisão
+  repetitions     Int       @default(0)
+  nextReview      DateTime  @default(now())
+  reviews         FlashcardReview[]
+}
+
+model FlashcardReview {
+  id          String    @id @default(cuid())
+  flashcardId String
+  flashcard   Flashcard @relation(fields: [flashcardId], references: [id])
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  quality     Int       // 0-5 (SM-2 quality rating)
+  reviewedAt  DateTime  @default(now())
+}
+
+model Quiz {
+  id          String    @id @default(cuid())
+  notebookId  String
+  notebook    Notebook  @relation(fields: [notebookId], references: [id])
+  title       String
+  questions   Json      // [{question, type, options, correctAnswer, explanation, sourceRef}]
+  attempts    QuizAttempt[]
+  classId     String?
+  createdAt   DateTime  @default(now())
+}
+
+model QuizAttempt {
+  id        String   @id @default(cuid())
+  quizId    String
+  quiz      Quiz     @relation(fields: [quizId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  answers   Json
+  score     Float
+  startedAt DateTime @default(now())
+  finishedAt DateTime?
+}
+
+model StudioOutput {
+  id          String      @id @default(cuid())
+  notebookId  String
+  notebook    Notebook    @relation(fields: [notebookId], references: [id])
+  type        StudioType  // SUMMARY, STUDY_GUIDE, MINDMAP, TIMELINE, DATA_TABLE, AUDIO_OVERVIEW, VIDEO_OVERVIEW, SLIDES, INFOGRAPHIC, REPORT
+  content     Json        // conteúdo gerado (estrutura varia por tipo)
+  audioUrl    String?     // para audio/video overviews
+  videoUrl    String?
+  config      Json?       // configurações (estilo, formato, steering prompt)
+  shareLink   String?     @unique
+  createdAt   DateTime    @default(now())
+}
+
+model NotebookShare {
+  id          String   @id @default(cuid())
+  notebookId  String
+  notebook    Notebook @relation(fields: [notebookId], references: [id])
+  sharedWithEmail String
+  permission  Permission @default(VIEW) // VIEW, EDIT
+  createdAt   DateTime @default(now())
+}
+
+model Class {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  code          String   @unique // código de convite
+  professorId   String
+  institutionId String?
+  institution   Institution? @relation(fields: [institutionId], references: [id])
+  members       ClassMember[]
+  notebooks     Notebook[]
+  quizzes       Quiz[]
+  createdAt     DateTime @default(now())
+}
+
+model ClassMember {
+  id      String    @id @default(cuid())
+  classId String
+  class   Class     @relation(fields: [classId], references: [id])
+  userId  String
+  user    User      @relation(fields: [userId], references: [id])
+  role    ClassRole @default(STUDENT) // STUDENT, TEACHER, ASSISTANT
+  joinedAt DateTime @default(now())
+}
+
+model StudySession {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  notebookId  String?
+  duration    Int      // minutos
+  type        String?  // pomodoro, free_study, quiz, flashcard
+  date        DateTime @default(now())
+}
+
+model DeepResearchJob {
+  id          String   @id @default(cuid())
+  notebookId  String
+  userId      String
+  topic       String
+  status      String   @default("pending") // pending, researching, compiling, complete, failed
+  plan        Json?    // plano de pesquisa
+  report      String?  @db.Text
+  sources     Json?    // fontes encontradas
+  progress    Int      @default(0) // 0-100
+  createdAt   DateTime @default(now())
+  completedAt DateTime?
+}
+
+// Enums
+enum Role { STUDENT TEACHER RECTOR }
+enum SourceType { PDF DOCX WEB YOUTUBE AUDIO IMAGE CSV XLSX EPUB TXT PPTX GOOGLE_DOC GOOGLE_SHEET }
+enum MessageRole { USER ASSISTANT }
+enum StudioType { SUMMARY STUDY_GUIDE FLASHCARDS QUIZ MINDMAP TIMELINE DATA_TABLE AUDIO_OVERVIEW VIDEO_OVERVIEW SLIDES INFOGRAPHIC REPORT }
+enum Permission { VIEW EDIT }
+enum ClassRole { STUDENT TEACHER ASSISTANT }
+
+=============================================
+PÁGINAS E ROTAS
+=============================================
+
+/                         → Landing page (marketing)
+/login                    → Login (Google + email)
+/register                 → Registro com seleção de perfil (Estudante/Professor/Reitor)
+/onboarding               → Tour guiado de primeiro acesso
+/dashboard                → Dashboard adaptável por role
+/notebooks                → Lista de todos os cadernos do usuário
+/notebooks/new            → Criar novo caderno
+/notebooks/[id]           → Caderno aberto (fontes + chat + studio) — PÁGINA PRINCIPAL
+/notebooks/[id]/settings  → Configurações do caderno (persona, compartilhamento)
+/notebooks/[id]/quiz/[quizId] → Interface de quiz
+/notebooks/[id]/flashcards    → Interface de flashcards
+/discover                 → Descoberta de fontes sugeridas
+/classes                  → Lista de turmas (professor)
+/classes/[id]             → Turma específica (membros, materiais, métricas)
+/classes/join/[code]      → Entrar em turma via código
+/admin                    → Painel do reitor (métricas institucionais)
+/admin/reports            → Relatórios exportáveis
+/admin/users              → Gestão de usuários
+/settings                 → Perfil e preferências do usuário
+/shared/[shareLink]       → Acesso a conteúdo compartilhado (público)
+
+=============================================
+APIs — ENDPOINTS PRINCIPAIS
+=============================================
+
+POST   /api/auth/[...nextauth]     → NextAuth
+POST   /api/notebooks              → Criar caderno
+GET    /api/notebooks              → Listar cadernos
+GET    /api/notebooks/[id]         → Detalhes do caderno
+PUT    /api/notebooks/[id]         → Atualizar caderno (título, persona)
+DELETE /api/notebooks/[id]         → Deletar caderno
+
+POST   /api/notebooks/[id]/sources → Upload de fonte (multipart/form-data)
+DELETE /api/sources/[id]           → Remover fonte
+GET    /api/sources/[id]/content   → Ver conteúdo da fonte
+
+POST   /api/notebooks/[id]/chat    → Enviar mensagem (streaming SSE)
+GET    /api/notebooks/[id]/chat/history → Histórico de conversas
+
+POST   /api/notebooks/[id]/studio/summary       → Gerar resumo
+POST   /api/notebooks/[id]/studio/flashcards    → Gerar flashcards
+POST   /api/notebooks/[id]/studio/quiz          → Gerar quiz
+POST   /api/notebooks/[id]/studio/mindmap       → Gerar mapa mental
+POST   /api/notebooks/[id]/studio/timeline      → Gerar timeline
+POST   /api/notebooks/[id]/studio/datatable     → Gerar tabela de dados
+POST   /api/notebooks/[id]/studio/audio         → Gerar audio overview
+POST   /api/notebooks/[id]/studio/video         → Gerar video overview
+POST   /api/notebooks/[id]/studio/slides        → Gerar slides
+POST   /api/notebooks/[id]/studio/infographic   → Gerar infográfico
+POST   /api/notebooks/[id]/studio/report        → Gerar relatório
+
+POST   /api/notebooks/[id]/audio/interactive    → Modo interativo do podcast
+PUT    /api/studio/slides/[id]/edit             → Editar slide individual
+
+POST   /api/deep-research          → Iniciar deep research
+GET    /api/deep-research/[id]     → Status/progresso do deep research
+POST   /api/fast-research          → Fast research
+
+POST   /api/notebooks/[id]/share   → Compartilhar caderno
+
+POST   /api/classes                → Criar turma
+GET    /api/classes                → Listar turmas
+POST   /api/classes/[id]/invite    → Gerar código de convite
+POST   /api/classes/join           → Entrar em turma
+
+GET    /api/admin/metrics          → Métricas institucionais
+GET    /api/admin/reports          → Gerar relatórios
+
+GET    /api/study-sessions         → Sessões de estudo
+POST   /api/study-sessions         → Registrar sessão
+
+=============================================
+PRIORIDADE DE IMPLEMENTAÇÃO
+=============================================
+
+FASE 1 — FUNDAÇÃO (Implementar PRIMEIRO, tudo funcionando end-to-end):
+□ Setup do projeto (Next.js, Tailwind, shadcn/ui, Prisma, PostgreSQL com pgvector)
+□ Auth completo (NextAuth com Google + email)
+□ CRUD de cadernos
+□ Upload de fontes (começar com PDF, TXT e links web)
+□ Pipeline RAG completo: ingestão → chunking → embeddings → busca → geração
+□ Chat com IA baseado nas fontes com citações clicáveis
+□ Chat history salvo
+□ UI do caderno (sidebar + fontes + chat)
+□ Streaming de respostas (SSE)
+
+FASE 2 — STUDIO BÁSICO:
+□ Geração de resumos
+□ Geração de flashcards com interface interativa
+□ Geração de quizzes com correção automática
+□ Geração de guia de estudo
+□ Mais tipos de fonte: DOCX, áudio (Whisper), YouTube, imagens (OCR), CSV/XLSX
+
+FASE 3 — STUDIO AVANÇADO:
+□ Audio Overview (podcast com 2 vozes + modo interativo)
+□ Mapa Mental interativo (React Flow)
+□ Linha do tempo
+□ Data Tables
+□ Geração de slides com edição individual e export PPTX
+
+FASE 4 — DEEP RESEARCH + DISCOVER:
+□ Fast Research
+□ Deep Research (agente autônomo)
+□ Discover (sugestão de fontes)
+□ Custom Goals/Personas por caderno
+
+FASE 5 — PERFIS ACADÊMICOS:
+□ Sistema de turmas (professor)
+□ Dashboard de professor com métricas dos alunos
+□ Painel do reitor com visão institucional
+□ Relatórios exportáveis
+□ Análise preditiva de risco
+
+FASE 6 — POLISH:
+□ Video Overview
+□ Infográficos
+□ Dark/Light mode
+□ Onboarding guiado
+□ Pomodoro timer
+□ Compartilhamento avançado
+□ Responsividade mobile
+□ Performance optimization
+
+=============================================
+VARIÁVEIS DE AMBIENTE NECESSÁRIAS (.env)
+=============================================
+DATABASE_URL=
+NEXTAUTH_SECRET=
+NEXTAUTH_URL=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+OPENAI_API_KEY=
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+SERPER_API_KEY= (para Deep Research)
+
+=============================================
+INSTRUÇÃO FINAL
+=============================================
+
+Comece AGORA pela FASE 1. Crie toda a estrutura do projeto, instale todas as dependências, configure o banco de dados com pgvector, implemente o auth, o CRUD de cadernos, o pipeline RAG completo, e o chat com citações. Tudo deve funcionar end-to-end. Faça o design limpo e profissional desde o início. Use TypeScript em todo o projeto. Trate erros gracefully. Implemente loading states. O chat deve fazer streaming das respostas.

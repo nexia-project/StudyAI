@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { useStudyAuth } from "@/hooks/useStudyAuth";
+import { EstudioIA } from "@/components/EstudioIA";
 
 const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
 
@@ -889,7 +890,13 @@ export default function InstituicaoPage() {
 
         {/* ─── INTELIGÊNCIA IA ─── */}
         {activeTab === "ia" && (
-          <InstituicaoIATab institutionId={institution.id} primaryColor={primaryColor} />
+          <div className="space-y-6">
+            <InstituicaoIATab institutionId={institution.id} primaryColor={primaryColor} />
+            <div className="rounded-2xl border border-slate-700/50 bg-slate-800/40 p-5">
+              <EstudioIA variant="dark" title="Estúdio Visual IA da Instituição"
+                defaultMateria="Geral" />
+            </div>
+          </div>
         )}
 
         {/* ─── RELATÓRIOS ─── */}

@@ -12,9 +12,10 @@ import {
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
+import { EstudioIA } from "@/components/EstudioIA";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Section = "dashboard" | "turmas" | "alunos" | "conteudos" | "pesquisa" | "caderno" | "provas" | "banco" | "atividades" | "assistente" | "relatorios";
+type Section = "dashboard" | "turmas" | "alunos" | "conteudos" | "estudio" | "pesquisa" | "caderno" | "provas" | "banco" | "atividades" | "assistente" | "relatorios";
 type ExamMode = "classica" | "mundo" | "fraquezas";
 type VisualStyle = "enem" | "infantil" | "tecnico" | "aventura";
 
@@ -52,6 +53,7 @@ const NAV = [
   { id: "turmas" as Section, label: "Minhas Turmas", icon: Users },
   { id: "alunos" as Section, label: "Alunos", icon: UserCircle },
   { id: "conteudos" as Section, label: "Criador de Conteúdo", icon: Wand2 },
+  { id: "estudio" as Section, label: "Estúdio Visual IA", icon: Sparkles },
   { id: "pesquisa" as Section, label: "Central de Pesquisa", icon: Microscope },
   { id: "caderno" as Section, label: "Caderno IA do Professor", icon: BookOpen, external: "/notebook" },
   { id: "provas" as Section, label: "Gerador de Provas", icon: FileQuestion },
@@ -379,6 +381,9 @@ export default function ProfessorPage() {
               {section === "turmas" && <TurmasSection apiFetch={apiFetch} onNavigate={id => navigate(`/professor/turma/${id}`)} />}
               {section === "alunos" && <AlunosSection apiFetch={apiFetch} />}
               {section === "conteudos" && <ConteudosSection apiFetch={apiFetch} />}
+              {section === "estudio" && (
+                <div className="max-w-5xl mx-auto"><EstudioIA variant="dark" title="Estúdio Visual IA" /></div>
+              )}
               {section === "pesquisa" && <PesquisaSection apiFetch={apiFetch} />}
               {section === "provas" && <GerarProvaSection apiFetch={apiFetch} />}
               {section === "banco" && <BancoSection apiFetch={apiFetch} />}

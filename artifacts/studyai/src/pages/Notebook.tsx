@@ -16,6 +16,7 @@ import {
   ExternalLink, ArrowLeft, RefreshCw, Mic, Play, Pause,
   Volume2, Users, Clock, Presentation, Lock, Unlock, Quote, Printer,
   Sparkles, Download, Youtube, Image as ImageIcon, Maximize2, Minimize2, Archive,
+  Search, Pencil, Calendar, LayoutGrid,
 } from "lucide-react";
 import { TiagaoCharacter } from "@/components/TiagaoCharacter";
 import { AppNav } from "@/components/AppNav";
@@ -1003,6 +1004,18 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
   );
 }
 
+// ─── Caderno color palette ────────────────────────────────────────────────────
+const CADERNO_PALETTE: Record<string, { gradient: string; light: string; text: string; dot: string }> = {
+  indigo:  { gradient: "from-indigo-500 to-violet-600",  light: "bg-indigo-50",  text: "text-indigo-700",  dot: "bg-indigo-500" },
+  violet:  { gradient: "from-violet-500 to-purple-600",  light: "bg-violet-50",  text: "text-violet-700",  dot: "bg-violet-500" },
+  blue:    { gradient: "from-blue-500 to-indigo-600",    light: "bg-blue-50",    text: "text-blue-700",    dot: "bg-blue-500" },
+  emerald: { gradient: "from-emerald-500 to-teal-600",   light: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500" },
+  rose:    { gradient: "from-rose-500 to-pink-600",      light: "bg-rose-50",    text: "text-rose-700",    dot: "bg-rose-500" },
+  amber:   { gradient: "from-amber-500 to-orange-600",   light: "bg-amber-50",   text: "text-amber-700",   dot: "bg-amber-500" },
+  slate:   { gradient: "from-slate-500 to-slate-700",    light: "bg-slate-100",  text: "text-slate-700",   dot: "bg-slate-500" },
+};
+const getCadernoStyle = (color?: string) => CADERNO_PALETTE[color ?? "indigo"] ?? CADERNO_PALETTE.indigo;
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function Notebook() {
   const [, navigate] = useLocation();
@@ -1049,6 +1062,10 @@ export default function Notebook() {
   const [restrictToSelected, setRestrictToSelected] = useState(true);
   // Slides nav
   const [slideIdx, setSlideIdx] = useState(0);
+
+  // Home vs Workspace view
+  const [notebookView, setNotebookView] = useState<"home" | "workspace">("home");
+  const [homeSearch, setHomeSearch] = useState("");
 
   // Artefatos salvos do doc atual
   type SavedArtifact = { id: number; kind: string; title: string; created_at: string };
@@ -1150,7 +1167,7 @@ export default function Notebook() {
       const saved = await r.json();
       setShowCadernoModal(null);
       await loadCadernos();
-      if (!isEdit && saved?.id) setActiveCaderno(saved);
+      if (!isEdit && saved?.id) { setActiveCaderno(saved); setNotebookView("workspace"); }
     }
   }, [cadernoForm, showCadernoModal, activeCaderno, loadCadernos]);
 
@@ -1158,6 +1175,7 @@ export default function Notebook() {
     if (!confirm("Excluir este caderno? Os documentos voltarão para o caderno padrão.")) return;
     await fetch(`${BASE_URL}/api/notebook/cadernos/${id}`, { method: "DELETE", credentials: "include" });
     await loadCadernos();
+    setNotebookView("home");
   }, [loadCadernos]);
 
   const openEditCaderno = useCallback(() => {
@@ -2123,25 +2141,274 @@ export default function Notebook() {
     </div>
   );
 
+  // ─── Open a caderno from the home view ───────────────────────────────────────
+  function openCaderno(c: Caderno) {
+    setActiveCaderno(c);
+    setNotebookView("workspace");
+  }
+
   // ─── RENDER ─────────────────────────────────────────────────────────────────
+  const filteredCadernos = cadernos.filter(c =>
+    c.title.toLowerCase().includes(homeSearch.toLowerCase())
+  );
+  const recentCadernos = [...cadernos]
+    .sort((a, b) => new Date(b.updated_at ?? b.created_at ?? 0).getTime() - new Date(a.updated_at ?? a.created_at ?? 0).getTime())
+    .slice(0, 3);
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ background: "#f3e8ff", backgroundImage: "radial-gradient(at 0% 0%, hsla(262,83%,58%,0.15) 0px, transparent 50%), radial-gradient(at 100% 100%, hsla(290,85%,60%,0.15) 0px, transparent 50%)", backgroundAttachment: "fixed" }}>
       <AppNav />
 
+      {/* ═══ HOME VIEW ═══ */}
+      {notebookView === "home" && (
+        <motion.div
+          key="notebook-home"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2 }}
+          className="flex-1 overflow-y-auto"
+        >
+          <div className="max-w-6xl mx-auto px-4 pt-8 pb-16">
+
+            {/* Header */}
+            <div className="flex items-start justify-between mb-8 gap-4">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <button onClick={() => navigate("/app")} className="text-slate-400 hover:text-slate-700 p-1.5 rounded-xl hover:bg-white/60 transition-colors">
+                    <ArrowLeft className="w-4 h-4" />
+                  </button>
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+                    <BookOpen className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="font-display font-bold text-slate-900 text-xl leading-tight tracking-tight">Meus Cadernos</h1>
+                    <p className="text-sm text-slate-500 font-medium">Estudo com IA contextual baseado nas suas fontes</p>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={openNewCaderno}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white text-sm font-bold shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:scale-[1.02] active:scale-[0.98] transition-all flex-shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                Novo Caderno
+              </button>
+            </div>
+
+            {/* Search */}
+            <div className="relative mb-6">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                value={homeSearch}
+                onChange={e => setHomeSearch(e.target.value)}
+                placeholder="Buscar cadernos..."
+                className="w-full pl-11 pr-4 py-3 bg-white rounded-2xl border border-slate-200 shadow-sm focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 text-sm text-slate-800 placeholder-slate-400 font-medium"
+              />
+              {homeSearch && (
+                <button onClick={() => setHomeSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Recent highlights — only when no search and > 1 caderno */}
+            {!homeSearch && recentCadernos.length > 1 && (
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-3">
+                  <Clock className="w-3.5 h-3.5 text-slate-400" />
+                  <p className="text-xs font-black text-slate-500 uppercase tracking-wider">Recentes</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {recentCadernos.map(c => {
+                    const s = getCadernoStyle(c.color);
+                    return (
+                      <motion.button
+                        key={c.id}
+                        whileHover={{ scale: 1.01, y: -2 }}
+                        whileTap={{ scale: 0.99 }}
+                        onClick={() => openCaderno(c)}
+                        className="text-left bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all overflow-hidden group"
+                      >
+                        <div className={`h-1.5 w-full bg-gradient-to-r ${s.gradient}`} />
+                        <div className="p-4">
+                          <div className="flex items-center gap-2.5 mb-2">
+                            <span className="text-2xl">{c.emoji ?? "📘"}</span>
+                            <div className="min-w-0">
+                              <p className="font-display font-bold text-slate-900 text-sm truncate">{c.title}</p>
+                              {c.docs_count != null && (
+                                <p className={`text-[10px] font-bold ${s.text}`}>{c.docs_count} fonte{c.docs_count !== 1 ? "s" : ""}</p>
+                              )}
+                            </div>
+                          </div>
+                          {c.persona && <p className="text-[11px] text-slate-400 line-clamp-1 leading-snug">{c.persona}</p>}
+                        </div>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* All notebooks grid */}
+            {!homeSearch && <div className="flex items-center gap-2 mb-3">
+              <LayoutGrid className="w-3.5 h-3.5 text-slate-400" />
+              <p className="text-xs font-black text-slate-500 uppercase tracking-wider">Todos os cadernos</p>
+            </div>}
+
+            {filteredCadernos.length === 0 && !homeSearch ? (
+              /* Empty state */
+              <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-20">
+                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mx-auto mb-5 shadow-xl shadow-indigo-500/30">
+                  <BookOpen className="w-10 h-10 text-white" />
+                </div>
+                <h2 className="font-display font-bold text-slate-800 text-xl mb-2">Crie seu primeiro caderno</h2>
+                <p className="text-slate-500 text-sm mb-6 max-w-xs mx-auto leading-relaxed">
+                  Adicione PDFs, vídeos e sites. A IA responde com base exatamente no que você enviou.
+                </p>
+                <button
+                  onClick={openNewCaderno}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white font-bold shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  Criar caderno
+                </button>
+              </motion.div>
+            ) : filteredCadernos.length === 0 ? (
+              <div className="text-center py-16">
+                <p className="text-slate-500 font-medium">Nenhum caderno encontrado para "{homeSearch}"</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredCadernos.map((c, idx) => {
+                  const s = getCadernoStyle(c.color);
+                  const dateStr = c.updated_at
+                    ? new Date(c.updated_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
+                    : c.created_at
+                    ? new Date(c.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
+                    : null;
+                  return (
+                    <motion.div
+                      key={c.id}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.04, duration: 0.25 }}
+                      className="group bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-lg transition-all overflow-hidden flex flex-col"
+                    >
+                      {/* Color stripe */}
+                      <div className={`h-2 w-full bg-gradient-to-r ${s.gradient}`} />
+
+                      <div className="p-5 flex-1 flex flex-col">
+                        {/* Emoji + title */}
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="flex items-center gap-3">
+                            <span className="text-3xl leading-none">{c.emoji ?? "📘"}</span>
+                            <div className="min-w-0">
+                              <p className="font-display font-bold text-slate-900 leading-tight text-base">{c.title}</p>
+                              {c.is_default && (
+                                <span className="inline-block mt-0.5 text-[9px] font-black uppercase tracking-wider bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">Padrão</span>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            onClick={e => { e.stopPropagation(); setActiveCaderno(c); setCadernoForm({ title: c.title, persona: c.persona ?? "", goals: c.goals ?? "", emoji: c.emoji ?? "📘", color: c.color ?? "indigo" }); setShowCadernoModal("edit"); }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex-shrink-0"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        {/* Persona / goals preview */}
+                        {c.persona || c.goals ? (
+                          <p className="text-[12px] text-slate-500 leading-snug line-clamp-2 mb-3 flex-1">
+                            {c.persona || c.goals}
+                          </p>
+                        ) : (
+                          <div className="flex-1" />
+                        )}
+
+                        {/* Stats */}
+                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+                          <div className="flex items-center gap-3">
+                            {c.docs_count != null && (
+                              <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-lg ${s.light} ${s.text}`}>
+                                <FileText className="w-3 h-3" />
+                                {c.docs_count} fonte{c.docs_count !== 1 ? "s" : ""}
+                              </span>
+                            )}
+                            {dateStr && (
+                              <span className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
+                                <Calendar className="w-3 h-3" />
+                                {dateStr}
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => openCaderno(c)}
+                            className={`flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-xl bg-gradient-to-br ${s.gradient} text-white shadow-sm hover:shadow-md hover:scale-[1.03] active:scale-[0.98] transition-all`}
+                          >
+                            Abrir <ChevronRight className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+
+                {/* "Add new" card */}
+                <motion.button
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: filteredCadernos.length * 0.04, duration: 0.25 }}
+                  onClick={openNewCaderno}
+                  className="bg-white/60 rounded-2xl border-2 border-dashed border-slate-200 hover:border-indigo-300 hover:bg-white transition-all flex flex-col items-center justify-center gap-3 py-10 group"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-slate-100 group-hover:bg-indigo-100 flex items-center justify-center transition-colors">
+                    <Plus className="w-5 h-5 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-bold text-slate-500 group-hover:text-indigo-700 transition-colors">Novo caderno</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">PDF, vídeo, áudio, URL...</p>
+                  </div>
+                </motion.button>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+
+      {/* ═══ WORKSPACE VIEW ═══ */}
+      {notebookView === "workspace" && (
+      <motion.div
+        key="notebook-workspace"
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -20 }}
+        transition={{ duration: 0.2 }}
+        className="flex-1 flex flex-col overflow-hidden bg-slate-50"
+      >
+
       <div className="bg-white/80 backdrop-blur-sm border-b border-slate-200/70 px-5 py-3 flex items-center gap-3 flex-shrink-0">
-        <button onClick={() => navigate("/app")} className="text-slate-400 hover:text-slate-700 transition-colors p-1 -ml-1 rounded-md hover:bg-slate-100">
+        <button onClick={() => setNotebookView("home")} className="text-slate-400 hover:text-slate-700 transition-colors p-1 -ml-1 rounded-md hover:bg-slate-100">
           <ArrowLeft className="w-4 h-4" />
         </button>
         <div className="h-5 w-px bg-slate-200" />
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-fuchsia-500 flex items-center justify-center shadow-sm shadow-indigo-500/20">
-            <BookOpen className="w-4 h-4 text-white" />
-          </div>
-          <div>
-            <p className="font-bold text-slate-900 text-[13px] leading-tight tracking-tight">Notebook</p>
-            <p className="text-[10px] text-slate-500 leading-tight font-medium">Estudos com IA contextual</p>
-          </div>
-        </div>
+        {activeCaderno && (() => {
+          const s = getCadernoStyle(activeCaderno.color);
+          return (
+            <div className="flex items-center gap-2.5">
+              <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${s.gradient} flex items-center justify-center shadow-sm text-base`}>
+                {activeCaderno.emoji ?? "📘"}
+              </div>
+              <div>
+                <p className="font-display font-bold text-slate-900 text-[13px] leading-tight tracking-tight">{activeCaderno.title}</p>
+                <button onClick={() => setNotebookView("home")} className="text-[10px] text-slate-400 hover:text-indigo-600 font-medium leading-tight flex items-center gap-0.5 transition-colors">
+                  <Layers className="w-2.5 h-2.5" /> Meus Cadernos
+                </button>
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="ml-auto flex items-center gap-2">
           {selectedDocIds.length > 0 && (
@@ -2174,6 +2441,9 @@ export default function Notebook() {
           {mobilePanel === "tools"   && ToolsPanel}
         </div>
       </div>
+
+      </motion.div>
+      )}
 
       {/* Caderno modal */}
       <AnimatePresence>

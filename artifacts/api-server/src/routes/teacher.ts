@@ -908,22 +908,261 @@ router.get("/teacher/activities/:id/submissions", async (req: Request, res: Resp
       .where(and(eq(activitiesTable.id, req.params.id), eq(activitiesTable.teacherId, req.userId!))).limit(1);
     if (!activity) { res.status(404).json({ error: "Atividade não encontrada" }); return; }
 
-    const submissions = await db.select({
-      id: activitySubmissionsTable.id,
-      studentId: activitySubmissionsTable.studentId,
-      score: activitySubmissionsTable.score,
-      total: activitySubmissionsTable.total,
-      submittedAt: activitySubmissionsTable.submittedAt,
-      studentName: usersTable.studentName,
-      firstName: usersTable.firstName,
-    }).from(activitySubmissionsTable)
-      .leftJoin(usersTable, eq(activitySubmissionsTable.studentId, usersTable.id))
-      .where(eq(activitySubmissionsTable.activityId, req.params.id))
-      .orderBy(desc(activitySubmissionsTable.submittedAt));
+    const subs = await db.execute(sql`
+      SELECT s.id, s.student_id, s.score, s.total, s.answers, s.submitted_at, s.time_spent_seconds,
+        s.correction_status, s.ai_feedback, s.teacher_score, s.teacher_feedback, s.corrected_at,
+        u.student_name, u.first_name, u.email
+      FROM activity_submissions s
+      LEFT JOIN users u ON u.id = s.student_id
+      WHERE s.activity_id = ${req.params.id}
+      ORDER BY s.submitted_at DESC
+    `);
 
-    res.json({ activity, submissions });
+    res.json({ activity, submissions: subs.rows });
   } catch {
     res.status(500).json({ error: "Erro ao buscar submissões" });
+  }
+});
+
+router.patch("/teacher/activities/:id", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  const { is_published, title, description, dueDate } = req.body as {
+    is_published?: boolean; title?: string; description?: string; dueDate?: string;
+  };
+  try {
+    await db.execute(sql`
+      UPDATE activities
+      SET is_published = COALESCE(${is_published}, is_published),
+          title = COALESCE(${title ?? null}, title),
+          description = COALESCE(${description ?? null}, description),
+          due_date = COALESCE(${dueDate ? new Date(dueDate) : null}, due_date)
+      WHERE id = ${req.params.id} AND teacher_id = ${req.userId}
+    `);
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: "Erro ao atualizar atividade" });
+  }
+});
+
+router.delete("/teacher/activities/:id", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  try {
+    await db.execute(sql`DELETE FROM activities WHERE id = ${req.params.id} AND teacher_id = ${req.userId}`);
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: "Erro ao excluir atividade" });
+  }
+});
+
+router.post("/teacher/activities/:id/submissions/:subId/ai-correct", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
+
+  try {
+    // Get submission + activity
+    const result = await db.execute(sql`
+      SELECT s.*, a.content AS activity_content, a.title AS activity_title, a.type AS activity_type
+      FROM activity_submissions s
+      JOIN activities a ON a.id = s.activity_id
+      WHERE s.id = ${req.params.subId} AND a.teacher_id = ${req.userId}
+    `);
+    const sub = result.rows[0] as any;
+    if (!sub) { res.status(404).json({ error: "Submissão não encontrada" }); return; }
+
+    const actContent = sub.activity_content ?? {};
+    const type = sub.activity_type;
+    const answers = sub.answers ?? {};
+
+    let aiResult: any = {};
+
+    if (type === "redacao") {
+      const texto = answers.texto || answers.text || Object.values(answers)[0] || "";
+      const tema = actContent.tema || sub.activity_title || "sem tema";
+      const corrRes = await openai.chat.completions.create({
+        model: "gpt-4o-mini", temperature: 0.2,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: `Você é um corretor de redação ENEM experiente. Corrija a redação e retorne JSON com:
+{"competencias":[{"numero":1,"nome":"Domínio da norma culta","nota":160,"feedback":"...","pontosFortes":"...","pontosMelhorar":"..."},{"numero":2,"nome":"Compreensão do tema","nota":160,"feedback":"...","pontosFortes":"...","pontosMelhorar":"..."},{"numero":3,"nome":"Organização de informações","nota":160,"feedback":"...","pontosFortes":"...","pontosMelhorar":"..."},{"numero":4,"nome":"Mecanismos linguísticos","nota":160,"feedback":"...","pontosFortes":"...","pontosMelhorar":"..."},{"numero":5,"nome":"Proposta de intervenção","nota":160,"feedback":"...","pontosFortes":"...","pontosMelhorar":"..."}],"notaTotal":800,"comentarioGeral":"...","feedbackAluno":"Feedback motivador e respeitoso para o aluno (3-4 frases)","proximosPasso":"3 ações concretas para melhorar"}
+Notas por competência: 0,40,80,120,160,200. Total max:1000.` },
+          { role: "user", content: `Tema: "${tema}"\n\nRedação:\n${texto}` },
+        ],
+      });
+      aiResult = JSON.parse(corrRes.choices[0].message.content ?? "{}");
+      aiResult.tipo = "redacao";
+      aiResult.notaSugerida = Math.round((aiResult.notaTotal / 1000) * 100);
+    } else {
+      // Prova/quiz — correct open answers
+      const questions = actContent.questions ?? [];
+      const feedbacks: any[] = [];
+      let pontos = 0;
+      for (const [qi, q] of questions.entries()) {
+        const answer = answers[qi] ?? answers[String(qi)] ?? "";
+        if (!answer) { feedbacks.push({ qi, feedback: "Sem resposta", pontos: 0 }); continue; }
+        if (q.tipo === "discursiva" || !q.correct) {
+          const fb = await openai.chat.completions.create({
+            model: "gpt-4o-mini", temperature: 0.2,
+            response_format: { type: "json_object" },
+            messages: [
+              { role: "system", content: `Você é professor corrigindo questão discursiva. Retorne JSON: {"pontos":0-10,"feedback":"...","feedbackAluno":"...","gabarito":"..."}` },
+              { role: "user", content: `Questão: ${q.text}\nResposta do aluno: ${answer}` },
+            ],
+          });
+          const parsed = JSON.parse(fb.choices[0].message.content ?? "{}");
+          pontos += parsed.pontos ?? 5;
+          feedbacks.push({ qi, feedback: parsed.feedback, feedbackAluno: parsed.feedbackAluno, pontos: parsed.pontos ?? 5, gabarito: parsed.gabarito });
+        }
+      }
+      aiResult = { tipo: "prova", feedbacks, pontosTotais: pontos, comentarioGeral: "Correção automática por IA." };
+    }
+
+    // Save ai_feedback to DB
+    await db.execute(sql`
+      UPDATE activity_submissions
+      SET ai_feedback = ${JSON.stringify(aiResult)}, correction_status = 'ai_corrigido'
+      WHERE id = ${req.params.subId}
+    `);
+
+    res.json({ ok: true, aiResult });
+  } catch (err: any) {
+    console.error("ai-correct error:", err);
+    res.status(500).json({ error: "Erro na correção IA" });
+  }
+});
+
+router.post("/teacher/activities/:id/submissions/:subId/correct", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  const { teacher_score, teacher_feedback } = req.body as { teacher_score?: number; teacher_feedback?: string };
+  try {
+    await db.execute(sql`
+      UPDATE activity_submissions
+      SET teacher_score = ${teacher_score ?? null},
+          teacher_feedback = ${teacher_feedback ?? null},
+          correction_status = 'corrigido',
+          corrected_at = NOW()
+      WHERE id = ${req.params.subId}
+    `);
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: "Erro ao salvar correção" });
+  }
+});
+
+router.post("/teacher/question-bank/generate", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
+
+  const {
+    tema, materia, nivel = "Médio", quantidade = 5,
+    tipo = "multipla", notebookId, texto: textoBase = "",
+    saveToBank = true,
+  } = req.body as {
+    tema?: string; materia?: string; nivel?: string; quantidade?: number;
+    tipo?: string; notebookId?: number; texto?: string; saveToBank?: boolean;
+  };
+
+  if (!tema && !textoBase) { res.status(400).json({ error: "Tema ou texto são obrigatórios" }); return; }
+
+  try {
+    const qtd = Math.min(Math.max(Number(quantidade) || 5, 1), 15);
+    let ragCtx = textoBase ? `\nBase de conteúdo:\n${textoBase.slice(0, 3000)}` : "";
+
+    if (notebookId) {
+      const docs = await db.execute(sql`
+        SELECT title, content_text FROM knowledge_documents
+        WHERE notebook_id = ${notebookId} ORDER BY created_at DESC LIMIT 5
+      `);
+      (docs.rows as any[]).forEach((d: any, i: number) => {
+        ragCtx += `\n\n### Fonte ${i + 1}: ${d.title}\n${(d.content_text || "").slice(0, 800)}`;
+      });
+    }
+
+    const tipoMap: Record<string, string> = {
+      multipla: "múltipla escolha com 4 alternativas (A-D)",
+      vf: "verdadeiro ou falso",
+      discursiva: "discursiva/aberta (sem alternativas, só enunciado + gabarito sugerido)",
+    };
+
+    const systemPrompt = `Você é professor especialista criando questões para o ensino brasileiro. Gere ${qtd} questões do tipo: ${tipoMap[tipo] || tipoMap.multipla}.
+${ragCtx ? "Use EXCLUSIVAMENTE o conteúdo fornecido como base." : ""}
+Retorne APENAS JSON:
+{
+  "questions": [
+    {
+      "text": "enunciado completo",
+      "context": "texto de apoio ou situação-problema (pode ser vazio)",
+      "tipo": "${tipo}",
+      "alternatives": ${tipo === "discursiva" ? "[]" : tipo === "vf" ? '["Verdadeiro","Falso"]' : '["A) texto","B) texto","C) texto","D) texto"]'},
+      "correct": ${tipo === "discursiva" ? "null" : "0"},
+      "gabarito": "resposta esperada (para discursiva)",
+      "explanation": "explicação da resposta",
+      "dificuldade": "${nivel}",
+      "source_ref": "referência à fonte (se houver)"
+    }
+  ]
+}`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini", temperature: 0.7,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Gere ${qtd} questões de ${materia || "conteúdo geral"} sobre "${tema || "o conteúdo fornecido"}", nível ${nivel}.${ragCtx}` },
+      ],
+    });
+
+    const parsed = JSON.parse(completion.choices[0].message.content ?? "{}");
+    const questions: any[] = parsed.questions ?? [];
+    const saved: any[] = [];
+
+    if (saveToBank) {
+      for (const q of questions) {
+        const alts = Array.isArray(q.alternatives) && q.alternatives.length
+          ? q.alternatives : (tipo === "vf" ? ["Verdadeiro","Falso"] : ["A) ","B) ","C) ","D) "]);
+        const saved_q = await db.execute(sql`
+          INSERT INTO question_bank (teacher_id, materia, tema, nivel, text, context, alternatives, correct, explanation, tags, origin, tipo, notebook_id)
+          VALUES (${req.userId}, ${materia ?? "Geral"}, ${tema ?? "Geral"}, ${nivel}, ${q.text}, ${q.context ?? ""}, ${JSON.stringify(alts)}, ${q.correct ?? 0}, ${q.explanation ?? ""}, '[]', 'ia', ${tipo}, ${notebookId ?? null})
+          RETURNING *
+        `);
+        saved.push(saved_q.rows[0]);
+      }
+    }
+
+    res.json({ ok: true, questions: saveToBank ? saved : questions, count: questions.length });
+  } catch (err: any) {
+    console.error("generate-questions error:", err);
+    res.status(500).json({ error: "Erro ao gerar questões" });
+  }
+});
+
+router.post("/teacher/activities/from-bank", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
+
+  const { title, turmaId, questionIds, dueDate, tipo_prova = "prova" } = req.body as {
+    title?: string; turmaId?: string; questionIds?: string[]; dueDate?: string; tipo_prova?: string;
+  };
+  if (!title || !questionIds?.length) { res.status(400).json({ error: "Título e questões são obrigatórios" }); return; }
+
+  try {
+    const qs = await db.execute(sql`
+      SELECT * FROM question_bank WHERE id = ANY(${questionIds}::varchar[]) AND teacher_id = ${req.userId}
+    `);
+    const content = {
+      questions: (qs.rows as any[]).map((q: any) => ({
+        text: q.text, context: q.context, alternatives: q.alternatives,
+        correct: q.correct, explanation: q.explanation, tipo: q.tipo,
+      })),
+      tipo: tipo_prova,
+    };
+    const [activity] = await db.insert(activitiesTable).values({
+      teacherId: req.userId!, turmaId: turmaId ?? undefined,
+      title, type: tipo_prova, content,
+      dueDate: dueDate ? new Date(dueDate) : undefined,
+    }).returning();
+    res.json({ ok: true, activity });
+  } catch {
+    res.status(500).json({ error: "Erro ao criar atividade do banco" });
   }
 });
 

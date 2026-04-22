@@ -54,7 +54,11 @@ StudyAI is built as a `pnpm` monorepo using TypeScript, Node.js 24, and Express 
 - **Infographic Generator (Infográfico)**: AI generates a real visual poster from any document. 6 styles (profissional, kawaii, científico, anime, esboço, minimalista) × 3 orientations. Endpoint: `POST /api/notebook/infografico`. PNG download in UI.
 - **Slides with AI hero images**: Cover image auto-generated; per-slide "Imagem IA" button calls `POST /api/notebook/slides/imagem` for editorial-quality background art.
 - **Admin Panel**: Comprehensive interface for managing users, finance, AI costs, content, database, integrations, and system settings.
-- **Teacher Module**: Tools for managing classes, students, tasks, and analyzing student performance.
+- **Teacher Module (FASE 2 complete)**: Tools for managing classes, students, tasks, analyzing performance. Includes:
+  - **Banco de Questões**: CRUD + geração por IA (gpt-4o-mini) em múltipla/V-F/discursiva com tipo badge, filtros, seleção múltipla para criar atividade
+  - **Gerador de Provas**: Gera provas com IA (classica/mundo/fraquezas); botão "Salvar no Banco" e "Aplicar para Turma" após gerar
+  - **Atividades**: CRUD completo + toggle publicar/despublicar + delete; painel de correção por aluno com "Corrigir com IA" (redação 5 competências ENEM ou discursiva 0-10) e ajuste manual nota+feedback; stats de entrega/nota média/corrigidos
+  - **Correção Assistida IA**: `POST /teacher/activities/:id/submissions/:subId/ai-correct` para redação (retorna 5 competências + nota sugerida + feedbackAluno) e discursiva (pontos+feedback por questão aberta)
 - **Institution Module**: Functionality for institutional oversight, managing teachers, and tracking aggregated data.
 - **Government Module**: Provides aggregate educational metrics, weekly growth analysis, and tools for promoting user roles.
 

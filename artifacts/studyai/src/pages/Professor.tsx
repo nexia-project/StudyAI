@@ -8,7 +8,7 @@ import {
   Sparkles, Send, Loader2, Eye, Menu, ArrowLeft, CheckCircle2, Activity,
   Zap, Target, Bell, Globe, Layers, BookMarked, Map, Star, Shield,
   Wand2, FileText, LayoutTemplate, Network, Microscope, Download,
-  Database, ClipboardList, Filter, Calendar, ChevronDown as ChevronDownIcon, X,
+  Database, ClipboardList, Filter, Calendar, ChevronDown as ChevronDownIcon, X, Lock,
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
@@ -1025,6 +1025,16 @@ function GerarProvaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
   const [worldMode, setWorldMode] = useState(false);
   const [selected, setSelected] = useState<Record<number, number>>({});
   const [showResult, setShowResult] = useState(false);
+  const [savingBank, setSavingBank] = useState(false);
+  const [savedBank, setSavedBank] = useState(false);
+  const [showApply, setShowApply] = useState(false);
+  const [turmas, setTurmas] = useState<any[]>([]);
+  const [applyForm, setApplyForm] = useState({ title: "", turmaId: "", dueDate: "" });
+  const [applyingSaving, setApplyingSaving] = useState(false);
+
+  useEffect(() => {
+    apiFetch("/api/teacher/turmas").then(r => r.json()).then(d => setTurmas(d.turmas ?? [])).catch(() => {});
+  }, []);
 
   const NIVEIS = ["Fácil", "Médio", "Difícil", "Avançado (ENEM)"];
   const ESTILOS = ["ENEM", "Vestibular", "Ensino Médio", "Ensino Fundamental", "Técnico"];
@@ -1047,7 +1057,7 @@ function GerarProvaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
     if (!form.tema.trim()) return;
     const isWorld = examMode === "mundo" || visualStyle === "aventura";
     setWorldMode(isWorld);
-    setLoading(true); setExam(null); setSelected({}); setShowResult(false);
+    setLoading(true); setExam(null); setSelected({}); setShowResult(false); setSavedBank(false);
     try {
       const r = await apiFetch("/api/teacher/generate-exam", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -1056,6 +1066,54 @@ function GerarProvaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
       const d = await r.json();
       if (d.ok) setExam(d.exam);
     } finally { setLoading(false); }
+  }
+
+  async function saveToBank() {
+    if (!exam) return;
+    setSavingBank(true);
+    try {
+      const r = await apiFetch("/api/teacher/question-bank/generate", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tema: form.tema, materia: form.materia, nivel: form.nivel,
+          saveToBank: false,
+          quantidade: exam.questions.length,
+        }),
+      });
+      // Save each question manually since we already have them
+      for (const q of exam.questions ?? []) {
+        await apiFetch("/api/teacher/question-bank", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            materia: form.materia, tema: form.tema, nivel: form.nivel,
+            text: q.text, context: q.context ?? "", explanation: q.explanation ?? "",
+            alternatives: q.alternatives, correct: q.correct ?? 0,
+            tags: [], origin: "ia", tipo: "multipla",
+          }),
+        });
+      }
+      setSavedBank(true);
+    } finally { setSavingBank(false); }
+  }
+
+  async function applyToTurma(e: React.FormEvent) {
+    e.preventDefault();
+    if (!exam) return;
+    setApplyingSaving(true);
+    try {
+      const r = await apiFetch("/api/teacher/activities", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: applyForm.title || exam.title || `Prova de ${form.materia}`,
+          turmaId: applyForm.turmaId || undefined,
+          dueDate: applyForm.dueDate || undefined,
+          type: "prova",
+          content: { questions: exam.questions, tema: form.tema, materia: form.materia },
+        }),
+      });
+      const d = await r.json();
+      if (d.ok) { setShowApply(false); alert(`Atividade "${d.activity?.title}" criada com sucesso!`); }
+    } finally { setApplyingSaving(false); }
   }
 
   // Visual style themes
@@ -1221,6 +1279,58 @@ function GerarProvaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
                   </button>
                 )}
               </div>
+              {/* Action bar: Save to bank / Apply to class */}
+              <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-white/[0.06]">
+                <button onClick={saveToBank} disabled={savingBank || savedBank}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${savedBank ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/20" : "bg-white/5 hover:bg-violet-600/20 hover:text-violet-300 text-white/50 border border-white/10"}`}>
+                  {savingBank ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : savedBank ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Database className="w-3.5 h-3.5" />}
+                  {savedBank ? "Salvo no Banco!" : savingBank ? "Salvando..." : "Salvar no Banco"}
+                </button>
+                <button onClick={() => { setShowApply(true); setApplyForm({ title: exam.title || `Prova de ${form.materia}`, turmaId: "", dueDate: "" }); }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 text-xs font-bold border border-indigo-500/25 transition-all">
+                  <Send className="w-3.5 h-3.5" /> Aplicar para Turma
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Apply to class modal */}
+          {showApply && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                className="bg-[#12121f] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-xl">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-white flex items-center gap-2"><Send className="w-4 h-4 text-indigo-400" /> Aplicar para Turma</h3>
+                  <button onClick={() => setShowApply(false)} className="text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
+                </div>
+                <form onSubmit={applyToTurma} className="space-y-3">
+                  <div>
+                    <label className="text-white/40 text-xs mb-1.5 block">Título da Atividade</label>
+                    <input value={applyForm.title} onChange={e => setApplyForm(f => ({ ...f, title: e.target.value }))}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white" />
+                  </div>
+                  <div>
+                    <label className="text-white/40 text-xs mb-1.5 block">Turma</label>
+                    <select value={applyForm.turmaId} onChange={e => setApplyForm(f => ({ ...f, turmaId: e.target.value }))}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white">
+                      <option value="">Todas as turmas</option>
+                      {turmas.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-white/40 text-xs mb-1.5 block">Prazo</label>
+                    <input type="date" value={applyForm.dueDate} onChange={e => setApplyForm(f => ({ ...f, dueDate: e.target.value }))}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white" />
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <button type="submit" disabled={applyingSaving}
+                      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-colors disabled:opacity-60">
+                      {applyingSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Aplicar
+                    </button>
+                    <button type="button" onClick={() => setShowApply(false)} className="px-4 py-2.5 rounded-xl bg-white/5 text-white/60 text-sm font-bold">Cancelar</button>
+                  </div>
+                </form>
+              </motion.div>
             </div>
           )}
 
@@ -1490,15 +1600,31 @@ const NIVEIS = ["Fácil","Médio","Difícil","ENEM","Vestibular"];
 
 function BancoSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) => Promise<Response> }) {
   const [questions, setQuestions] = useState<any[]>([]);
+  const [turmas, setTurmas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showAIForm, setShowAIForm] = useState(false);
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [generatingAI, setGeneratingAI] = useState(false);
+  const [applyingSaving, setApplyingSaving] = useState(false);
   const [filterMateria, setFilterMateria] = useState("");
+  const [filterTipo, setFilterTipo] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [applyForm, setApplyForm] = useState({ title: "", turmaId: "", dueDate: "" });
+  const [aiForm, setAiForm] = useState({
+    materia: "Matemática", tema: "", nivel: "Médio", quantidade: 5, tipo: "multipla",
+  });
   const [form, setForm] = useState({
     materia: "Matemática", tema: "", nivel: "Médio", text: "", context: "", explanation: "", tags: "",
     alternatives: ["","","","",""], correct: 0,
   });
 
-  useEffect(() => { loadQ(); }, []);
+  useEffect(() => {
+    Promise.all([
+      loadQ(),
+      apiFetch("/api/teacher/turmas").then(r => r.json()).then(d => setTurmas(d.turmas ?? [])),
+    ]);
+  }, []);
 
   async function loadQ() {
     setLoading(true);
@@ -1523,34 +1649,161 @@ function BancoSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) => 
     setQuestions(q => q.filter(x => x.id !== id));
   }
 
-  const filtered = filterMateria ? questions.filter(q => q.materia === filterMateria) : questions;
+  async function generateAI(e: React.FormEvent) {
+    e.preventDefault();
+    setGeneratingAI(true);
+    try {
+      const r = await apiFetch("/api/teacher/question-bank/generate", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...aiForm, saveToBank: true }),
+      });
+      const d = await r.json();
+      if (d.ok) {
+        setShowAIForm(false);
+        await loadQ();
+      } else { alert(d.error || "Erro ao gerar questões"); }
+    } finally { setGeneratingAI(false); }
+  }
+
+  async function applyFromBank(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selected.size) return;
+    setApplyingSaving(true);
+    try {
+      const r = await apiFetch("/api/teacher/activities/from-bank", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...applyForm, questionIds: Array.from(selected) }),
+      });
+      const d = await r.json();
+      if (d.ok) { setShowApplyModal(false); setSelected(new Set()); alert("Atividade criada com sucesso!"); }
+    } finally { setApplyingSaving(false); }
+  }
+
+  function toggleSelect(id: string) {
+    setSelected(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  }
+
+  const tipoBadge = (t: string) => {
+    if (t === "discursiva") return "bg-amber-500/15 text-amber-300";
+    if (t === "vf") return "bg-blue-500/15 text-blue-300";
+    if (t === "redacao") return "bg-rose-500/15 text-rose-300";
+    return "bg-indigo-500/15 text-indigo-300";
+  };
+  const tipoLabel = (t: string) => ({ multipla: "Múltipla", vf: "V/F", discursiva: "Discursiva", redacao: "Redação" }[t] ?? "Múltipla");
+
+  const filtered = questions.filter(q => (!filterMateria || q.materia === filterMateria) && (!filterTipo || q.tipo === filterTipo));
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h2 className="font-black text-white text-lg">Banco de Questões</h2>
           <p className="text-white/40 text-xs">{questions.length} questão(ões) cadastrada(s)</p>
         </div>
-        <button onClick={() => { setShowForm(true); setForm({ materia: "Matemática", tema: "", nivel: "Médio", text: "", context: "", explanation: "", tags: "", alternatives: ["","","","",""], correct: 0 }); }}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-colors">
-          <Plus className="w-4 h-4" /> Nova Questão
-        </button>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {["", ...MATERIAS_BQ].map(m => (
-          <button key={m} onClick={() => setFilterMateria(m)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${filterMateria === m ? "bg-indigo-600 border-indigo-500 text-white" : "bg-white/5 border-white/10 text-white/40 hover:text-white"}`}>
-            {m || "Todas"}
+        <div className="flex items-center gap-2 flex-wrap">
+          {selected.size > 0 && (
+            <button onClick={() => setShowApplyModal(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors">
+              <ClipboardList className="w-4 h-4" /> Criar Atividade ({selected.size})
+            </button>
+          )}
+          <button onClick={() => { setShowAIForm(true); setShowForm(false); }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600/20 hover:bg-violet-600/35 border border-violet-500/25 text-violet-300 font-bold text-sm transition-all">
+            <Sparkles className="w-4 h-4" /> Gerar com IA
           </button>
-        ))}
+          <button onClick={() => { setShowForm(true); setShowAIForm(false); setForm({ materia: "Matemática", tema: "", nivel: "Médio", text: "", context: "", explanation: "", tags: "", alternatives: ["","","","",""], correct: 0 }); }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-colors">
+            <Plus className="w-4 h-4" /> Manual
+          </button>
+        </div>
       </div>
 
+      {/* Filters */}
+      <div className="space-y-2">
+        <div className="flex flex-wrap gap-2">
+          {["", ...MATERIAS_BQ].map(m => (
+            <button key={m} onClick={() => setFilterMateria(m)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${filterMateria === m ? "bg-indigo-600 border-indigo-500 text-white" : "bg-white/5 border-white/10 text-white/40 hover:text-white"}`}>
+              {m || "Todas"}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {[{ v: "", l: "Todos tipos" }, { v: "multipla", l: "Múltipla" }, { v: "vf", l: "V/F" }, { v: "discursiva", l: "Discursiva" }].map(t => (
+            <button key={t.v} onClick={() => setFilterTipo(t.v)}
+              className={`px-3 py-1 rounded-lg text-xs font-bold border transition-colors ${filterTipo === t.v ? "bg-violet-600 border-violet-500 text-white" : "bg-white/5 border-white/10 text-white/30 hover:text-white"}`}>
+              {t.l}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* AI Generate form */}
+      {showAIForm && (
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl border border-violet-500/30 bg-violet-600/5 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-white flex items-center gap-2"><Sparkles className="w-4 h-4 text-violet-400" /> Gerar Questões com IA</h3>
+            <button onClick={() => setShowAIForm(false)} className="text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
+          </div>
+          <form onSubmit={generateAI} className="space-y-4">
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-white/40 text-xs mb-1.5 block">Matéria</label>
+                <select value={aiForm.materia} onChange={e => setAiForm(p => ({ ...p, materia: e.target.value }))}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white">
+                  {MATERIAS_BQ.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-white/40 text-xs mb-1.5 block">Tema / Assunto *</label>
+                <input required value={aiForm.tema} onChange={e => setAiForm(p => ({ ...p, tema: e.target.value }))}
+                  placeholder="Ex: Segunda Guerra Mundial" className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white" />
+              </div>
+              <div>
+                <label className="text-white/40 text-xs mb-1.5 block">Tipo de Questão</label>
+                <select value={aiForm.tipo} onChange={e => setAiForm(p => ({ ...p, tipo: e.target.value }))}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white">
+                  <option value="multipla">Múltipla Escolha</option>
+                  <option value="vf">Verdadeiro ou Falso</option>
+                  <option value="discursiva">Discursiva / Aberta</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-white/40 text-xs mb-1.5 block">Nível</label>
+                <select value={aiForm.nivel} onChange={e => setAiForm(p => ({ ...p, nivel: e.target.value }))}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white">
+                  {NIVEIS.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-white/40 text-xs mb-1.5 block">Quantidade</label>
+                <select value={aiForm.quantidade} onChange={e => setAiForm(p => ({ ...p, quantidade: Number(e.target.value) }))}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white">
+                  {[3,5,8,10,15].map(n => <option key={n} value={n}>{n} questões</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button type="submit" disabled={generatingAI}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-sm transition-colors disabled:opacity-60">
+                {generatingAI ? <><Loader2 className="w-4 h-4 animate-spin" /> Gerando...</> : <><Sparkles className="w-4 h-4" /> Gerar e Salvar no Banco</>}
+              </button>
+              <button type="button" onClick={() => setShowAIForm(false)} className="px-4 py-2.5 rounded-xl bg-white/5 text-white/60 text-sm font-bold">Cancelar</button>
+            </div>
+          </form>
+        </motion.div>
+      )}
+
+      {/* Manual form */}
       {showForm && (
         <div className="rounded-2xl border border-indigo-500/30 bg-indigo-600/5 p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-white">Nova Questão</h3>
+            <h3 className="font-bold text-white">Nova Questão Manual</h3>
             <button onClick={() => setShowForm(false)} className="text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
           </div>
           <form onSubmit={saveQuestion} className="space-y-4">
@@ -1612,41 +1865,106 @@ function BancoSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) => 
         </div>
       )}
 
+      {/* Apply from bank modal */}
+      {showApplyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+            className="bg-[#12121f] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-white">Criar Atividade do Banco</h3>
+              <button onClick={() => setShowApplyModal(false)} className="text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
+            </div>
+            <p className="text-white/50 text-xs mb-4">{selected.size} questão(ões) selecionada(s) serão incluídas nesta atividade.</p>
+            <form onSubmit={applyFromBank} className="space-y-3">
+              <div>
+                <label className="text-white/40 text-xs mb-1.5 block">Título *</label>
+                <input required value={applyForm.title} onChange={e => setApplyForm(f => ({ ...f, title: e.target.value }))}
+                  placeholder="Ex: Prova de Revisão" className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white" />
+              </div>
+              <div>
+                <label className="text-white/40 text-xs mb-1.5 block">Turma (opcional)</label>
+                <select value={applyForm.turmaId} onChange={e => setApplyForm(f => ({ ...f, turmaId: e.target.value }))}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white">
+                  <option value="">Todas as turmas</option>
+                  {turmas.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-white/40 text-xs mb-1.5 block">Prazo</label>
+                <input type="date" value={applyForm.dueDate} onChange={e => setApplyForm(f => ({ ...f, dueDate: e.target.value }))}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white" />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="submit" disabled={applyingSaving}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors disabled:opacity-60">
+                  {applyingSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} Criar Atividade
+                </button>
+                <button type="button" onClick={() => setShowApplyModal(false)} className="px-4 py-2.5 rounded-xl bg-white/5 text-white/60 text-sm font-bold">Cancelar</button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
       {loading ? <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 text-indigo-400 animate-spin" /></div>
         : filtered.length === 0 ? (
           <div className="text-center py-16 text-white/30">
             <Database className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="font-semibold">Nenhuma questão ainda</p>
-            <p className="text-xs mt-1">Clique em "Nova Questão" para começar</p>
+            <p className="font-semibold">Nenhuma questão encontrada</p>
+            <p className="text-xs mt-1">Gere com IA ou adicione manualmente</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {filtered.map((q: any) => (
-              <div key={q.id} className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <span className="text-xs bg-indigo-600/20 text-indigo-300 px-2 py-0.5 rounded-full font-semibold">{q.materia}</span>
-                      <span className="text-xs bg-white/5 text-white/40 px-2 py-0.5 rounded-full">{q.nivel}</span>
-                      {q.tema && <span className="text-xs text-white/30">{q.tema}</span>}
-                    </div>
-                    <p className="text-white text-sm leading-relaxed">{q.text}</p>
-                    {q.alternatives && (
-                      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                        {(q.alternatives as string[]).map((alt: string, i: number) => (
-                          <div key={i} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs ${q.correct === i ? "bg-emerald-500/15 text-emerald-300" : "bg-white/5 text-white/40"}`}>
-                            <span className="font-bold">{String.fromCharCode(65 + i)})</span> {alt}
-                          </div>
-                        ))}
+            {filtered.map((q: any) => {
+              const isSel = selected.has(q.id);
+              return (
+                <div key={q.id} onClick={() => toggleSelect(q.id)}
+                  className={`rounded-2xl border p-4 cursor-pointer transition-all ${isSel ? "border-indigo-500/50 bg-indigo-600/10" : "border-white/[0.06] bg-[#0f0f1a] hover:border-white/10"}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-shrink-0 mt-0.5">
+                      <div className={`w-5 h-5 rounded-lg border flex items-center justify-center flex-shrink-0 transition-all ${isSel ? "bg-indigo-600 border-indigo-500" : "border-white/20 bg-white/5"}`}>
+                        {isSel && <CheckCircle2 className="w-3 h-3 text-white" />}
                       </div>
-                    )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <span className="text-xs bg-indigo-600/20 text-indigo-300 px-2 py-0.5 rounded-full font-semibold">{q.materia}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${tipoBadge(q.tipo || "multipla")}`}>{tipoLabel(q.tipo || "multipla")}</span>
+                        <span className="text-xs bg-white/5 text-white/40 px-2 py-0.5 rounded-full">{q.nivel}</span>
+                        {q.origin === "ia" && <span className="text-xs bg-violet-500/10 text-violet-400 px-2 py-0.5 rounded-full flex items-center gap-1"><Sparkles className="w-2.5 h-2.5" /> IA</span>}
+                        {q.tema && <span className="text-xs text-white/30">{q.tema}</span>}
+                      </div>
+                      <p className="text-white text-sm leading-relaxed">{q.text}</p>
+                      {(q.tipo === "multipla" || !q.tipo) && q.alternatives && (
+                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                          {(q.alternatives as string[]).filter(Boolean).map((alt: string, i: number) => (
+                            <div key={i} onClick={e => e.stopPropagation()}
+                              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs ${q.correct === i ? "bg-emerald-500/15 text-emerald-300" : "bg-white/5 text-white/40"}`}>
+                              <span className="font-bold">{String.fromCharCode(65 + i)})</span> {alt}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {q.tipo === "vf" && (
+                        <div className="mt-2 flex gap-2">
+                          {["Verdadeiro","Falso"].map((opt, i) => (
+                            <span key={i} className={`px-3 py-1 rounded-lg text-xs ${q.correct === i ? "bg-emerald-500/15 text-emerald-300 font-bold" : "bg-white/5 text-white/40"}`}>{opt}</span>
+                          ))}
+                        </div>
+                      )}
+                      {q.tipo === "discursiva" && q.explanation && (
+                        <div className="mt-2 text-xs text-white/40 bg-white/[0.03] rounded-lg p-2">
+                          <span className="font-bold text-white/60">Gabarito: </span>{q.explanation}
+                        </div>
+                      )}
+                    </div>
+                    <button onClick={e => { e.stopPropagation(); deleteQuestion(q.id); }} className="p-1.5 text-white/20 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors flex-shrink-0">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                  <button onClick={() => deleteQuestion(q.id)} className="p-1.5 text-white/20 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors flex-shrink-0">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
     </div>
@@ -1660,8 +1978,12 @@ function AtividadesSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState<any | null>(null);
+  const [selectedSub, setSelectedSub] = useState<any | null>(null);
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [loadingSubs, setLoadingSubs] = useState(false);
+  const [aiCorrecting, setAiCorrecting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [corrForm, setCorrForm] = useState({ teacher_score: "", teacher_feedback: "" });
   const [questoes, setQuestoes] = useState<{ text: string; alternatives: string[]; correct: number }[]>([{ text: "", alternatives: ["","","","",""], correct: 0 }]);
   const [form, setForm] = useState({ title: "", description: "", type: "prova", turmaId: "", dueDate: "" });
 
@@ -1685,52 +2007,292 @@ function AtividadesSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
   }
 
   async function viewSubmissions(activity: any) {
-    setSelectedActivity(activity); setLoadingSubs(true);
+    setSelectedActivity(activity); setSelectedSub(null); setLoadingSubs(true);
     try { const r = await apiFetch(`/api/teacher/activities/${activity.id}/submissions`); const d = await r.json(); setSubmissions(d.submissions ?? []); }
     finally { setLoadingSubs(false); }
   }
 
+  async function togglePublish(activity: any) {
+    await apiFetch(`/api/teacher/activities/${activity.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_published: !activity.isPublished && !activity.is_published }),
+    });
+    setActivities(prev => prev.map(a => a.id === activity.id ? { ...a, isPublished: !a.isPublished, is_published: !a.is_published } : a));
+  }
+
+  async function deleteActivity(id: string) {
+    if (!confirm("Excluir esta atividade?")) return;
+    await apiFetch(`/api/teacher/activities/${id}`, { method: "DELETE" });
+    setActivities(prev => prev.filter(a => a.id !== id));
+  }
+
+  async function aiCorrect(sub: any) {
+    setAiCorrecting(true);
+    try {
+      const r = await apiFetch(`/api/teacher/activities/${selectedActivity.id}/submissions/${sub.id}/ai-correct`, { method: "POST" });
+      const d = await r.json();
+      if (d.ok) {
+        setSubmissions(prev => prev.map(s => s.id === sub.id ? { ...s, ai_feedback: d.aiResult, correction_status: "ai_corrigido" } : s));
+        setSelectedSub((prev: any) => prev ? { ...prev, ai_feedback: d.aiResult, correction_status: "ai_corrigido" } : prev);
+      }
+    } finally { setAiCorrecting(false); }
+  }
+
+  async function saveCorrection(sub: any) {
+    setSaving(true);
+    try {
+      await apiFetch(`/api/teacher/activities/${selectedActivity.id}/submissions/${sub.id}/correct`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teacher_score: Number(corrForm.teacher_score), teacher_feedback: corrForm.teacher_feedback }),
+      });
+      setSubmissions(prev => prev.map(s => s.id === sub.id ? { ...s, correction_status: "corrigido", teacher_score: Number(corrForm.teacher_score), teacher_feedback: corrForm.teacher_feedback } : s));
+      setSelectedSub(null);
+    } finally { setSaving(false); }
+  }
+
+  const corrStatusBadge = (s: string) => {
+    if (s === "corrigido") return "bg-emerald-500/15 text-emerald-300";
+    if (s === "ai_corrigido") return "bg-indigo-500/15 text-indigo-300";
+    return "bg-white/8 text-white/40";
+  };
+  const corrStatusLabel = (s: string) => s === "corrigido" ? "Corrigido" : s === "ai_corrigido" ? "Corrigido IA" : "Pendente";
+
+  // ── Correction detail view ──────────────────────────────────────────────────
+  if (selectedSub && selectedActivity) {
+    const ai = selectedSub.ai_feedback;
+    const answers = selectedSub.answers ?? {};
+    const isRedacao = selectedActivity.type === "redacao" || ai?.tipo === "redacao";
+    return (
+      <div className="space-y-5 max-w-4xl">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setSelectedSub(null)} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <div className="flex-1">
+            <h2 className="font-black text-white text-sm">{selectedSub.student_name || selectedSub.first_name || selectedSub.student_id?.slice(0, 8)}</h2>
+            <p className="text-white/40 text-xs">{selectedActivity.title} • Enviado {new Date(selectedSub.submitted_at).toLocaleDateString("pt-BR")}</p>
+          </div>
+          <span className={`text-xs px-3 py-1 rounded-full font-bold ${corrStatusBadge(selectedSub.correction_status)}`}>
+            {corrStatusLabel(selectedSub.correction_status)}
+          </span>
+        </div>
+
+        <div className="grid lg:grid-cols-2 gap-4">
+          {/* Answer panel */}
+          <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-5">
+            <h3 className="font-bold text-white text-sm mb-4 flex items-center gap-2">
+              <Eye className="w-4 h-4 text-blue-400" /> Resposta do Aluno
+            </h3>
+            {isRedacao ? (
+              <div className="bg-white/[0.03] rounded-xl p-4 text-white/70 text-sm leading-relaxed whitespace-pre-wrap max-h-80 overflow-y-auto">
+                {answers.texto || answers.text || Object.values(answers)[0] as string || "Sem resposta"}
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {Object.entries(answers).map(([qi, ans]: [string, any]) => (
+                  <div key={qi} className="bg-white/[0.03] rounded-xl p-3">
+                    <p className="text-white/40 text-[10px] mb-1">Questão {Number(qi) + 1}</p>
+                    <p className="text-white/70 text-xs">{typeof ans === "number" ? `Alternativa ${String.fromCharCode(65 + ans)}` : ans}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* AI Feedback panel */}
+          <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                <Brain className="w-4 h-4 text-violet-400" /> Correção IA
+              </h3>
+              {!ai && (
+                <button onClick={() => aiCorrect(selectedSub)} disabled={aiCorrecting}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-600/20 hover:bg-violet-600/35 border border-violet-500/25 text-violet-300 text-xs font-bold transition-all disabled:opacity-50">
+                  {aiCorrecting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                  {aiCorrecting ? "Corrigindo..." : "Corrigir com IA"}
+                </button>
+              )}
+            </div>
+            {!ai ? (
+              <div className="text-center py-10 text-white/25 text-sm">
+                <Brain className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                Clique em "Corrigir com IA" para análise automática
+              </div>
+            ) : isRedacao ? (
+              <div className="space-y-3 max-h-80 overflow-y-auto">
+                {(ai.competencias ?? []).map((c: any) => (
+                  <div key={c.numero} className="bg-white/[0.03] rounded-xl p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-white/70 text-xs font-semibold">{c.nome}</p>
+                      <span className={`text-xs font-black px-2 py-0.5 rounded-full ${c.nota >= 160 ? "bg-emerald-500/20 text-emerald-300" : c.nota >= 80 ? "bg-amber-500/20 text-amber-300" : "bg-red-500/20 text-red-300"}`}>
+                        {c.nota}/200
+                      </span>
+                    </div>
+                    <p className="text-white/45 text-[10px]">{c.feedback}</p>
+                  </div>
+                ))}
+                <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-3 mt-2">
+                  <p className="text-white/50 text-[10px] font-bold mb-1">Nota Sugerida</p>
+                  <p className="text-violet-300 font-black text-xl">{ai.notaTotal}/1000</p>
+                  <p className="text-white/50 text-xs mt-1">{ai.comentarioGeral}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {(ai.feedbacks ?? []).map((fb: any) => (
+                  <div key={fb.qi} className="bg-white/[0.03] rounded-xl p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-white/50 text-[10px]">Q{fb.qi + 1}</p>
+                      <span className="text-emerald-300 text-[10px] font-bold">{fb.pontos}/10</span>
+                    </div>
+                    <p className="text-white/60 text-xs">{fb.feedbackAluno || fb.feedback}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Teacher correction form */}
+        <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/5 p-5">
+          <h3 className="font-bold text-white text-sm mb-4 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Nota e Feedback do Professor
+          </h3>
+          {selectedSub.correction_status === "corrigido" ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <span className="text-emerald-300 font-black text-2xl">{selectedSub.teacher_score}</span>
+                <span className="text-white/40 text-sm">pontos</span>
+              </div>
+              {selectedSub.teacher_feedback && <p className="text-white/60 text-sm bg-white/[0.03] rounded-xl p-3">{selectedSub.teacher_feedback}</p>}
+              <button onClick={() => setCorrForm({ teacher_score: String(selectedSub.teacher_score ?? ""), teacher_feedback: selectedSub.teacher_feedback ?? "" })}
+                className="text-xs text-indigo-400 hover:underline">Editar correção</button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid sm:grid-cols-4 gap-3">
+                <div>
+                  <label className="text-white/40 text-xs block mb-1.5">Nota (0–100)</label>
+                  <input type="number" min={0} max={100} value={corrForm.teacher_score}
+                    onChange={e => setCorrForm(f => ({ ...f, teacher_score: e.target.value }))}
+                    placeholder={ai?.notaSugerida ? String(ai.notaSugerida) : "0"}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:border-emerald-500 outline-none" />
+                </div>
+                <div className="sm:col-span-3">
+                  <label className="text-white/40 text-xs block mb-1.5">Feedback para o Aluno</label>
+                  <input value={corrForm.teacher_feedback}
+                    onChange={e => setCorrForm(f => ({ ...f, teacher_feedback: e.target.value }))}
+                    placeholder={ai?.feedbackAluno || "Escreva um feedback motivador..."}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:border-emerald-500 outline-none" />
+                </div>
+              </div>
+              {ai && !corrForm.teacher_score && (
+                <button onClick={() => setCorrForm({ teacher_score: String(ai.notaSugerida ?? ""), teacher_feedback: ai.feedbackAluno ?? "" })}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 hover:underline">
+                  Usar sugestão da IA (nota: {ai.notaSugerida})
+                </button>
+              )}
+              <button onClick={() => saveCorrection(selectedSub)} disabled={saving || !corrForm.teacher_score}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors disabled:opacity-50">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                Confirmar Correção
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Submissions list view ───────────────────────────────────────────────────
   if (selectedActivity) return (
     <div className="space-y-5">
       <div className="flex items-center gap-3">
         <button onClick={() => { setSelectedActivity(null); setSubmissions([]); }} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors">
           <ChevronLeft className="w-4 h-4" />
         </button>
-        <div>
+        <div className="flex-1">
           <h2 className="font-black text-white">{selectedActivity.title}</h2>
-          <p className="text-white/40 text-xs">Respostas dos alunos — {submissions.length} entrega(s)</p>
+          <div className="flex gap-2 mt-1 flex-wrap">
+            <span className="text-white/40 text-xs">{submissions.length} entrega(s)</span>
+            {(selectedActivity.isPublished || selectedActivity.is_published)
+              ? <span className="text-xs bg-emerald-500/15 text-emerald-300 px-2 py-0.5 rounded-full font-semibold">Publicada</span>
+              : <span className="text-xs bg-white/8 text-white/40 px-2 py-0.5 rounded-full font-semibold">Rascunho</span>
+            }
+          </div>
         </div>
+        <button onClick={() => togglePublish(selectedActivity)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+            selectedActivity.isPublished || selectedActivity.is_published
+              ? "bg-amber-500/15 border border-amber-500/20 text-amber-300 hover:bg-amber-500/25"
+              : "bg-emerald-600/20 border border-emerald-500/20 text-emerald-300 hover:bg-emerald-600"
+          }`}>
+          {selectedActivity.isPublished || selectedActivity.is_published ? <><Lock className="w-3 h-3" /> Despublicar</> : <><Globe className="w-3 h-3" /> Publicar</>}
+        </button>
       </div>
+
       {loadingSubs ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 text-indigo-400 animate-spin" /></div>
         : submissions.length === 0 ? (
           <div className="text-center py-16 text-white/30">
             <ClipboardList className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p>Nenhum aluno respondeu ainda</p>
+            <p className="text-sm font-semibold">Nenhum aluno respondeu ainda</p>
+            {!(selectedActivity.isPublished || selectedActivity.is_published) && <p className="text-xs mt-1">Publique a atividade para os alunos responderem</p>}
           </div>
         ) : (
-          <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] overflow-x-auto">
-            <table className="w-full text-sm min-w-[400px]">
-              <thead><tr className="border-b border-white/[0.06]">
-                <th className="text-left px-4 py-3 text-white/40 text-xs font-bold">Aluno</th>
-                <th className="text-left px-4 py-3 text-white/40 text-xs font-bold">Nota</th>
-                <th className="text-left px-4 py-3 text-white/40 text-xs font-bold hidden sm:table-cell">Acertos</th>
-                <th className="text-left px-4 py-3 text-white/40 text-xs font-bold hidden sm:table-cell">Enviado em</th>
-              </tr></thead>
-              <tbody>
-                {submissions.map((s: any) => (
-                  <tr key={s.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
-                    <td className="px-4 py-3 text-white font-medium max-w-[120px] truncate">{s.studentName || s.firstName || s.studentId?.slice(0,8)}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-lg text-xs font-bold ${s.total > 0 && s.score / s.total >= 0.7 ? "bg-emerald-500/20 text-emerald-300" : "bg-red-500/20 text-red-300"}`}>
-                        {s.total > 0 ? Math.round((s.score / s.total) * 100) : 0}%
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-white/60 hidden sm:table-cell">{s.score}/{s.total}</td>
-                    <td className="px-4 py-3 text-white/40 text-xs hidden sm:table-cell">{new Date(s.submittedAt).toLocaleDateString("pt-BR")}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] overflow-hidden">
+            {/* Summary stats */}
+            <div className="grid grid-cols-3 gap-0 border-b border-white/[0.06]">
+              {[
+                { label: "Entregas", val: submissions.length, color: "text-blue-400" },
+                { label: "Nota Média", val: submissions.some((s: any) => s.total > 0) ? `${Math.round(submissions.filter((s: any) => s.total > 0).reduce((acc: number, s: any) => acc + (s.score / s.total) * 100, 0) / submissions.filter((s: any) => s.total > 0).length)}%` : "—", color: "text-emerald-400" },
+                { label: "Corrigidos", val: `${submissions.filter((s: any) => s.correction_status === "corrigido").length}/${submissions.length}`, color: "text-violet-400" },
+              ].map(k => (
+                <div key={k.label} className="text-center p-4">
+                  <p className={`text-xl font-black ${k.color}`}>{k.val}</p>
+                  <p className="text-white/30 text-xs">{k.label}</p>
+                </div>
+              ))}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[500px]">
+                <thead><tr className="border-b border-white/[0.06]">
+                  <th className="text-left px-4 py-3 text-white/40 text-xs font-bold">Aluno</th>
+                  <th className="text-center px-4 py-3 text-white/40 text-xs font-bold">Nota</th>
+                  <th className="text-center px-4 py-3 text-white/40 text-xs font-bold hidden sm:table-cell">Status</th>
+                  <th className="text-center px-4 py-3 text-white/40 text-xs font-bold hidden md:table-cell">Enviado</th>
+                  <th className="text-right px-4 py-3 text-white/40 text-xs font-bold">Ação</th>
+                </tr></thead>
+                <tbody>
+                  {submissions.map((s: any) => {
+                    const pct = s.teacher_score != null ? s.teacher_score : (s.total > 0 ? Math.round((s.score / s.total) * 100) : null);
+                    return (
+                      <tr key={s.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
+                        <td className="px-4 py-3 text-white font-medium">{s.student_name || s.first_name || s.student_id?.slice(0,8)}</td>
+                        <td className="px-4 py-3 text-center">
+                          {pct != null ? (
+                            <span className={`px-2 py-1 rounded-lg text-xs font-black ${pct >= 70 ? "bg-emerald-500/20 text-emerald-300" : pct >= 50 ? "bg-amber-500/20 text-amber-300" : "bg-red-500/20 text-red-300"}`}>
+                              {pct}
+                            </span>
+                          ) : <span className="text-white/20 text-xs">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-center hidden sm:table-cell">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${corrStatusBadge(s.correction_status)}`}>
+                            {corrStatusLabel(s.correction_status)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-white/40 text-xs text-center hidden md:table-cell">{new Date(s.submitted_at).toLocaleDateString("pt-BR")}</td>
+                        <td className="px-4 py-3 text-right">
+                          <button onClick={() => { setSelectedSub(s); setCorrForm({ teacher_score: String(s.teacher_score ?? ""), teacher_feedback: s.teacher_feedback ?? "" }); }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-indigo-600/20 hover:text-indigo-300 text-white/50 text-xs font-bold transition-colors ml-auto">
+                            <Eye className="w-3 h-3" /> {s.correction_status === "corrigido" ? "Ver" : "Corrigir"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
     </div>
@@ -1834,31 +2396,43 @@ function AtividadesSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
           </div>
         ) : (
           <div className="space-y-3">
-            {activities.map((a: any) => (
-              <div key={a.id} className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <span className="text-xs bg-violet-600/20 text-violet-300 px-2 py-0.5 rounded-full font-semibold capitalize">{a.type}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${a.isPublished ? "bg-emerald-500/20 text-emerald-300" : "bg-white/5 text-white/30"}`}>
-                        {a.isPublished ? "Publicada" : "Rascunho"}
-                      </span>
-                      {a.dueDate && <span className="text-xs text-white/30 flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(a.dueDate).toLocaleDateString("pt-BR")}</span>}
+            {activities.map((a: any) => {
+              const pub = a.isPublished || a.is_published;
+              return (
+                <div key={a.id} className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-4 hover:border-white/10 transition-colors">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <span className="text-xs bg-violet-600/20 text-violet-300 px-2 py-0.5 rounded-full font-semibold capitalize">{a.type}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${pub ? "bg-emerald-500/20 text-emerald-300" : "bg-white/5 text-white/30"}`}>
+                          {pub ? "Publicada" : "Rascunho"}
+                        </span>
+                        {(a.dueDate || a.due_date) && <span className="text-xs text-white/30 flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(a.dueDate || a.due_date).toLocaleDateString("pt-BR")}</span>}
+                      </div>
+                      <h3 className="font-bold text-white">{a.title}</h3>
+                      {a.description && <p className="text-white/40 text-xs mt-0.5 truncate">{a.description}</p>}
+                      <div className="flex items-center gap-4 mt-2">
+                        <span className="text-white/30 text-xs">{(a.content as any)?.questions?.length ?? 0} questões</span>
+                        <span className="text-white/30 text-xs">{a.submissionCount ?? 0} entregas</span>
+                      </div>
                     </div>
-                    <h3 className="font-bold text-white">{a.title}</h3>
-                    {a.description && <p className="text-white/40 text-xs mt-0.5">{a.description}</p>}
-                    <div className="flex items-center gap-4 mt-2">
-                      <span className="text-white/30 text-xs">{(a.content as any)?.questions?.length ?? 0} questão(ões)</span>
-                      <span className="text-white/30 text-xs">{a.submissionCount ?? 0} entrega(s)</span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button onClick={() => togglePublish(a)} title={pub ? "Despublicar" : "Publicar"}
+                        className={`p-2 rounded-xl transition-colors ${pub ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20" : "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"}`}>
+                        {pub ? <Lock className="w-3.5 h-3.5" /> : <Globe className="w-3.5 h-3.5" />}
+                      </button>
+                      <button onClick={() => viewSubmissions(a)}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 hover:bg-indigo-600/20 hover:text-indigo-300 text-white/50 text-xs font-bold transition-colors">
+                        <Eye className="w-3.5 h-3.5" /> Respostas
+                      </button>
+                      <button onClick={() => deleteActivity(a.id)} className="p-2 rounded-xl bg-white/5 hover:bg-red-500/15 text-white/30 hover:text-red-400 transition-colors">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
-                  <button onClick={() => viewSubmissions(a)}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 hover:bg-indigo-600/20 hover:text-indigo-300 text-white/50 text-xs font-bold transition-colors flex-shrink-0">
-                    <Eye className="w-3.5 h-3.5" /> Ver respostas
-                  </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
     </div>

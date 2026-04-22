@@ -10,7 +10,7 @@ import {
   AlertTriangle, TrendingUp, Zap, Calendar, RefreshCw, Star, Target,
   Search, Filter, ChevronDown, ChevronUp, Download, Bell, Eye, Award,
   CheckCircle2, XCircle, Clock, Flame, Mail, X, MessageCircle,
-  Brain, GraduationCap, Mic, Layers, Sparkles, Loader2, BookMarked,
+  Brain, GraduationCap, Mic, Layers, Sparkles, Loader2, BookMarked, Globe, Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -168,7 +168,7 @@ export default function ProfessorTurmaPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [ranking, setRanking] = useState<RankEntry[]>([]);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "alunos" | "ia" | "tarefas" | "ranking">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "alunos" | "ia" | "tarefas" | "ranking" | "cadernos">("dashboard");
   const [insights, setInsights] = useState<any>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -321,19 +321,20 @@ export default function ProfessorTurmaPage() {
     { id: "alunos" as const, label: "Alunos", icon: Users, count: students.length },
     { id: "ia" as const, label: "Inteligência IA", icon: Sparkles },
     { id: "tarefas" as const, label: "Tarefas", icon: BookOpen, count: tasks.length },
+    { id: "cadernos" as const, label: "Cadernos", icon: BookMarked },
     { id: "ranking" as const, label: "Ranking", icon: Trophy },
   ];
 
   // Lazy-load insights when switching to the AI tab
   useEffect(() => {
-    if (activeTab !== "ia" || insights || insightsLoading || !id) return;
+    if (activeTab !== "ia" || insights || insightsLoading || !turmaId) return;
     setInsightsLoading(true);
-    fetch(`/api/teacher/turmas/${id}/insights`, { credentials: "include" })
+    fetch(`/api/teacher/turmas/${turmaId}/insights`, { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
       .then(d => setInsights(d))
       .catch(() => setInsights({ students: [], summary: { totalStudents: 0 } }))
       .finally(() => setInsightsLoading(false));
-  }, [activeTab, insights, insightsLoading, id]);
+  }, [activeTab, insights, insightsLoading, turmaId]);
 
   const atRiskStudents = students.filter(s => s.status === "risco");
 
@@ -1028,8 +1029,204 @@ export default function ProfessorTurmaPage() {
               )}
             </motion.div>
           )}
+          {activeTab === "cadernos" && (
+            <motion.div key="cadernos" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <CadernosTab turmaId={turmaId!} />
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
+    </div>
+  );
+}
+
+// ─── Cadernos Tab ─────────────────────────────────────────────────────────────
+function CadernosTab({ turmaId }: { turmaId: string }) {
+  const [notebooks, setNotebooks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState({ title: "", color: "#6366f1", emoji: "📚", visibility: "private" });
+  const [error, setError] = useState("");
+
+  const COLORS = ["#6366f1","#8b5cf6","#06b6d4","#10b981","#f59e0b","#ef4444","#ec4899","#f97316"];
+  const EMOJIS = ["📚","📖","🔬","🧪","🌍","📐","📝","💡","🎨","⚡","🌱","🧠"];
+
+  useEffect(() => { loadNotebooks(); }, [turmaId]);
+
+  async function loadNotebooks() {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/teacher/turmas/${turmaId}/notebooks`, { credentials: "include" });
+      const data = await res.json();
+      setNotebooks(data.notebooks ?? []);
+    } finally { setLoading(false); }
+  }
+
+  async function createNotebook(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.title.trim()) { setError("Título é obrigatório"); return; }
+    setError("");
+    setCreating(true);
+    try {
+      const res = await fetch(`/api/teacher/turmas/${turmaId}/notebooks`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (data.notebook) {
+        setNotebooks(prev => [data.notebook, ...prev]);
+        setShowForm(false);
+        setForm({ title: "", color: "#6366f1", emoji: "📚", visibility: "private" });
+      }
+    } finally { setCreating(false); }
+  }
+
+  async function toggleVisibility(nb: any) {
+    const newVis = nb.visibility === "public" ? "private" : "public";
+    await fetch(`/api/teacher/turmas/${turmaId}/notebooks/${nb.id}`, {
+      method: "PATCH", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visibility: newVis }),
+    });
+    setNotebooks(prev => prev.map(n => n.id === nb.id ? { ...n, visibility: newVis } : n));
+  }
+
+  async function deleteNotebook(id: number) {
+    if (!confirm("Excluir este caderno?")) return;
+    await fetch(`/api/teacher/turmas/${turmaId}/notebooks/${id}`, { method: "DELETE", credentials: "include" });
+    setNotebooks(prev => prev.filter(n => n.id !== id));
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+            <BookMarked className="w-5 h-5 text-indigo-500" /> Cadernos da Turma
+          </h3>
+          <p className="text-slate-400 text-sm mt-0.5">Cadernos compartilhados com os alunos desta turma</p>
+        </div>
+        <button onClick={() => setShowForm(s => !s)}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold transition-colors">
+          <Plus className="w-4 h-4" /> Novo Caderno
+        </button>
+      </div>
+
+      {/* Create form */}
+      {showForm && (
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-5">
+          <h4 className="font-bold text-slate-700 text-sm mb-4">Criar Caderno para Turma</h4>
+          {error && <p className="text-red-500 text-xs mb-3">{error}</p>}
+          <form onSubmit={createNotebook} className="space-y-4">
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-slate-500 text-xs font-semibold block mb-1">Título *</label>
+                <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                  placeholder="Ex: Biologia — Células e Organismos"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:border-indigo-500 outline-none bg-white" />
+              </div>
+              <div>
+                <label className="text-slate-500 text-xs font-semibold block mb-1">Visibilidade</label>
+                <select value={form.visibility} onChange={e => setForm(f => ({ ...f, visibility: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:border-indigo-500 outline-none bg-white">
+                  <option value="private">🔒 Privado (só você)</option>
+                  <option value="public">🌐 Público (alunos podem ver)</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-slate-500 text-xs font-semibold block mb-2">Cor</label>
+              <div className="flex gap-2 flex-wrap">
+                {COLORS.map(c => (
+                  <button key={c} type="button" onClick={() => setForm(f => ({ ...f, color: c }))}
+                    style={{ background: c }}
+                    className={`w-7 h-7 rounded-lg transition-all ${form.color === c ? "ring-2 ring-offset-1 ring-slate-400 scale-110" : ""}`} />
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-slate-500 text-xs font-semibold block mb-2">Emoji</label>
+              <div className="flex gap-1.5 flex-wrap">
+                {EMOJIS.map(em => (
+                  <button key={em} type="button" onClick={() => setForm(f => ({ ...f, emoji: em }))}
+                    className={`w-9 h-9 rounded-xl text-lg flex items-center justify-center transition-all ${form.emoji === em ? "bg-indigo-100 ring-2 ring-indigo-400" : "bg-slate-100 hover:bg-indigo-50"}`}>
+                    {em}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button type="submit" disabled={creating}
+                className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Criar Caderno
+              </button>
+              <button type="button" onClick={() => setShowForm(false)}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-500 text-sm font-bold hover:bg-slate-200 transition-colors">
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </motion.div>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 text-indigo-400 animate-spin" /></div>
+      ) : notebooks.length === 0 ? (
+        <div className="text-center py-16 text-slate-400">
+          <BookMarked className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p className="font-semibold text-sm">Nenhum caderno criado ainda</p>
+          <p className="text-xs mt-1">Crie um caderno para compartilhar conteúdo com seus alunos</p>
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {notebooks.map(nb => (
+            <div key={nb.id} className="rounded-2xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-all overflow-hidden">
+              <div className="h-2" style={{ background: nb.color }} />
+              <div className="p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">{nb.emoji}</span>
+                    <div>
+                      <p className="font-bold text-slate-800 text-sm leading-tight">{nb.title}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {nb.visibility === "public"
+                          ? <><Globe className="w-3 h-3 text-indigo-500" /><span className="text-[10px] text-indigo-500 font-semibold">Público</span></>
+                          : <><Lock className="w-3 h-3 text-slate-400" /><span className="text-[10px] text-slate-400">Privado</span></>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-slate-400 mb-3">
+                  <span>{nb.doc_count ?? 0} {nb.doc_count === 1 ? "documento" : "documentos"}</span>
+                  <span>•</span>
+                  <span>{new Date(nb.created_at).toLocaleDateString("pt-BR")}</span>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => toggleVisibility(nb)}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                      nb.visibility === "public"
+                        ? "bg-amber-50 text-amber-600 hover:bg-amber-100"
+                        : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+                    }`}>
+                    {nb.visibility === "public" ? <><Lock className="w-3 h-3" />Tornar Privado</> : <><Globe className="w-3 h-3" />Publicar</>}
+                  </button>
+                  <button onClick={() => deleteNotebook(nb.id)}
+                    className="p-1.5 rounded-lg bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 transition-all">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

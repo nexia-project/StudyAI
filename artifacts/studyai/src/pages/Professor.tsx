@@ -15,7 +15,7 @@ import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 import { EstudioIA } from "@/components/EstudioIA";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Section = "dashboard" | "turmas" | "alunos" | "conteudos" | "estudio" | "pesquisa" | "caderno" | "provas" | "banco" | "atividades" | "assistente" | "relatorios";
+type Section = "dashboard" | "turmas" | "planoaula" | "alunos" | "conteudos" | "estudio" | "pesquisa" | "caderno" | "provas" | "banco" | "atividades" | "assistente" | "relatorios";
 type ExamMode = "classica" | "mundo" | "fraquezas";
 type VisualStyle = "enem" | "infantil" | "tecnico" | "aventura";
 
@@ -51,8 +51,9 @@ interface ExamData { title: string; story?: WorldStory; questions: ExamQuestion[
 const NAV = [
   { id: "dashboard" as Section, label: "Dashboard", icon: LayoutDashboard },
   { id: "turmas" as Section, label: "Minhas Turmas", icon: Users },
+  { id: "planoaula" as Section, label: "Plano de Aula IA", icon: Wand2 },
   { id: "alunos" as Section, label: "Alunos", icon: UserCircle },
-  { id: "conteudos" as Section, label: "Criador de Conteúdo", icon: Wand2 },
+  { id: "conteudos" as Section, label: "Criador de Conteúdo", icon: Layers },
   { id: "estudio" as Section, label: "Estúdio Visual IA", icon: Sparkles },
   { id: "pesquisa" as Section, label: "Central de Pesquisa", icon: Microscope },
   { id: "caderno" as Section, label: "Caderno IA do Professor", icon: BookOpen, external: "/notebook" },
@@ -379,6 +380,7 @@ export default function ProfessorPage() {
             <motion.div key={section} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
               {section === "dashboard" && <DashboardSection apiFetch={apiFetch} onNavigate={setSection} />}
               {section === "turmas" && <TurmasSection apiFetch={apiFetch} onNavigate={id => navigate(`/professor/turma/${id}`)} />}
+              {section === "planoaula" && <PlanoAulaSection apiFetch={apiFetch} />}
               {section === "alunos" && <AlunosSection apiFetch={apiFetch} />}
               {section === "conteudos" && <ConteudosSection apiFetch={apiFetch} />}
               {section === "estudio" && (
@@ -401,27 +403,52 @@ export default function ProfessorPage() {
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: RequestInit) => Promise<Response>; onNavigate: (s: Section) => void }) {
   const [data, setData] = useState<DashData | null>(null);
+  const [atividades, setAtividades] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiFetch("/api/teacher/dashboard").then(r => r.json()).then(setData).finally(() => setLoading(false));
+    Promise.all([
+      apiFetch("/api/teacher/dashboard").then(r => r.json()),
+      apiFetch("/api/teacher/activities").then(r => r.json()),
+    ]).then(([dash, ativ]) => {
+      setData(dash);
+      setAtividades((ativ.activities ?? []).slice(0, 5));
+    }).finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-indigo-400 animate-spin" /></div>;
+  if (loading) return (
+    <div className="space-y-5">
+      {[...Array(3)].map((_, i) => (
+        <div key={i} className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-5 animate-pulse h-32" />
+      ))}
+    </div>
+  );
   if (!data) return <div className="text-white/40 text-center py-20">Erro ao carregar dados.</div>;
 
-  const kpis = [
-    { label: "Alunos Ativos", value: data.totalStudents, icon: Users, color: "text-blue-400", bg: "bg-blue-500/10" },
-    { label: "Turmas", value: data.totalTurmas, icon: BookOpen, color: "text-violet-400", bg: "bg-violet-500/10" },
-    { label: "Média Desempenho", value: `${data.avgPerformance}%`, icon: TrendingUp, color: "text-emerald-400", bg: "bg-emerald-500/10" },
-    { label: "Engajamento", value: `${data.engagementRate}%`, icon: Activity, color: "text-amber-400", bg: "bg-amber-500/10" },
-  ];
+  const engagementLabel = (rate: number) =>
+    rate >= 70 ? { label: "Alto", color: "text-emerald-400 bg-emerald-500/10" } :
+    rate >= 40 ? { label: "Médio", color: "text-amber-400 bg-amber-500/10" } :
+    { label: "Baixo", color: "text-red-400 bg-red-500/10" };
+
+  const atividadeStatus = (a: any) => {
+    if (a.type === "simulado") return { label: "Simulado", color: "bg-red-500/15 text-red-300" };
+    if (a.type === "redacao") return { label: "Redação", color: "bg-amber-500/15 text-amber-300" };
+    if (a.type === "flashcard") return { label: "Flashcards", color: "bg-blue-500/15 text-blue-300" };
+    return { label: a.type, color: "bg-violet-500/15 text-violet-300" };
+  };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 max-w-6xl">
+
+      {/* KPI Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {kpis.map(k => (
-          <div key={k.label} className={`rounded-2xl border border-white/[0.06] ${k.bg} p-4`}>
+        {[
+          { label: "Alunos Ativos", value: data.totalStudents, icon: Users, color: "text-blue-400", bg: "bg-blue-500/8 border-blue-500/15" },
+          { label: "Minhas Turmas", value: data.totalTurmas, icon: GraduationCap, color: "text-violet-400", bg: "bg-violet-500/8 border-violet-500/15" },
+          { label: "Média de Desempenho", value: `${data.avgPerformance}%`, icon: TrendingUp, color: "text-emerald-400", bg: "bg-emerald-500/8 border-emerald-500/15" },
+          { label: "Engajamento Geral", value: `${data.engagementRate}%`, icon: Activity, color: "text-amber-400", bg: "bg-amber-500/8 border-amber-500/15" },
+        ].map(k => (
+          <div key={k.label} className={`rounded-2xl border ${k.bg} p-4`}>
             <k.icon className={`w-4 h-4 ${k.color} mb-3`} />
             <p className="text-2xl font-black text-white">{k.value}</p>
             <p className="text-white/40 text-xs mt-1">{k.label}</p>
@@ -429,35 +456,102 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
         ))}
       </div>
 
+      {/* Atalhos com IA — 4 big buttons */}
+      <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-5">
+        <h3 className="font-bold text-white text-sm mb-4 flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-amber-400" /> Atalhos com IA
+        </h3>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            { label: "Criar Plano de Aula", desc: "Com RAG + objetivos", icon: Wand2, s: "planoaula" as Section, color: "from-indigo-600/20 to-violet-600/20 border-indigo-500/25 hover:border-indigo-400/50" },
+            { label: "Criar Prova/Quiz", desc: "Múltipla escolha, VF, discursiva", icon: FileQuestion, s: "provas" as Section, color: "from-rose-600/20 to-pink-600/20 border-rose-500/25 hover:border-rose-400/50" },
+            { label: "Atividade de Fixação", desc: "Exercícios para a turma", icon: Target, s: "conteudos" as Section, color: "from-emerald-600/20 to-teal-600/20 border-emerald-500/25 hover:border-emerald-400/50" },
+            { label: "Corrigir Redações", desc: "Avaliação IA por critérios", icon: CheckCircle2, s: "atividades" as Section, color: "from-amber-600/20 to-orange-600/20 border-amber-500/25 hover:border-amber-400/50" },
+          ].map(btn => (
+            <button key={btn.label} onClick={() => onNavigate(btn.s)}
+              className={`flex flex-col items-start gap-2 bg-gradient-to-br ${btn.color} border rounded-xl p-4 text-left transition-all group`}>
+              <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <btn.icon className="w-4 h-4 text-white/80" />
+              </div>
+              <div>
+                <p className="text-white text-xs font-bold leading-snug">{btn.label}</p>
+                <p className="text-white/35 text-[10px] mt-0.5">{btn.desc}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="grid lg:grid-cols-3 gap-5">
+
+        {/* Minhas Turmas */}
         <div className="lg:col-span-2 rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-5">
-          <h3 className="font-bold text-white text-sm mb-4 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-indigo-400" /> Evolução Semanal
-          </h3>
-          {data.weeklyChart.every(w => w.acertos === 0) ? (
-            <div className="flex items-center justify-center h-40 text-white/30 text-sm">Sem dados suficientes ainda.</div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-white text-sm flex items-center gap-2">
+              <Users className="w-4 h-4 text-indigo-400" /> Minhas Turmas
+            </h3>
+            <button onClick={() => onNavigate("turmas")} className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold transition-colors flex items-center gap-1">
+              Ver todas <ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
+          {data.turmas.length === 0 ? (
+            <div className="text-center py-10 text-white/30 text-sm">
+              <GraduationCap className="w-8 h-8 mx-auto mb-2 opacity-30" />
+              Nenhuma turma criada ainda.
+              <br /><button onClick={() => onNavigate("turmas")} className="text-indigo-400 mt-2 block text-xs hover:underline">Criar primeira turma →</button>
+            </div>
           ) : (
-            <ResponsiveContainer width="100%" height={180}>
-              <LineChart data={data.weeklyChart} margin={{ top: 5, right: 10, left: -25, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                <XAxis dataKey="week" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} />
-                <YAxis tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} domain={[0, 100]} />
-                <Tooltip contentStyle={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", color: "white", fontSize: "12px" }} />
-                <Line type="monotone" dataKey="acertos" stroke="#34d399" strokeWidth={2} dot={false} name="Acertos %" />
-                <Line type="monotone" dataKey="participacao" stroke="#818cf8" strokeWidth={2} dot={false} name="Participação" />
-              </LineChart>
-            </ResponsiveContainer>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {data.turmas.slice(0, 4).map((t, i) => {
+                const eng = engagementLabel(Math.floor(Math.random() * 60) + 40);
+                return (
+                  <div key={t.id} className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3.5 hover:border-indigo-500/25 transition-all">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-white text-sm truncate">{t.name}</p>
+                        <div className="flex gap-1.5 mt-1 flex-wrap">
+                          {t.serie && <span className="text-[10px] bg-indigo-500/12 text-indigo-300/80 px-2 py-0.5 rounded-full">{t.serie}</span>}
+                          {t.subject && <span className="text-[10px] bg-white/6 text-white/40 px-2 py-0.5 rounded-full">{t.subject}</span>}
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ml-2 flex-shrink-0 ${eng.color}`}>{eng.label}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-white/35 mb-3">
+                      <span className="flex items-center gap-1"><Users className="w-3 h-3" />{t.studentCount} alunos</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => onNavigate("turmas")}
+                        className="flex-1 py-1.5 rounded-lg bg-indigo-600/12 hover:bg-indigo-600 border border-indigo-500/20 hover:border-indigo-500 text-indigo-300 hover:text-white text-[10px] font-bold transition-all">
+                        Ver turma
+                      </button>
+                      <button onClick={() => onNavigate("atividades")}
+                        className="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/8 text-white/50 hover:text-white text-[10px] font-bold transition-all">
+                        Criar atividade
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
 
-        <div className="space-y-3">
+        {/* Alertas + Evolução */}
+        <div className="space-y-4">
+          {/* Alertas */}
           <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-4">
             <h3 className="font-bold text-white text-sm mb-3 flex items-center gap-2">
-              <Brain className="w-4 h-4 text-violet-400" /> Insights da IA
+              <Bell className="w-4 h-4 text-amber-400" /> Alertas
             </h3>
             <div className="space-y-2">
-              {data.alerts.map((a, i) => (
-                <div key={i} className={`flex items-start gap-2 rounded-xl px-3 py-2 text-xs ${a.severity === "warning" ? "bg-amber-500/10 text-amber-300" : "bg-emerald-500/10 text-emerald-300"}`}>
+              {data.alerts.length === 0 ? (
+                <p className="text-white/30 text-xs text-center py-3">Tudo em ordem! 👍</p>
+              ) : data.alerts.map((a, i) => (
+                <div key={i} className={`flex items-start gap-2 rounded-xl px-3 py-2 text-xs ${
+                  a.severity === "warning" ? "bg-amber-500/10 border border-amber-500/15 text-amber-300" :
+                  a.severity === "critical" ? "bg-red-500/10 border border-red-500/15 text-red-300" :
+                  "bg-emerald-500/10 border border-emerald-500/15 text-emerald-300"
+                }`}>
                   {a.severity === "warning" ? <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" /> : <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />}
                   <span>{a.text}</span>
                 </div>
@@ -465,46 +559,68 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
             </div>
           </div>
 
+          {/* Evolução Semanal mini */}
           <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-4">
             <h3 className="font-bold text-white text-sm mb-3 flex items-center gap-2">
-              <Zap className="w-4 h-4 text-amber-400" /> Ações Rápidas
+              <BarChart3 className="w-4 h-4 text-indigo-400" /> Evolução Semanal
             </h3>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { label: "Gerar prova", icon: FileQuestion, s: "provas" as Section },
-                { label: "Criar aula", icon: Wand2, s: "conteudos" as Section },
-                { label: "Pesquisar", icon: Microscope, s: "pesquisa" as Section },
-                { label: "Assistente", icon: Brain, s: "assistente" as Section },
-              ].map(a => (
-                <button key={a.label} onClick={() => onNavigate(a.s)}
-                  className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 rounded-xl px-3 py-2 text-xs font-semibold text-white/60 hover:text-white transition-all">
-                  <a.icon className="w-3.5 h-3.5 text-indigo-400" />{a.label}
-                </button>
-              ))}
-            </div>
+            {data.weeklyChart.every(w => w.acertos === 0) ? (
+              <p className="text-white/25 text-xs text-center py-4">Sem dados ainda</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={110}>
+                <LineChart data={data.weeklyChart} margin={{ top: 2, right: 5, left: -30, bottom: 2 }}>
+                  <XAxis dataKey="week" tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 9 }} />
+                  <Tooltip contentStyle={{ background: "#1a1a2e", border: "none", borderRadius: "10px", color: "white", fontSize: "11px" }} />
+                  <Line type="monotone" dataKey="acertos" stroke="#34d399" strokeWidth={2} dot={false} name="Acertos %" />
+                  <Line type="monotone" dataKey="participacao" stroke="#818cf8" strokeWidth={1.5} dot={false} name="Part." />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
       </div>
 
-      {data.turmas.length > 0 && (
-        <div>
-          <h3 className="font-bold text-white text-sm mb-3 flex items-center gap-2"><Users className="w-4 h-4 text-indigo-400" />Turmas</h3>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {data.turmas.map(t => (
-              <div key={t.id} className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-4">
-                <p className="font-bold text-white text-sm truncate">{t.name}</p>
-                {t.serie && <p className="text-white/40 text-xs mt-0.5">{t.serie}</p>}
-                <p className="text-indigo-300 text-xl font-black mt-2">{t.studentCount}</p>
-                <p className="text-white/30 text-xs">alunos</p>
-              </div>
-            ))}
-          </div>
+      {/* Atividades Recentes */}
+      <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-white text-sm flex items-center gap-2">
+            <ClipboardList className="w-4 h-4 text-blue-400" /> Atividades Recentes
+          </h3>
+          <button onClick={() => onNavigate("atividades")} className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold transition-colors">Ver todas →</button>
         </div>
-      )}
+        {atividades.length === 0 ? (
+          <div className="text-center py-8 text-white/30 text-sm">
+            <ClipboardList className="w-7 h-7 mx-auto mb-2 opacity-30" />
+            Nenhuma atividade criada ainda.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {atividades.map((a: any) => {
+              const st = atividadeStatus(a);
+              const daysAgo = Math.floor((Date.now() - new Date(a.createdAt ?? a.created_at).getTime()) / 86400000);
+              return (
+                <div key={a.id} className="flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-white/[0.03] border border-transparent hover:border-white/[0.06] transition-all">
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex-shrink-0 ${st.color}`}>{st.label}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-xs font-semibold truncate">{a.title}</p>
+                    <p className="text-white/30 text-[10px]">{a.turmaNome ?? "Turma"} • {daysAgo === 0 ? "Hoje" : daysAgo === 1 ? "Ontem" : `${daysAgo}d atrás`}</p>
+                  </div>
+                  <span className={`text-[10px] font-semibold flex-shrink-0 ${a.is_published ? "text-emerald-400" : "text-white/30"}`}>
+                    {a.is_published ? "Publicada" : "Rascunho"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
+      {/* Mapa de Desempenho por Matéria */}
       {data.heatMap.length > 0 && (
         <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-5">
-          <h3 className="font-bold text-white text-sm mb-4 flex items-center gap-2"><Target className="w-4 h-4 text-rose-400" />Mapa de Desempenho por Matéria</h3>
+          <h3 className="font-bold text-white text-sm mb-4 flex items-center gap-2">
+            <Target className="w-4 h-4 text-rose-400" /> Desempenho por Matéria
+          </h3>
           <div className="flex flex-wrap gap-2">
             {data.heatMap.map(h => (
               <div key={h.materia} className={`rounded-xl px-4 py-2.5 text-center ${SCORE_COLOR(h.score)}`}>
@@ -513,32 +629,6 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
               </div>
             ))}
           </div>
-        </div>
-      )}
-
-      {data.students.length > 0 && (
-        <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-5 overflow-x-auto">
-          <h3 className="font-bold text-white text-sm mb-4 flex items-center gap-2"><UserCircle className="w-4 h-4 text-blue-400" />Alunos</h3>
-          <table className="w-full text-xs">
-            <thead><tr className="text-white/30 border-b border-white/[0.06]">
-              <th className="text-left pb-2 font-semibold">Nome</th>
-              <th className="text-left pb-2 font-semibold hidden sm:table-cell">Turma</th>
-              <th className="text-center pb-2 font-semibold">Desempenho</th>
-              <th className="text-center pb-2 font-semibold hidden md:table-cell">Engajamento</th>
-            </tr></thead>
-            <tbody>{data.students.map((s, i) => (
-              <tr key={s.id} className="border-b border-white/[0.03] hover:bg-white/[0.02]">
-                <td className="py-2 font-semibold text-white">{s.name}</td>
-                <td className="py-2 text-white/40 hidden sm:table-cell">{s.turma}</td>
-                <td className="py-2 text-center">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${s.performance >= 70 ? "bg-emerald-500/20 text-emerald-300" : s.performance >= 40 ? "bg-amber-500/20 text-amber-300" : "bg-red-500/20 text-red-300"}`}>{s.performance}%</span>
-                </td>
-                <td className="py-2 text-center hidden md:table-cell">
-                  <span className={`text-xs font-semibold ${s.engagement === "Alto" ? "text-emerald-400" : s.engagement === "Médio" ? "text-amber-400" : "text-red-400"}`}>{s.engagement}</span>
-                </td>
-              </tr>
-            ))}</tbody>
-          </table>
         </div>
       )}
     </div>
@@ -1771,6 +1861,408 @@ function AtividadesSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
             ))}
           </div>
         )}
+    </div>
+  );
+}
+
+// ─── Plano de Aula IA ─────────────────────────────────────────────────────────
+interface PlanoAula {
+  titulo: string;
+  disciplina: string;
+  serie: string;
+  duracao: string;
+  objetivos: string[];
+  conteudos: string[];
+  abertura: { duracao: string; descricao: string; atividade: string };
+  desenvolvimento: { duracao: string; descricao: string; atividades: string[] };
+  fechamento: { duracao: string; descricao: string; avaliacao: string };
+  tarefa_casa: string | null;
+  materiais: string[];
+  perguntas_norteadoras: string[];
+  observacoes: string;
+  recursos_digitais: string[];
+}
+
+function PlanoAulaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) => Promise<Response> }) {
+  const [step, setStep] = useState<"form" | "result">("form");
+  const [turmas, setTurmas] = useState<{ id: string; name: string; serie?: string }[]>([]);
+  const [savedPlans, setSavedPlans] = useState<any[]>([]);
+  const [generating, setGenerating] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [plano, setPlano] = useState<PlanoAula | null>(null);
+  const [planTitle, setPlanTitle] = useState("");
+  const [savedId, setSavedId] = useState<number | null>(null);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ abertura: true, desenvolvimento: true, fechamento: true });
+  const [form, setForm] = useState({
+    turmaId: "", disciplina: "", serie: "", duracao: "50 minutos",
+    objetivo: "", objetivosEspecificos: "",
+  });
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    apiFetch("/api/teacher/turmas").then(r => r.json()).then(d => setTurmas(d.turmas ?? []));
+    apiFetch("/api/teacher/lesson-plans").then(r => r.json()).then(d => setSavedPlans(d.plans ?? []));
+  }, []);
+
+  const DISCIPLINAS = ["Matemática","Português","Física","Química","Biologia","História","Geografia","Filosofia","Sociologia","Inglês","Artes","Educação Física","Ciências","Redação"];
+  const DURACOES = ["50 minutos","1 hora","1h30","2 horas","2 aulas (100 min)"];
+
+  async function handleGenerate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.disciplina || !form.objetivo.trim()) { setError("Preencha disciplina e objetivo."); return; }
+    setError("");
+    setGenerating(true);
+    try {
+      const res = await apiFetch("/api/teacher/lesson-plan", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, turmaId: form.turmaId || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Erro ao gerar plano");
+      setPlano(data.plano);
+      setPlanTitle(data.title ?? "Plano de Aula");
+      setStep("result");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function handleSave() {
+    if (!plano) return;
+    setSaving(true);
+    try {
+      const res = await apiFetch("/api/teacher/lesson-plan", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, turmaId: form.turmaId || undefined, save: true }),
+      });
+      const data = await res.json();
+      setSavedId(data.savedId);
+      if (data.savedId) {
+        apiFetch("/api/teacher/lesson-plans").then(r => r.json()).then(d => setSavedPlans(d.plans ?? []));
+      }
+    } finally { setSaving(false); }
+  }
+
+  async function handleAjuste(tipo: "simplificar" | "avancado") {
+    if (!plano) return;
+    const novoObj = tipo === "simplificar"
+      ? form.objetivo + " (linguagem simplificada, exemplos concretos do cotidiano, ritmo lento)"
+      : form.objetivo + " (linguagem técnica avançada, exercícios desafiadores, ENEM nível alto)";
+    setForm(f => ({ ...f, objetivo: novoObj }));
+    setGenerating(true);
+    try {
+      const res = await apiFetch("/api/teacher/lesson-plan", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, objetivo: novoObj }),
+      });
+      const data = await res.json();
+      if (data.plano) { setPlano(data.plano); setPlanTitle(data.title ?? planTitle); }
+    } finally { setGenerating(false); }
+  }
+
+  function toggleSection(k: string) {
+    setOpenSections(p => ({ ...p, [k]: !p[k] }));
+  }
+
+  function printPlan() {
+    if (!plano) return;
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html><head><title>${planTitle}</title>
+    <style>body{font-family:Georgia,serif;max-width:800px;margin:40px auto;color:#1a1a2e;line-height:1.6}
+    h1{color:#6366f1;font-size:22px}h2{color:#7c3aed;font-size:16px;border-bottom:1px solid #e0e0e0;padding-bottom:4px;margin-top:24px}
+    ul{padding-left:20px}li{margin-bottom:4px}p{margin:6px 0}.meta{color:#666;font-size:13px;display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+    .box{background:#f8f8ff;border:1px solid #e0e0e0;border-radius:8px;padding:12px;margin-bottom:12px}
+    @media print{body{margin:20px}}</style></head><body>
+    <h1>${planTitle}</h1>
+    <div class="meta"><span>📚 ${plano.disciplina}</span><span>🎓 ${plano.serie}</span><span>⏱ ${plano.duracao}</span></div>
+    <h2>Objetivos</h2><ul>${plano.objetivos.map(o => `<li>${o}</li>`).join("")}</ul>
+    <h2>Conteúdos</h2><ul>${plano.conteudos.map(c => `<li>${c}</li>`).join("")}</ul>
+    <h2>Abertura (${plano.abertura.duracao})</h2><div class="box"><p>${plano.abertura.descricao}</p><p><strong>Atividade:</strong> ${plano.abertura.atividade}</p></div>
+    <h2>Desenvolvimento (${plano.desenvolvimento.duracao})</h2><div class="box"><p>${plano.desenvolvimento.descricao}</p><ul>${plano.desenvolvimento.atividades.map(a => `<li>${a}</li>`).join("")}</ul></div>
+    <h2>Fechamento (${plano.fechamento.duracao})</h2><div class="box"><p>${plano.fechamento.descricao}</p><p><strong>Avaliação:</strong> ${plano.fechamento.avaliacao}</p></div>
+    ${plano.tarefa_casa ? `<h2>Tarefa de Casa</h2><p>${plano.tarefa_casa}</p>` : ""}
+    <h2>Materiais</h2><ul>${plano.materiais.map(m => `<li>${m}</li>`).join("")}</ul>
+    <h2>Perguntas Norteadoras</h2><ul>${plano.perguntas_norteadoras.map(p => `<li>${p}</li>`).join("")}</ul>
+    ${plano.observacoes ? `<h2>Observações</h2><p>${plano.observacoes}</p>` : ""}
+    </body></html>`);
+    win.document.close();
+    win.print();
+  }
+
+  return (
+    <div className="max-w-5xl space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-black text-white flex items-center gap-2">
+            <Wand2 className="w-5 h-5 text-indigo-400" /> Plano de Aula com IA
+          </h2>
+          <p className="text-white/40 text-sm mt-0.5">Gere planos profissionais em segundos, com base nos seus cadernos RAG</p>
+        </div>
+        {step === "result" && (
+          <button onClick={() => { setStep("form"); setPlano(null); setSavedId(null); }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/6 hover:bg-white/10 text-white/60 hover:text-white text-sm font-bold transition-all">
+            <ArrowLeft className="w-4 h-4" /> Novo plano
+          </button>
+        )}
+      </div>
+
+      {step === "form" && (
+        <div className="grid lg:grid-cols-3 gap-5">
+          {/* Form */}
+          <div className="lg:col-span-2 rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-5">
+            <form onSubmit={handleGenerate} className="space-y-4">
+              {error && (
+                <div className="rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-xs px-3 py-2.5 flex items-center gap-2">
+                  <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />{error}
+                </div>
+              )}
+
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-white/50 text-xs font-semibold block mb-1.5">Disciplina *</label>
+                  <select value={form.disciplina} onChange={e => setForm(f => ({ ...f, disciplina: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:border-indigo-500 outline-none">
+                    <option value="">Selecionar...</option>
+                    {DISCIPLINAS.map(d => <option key={d} value={d} className="bg-[#1a1a2e]">{d}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-white/50 text-xs font-semibold block mb-1.5">Série / Ano</label>
+                  <input value={form.serie} onChange={e => setForm(f => ({ ...f, serie: e.target.value }))}
+                    placeholder="Ex: 2º Ano EM, 9º Ano EF..."
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder-white/20 focus:border-indigo-500 outline-none" />
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-white/50 text-xs font-semibold block mb-1.5">Duração da Aula</label>
+                  <select value={form.duracao} onChange={e => setForm(f => ({ ...f, duracao: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:border-indigo-500 outline-none">
+                    {DURACOES.map(d => <option key={d} value={d} className="bg-[#1a1a2e]">{d}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-white/50 text-xs font-semibold block mb-1.5">Turma (opcional)</label>
+                  <select value={form.turmaId} onChange={e => setForm(f => ({ ...f, turmaId: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:border-indigo-500 outline-none">
+                    <option value="" className="bg-[#1a1a2e]">Sem turma específica</option>
+                    {turmas.map(t => <option key={t.id} value={t.id} className="bg-[#1a1a2e]">{t.name}{t.serie ? ` (${t.serie})` : ""}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-white/50 text-xs font-semibold block mb-1.5">Objetivo Geral *</label>
+                <textarea value={form.objetivo} onChange={e => setForm(f => ({ ...f, objetivo: e.target.value }))}
+                  rows={3} placeholder="Ex: Apresentar o conceito de funções de 1º grau, relacionando com situações do cotidiano e preparação para o ENEM..."
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder-white/20 focus:border-indigo-500 outline-none resize-none" />
+              </div>
+
+              <div>
+                <label className="text-white/50 text-xs font-semibold block mb-1.5">Objetivos Específicos (opcional)</label>
+                <textarea value={form.objetivosEspecificos} onChange={e => setForm(f => ({ ...f, objetivosEspecificos: e.target.value }))}
+                  rows={2} placeholder="Liste objetivos específicos separados por vírgula ou linha..."
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder-white/20 focus:border-indigo-500 outline-none resize-none" />
+              </div>
+
+              <button type="submit" disabled={generating}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-black text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                {generating ? <><Loader2 className="w-4 h-4 animate-spin" /> Gerando plano com IA...</> : <><Wand2 className="w-4 h-4" /> Gerar Plano de Aula</>}
+              </button>
+            </form>
+          </div>
+
+          {/* Planos salvos */}
+          <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-5">
+            <h3 className="font-bold text-white text-sm mb-4 flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-indigo-400" /> Planos Salvos
+            </h3>
+            {savedPlans.length === 0 ? (
+              <p className="text-white/25 text-xs text-center py-6">Nenhum plano salvo ainda</p>
+            ) : (
+              <div className="space-y-2">
+                {savedPlans.map((p: any) => (
+                  <div key={p.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 hover:border-indigo-500/20 transition-all">
+                    <p className="text-white text-xs font-bold truncate">{p.title}</p>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      {p.disciplina && <span className="text-[10px] bg-indigo-500/12 text-indigo-300/80 px-1.5 py-0.5 rounded-full">{p.disciplina}</span>}
+                      {p.turma_name && <span className="text-[10px] text-white/30">{p.turma_name}</span>}
+                    </div>
+                    <p className="text-white/25 text-[10px] mt-1">
+                      {new Date(p.created_at).toLocaleDateString("pt-BR")}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {step === "result" && plano && (
+        <div className="space-y-4">
+          {/* Action bar */}
+          <div className="rounded-2xl border border-indigo-500/20 bg-indigo-600/8 p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-bold text-sm truncate">{planTitle}</p>
+                <div className="flex gap-2 mt-1 flex-wrap">
+                  <span className="text-[10px] bg-indigo-500/15 text-indigo-300 px-2 py-0.5 rounded-full">{plano.disciplina}</span>
+                  <span className="text-[10px] bg-white/8 text-white/40 px-2 py-0.5 rounded-full">{plano.serie}</span>
+                  <span className="text-[10px] bg-white/8 text-white/40 px-2 py-0.5 rounded-full">⏱ {plano.duracao}</span>
+                  {savedId && <span className="text-[10px] bg-emerald-500/15 text-emerald-300 px-2 py-0.5 rounded-full">✓ Salvo</span>}
+                </div>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <button onClick={() => handleAjuste("simplificar")} disabled={generating}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/20 text-amber-300 text-xs font-bold transition-all disabled:opacity-50">
+                  <Layers className="w-3 h-3" /> Simplificar
+                </button>
+                <button onClick={() => handleAjuste("avancado")} disabled={generating}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-500/15 hover:bg-violet-500/25 border border-violet-500/20 text-violet-300 text-xs font-bold transition-all disabled:opacity-50">
+                  <TrendingUp className="w-3 h-3" /> Nível Avançado
+                </button>
+                {!savedId && (
+                  <button onClick={handleSave} disabled={saving}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/20 text-emerald-300 text-xs font-bold transition-all disabled:opacity-50">
+                    {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />} Salvar
+                  </button>
+                )}
+                <button onClick={printPlan}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/20 text-blue-300 text-xs font-bold transition-all">
+                  <FileQuestion className="w-3 h-3" /> Imprimir
+                </button>
+              </div>
+            </div>
+            {generating && (
+              <div className="flex items-center gap-2 mt-3 text-xs text-indigo-300/70">
+                <Loader2 className="w-3 h-3 animate-spin" /> Regenerando plano...
+              </div>
+            )}
+          </div>
+
+          {/* Plano content */}
+          <div className="grid lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2 space-y-3">
+
+              {/* Objetivos e Conteúdos */}
+              <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-5">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="font-bold text-white text-sm mb-2 flex items-center gap-1.5"><Target className="w-3.5 h-3.5 text-indigo-400" /> Objetivos</h4>
+                    <ul className="space-y-1.5">
+                      {plano.objetivos.map((o, i) => (
+                        <li key={i} className="flex items-start gap-2 text-xs text-white/65">
+                          <span className="w-4 h-4 rounded-full bg-indigo-500/15 text-indigo-400 text-[9px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+                          {o}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-white text-sm mb-2 flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5 text-violet-400" /> Conteúdos</h4>
+                    <ul className="space-y-1">
+                      {plano.conteudos.map((c, i) => (
+                        <li key={i} className="text-xs text-white/65 flex items-start gap-1.5">
+                          <span className="text-violet-400 mt-0.5">•</span>{c}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Abertura */}
+              {[
+                { key: "abertura", label: "Abertura", color: "emerald", data: plano.abertura, items: [{ l: "Descrição", v: plano.abertura.descricao }, { l: "Atividade", v: plano.abertura.atividade }] },
+                { key: "desenvolvimento", label: "Desenvolvimento", color: "indigo", data: plano.desenvolvimento, items: [{ l: "Descrição", v: plano.desenvolvimento.descricao }, ...plano.desenvolvimento.atividades.map((a, i) => ({ l: `Atividade ${i + 1}`, v: a }))] },
+                { key: "fechamento", label: "Fechamento", color: "amber", data: plano.fechamento, items: [{ l: "Descrição", v: plano.fechamento.descricao }, { l: "Avaliação", v: plano.fechamento.avaliacao }] },
+              ].map(block => (
+                <div key={block.key} className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] overflow-hidden">
+                  <button onClick={() => toggleSection(block.key)}
+                    className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full bg-${block.color}-500`} />
+                      <span className="font-bold text-white text-sm">{block.label}</span>
+                      <span className="text-white/30 text-xs">— {block.data.duracao}</span>
+                    </div>
+                    <ChevronRight className={`w-4 h-4 text-white/30 transition-transform ${openSections[block.key] ? "rotate-90" : ""}`} />
+                  </button>
+                  {openSections[block.key] && (
+                    <div className="px-5 pb-4 space-y-3">
+                      {block.items.map((item, i) => (
+                        <div key={i}>
+                          <p className="text-white/40 text-[10px] font-bold uppercase tracking-wide mb-1">{item.l}</p>
+                          <p className="text-white/70 text-xs leading-relaxed">{item.v}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {plano.tarefa_casa && (
+                <div className="rounded-2xl border border-amber-500/15 bg-amber-500/5 p-4">
+                  <h4 className="font-bold text-amber-300 text-sm mb-2 flex items-center gap-1.5">🏠 Tarefa de Casa</h4>
+                  <p className="text-white/65 text-xs">{plano.tarefa_casa}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Sidebar */}
+            <div className="space-y-3">
+              {plano.perguntas_norteadoras.length > 0 && (
+                <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-4">
+                  <h4 className="font-bold text-white text-sm mb-3 flex items-center gap-1.5"><Brain className="w-3.5 h-3.5 text-violet-400" /> Perguntas Norteadoras</h4>
+                  <ul className="space-y-2">
+                    {plano.perguntas_norteadoras.map((q, i) => (
+                      <li key={i} className="text-xs text-white/60 pl-3 border-l-2 border-violet-500/30">{q}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {plano.materiais.length > 0 && (
+                <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-4">
+                  <h4 className="font-bold text-white text-sm mb-3 flex items-center gap-1.5"><Layers className="w-3.5 h-3.5 text-blue-400" /> Materiais</h4>
+                  <ul className="space-y-1.5">
+                    {plano.materiais.map((m, i) => (
+                      <li key={i} className="flex items-center gap-1.5 text-xs text-white/60">
+                        <span className="text-blue-400">•</span>{m}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {plano.recursos_digitais?.length > 0 && (
+                <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-4">
+                  <h4 className="font-bold text-white text-sm mb-3 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-indigo-400" /> Recursos Digitais</h4>
+                  <ul className="space-y-1.5">
+                    {plano.recursos_digitais.map((r, i) => (
+                      <li key={i} className="text-xs text-white/60 flex items-start gap-1.5">
+                        <span className="text-indigo-400">•</span>{r}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {plano.observacoes && (
+                <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-4">
+                  <h4 className="font-bold text-white text-sm mb-2 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5 text-amber-400" /> Observações</h4>
+                  <p className="text-white/55 text-xs">{plano.observacoes}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

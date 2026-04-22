@@ -1112,4 +1112,195 @@ router.get("/teacher/turmas/:id/insights", async (req: Request, res: Response) =
   }
 });
 
+// ─── Cadernos por Turma ──────────────────────────────────────────────────────
+router.get("/teacher/turmas/:id/notebooks", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS notebooks (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR(255) NOT NULL,
+        title VARCHAR(255) NOT NULL DEFAULT 'Meu Caderno',
+        persona VARCHAR(255), goals TEXT,
+        color VARCHAR(20) DEFAULT '#6366f1',
+        emoji VARCHAR(10) DEFAULT '📔',
+        is_default BOOLEAN DEFAULT false,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`ALTER TABLE notebooks ADD COLUMN IF NOT EXISTS turma_id VARCHAR(255)`);
+    await db.execute(sql`ALTER TABLE notebooks ADD COLUMN IF NOT EXISTS visibility VARCHAR(20) DEFAULT 'private'`);
+
+    const notebooks = await db.execute(sql`
+      SELECT n.id, n.title, n.color, n.emoji, n.visibility, n.created_at,
+        (SELECT COUNT(*)::int FROM knowledge_documents WHERE notebook_id = n.id) AS doc_count
+      FROM notebooks n
+      WHERE n.turma_id = ${req.params.id}
+      ORDER BY n.created_at DESC
+    `);
+    res.json({ notebooks: notebooks.rows });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao listar cadernos" });
+  }
+});
+
+router.post("/teacher/turmas/:id/notebooks", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
+  const { title, color = "#6366f1", emoji = "📚", visibility = "private" } = req.body as {
+    title?: string; color?: string; emoji?: string; visibility?: string;
+  };
+  if (!title?.trim()) { res.status(400).json({ error: "Título obrigatório" }); return; }
+  try {
+    const result = await db.execute(sql`
+      INSERT INTO notebooks (user_id, turma_id, title, color, emoji, visibility)
+      VALUES (${req.userId}, ${req.params.id}, ${title.trim()}, ${color}, ${emoji}, ${visibility})
+      RETURNING *
+    `);
+    res.json({ notebook: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao criar caderno" });
+  }
+});
+
+router.patch("/teacher/turmas/:id/notebooks/:nbId", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  const { visibility } = req.body as { visibility?: string };
+  try {
+    await db.execute(sql`
+      UPDATE notebooks SET visibility = ${visibility} WHERE id = ${req.params.nbId} AND user_id = ${req.userId}
+    `);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao atualizar caderno" });
+  }
+});
+
+router.delete("/teacher/turmas/:id/notebooks/:nbId", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  try {
+    await db.execute(sql`DELETE FROM notebooks WHERE id = ${req.params.nbId} AND user_id = ${req.userId} AND turma_id = ${req.params.id}`);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao excluir caderno" });
+  }
+});
+
+// ─── Lesson Plans ────────────────────────────────────────────────────────────
+router.get("/teacher/lesson-plans", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  try {
+    const plans = await db.execute(sql`
+      SELECT lp.id, lp.title, lp.disciplina, lp.serie, lp.duracao, lp.objetivo,
+        lp.turma_id, lp.notebook_id, lp.created_at,
+        t.name AS turma_name
+      FROM lesson_plans lp
+      LEFT JOIN turmas t ON t.id = lp.turma_id
+      WHERE lp.teacher_id = ${req.userId}
+      ORDER BY lp.created_at DESC LIMIT 20
+    `);
+    res.json({ plans: plans.rows });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao listar planos" });
+  }
+});
+
+router.post("/teacher/lesson-plan", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
+
+  const {
+    turmaId, notebookId, disciplina, serie, duracao = "50 minutos",
+    objetivo, objetivosEspecificos = "", title, save = false,
+  } = req.body as {
+    turmaId?: string; notebookId?: number; disciplina?: string; serie?: string;
+    duracao?: string; objetivo?: string; objetivosEspecificos?: string;
+    title?: string; save?: boolean;
+  };
+
+  if (!disciplina || !objetivo) {
+    res.status(400).json({ error: "Disciplina e objetivo são obrigatórios" });
+    return;
+  }
+
+  try {
+    // RAG: search notebook if provided
+    let ragContext = "";
+    if (notebookId) {
+      const docs = await db.execute(sql`
+        SELECT title, content_text FROM knowledge_documents
+        WHERE notebook_id = ${notebookId}
+        ORDER BY created_at DESC LIMIT 6
+      `);
+      if ((docs.rows as any[]).length > 0) {
+        ragContext = "\n\n## Fontes do Caderno RAG (USE como base principal):\n";
+        (docs.rows as any[]).forEach((d: any, i: number) => {
+          ragContext += `\n### Fonte ${i + 1}: ${d.title}\n${(d.content_text || "").slice(0, 800)}\n`;
+        });
+      }
+    }
+
+    const systemPrompt = `Você é um especialista em educação brasileira. Crie planos de aula profissionais, detalhados e aplicáveis.
+${ragContext ? "IMPORTANTE: Use EXCLUSIVAMENTE as fontes do Caderno RAG fornecidas como base de conteúdo." : ""}
+Responda SOMENTE com um JSON válido no formato especificado.`;
+
+    const userPrompt = `Crie um plano de aula completo e profissional:
+- Disciplina: ${disciplina}
+- Série/Ano: ${serie || "Ensino Médio"}
+- Duração: ${duracao}
+- Objetivo Geral: ${objetivo}
+${objetivosEspecificos ? `- Objetivos Específicos: ${objetivosEspecificos}` : ""}
+${ragContext}
+
+Retorne APENAS JSON com esta estrutura:
+{
+  "titulo": "string",
+  "disciplina": "string",
+  "serie": "string",
+  "duracao": "string",
+  "objetivos": ["string"],
+  "conteudos": ["string"],
+  "abertura": {"duracao": "string", "descricao": "string", "atividade": "string"},
+  "desenvolvimento": {"duracao": "string", "descricao": "string", "atividades": ["string"]},
+  "fechamento": {"duracao": "string", "descricao": "string", "avaliacao": "string"},
+  "tarefa_casa": "string ou null",
+  "materiais": ["string"],
+  "perguntas_norteadoras": ["string"],
+  "observacoes": "string",
+  "recursos_digitais": ["string"]
+}`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.7,
+      response_format: { type: "json_object" },
+    });
+
+    const raw = completion.choices[0]?.message?.content ?? "{}";
+    const plano = JSON.parse(raw);
+    const planTitle = title || plano.titulo || `Plano: ${disciplina} — ${serie || ""}`;
+
+    // Save if requested
+    let savedId: number | null = null;
+    if (save) {
+      const saved = await db.execute(sql`
+        INSERT INTO lesson_plans (teacher_id, turma_id, notebook_id, title, disciplina, serie, duracao, objetivo, plano)
+        VALUES (${req.userId}, ${turmaId ?? null}, ${notebookId ?? null}, ${planTitle}, ${disciplina}, ${serie ?? null}, ${duracao}, ${objetivo}, ${JSON.stringify(plano)})
+        RETURNING id
+      `);
+      savedId = (saved.rows[0] as any)?.id ?? null;
+    }
+
+    res.json({ plano, title: planTitle, savedId });
+  } catch (err: any) {
+    console.error("lesson-plan error:", err);
+    res.status(500).json({ error: "Erro ao gerar plano de aula" });
+  }
+});
+
 export default router;

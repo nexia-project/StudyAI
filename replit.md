@@ -108,6 +108,20 @@ Every new AI feature added to ANY surface MUST also be reflected in:
 
 `GET /api/teacher/turmas/:id/insights` returns: per-student `trilha.{mat,port}.{level,sessions,accuracy}`, `diagnosticCompleted` flag, `ai.{tiagao,notebook,mapa}` usage counts, plus `summary.{avgLevelMat,avgLevelPort,diagnosticCompleted,weakTopics[],aiAdoption}`.
 
+### AI Cost Monitoring (April 2026)
+- **New table `ai_cost_log`**: id, user_id, feature, model, tokens_in, tokens_out, cost_usd, created_at — created directly via SQL (bypassed Drizzle push to avoid rename confusion)
+- **`artifacts/api-server/src/lib/aiCostLogger.ts`**: Centralized `logAiUsage()` helper with pricing table for all models (gpt-4o, gpt-4o-mini, claude-sonnet-4-6, claude-haiku-4-5, gemini-flash, text-embedding, etc.)
+- **Routes instrumented** (real token logging added):
+  - `chat.ts` (Tiagão) — streaming with `stream_options: { include_usage: true }`
+  - `redacao.ts` (Redação ENEM) — gpt-4o, captures completion.usage
+  - `trilha.ts` (Trilha do Mestre) — gpt-4o-mini
+  - `flashcards.ts` (Flashcards) — gpt-4o-mini
+  - `notebook.ts` (Notebook) — Proxy interceptor auto-logs all 20 gpt calls
+  - `aula-ia.ts` (Lousa IA) — Claude Sonnet + Claude Haiku + gpt-4o-mini fallback
+- **Admin stats endpoint** now returns `aiCost: { todayUsd, todayBrl, monthUsd, monthBrl, byFeature[], byModel[], perDay[] }` — real data from `ai_cost_log`
+- **Admin UI "IA & Custos"** replaced with real cost dashboard: KPI cards (Custo Hoje / Mês / Chamadas / Tokens), Área chart custo por dia, tabela custo por feature com barras de porcentagem, custo por modelo, provedores de IA
+- USD→BRL conversão fixa `5.85` no endpoint admin
+
 ### Open TODOs (next round, by priority)
 1. ✅ **Mobile parity – ALL three screens delivered**:
    - `(tabs)/trilha.tsx` → reads `/api/trilha/status` per subject, shows level + diagnostic state per matéria.

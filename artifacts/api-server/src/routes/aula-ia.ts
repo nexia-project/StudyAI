@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { requireAuth } from "../middlewares/requireAuth";
+import { logAiUsage } from "../lib/aiCostLogger";
 
 const router = Router();
 
@@ -128,6 +129,7 @@ RETORNE SOMENTE JSON VÁLIDO, sem texto extra, sem markdown:
   });
 
   const block = message.content[0];
+  logAiUsage({ feature: "lousa-aula", model: "claude-sonnet-4-6", tokensIn: message.usage?.input_tokens ?? 0, tokensOut: message.usage?.output_tokens ?? 0 });
   return block.type === "text" ? block.text : "{}";
 }
 
@@ -168,6 +170,7 @@ Nível: ${nivel}. Máx 6 etapas, mín 4. Exemplos do contexto ${estilo}. RESPEIT
     max_tokens: 2500,
   });
 
+  logAiUsage({ feature: "lousa-aula", model: "gpt-4o", tokensIn: completion.usage?.prompt_tokens ?? 0, tokensOut: completion.usage?.completion_tokens ?? 0 });
   return completion.choices[0].message.content ?? "{}";
 }
 
@@ -241,6 +244,7 @@ Não use markdown nem listas. Termine com uma frase de encorajamento.`;
       });
       const block = message.content[0];
       resposta = block.type === "text" ? block.text : "";
+      logAiUsage({ feature: "lousa-pergunta", model: "claude-haiku-4-5", tokensIn: message.usage?.input_tokens ?? 0, tokensOut: message.usage?.output_tokens ?? 0 });
     } catch {
       // Fallback para OpenAI mini
       const completion = await openai.chat.completions.create({
@@ -253,6 +257,7 @@ Não use markdown nem listas. Termine com uma frase de encorajamento.`;
         max_tokens: 250,
       });
       resposta = completion.choices[0].message.content ?? "";
+      logAiUsage({ feature: "lousa-pergunta", model: "gpt-4o-mini", tokensIn: completion.usage?.prompt_tokens ?? 0, tokensOut: completion.usage?.completion_tokens ?? 0 });
     }
 
     res.json({ resposta });

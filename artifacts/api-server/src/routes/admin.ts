@@ -239,6 +239,20 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
       ORDER BY study_date
     `);
 
+    // ─── AI COST METRICS (from ai_cost_log) ──────────────────────────────────
+    const [
+      aiCostToday, aiCostMonth, aiCostByFeature, aiCostByModel, aiCostPerDay,
+    ] = await Promise.all([
+      db.execute(sql`SELECT COALESCE(SUM(cost_usd::numeric), 0)::float AS total FROM ai_cost_log WHERE created_at::date = ${today}::date`),
+      db.execute(sql`SELECT COALESCE(SUM(cost_usd::numeric), 0)::float AS total FROM ai_cost_log WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())`),
+      db.execute(sql`SELECT feature, COUNT(*)::int AS calls, COALESCE(SUM(cost_usd::numeric), 0)::float AS cost_usd, COALESCE(SUM(tokens_in + tokens_out)::int, 0) AS tokens FROM ai_cost_log GROUP BY feature ORDER BY cost_usd DESC`),
+      db.execute(sql`SELECT model, COUNT(*)::int AS calls, COALESCE(SUM(cost_usd::numeric), 0)::float AS cost_usd FROM ai_cost_log GROUP BY model ORDER BY cost_usd DESC`),
+      db.execute(sql`SELECT created_at::date::text AS day, COALESCE(SUM(cost_usd::numeric), 0)::float AS cost_usd, COUNT(*)::int AS calls FROM ai_cost_log WHERE created_at >= NOW() - INTERVAL '30 days' GROUP BY created_at::date ORDER BY day`),
+    ]);
+    const USD_TO_BRL = 5.85;
+    const costTodayUsd = (aiCostToday.rows[0] as any)?.total ?? 0;
+    const costMonthUsd = (aiCostMonth.rows[0] as any)?.total ?? 0;
+
     // ─── NEW AI FEATURE METRICS ──────────────────────────────────────────────
     // All run in parallel for speed
     const [
@@ -333,6 +347,16 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
       notebookOverviewsTotal: (notebookOverviews.rows[0] as any)?.count ?? 0,
       teacherContentTotal: (teacherContentTotal.rows[0] as any)?.count ?? 0,
       contentBreakdown,
+      // ─── Real AI cost metrics ─────────────────────────────────────────────
+      aiCost: {
+        todayUsd: costTodayUsd,
+        todayBrl: costTodayUsd * USD_TO_BRL,
+        monthUsd: costMonthUsd,
+        monthBrl: costMonthUsd * USD_TO_BRL,
+        byFeature: (aiCostByFeature.rows as any[]).map(r => ({ feature: r.feature, calls: r.calls, costUsd: r.cost_usd, costBrl: r.cost_usd * USD_TO_BRL, tokens: Number(r.tokens) })),
+        byModel: (aiCostByModel.rows as any[]).map(r => ({ model: r.model, calls: r.calls, costUsd: r.cost_usd, costBrl: r.cost_usd * USD_TO_BRL })),
+        perDay: (aiCostPerDay.rows as any[]).map(r => ({ day: r.day, costUsd: r.cost_usd, costBrl: r.cost_usd * USD_TO_BRL, calls: r.calls })),
+      },
     });
   } catch (err) {
     req.log.error({ err }, "Error fetching admin stats");

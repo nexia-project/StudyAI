@@ -59,6 +59,13 @@ type AdminStats = {
   notebookDocsTotal: number; notebookStorageMb: number; notebookOverviewsTotal: number;
   teacherContentTotal: number;
   contentBreakdown: { label: string; value: number; color: string }[];
+  aiCost: {
+    todayUsd: number; todayBrl: number;
+    monthUsd: number; monthBrl: number;
+    byFeature: { feature: string; calls: number; costUsd: number; costBrl: number; tokens: number }[];
+    byModel: { model: string; calls: number; costUsd: number; costBrl: number }[];
+    perDay: { day: string; costUsd: number; costBrl: number; calls: number }[];
+  };
 };
 
 type Section =
@@ -1064,50 +1071,110 @@ export default function AdminPage() {
           )}
 
           {/* ══ IA & CUSTOS ══ */}
-          {activeSection === "ia-custos" && (
+          {activeSection === "ia-custos" && (() => {
+            const ac = stats?.aiCost;
+            const fmtBrl = (v: number) => `R$ ${v.toFixed(4)}`;
+            const fmtBrlShort = (v: number) => v < 0.01 ? `R$ ${v.toFixed(4)}` : `R$ ${v.toFixed(2)}`;
+            const totalCalls = ac ? ac.byFeature.reduce((s, f) => s + f.calls, 0) : 0;
+            const totalTokens = ac ? ac.byFeature.reduce((s, f) => s + f.tokens, 0) : 0;
+            const noData = !ac || ac.byFeature.length === 0;
+            return (
             <div className="space-y-5">
-              <h2 className="text-lg font-black flex items-center gap-2"><Bot className="w-5 h-5 text-blue-400" /> IA & Custos</h2>
+              <h2 className="text-lg font-black flex items-center gap-2"><Bot className="w-5 h-5 text-blue-400" /> IA & Custos Reais</h2>
+
+              {/* KPI cards */}
+              <div className="grid grid-cols-4 gap-3">
+                {[
+                  { label: "Custo Hoje", val: fmtBrlShort(ac?.todayBrl ?? 0), sub: `US$ ${(ac?.todayUsd ?? 0).toFixed(4)}`, color: "text-blue-400" },
+                  { label: "Custo este Mês", val: fmtBrlShort(ac?.monthBrl ?? 0), sub: `US$ ${(ac?.monthUsd ?? 0).toFixed(4)}`, color: "text-violet-400" },
+                  { label: "Chamadas de IA", val: totalCalls.toLocaleString("pt-BR"), sub: "registradas", color: "text-amber-400" },
+                  { label: "Total de Tokens", val: totalTokens >= 1000 ? `${(totalTokens/1000).toFixed(1)}k` : String(totalTokens), sub: "in + out", color: "text-emerald-400" },
+                ].map(k => (
+                  <div key={k.label} className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-4">
+                    <p className="text-[10px] text-white/40 font-bold uppercase">{k.label}</p>
+                    <p className={`text-xl font-black mt-1 ${k.color}`}>{k.val}</p>
+                    <p className="text-[10px] text-white/30 mt-0.5">{k.sub}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Custo por dia */}
+              <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
+                <p className="text-sm font-bold text-white/70 mb-1">Custo diário — últimos 30 dias</p>
+                <p className="text-[10px] text-white/40 mb-3">Custo em R$ por dia de uso</p>
+                {(ac?.perDay?.length ?? 0) === 0 ? (
+                  <div className="h-[140px] flex items-center justify-center text-xs text-white/30">Sem dados ainda — os custos aparecerão aqui após as primeiras chamadas de IA</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={140}>
+                    <AreaChart data={ac!.perDay} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="gCostDay" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                      <XAxis dataKey="day" tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }} tickFormatter={v => v.slice(5)} />
+                      <YAxis tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }} tickFormatter={v => `R$${v.toFixed(2)}`} />
+                      <Tooltip contentStyle={{ background: "#1a1a2e", border: "none", borderRadius: 8, color: "#fff", fontSize: 11 }}
+                        formatter={(v: any) => [`R$ ${Number(v).toFixed(4)}`, "Custo"]} />
+                      <Area type="monotone" dataKey="costBrl" stroke="#3b82f6" fill="url(#gCostDay)" strokeWidth={2} dot={false} name="Custo" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
+                {/* Custo por feature */}
                 <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
-                  <p className="text-sm font-bold text-white/70 mb-1">Uso de IA por feature</p>
-                  <p className="text-[10px] text-white/40 mb-3">Últimos 7 dias · chamadas reais</p>
-                  {aiCostsChart.length === 0 ? (
-                    <div className="h-[180px] flex items-center justify-center text-xs text-white/30">Sem dados ainda</div>
+                  <p className="text-sm font-bold text-white/70 mb-3">Custo por Feature</p>
+                  {noData ? (
+                    <p className="text-xs text-white/30 py-4 text-center">Sem dados ainda</p>
                   ) : (
-                    <ResponsiveContainer width="100%" height={180}>
-                      <BarChart data={aiCostsChart} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                        <XAxis dataKey="model" tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }} />
-                        <YAxis tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }} />
-                        <Tooltip contentStyle={{ background: "#1a1a2e", border: "none", borderRadius: 8, color: "#fff", fontSize: 11 }}
-                          formatter={(v: any) => [v, "Chamadas"]} />
-                        <Bar dataKey="cost" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <div className="space-y-2.5">
+                      {ac!.byFeature.map(f => {
+                        const pct = ac!.monthBrl > 0 ? Math.round((f.costBrl / ac!.monthBrl) * 100) : 0;
+                        return (
+                          <div key={f.feature}>
+                            <div className="flex justify-between mb-1">
+                              <span className="text-xs text-white/60 truncate capitalize">{f.feature}</span>
+                              <span className="text-xs font-bold text-white/80 ml-2 shrink-0">{fmtBrl(f.costBrl)} · {f.calls} calls</span>
+                            </div>
+                            <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                              <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-violet-500" style={{ width: `${Math.max(pct, 2)}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
-                <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5 space-y-4">
-                  <p className="text-sm font-bold text-white/70">Distribuição de uso</p>
-                  {aiFeaturesList.length === 0 ? (
+
+                {/* Custo por modelo */}
+                <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
+                  <p className="text-sm font-bold text-white/70 mb-3">Custo por Modelo</p>
+                  {(ac?.byModel?.length ?? 0) === 0 ? (
                     <p className="text-xs text-white/30 py-4 text-center">Sem dados ainda</p>
-                  ) : aiFeaturesList.slice(0, 5).map((f: any) => {
-                    const pct = Math.round(((f.uses || 0) / totalAiUses) * 100);
-                    return (
-                      <div key={f.feature}>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-xs text-white/60 truncate">{f.feature}</span>
-                          <span className="text-xs font-bold text-white/80">{pct}%</span>
-                        </div>
-                        <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-violet-500" style={{ width: `${pct}%` }} />
-                        </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {ac!.byModel.map((m, i) => {
+                        const colors = ["text-blue-400", "text-violet-400", "text-amber-400", "text-emerald-400", "text-rose-400"];
+                        return (
+                          <div key={m.model} className="flex items-center justify-between py-2 border-b border-white/[0.05] last:border-0">
+                            <div>
+                              <span className={`text-xs font-bold ${colors[i % colors.length]}`}>{m.model}</span>
+                              <span className="text-[10px] text-white/30 ml-1.5">{m.calls} chamadas</span>
+                            </div>
+                            <span className="text-xs font-bold text-white/80">{fmtBrl(m.costBrl)}</span>
+                          </div>
+                        );
+                      })}
+                      <div className="pt-2 flex justify-between">
+                        <span className="text-xs text-white/40">Total acumulado</span>
+                        <span className="text-sm font-black text-white">{fmtBrlShort(ac?.monthBrl ?? 0)}</span>
                       </div>
-                    );
-                  })}
-                  <div className="border-t border-white/[0.07] pt-3">
-                    <p className="text-xs text-white/40">Total de chamadas de IA</p>
-                    <p className="text-xl font-black text-amber-400">{totalAiUses.toLocaleString("pt-BR")}</p>
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1133,7 +1200,8 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* ══ CONTEÚDOS ══ */}
           {activeSection === "conteudos" && (

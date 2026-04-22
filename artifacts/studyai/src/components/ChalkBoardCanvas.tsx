@@ -321,6 +321,11 @@ export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
     // syncFactor scales every drawing tick so the board finishes when narration finishes.
     // <1 = faster than base, >1 = slower. Recomputed when audio duration is known.
     const syncFactorRef = useRef<number>(1);
+    // Refs for volatile props so they don't invalidate stable callbacks (setup/animate)
+    const playingRef = useRef(playing);
+    playingRef.current = playing;
+    const speedMultiplierRef = useRef(speedMultiplier);
+    speedMultiplierRef.current = speedMultiplier;
 
     const stateRef = useRef({
       elIdx: 0,
@@ -427,7 +432,7 @@ export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
         if (lel.el.tipo === "separador") {
           redraw();
           st.phase = "pause";
-          st.pauseRemaining = s.pauseAfter / speedMultiplier;
+          st.pauseRemaining = s.pauseAfter / speedMultiplierRef.current;
           rafRef.current = requestAnimationFrame(animate);
           return;
         }
@@ -438,7 +443,7 @@ export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
         }
 
         st.msAccum += dt;
-        const msPerChar = Math.max(1, (s.msPerChar * syncFactorRef.current) / speedMultiplier);
+        const msPerChar = Math.max(1, (s.msPerChar * syncFactorRef.current) / speedMultiplierRef.current);
         const add = Math.floor(st.msAccum / msPerChar);
         if (add > 0) {
           st.msAccum -= add * msPerChar;
@@ -452,14 +457,14 @@ export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
 
         if (st.charIdx >= lel.chars.length) {
           st.phase = "pause";
-          st.pauseRemaining = s.pauseAfter / speedMultiplier;
+          st.pauseRemaining = s.pauseAfter / speedMultiplierRef.current;
         }
 
         redraw();
       }
 
       rafRef.current = requestAnimationFrame(animate);
-    }, [redraw, speedMultiplier]); // eslint-disable-line
+    }, [redraw]); // speedMultiplier read via ref — stable callback
 
     // ── Setup ───────────────────────────────────────────────────────────────
     const setup = useCallback(() => {
@@ -487,7 +492,7 @@ export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
       st.canvasH = h;
       st.elIdx = 0;
       st.charIdx = 0;
-      st.phase = playing ? "drawing" : "idle";
+      st.phase = playingRef.current ? "drawing" : "idle";
       st.pauseRemaining = 0;
       st.lastTime = 0;
       st.msAccum = 0;
@@ -498,10 +503,10 @@ export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
       cancelAnimationFrame(rafRef.current);
       redraw();
 
-      if (playing) {
+      if (playingRef.current) {
         rafRef.current = requestAnimationFrame(animate);
       }
-    }, [elementos, playing, animate, redraw]);
+    }, [elementos, animate, redraw]); // playing read via ref — avoids ResizeObserver reset on pause
 
     useImperativeHandle(ref, () => ({ restart: () => setup() }), [setup]);
 

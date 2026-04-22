@@ -2588,6 +2588,69 @@ function PlanoAulaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
     setOpenSections(p => ({ ...p, [k]: !p[k] }));
   }
 
+  function generateSlides() {
+    if (!plano) return;
+    const win = window.open("", "_blank");
+    if (!win) return;
+    const slides = [
+      { title: planTitle, subtitle: `${plano.disciplina} · ${plano.serie} · ${plano.duracao}`, type: "cover" as const },
+      { title: "Objetivos da Aula", bullets: plano.objetivos, type: "bullets" as const },
+      { title: "Conteúdos", bullets: plano.conteudos, type: "bullets" as const },
+      { title: `Abertura — ${plano.abertura.duracao}`, body: plano.abertura.descricao, sub: plano.abertura.atividade, type: "section" as const },
+      { title: `Desenvolvimento — ${plano.desenvolvimento.duracao}`, body: plano.desenvolvimento.descricao, bullets: plano.desenvolvimento.atividades, type: "dev" as const },
+      { title: `Fechamento — ${plano.fechamento.duracao}`, body: plano.fechamento.descricao, sub: plano.fechamento.avaliacao, type: "section" as const },
+      ...(plano.tarefa_casa ? [{ title: "Tarefa de Casa", body: plano.tarefa_casa, type: "section" as const }] : []),
+      { title: "Perguntas Norteadoras", bullets: plano.perguntas_norteadoras, type: "bullets" as const },
+      { title: "Materiais Necessários", bullets: plano.materiais, type: "bullets" as const },
+    ];
+
+    const colors = { primary: "#4f46e5", secondary: "#7c3aed", accent: "#f59e0b", bg: "#f8f7ff", text: "#1e1b4b", light: "#ede9fe" };
+
+    const slideHTML = (s: typeof slides[0], i: number) => {
+      if (s.type === "cover") {
+        return `<div class="slide cover-slide"><div class="slide-num">${i + 1}</div>
+          <h1>${s.title}</h1><p class="subtitle">${s.subtitle}</p>
+          <div class="badge">Plano de Aula · StudyAI</div></div>`;
+      }
+      const bulletsHTML = "bullets" in s && s.bullets?.length
+        ? `<ul>${s.bullets.map((b: string) => `<li>${b}</li>`).join("")}</ul>` : "";
+      const bodyHTML = "body" in s && s.body ? `<p class="body-text">${s.body}</p>` : "";
+      const subHTML = "sub" in s && s.sub ? `<div class="sub-box"><strong>📌</strong> ${s.sub}</div>` : "";
+      return `<div class="slide"><div class="slide-header"><div class="slide-num">${i + 1}</div><h2>${s.title}</h2></div>
+        <div class="slide-content">${bodyHTML}${bulletsHTML}${subHTML}</div></div>`;
+    };
+
+    win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+    <title>${planTitle} — Slides</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#1a1a2e;color:#fff;display:flex;flex-direction:column;align-items:center;gap:16px;padding:32px 16px;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+      .slide{width:960px;min-height:540px;background:#fff;border-radius:16px;padding:48px 56px;position:relative;box-shadow:0 8px 32px rgba(0,0,0,.4);page-break-after:always;display:flex;flex-direction:column;overflow:hidden}
+      .slide::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,${colors.primary},${colors.secondary})}
+      .cover-slide{background:linear-gradient(135deg,${colors.primary} 0%,${colors.secondary} 100%);justify-content:center;align-items:flex-start}
+      .cover-slide h1{font-size:2.8rem;font-weight:900;color:#fff;line-height:1.15;max-width:700px;margin-bottom:16px;margin-top:32px}
+      .cover-slide .subtitle{font-size:1.1rem;color:rgba(255,255,255,.75);font-weight:500}
+      .cover-slide .badge{position:absolute;bottom:32px;right:48px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:100px;padding:6px 16px;font-size:.75rem;color:rgba(255,255,255,.8);font-weight:600}
+      .slide-header{display:flex;align-items:flex-start;gap:16px;margin-bottom:32px}
+      .slide-header h2{font-size:1.75rem;font-weight:800;color:${colors.text};line-height:1.2}
+      .slide-num{background:linear-gradient(135deg,${colors.primary},${colors.secondary});color:#fff;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:900;flex-shrink:0}
+      .slide-content{flex:1;display:flex;flex-direction:column;gap:16px}
+      .body-text{font-size:1.05rem;color:#374151;line-height:1.7;background:${colors.light};padding:16px 20px;border-radius:12px;border-left:4px solid ${colors.primary}}
+      ul{list-style:none;display:flex;flex-direction:column;gap:12px}
+      li{display:flex;align-items:flex-start;gap:12px;font-size:1rem;color:#374151;line-height:1.5}
+      li::before{content:"";width:8px;height:8px;border-radius:50%;background:${colors.primary};flex-shrink:0;margin-top:7px}
+      .sub-box{background:#fef3c7;border:1px solid #fde68a;border-radius:12px;padding:14px 18px;font-size:.95rem;color:#92400e;line-height:1.5}
+      @media print{body{background:#fff;padding:0;gap:0}.slide{border-radius:0;box-shadow:none;width:100vw;min-height:100vh}}
+    </style></head><body>
+    ${slides.map((s, i) => slideHTML(s, i)).join("\n")}
+    <div style="text-align:center;color:rgba(255,255,255,.35);font-size:.8rem;padding:8px">
+      Gerado com StudyAI · ${new Date().toLocaleDateString("pt-BR")}
+    </div>
+    <script>document.addEventListener("keydown",e=>{if(e.key==="p"||e.ctrlKey&&e.key==="p"){window.print()}})</script>
+    </body></html>`);
+    win.document.close();
+  }
+
   function printPlan() {
     if (!plano) return;
     const win = window.open("", "_blank");
@@ -2755,6 +2818,10 @@ function PlanoAulaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
                     {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />} Salvar
                   </button>
                 )}
+                <button onClick={generateSlides}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-500/15 hover:bg-violet-500/25 border border-violet-500/20 text-violet-300 text-xs font-bold transition-all">
+                  <LayoutTemplate className="w-3 h-3" /> Slides
+                </button>
                 <button onClick={printPlan}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/20 text-blue-300 text-xs font-bold transition-all">
                   <FileQuestion className="w-3 h-3" /> Imprimir

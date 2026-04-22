@@ -78,6 +78,34 @@ Every new AI feature added to ANY surface MUST also be reflected in:
 ### Backend AI Metrics Endpoint
 `GET /api/admin/stats` now returns: `aiFeatures[]` (Tiagão, Trilha, Notebook, Mapa Mental, Redação, Flashcards), `trilhaBySubject`, `diagnosticsCompleted30d`, `notebookDocsTotal`, `notebookStorageMb`, `notebookOverviewsTotal`, `teacherContentTotal`, `contentBreakdown`, `institutionsTotal/Active`.
 
+### Admin Panel Fixes (April 2026)
+- **`AdminStats` TypeScript interface updated** — now fully typed with all 12+ fields the API returns (removed all `as any` casts)
+- **"Instituições" card corrected** — was showing `govCount`, now shows `institutionsTotal`
+- **"Logins por dia" chart corrected** — was using `newUsersPerDay` (registrations), now uses `loginsByDay` (real login events)
+- **Revenue chart de-faked** — removed artificial `+ i * 120` inflation; now shows real MRR = `premiumUsers × R$8,20`
+- **Performance chart uses real data** — `activityHeatmap` from `user_activity` table instead of fake math formulas
+
+### Student Activities Page (`/atividades`)
+- New page `AtividadesAluno.tsx` at route `/atividades` — students see activities assigned by their teachers
+- Stats cards: Total / Pendentes / Entregues
+- Filter tabs (Todas / Pendentes / Entregues)
+- Click any activity → modal opens with multiple-choice questions
+- Answers submitted to `POST /api/student/activities/:id/submit`; score shown after submission
+- Status badges: Pendente / Entregue / Atrasado (by dueDate)
+- Added to AppNav "Recursos" dropdown
+
+### PlanoAula — "Gerar Slides" button
+- New "Slides" button in PlanoAula result action bar (Professor panel)
+- Generates a full slide deck HTML with cover slide + one slide per section (Objetivos, Conteúdos, Abertura, Desenvolvimento, Fechamento, Tarefas, Perguntas Norteadoras, Materiais)
+- Opens in new browser window; supports Ctrl+P to print/export as PDF
+- No new API endpoint needed — pure client-side HTML generation
+
+### ChalkBoardCanvas Bug Fix
+- **Root cause found**: `setup` useCallback had `playing` in its dependency array → when user paused, `setup` ref changed → ResizeObserver re-created → fired → `setup()` reset canvas
+- **Fix**: Added `playingRef` and `speedMultiplierRef` — volatile props read via refs inside stable callbacks
+- `playing` removed from `setup` deps, `speedMultiplier` removed from `animate` deps
+- Canvas no longer resets when pausing or changing speed
+
 `GET /api/teacher/turmas/:id/insights` returns: per-student `trilha.{mat,port}.{level,sessions,accuracy}`, `diagnosticCompleted` flag, `ai.{tiagao,notebook,mapa}` usage counts, plus `summary.{avgLevelMat,avgLevelPort,diagnosticCompleted,weakTopics[],aiAdoption}`.
 
 ### Open TODOs (next round, by priority)

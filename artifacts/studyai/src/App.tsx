@@ -31,6 +31,7 @@ import AulaIAPage from "@/pages/AulaIA";
 import TrilhaPage from "@/pages/Trilha";
 import NotebookPage from "@/pages/Notebook";
 import BaseConhecimentoPage from "@/pages/BaseConhecimento";
+import AtividadesAlunoPage from "@/pages/AtividadesAluno";
 import NotFound from "@/pages/not-found";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WhatsAppBanner } from "@/components/WhatsAppBanner";
@@ -252,6 +253,7 @@ function Router() {
         <Route path="/trilha" component={TrilhaPage} />
         <Route path="/notebook" component={NotebookPage} />
         <Route path="/base-conhecimento" component={BaseConhecimentoPage} />
+        <Route path="/atividades" component={AtividadesAlunoPage} />
         {/* Clerk OAuth callback — handles Google/GitHub sign-in redirects */}
         <Route path="/v1/oauth_callback" component={OAuthCallbackPage} />
         {/* Aliases: navigation shortcuts */}

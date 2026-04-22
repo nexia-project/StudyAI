@@ -5,6 +5,7 @@ import {
   Home, Map, PenLine, BarChart2, Trophy, Medal, History, Brain,
   Target, Clock, ChevronDown, Menu, X, GraduationCap,
   BookOpen, Flame, Zap, Users, Globe, Calendar, NotebookPen, TrendingUp, Layers,
+  ClipboardList,
 } from "lucide-react";
 import { UserMenu } from "@/components/UserMenu";
 import { cn } from "@/lib/utils";
@@ -46,6 +47,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     label: "Recursos",
     items: [
       { icon: Brain, label: "Mapa Mental", path: "/mapa-mental", color: "text-purple-600" },
+      { icon: ClipboardList, label: "Atividades", path: "/atividades", color: "text-violet-600" },
     ],
   },
 ];

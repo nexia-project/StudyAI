@@ -1522,16 +1522,59 @@ function AssistenteSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
 function RelatoriosSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) => Promise<Response> }) {
   const [data, setData] = useState<DashData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exportingCsv, setExportingCsv] = useState(false);
 
   useEffect(() => {
     apiFetch("/api/teacher/dashboard").then(r => r.json()).then(setData).finally(() => setLoading(false));
   }, []);
+
+  async function exportCsv() {
+    setExportingCsv(true);
+    try {
+      const res = await apiFetch("/api/teacher/report");
+      const json = await res.json();
+      const rows: any[] = json.rows ?? [];
+      if (!rows.length) { alert("Nenhum dado para exportar."); return; }
+      const headers = ["Turma", "Aluno", "Email", "XP", "Média Simulados (%)", "Uso Tiagão", "Atividades Entregues"];
+      const keys = ["turma", "aluno", "email", "xp", "media_simulados", "uso_tiagao", "atividades_entregues"];
+      const csv = [
+        headers.join(";"),
+        ...rows.map(r => keys.map(k => `"${String(r[k] ?? "").replace(/"/g, '""')}"`).join(";")),
+      ].join("\n");
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `relatorio-studyai-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click(); URL.revokeObjectURL(url);
+    } finally { setExportingCsv(false); }
+  }
+
+  function exportPdf() {
+    window.print();
+  }
 
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-indigo-400 animate-spin" /></div>;
   if (!data) return <div className="text-white/40 text-center py-20">Erro ao carregar relatórios.</div>;
 
   return (
     <div className="space-y-5">
+      {/* Export buttons */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-white font-black text-base">Relatório Geral</h2>
+        <div className="flex gap-2">
+          <button onClick={exportCsv} disabled={exportingCsv}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold transition-colors disabled:opacity-50">
+            {exportingCsv ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Exportar CSV
+          </button>
+          <button onClick={exportPdf}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 text-xs font-bold transition-colors">
+            <FileText className="w-4 h-4" />
+            Imprimir / PDF
+          </button>
+        </div>
+      </div>
+
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: "Total de Alunos", value: data.totalStudents, icon: Users },
@@ -1590,6 +1633,11 @@ function RelatoriosSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
           </div>
         </div>
       )}
+
+      {/* Footer note */}
+      <p className="text-white/25 text-[11px] text-center">
+        💡 Para relatório detalhado por turma, acesse a turma e use a aba <strong className="text-white/40">Desempenho</strong>
+      </p>
     </div>
   );
 }

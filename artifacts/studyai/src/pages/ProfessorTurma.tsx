@@ -168,9 +168,14 @@ export default function ProfessorTurmaPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [ranking, setRanking] = useState<RankEntry[]>([]);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "alunos" | "ia" | "tarefas" | "ranking" | "cadernos">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "alunos" | "ia" | "desempenho" | "tarefas" | "ranking" | "cadernos">("dashboard");
   const [insights, setInsights] = useState<any>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
+  const [perfData, setPerfData] = useState<any>(null);
+  const [perfLoading, setPerfLoading] = useState(false);
+  const [aiAction, setAiAction] = useState<{ type: string; studentId: string; studentName: string } | null>(null);
+  const [aiActionResult, setAiActionResult] = useState<string | null>(null);
+  const [aiActionLoading, setAiActionLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [copiedCode, setCopiedCode] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
@@ -319,6 +324,7 @@ export default function ProfessorTurmaPage() {
   const tabs = [
     { id: "dashboard" as const, label: "Dashboard", icon: BarChart2 },
     { id: "alunos" as const, label: "Alunos", icon: Users, count: students.length },
+    { id: "desempenho" as const, label: "Desempenho", icon: TrendingUp },
     { id: "ia" as const, label: "Inteligência IA", icon: Sparkles },
     { id: "tarefas" as const, label: "Tarefas", icon: BookOpen, count: tasks.length },
     { id: "cadernos" as const, label: "Cadernos", icon: BookMarked },
@@ -335,6 +341,33 @@ export default function ProfessorTurmaPage() {
       .catch(() => setInsights({ students: [], summary: { totalStudents: 0 } }))
       .finally(() => setInsightsLoading(false));
   }, [activeTab, insights, insightsLoading, turmaId]);
+
+  // Lazy-load performance when switching to the Desempenho tab
+  useEffect(() => {
+    if (activeTab !== "desempenho" || perfData || perfLoading || !turmaId) return;
+    setPerfLoading(true);
+    fetch(`/api/teacher/turmas/${turmaId}/performance`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setPerfData(d))
+      .catch(() => setPerfData({ activities: [], distribution: [], studentStats: [] }))
+      .finally(() => setPerfLoading(false));
+  }, [activeTab, perfData, perfLoading, turmaId]);
+
+  async function triggerAiAction(type: string, student: { id: string; name: string }) {
+    setAiAction({ type, studentId: student.id, studentName: student.name });
+    setAiActionResult(null);
+    setAiActionLoading(true);
+    try {
+      const res = await fetch(`/api/teacher/turmas/${turmaId}/risk-action`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, studentId: student.id, studentName: student.name }),
+      });
+      const data = await res.json();
+      setAiActionResult(data.result ?? "Sem resposta da IA.");
+    } catch { setAiActionResult("Erro ao gerar ação. Tente novamente."); }
+    finally { setAiActionLoading(false); }
+  }
 
   const atRiskStudents = students.filter(s => s.status === "risco");
 
@@ -827,6 +860,248 @@ export default function ProfessorTurmaPage() {
                   <p className="text-[11px] text-slate-400 text-center">
                     💡 Dica: clique na aba <strong>Tarefas</strong> e atribua um simulado focado nos pontos fracos.
                   </p>
+                </>
+              )}
+            </motion.div>
+          )}
+
+          {/* ══════════════════════════════════════════
+              TAB: DESEMPENHO (FASE 3)
+          ══════════════════════════════════════════ */}
+          {activeTab === "desempenho" && (
+            <motion.div key="desempenho" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+
+              {/* AI Action Modal */}
+              <AnimatePresence>
+                {aiAction && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                    onClick={() => { setAiAction(null); setAiActionResult(null); }}>
+                    <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9 }}
+                      className="bg-white rounded-3xl shadow-2xl p-6 max-w-lg w-full"
+                      onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center">
+                          <Sparkles className="w-5 h-5 text-indigo-600" />
+                        </div>
+                        <div>
+                          <p className="font-black text-slate-800">
+                            {aiAction.type === "mensagem" && "Mensagem de Incentivo"}
+                            {aiAction.type === "reforco" && "Atividade de Reforço"}
+                            {aiAction.type === "revisao" && "Aula de Revisão"}
+                          </p>
+                          <p className="text-xs text-slate-500">para {aiAction.studentName}</p>
+                        </div>
+                      </div>
+                      {aiActionLoading ? (
+                        <div className="flex items-center justify-center py-8 gap-2 text-indigo-600">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <span className="text-sm font-semibold">Gerando com IA…</span>
+                        </div>
+                      ) : aiActionResult ? (
+                        <div className="bg-slate-50 rounded-2xl p-4 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap mb-4">
+                          {aiActionResult}
+                        </div>
+                      ) : null}
+                      <div className="flex gap-2 mt-2">
+                        {aiActionResult && (
+                          <button onClick={() => { navigator.clipboard.writeText(aiActionResult!); }}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-50 text-indigo-700 text-sm font-bold hover:bg-indigo-100 transition-colors">
+                            <Copy className="w-4 h-4" /> Copiar
+                          </button>
+                        )}
+                        <button onClick={() => { setAiAction(null); setAiActionResult(null); }}
+                          className="ml-auto px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-sm font-bold hover:bg-slate-200 transition-colors">
+                          Fechar
+                        </button>
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {perfLoading ? (
+                <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-indigo-400 animate-spin" /></div>
+              ) : !perfData ? (
+                <div className="text-center py-20 text-slate-400 text-sm">Erro ao carregar dados de desempenho</div>
+              ) : (
+                <>
+                  {/* KPI summary */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="bg-gradient-to-br from-indigo-500 to-violet-600 text-white rounded-2xl p-4 shadow-lg">
+                      <Target className="w-5 h-5 opacity-70 mb-1" />
+                      <p className="text-2xl font-black">
+                        {perfData.avgScoreOverall != null ? `${perfData.avgScoreOverall}%` : "—"}
+                      </p>
+                      <p className="text-[11px] uppercase tracking-wide opacity-80 font-bold">Média geral turma</p>
+                    </div>
+                    <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
+                      <BookOpen className="w-5 h-5 text-indigo-400 mb-1" />
+                      <p className="text-2xl font-black text-slate-800">{perfData.totalActivities}</p>
+                      <p className="text-[11px] text-slate-400">Atividades criadas</p>
+                    </div>
+                    <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
+                      <AlertTriangle className="w-5 h-5 text-red-400 mb-1" />
+                      <p className="text-2xl font-black text-slate-800">
+                        {(perfData.studentStats ?? []).filter((s: any) => s.riskLevel === "alto" || s.riskLevel === "critico").length}
+                      </p>
+                      <p className="text-[11px] text-slate-400">Alunos em risco</p>
+                    </div>
+                    <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-400 mb-1" />
+                      <p className="text-2xl font-black text-slate-800">
+                        {(perfData.studentStats ?? []).filter((s: any) => s.riskLevel === "ok").length}
+                      </p>
+                      <p className="text-[11px] text-slate-400">Alunos OK</p>
+                    </div>
+                  </div>
+
+                  {/* Chart: Activity scores over time */}
+                  {(perfData.activities ?? []).length > 0 && (
+                    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+                      <h3 className="font-black text-slate-800 text-sm mb-4 flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-indigo-500" />
+                        Média da Turma por Avaliação
+                      </h3>
+                      <ResponsiveContainer width="100%" height={220}>
+                        <AreaChart
+                          data={[...(perfData.activities as any[])].reverse().map((a: any) => ({
+                            name: a.title.length > 20 ? a.title.slice(0, 18) + "…" : a.title,
+                            media: a.avg_score != null ? Number(a.avg_score) : null,
+                            entregas: a.submission_count,
+                          }))}
+                          margin={{ top: 5, right: 10, left: -20, bottom: 40 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
+                          <XAxis dataKey="name" tick={{ fill: "#94a3b8", fontSize: 10 }}
+                            angle={-30} textAnchor="end" interval={0} />
+                          <YAxis domain={[0, 100]} tick={{ fill: "#94a3b8", fontSize: 10 }} />
+                          <Tooltip
+                            contentStyle={{ borderRadius: "12px", border: "1px solid #e2e8f0", fontSize: "12px" }}
+                            formatter={(v: any, n: string) => [n === "media" ? `${v}%` : v, n === "media" ? "Média" : "Entregas"]}
+                          />
+                          <Area type="monotone" dataKey="media" stroke="#6366f1" fill="#6366f133" strokeWidth={2} dot={{ r: 4, fill: "#6366f1" }} name="media" connectNulls />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* Chart: Grade distribution of most recent activity */}
+                  {(perfData.distribution ?? []).length > 0 && (
+                    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+                      <h3 className="font-black text-slate-800 text-sm mb-4 flex items-center gap-2">
+                        <BarChart2 className="w-4 h-4 text-violet-500" />
+                        Distribuição de Notas — Última Avaliação
+                      </h3>
+                      <ResponsiveContainer width="100%" height={180}>
+                        <BarChart data={perfData.distribution} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
+                          <XAxis dataKey="faixa" tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                          <YAxis allowDecimals={false} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                          <Tooltip contentStyle={{ borderRadius: "12px", border: "1px solid #e2e8f0", fontSize: "12px" }} />
+                          <Bar dataKey="count" name="Alunos" radius={[6, 6, 0, 0]}>
+                            {(perfData.distribution as any[]).map((d: any, i: number) => (
+                              <Cell key={i} fill={
+                                d.faixa === "90-100" ? "#10b981" :
+                                d.faixa === "70-89" ? "#6366f1" :
+                                d.faixa === "50-69" ? "#f59e0b" : "#ef4444"
+                              } />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* Student risk table */}
+                  {(perfData.studentStats ?? []).length > 0 && (
+                    <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+                      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                        <h3 className="font-black text-slate-800 text-sm flex items-center gap-2">
+                          <Users className="w-4 h-4 text-slate-500" />
+                          Indicadores por Aluno
+                        </h3>
+                        <span className="text-[11px] text-slate-400">{(perfData.studentStats as any[]).length} alunos</span>
+                      </div>
+                      <div className="divide-y divide-slate-50">
+                        {(perfData.studentStats as any[])
+                          .sort((a: any, b: any) => {
+                            const order = { critico: 0, alto: 1, medio: 2, ok: 3 };
+                            return (order[a.riskLevel as keyof typeof order] ?? 4) - (order[b.riskLevel as keyof typeof order] ?? 4);
+                          })
+                          .map((s: any) => (
+                          <div key={s.id} className="px-5 py-3.5 flex items-center gap-3 hover:bg-slate-50 transition-colors">
+                            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-black text-xs flex-shrink-0">
+                              {s.name.split(" ").map((p: string) => p[0]).slice(0, 2).join("")}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-slate-800 text-sm truncate">{s.name}</p>
+                              <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                                <span className="text-[11px] text-slate-400">
+                                  Nota média: <span className="font-bold text-slate-700">
+                                    {s.avgScore != null ? `${s.avgScore}%` : "—"}
+                                  </span>
+                                </span>
+                                <span className="text-[11px] text-slate-400">
+                                  Entregas: <span className="font-bold text-slate-700">{s.submissions}</span>
+                                </span>
+                                <span className="text-[11px] text-slate-400">
+                                  Uso IA: <span className={cn("font-bold",
+                                    s.platformUsage === 0 ? "text-red-500" :
+                                    s.platformUsage < 5 ? "text-amber-600" : "text-emerald-600")}>
+                                    {s.platformUsage === 0 ? "Baixo" : s.platformUsage < 5 ? "Médio" : "Alto"}
+                                  </span>
+                                </span>
+                              </div>
+                            </div>
+                            {/* Risk badge */}
+                            <div className={cn("px-2.5 py-1 rounded-full text-[11px] font-black flex-shrink-0",
+                              s.riskLevel === "ok" ? "bg-emerald-50 text-emerald-700" :
+                              s.riskLevel === "medio" ? "bg-amber-50 text-amber-700" :
+                              s.riskLevel === "alto" ? "bg-orange-50 text-orange-700" :
+                              "bg-red-50 text-red-700")}>
+                              {s.riskLevel === "ok" ? "✓ OK" :
+                               s.riskLevel === "medio" ? "Atenção" :
+                               s.riskLevel === "alto" ? "Em Risco" : "Crítico"}
+                            </div>
+                            {/* IA Action buttons */}
+                            {(s.riskLevel === "alto" || s.riskLevel === "critico") && (
+                              <div className="flex gap-1 flex-shrink-0">
+                                <button onClick={() => triggerAiAction("mensagem", s)}
+                                  title="Mensagem de incentivo"
+                                  className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors">
+                                  <Mail className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => triggerAiAction("reforco", s)}
+                                  title="Atividade de reforço"
+                                  className="p-1.5 rounded-lg bg-violet-50 text-violet-600 hover:bg-violet-100 transition-colors">
+                                  <BookOpen className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => triggerAiAction("revisao", s)}
+                                  title="Aula de revisão"
+                                  className="p-1.5 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors">
+                                  <Calendar className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* No activities placeholder */}
+                  {(perfData.activities ?? []).length === 0 && (
+                    <div className="text-center py-16 text-slate-400">
+                      <BarChart2 className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                      <p className="font-semibold text-sm">Nenhuma atividade aplicada ainda</p>
+                      <p className="text-xs mt-1">Crie e aplique atividades para ver o desempenho da turma aqui</p>
+                      <button onClick={() => setActiveTab("tarefas")}
+                        className="mt-4 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-colors">
+                        Criar Atividade
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
             </motion.div>

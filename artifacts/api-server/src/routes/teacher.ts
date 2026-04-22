@@ -1542,4 +1542,185 @@ Retorne APENAS JSON com esta estrutura:
   }
 });
 
+// ─── Turma Performance (FASE 3) ──────────────────────────────────────────────
+router.get("/teacher/turmas/:id/performance", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
+  const { id: turmaId } = req.params;
+
+  try {
+    // 1. Activities for this turma (teacher-owned)
+    const acts = await db.execute(sql`
+      SELECT a.id, a.title, a.type, a.created_at, a.due_date,
+        COUNT(s.id)::int AS submission_count,
+        ROUND(AVG(CASE WHEN s.teacher_score IS NOT NULL THEN s.teacher_score
+                       WHEN s.total > 0 THEN s.score::numeric / s.total * 100
+                       ELSE NULL END), 1) AS avg_score,
+        COUNT(CASE WHEN s.correction_status = 'corrigido' THEN 1 END)::int AS corrected_count
+      FROM activities a
+      LEFT JOIN activity_submissions s ON s.activity_id = a.id
+      WHERE a.teacher_id = ${req.userId} AND (a.turma_id = ${turmaId} OR a.turma_id IS NULL)
+      GROUP BY a.id
+      ORDER BY a.created_at DESC
+      LIMIT 20
+    `);
+
+    // 2. Score distribution for most recent activity
+    const recentAct = (acts.rows as any[])[0];
+    let distribution: any[] = [];
+    if (recentAct) {
+      const dist = await db.execute(sql`
+        SELECT
+          CASE WHEN teacher_score IS NOT NULL THEN
+            CASE WHEN teacher_score >= 90 THEN '90-100'
+                 WHEN teacher_score >= 70 THEN '70-89'
+                 WHEN teacher_score >= 50 THEN '50-69'
+                 ELSE '0-49' END
+          WHEN total > 0 THEN
+            CASE WHEN score::numeric/total*100 >= 90 THEN '90-100'
+                 WHEN score::numeric/total*100 >= 70 THEN '70-89'
+                 WHEN score::numeric/total*100 >= 50 THEN '50-69'
+                 ELSE '0-49' END
+          ELSE 'N/A' END AS faixa,
+          COUNT(*)::int AS count
+        FROM activity_submissions
+        WHERE activity_id = ${recentAct.id}
+        GROUP BY 1 ORDER BY 1
+      `);
+      distribution = dist.rows as any[];
+    }
+
+    // 3. Per-student performance across activities
+    const memberships = await db.execute(sql`
+      SELECT tm.student_id, COALESCE(u.student_name, u.first_name, u.email, 'Aluno') AS name,
+        COUNT(s.id)::int AS submissions,
+        ROUND(AVG(CASE WHEN s.teacher_score IS NOT NULL THEN s.teacher_score
+                       WHEN s.total > 0 THEN s.score::numeric/s.total*100
+                       ELSE NULL END), 1) AS avg_score,
+        COUNT(CASE WHEN s.activity_id IS NULL THEN 1 END)::int AS missed,
+        MAX(s.submitted_at) AS last_submission
+      FROM turma_memberships tm
+      LEFT JOIN users u ON u.id = tm.student_id
+      LEFT JOIN activity_submissions s ON s.student_id = tm.student_id
+      WHERE tm.turma_id = ${turmaId}
+      GROUP BY tm.student_id, u.student_name, u.first_name, u.email
+    `);
+
+    // 4. Study.IA usage for this turma's students
+    const studentIds = (memberships.rows as any[]).map(m => m.student_id);
+    let usageMap: Record<string, number> = {};
+    if (studentIds.length > 0) {
+      const idList = sql.join(studentIds.map(s => sql`${s}`), sql`, `);
+      const usage = await db.execute(sql`
+        SELECT user_id, COUNT(*)::int AS cnt FROM tiagao_conversations
+        WHERE user_id IN (${idList}) GROUP BY user_id
+      `);
+      (usage.rows as any[]).forEach((r: any) => { usageMap[r.user_id] = r.cnt; });
+    }
+
+    const studentStats = (memberships.rows as any[]).map((m: any) => ({
+      id: m.student_id,
+      name: m.name,
+      submissions: m.submissions || 0,
+      avgScore: m.avg_score ? Number(m.avg_score) : null,
+      platformUsage: usageMap[m.student_id] ?? 0,
+      riskLevel: !m.avg_score ? "critico" : m.avg_score < 50 ? "alto" : m.avg_score < 70 ? "medio" : "ok",
+    }));
+
+    res.json({
+      activities: acts.rows,
+      distribution,
+      studentStats,
+      totalActivities: (acts.rows as any[]).length,
+      avgScoreOverall: (acts.rows as any[]).filter((a: any) => a.avg_score != null).length
+        ? Math.round((acts.rows as any[]).filter((a: any) => a.avg_score != null)
+            .reduce((acc: number, a: any) => acc + Number(a.avg_score), 0)
+          / (acts.rows as any[]).filter((a: any) => a.avg_score != null).length)
+        : null,
+    });
+  } catch (err: any) {
+    console.error("performance error:", err);
+    res.status(500).json({ error: "Erro ao carregar desempenho" });
+  }
+});
+
+// ─── Risk Action AI (FASE 3) ─────────────────────────────────────────────────
+router.post("/teacher/turmas/:id/risk-action", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
+  const { type, studentName, studentId } = req.body;
+  if (!type || !studentName) { res.status(400).json({ error: "Parâmetros inválidos" }); return; }
+
+  try {
+    // Get student stats for context
+    let context = "";
+    if (studentId) {
+      const stats = await db.execute(sql`
+        SELECT
+          ROUND(AVG(CASE WHEN sr.total > 0 THEN sr.score::numeric/sr.total*100 END), 1) AS avg_score,
+          COALESCE((SELECT COUNT(*) FROM tiagao_conversations tc WHERE tc.user_id = ${studentId}), 0) AS ai_usage,
+          COALESCE((SELECT COUNT(*) FROM activity_submissions asub WHERE asub.student_id = ${studentId}), 0) AS submissions
+        FROM simulado_results sr WHERE sr.user_id = ${studentId}
+      `);
+      const s = (stats.rows[0] as any) ?? {};
+      context = `Dados do aluno: nota média ${s.avg_score ?? "não disponível"}%, ${s.submissions ?? 0} atividades entregues, usou a IA ${s.ai_usage ?? 0} vezes.`;
+    }
+
+    const prompts: Record<string, string> = {
+      mensagem: `Você é um assistente pedagógico. Escreva uma mensagem de incentivo curta e calorosa (máx 5 frases) para o aluno ${studentName}, que está com dificuldades. ${context} A mensagem deve ser motivadora, empática, em português do Brasil. Tom: encorajador e positivo. Não mencione notas diretamente, foque no potencial.`,
+      reforco: `Você é um assistente pedagógico. Proponha uma atividade de reforço personalizada para o aluno ${studentName}. ${context} Descreva: objetivo da atividade, tipo de exercício recomendado (ex: resolução de questões, resumo, mapa mental), tempo estimado, e dica de estudo. Máximo 8 frases, em português do Brasil.`,
+      revisao: `Você é um assistente pedagógico. Esboce um roteiro de aula de revisão para ajudar o aluno ${studentName}. ${context} Inclua: tema central, atividades da aula (warm-up, conteúdo principal, prática), duração sugerida e estratégias para engajar um aluno com dificuldades. Máximo 10 frases, em português do Brasil.`,
+    };
+
+    const prompt = prompts[type];
+    if (!prompt) { res.status(400).json({ error: "Tipo inválido" }); return; }
+
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 400,
+      temperature: 0.75,
+    });
+
+    res.json({ result: completion.choices[0]?.message?.content ?? "Sem resposta." });
+  } catch (err: any) {
+    console.error("risk-action error:", err);
+    res.status(500).json({ error: "Erro ao gerar ação de risco" });
+  }
+});
+
+// ─── Report export (FASE 3) ──────────────────────────────────────────────────
+router.get("/teacher/report", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ error: "Não autenticado" }); return; }
+  if (!(await isTeacherOrAdmin(req.userId!))) { res.status(403).json({ error: "Acesso negado" }); return; }
+
+  try {
+    const rows = await db.execute(sql`
+      SELECT
+        t.name AS turma,
+        COALESCE(u.student_name, u.first_name, u.email, 'Aluno') AS aluno,
+        u.email,
+        COALESCE(up.xp, 0) AS xp,
+        ROUND(COALESCE(
+          (SELECT AVG(CASE WHEN total > 0 THEN score::numeric/total*100 END)
+           FROM simulado_results sr WHERE sr.user_id = u.id), 0
+        ), 1) AS media_simulados,
+        COALESCE((SELECT COUNT(*) FROM tiagao_conversations tc WHERE tc.user_id = u.id), 0) AS uso_tiagao,
+        COALESCE((SELECT COUNT(*) FROM activity_submissions asub WHERE asub.student_id = u.id), 0) AS atividades_entregues
+      FROM turma_memberships tm
+      JOIN turmas t ON t.id = tm.turma_id
+      JOIN users u ON u.id = tm.student_id
+      LEFT JOIN user_progress up ON up.user_id = u.id
+      WHERE t.teacher_id = ${req.userId}
+      ORDER BY t.name, aluno
+    `);
+
+    res.json({ rows: rows.rows });
+  } catch (err: any) {
+    console.error("report error:", err);
+    res.status(500).json({ error: "Erro ao gerar relatório" });
+  }
+});
+
 export default router;

@@ -1,0 +1,294 @@
+Você está trabalhando em um projeto EXISTENTE chamado Study.IA.
+
+O sistema já possui:
+- Módulo Estudante com Plano de Estudos, Simulado, Redação, etc.
+- Módulo Professor, Módulo Instituição, Módulo Governo, Painel Admin.
+- Notebook (RAG) como uma área experimental de cadernos com IA.
+- Design system próprio, componentes reutilizáveis, paleta de cores definida.
+
+NÃO QUEBRE NADA QUE JÁ FUNCIONA.  
+Use exatamente a mesma stack, padrões de código, componentes e estilos visuais existentes.
+
+Sua missão agora é:
+1. PROFISSIONALIZAR o MÓDULO PROFESSOR.
+2. INTEGRAR o professor de forma profunda com o NOTEBOOK (RAG).
+3. Focar nas funções que professores realmente usam e valorizam.
+
+========================================
+1. PRINCÍPIOS DO MÓDULO PROFESSOR
+========================================
+
+O Módulo Professor deve:
+
+- Ajudar o professor a PLANEJAR, APLICAR e AVALIAR.
+- Economizar tempo em tarefas repetitivas (criar prova, plano de aula, corrigir).
+- Dar uma visão clara da turma e dos alunos (quem está bem, quem está em risco).
+- Usar o Notebook (RAG) como “motor de conteúdo” quando fizer sentido.
+
+Sempre com:
+- Linguagem clara e profissional.
+- Interface simples, sem poluição visual.
+- Poucos cliques para fazer o que é mais importante.
+
+========================================
+2. DASHBOARD DO PROFESSOR (HOME)
+========================================
+
+Aperfeiçoar/implementar uma página inicial para o professor com:
+
+### 2.1 Bloco "Minhas Turmas"
+- Cards para cada turma:
+  - Nome da turma
+  - Série / ano / disciplina
+  - Nº de alunos
+  - Indicador de engajamento (baixo / médio / alto)
+  - Próxima aula ou próxima atividade agendada
+  - Botões rápidos: "Ver Turma" | "Criar Atividade"
+
+### 2.2 Bloco "Atividades Recentes"
+- Lista de atividades/provas criadas recentemente:
+  - Nome, turma, data, status (em andamento / aguardando correção / concluída)
+  - Acesso rápido para corrigir ou ver resultados.
+
+### 2.3 Bloco "Alertas"
+- Alunos em risco (baixa nota, baixa participação, pouco uso do Study.IA).
+- Atividades com baixa taxa de entrega.
+- Mensagens importantes vindas da coordenação (se já existir esse fluxo).
+
+### 2.4 Bloco "Atalhos com IA"
+- Botões grandes:
+  - "Criar Plano de Aula com IA"
+  - "Criar Prova/Quiz com IA"
+  - "Gerar Atividade de Fixação"
+  - "Corrigir Redações com IA"
+
+Usar os mesmos componentes de card, grid, ícones e cores já usados no restante do app.
+
+========================================
+3. INTEGRAÇÃO PROFESSOR + NOTEBOOK (RAG)
+========================================
+
+Objetivo: o professor usa o Notebook (RAG) como base de conteúdo para planejar e avaliar.
+
+### 3.1 Cadernos por Turma
+- Na página da TURMA, criar uma aba ou seção "Cadernos da Turma".
+- O professor pode:
+  - Criar um caderno RAG vinculado à turma.
+  - Escolher se o caderno é:
+    - Somente do professor (privado)
+    - Compartilhado com a turma (alunos podem consultar)
+  - Ver lista de cadernos: título, nº de fontes, última atualização.
+
+### 3.2 Usar o Notebook para preparar aula
+No fluxo "Criar Plano de Aula com IA":
+
+- Passo 1: professor escolhe:
+  - Turma
+  - Caderno RAG (opcional, mas recomendado)
+  - Série / ano
+  - Duração da aula (ex: 50 min)
+  - Objetivo da aula (texto livre)
+
+- Passo 2: se um caderno RAG for selecionado:
+  - A IA gera o plano de aula USANDO EXCLUSIVAMENTE as fontes desse caderno como base.
+  - Exibe ao professor um plano com:
+    - Objetivos de aprendizagem
+    - Conteúdos principais
+    - Sequência didática (início, meio, fim)
+    - Atividades em sala e tarefa de casa
+    - Perguntas norteadoras
+    - Sugestões de recursos (vídeos, imagens, exemplos) retirados das fontes do caderno.
+
+- O professor pode:
+  - Editar seções do plano
+  - Salvar e vincular a uma data específica da turma
+  - Exportar em PDF.
+
+### 3.3 Usar o Notebook para criar Provas/Quizzes
+No fluxo "Criar Prova/Quiz com IA":
+
+- Passo 1:
+  - Selecionar Turma
+  - Selecionar Caderno RAG base (ou vários)
+  - Definir:
+    - Tipo de prova (diagnóstica, formativa, somativa, simulado)
+    - Quantidade de questões
+    - Tipos de questão (múltipla escolha, VF, discursiva)
+
+- Passo 2:
+  - A IA gera questões APENAS com base nas fontes dos cadernos selecionados.
+  - Cada questão vem com:
+    - Enunciado
+    - Alternativas (quando for o caso)
+    - Gabarito
+    - Dificuldade sugerida
+    - Explicação da resposta
+    - Referência à fonte (citação simples)
+
+- O professor pode:
+  - Editar/Excluir qualquer questão
+  - Salvar no Banco de Questões
+  - Aplicar online para a turma via Study.IA
+  - Exportar prova em PDF/Word.
+
+========================================
+4. PLANEJAMENTO DE AULA COM IA (DETALHADO)
+========================================
+
+No módulo Professor, criar um “Assistente de Planos de Aula”:
+
+Fluxo de criação:
+
+1) Formulário simples:
+   - Disciplina
+   - Série/Ano
+   - Número da aula (ou tema)
+   - Duração
+   - Objetivo geral da aula
+   - Objetivos específicos (opcional)
+   - Se quiser, escolher um Caderno RAG como base.
+
+2) IA devolve um plano profissional com seções:
+   - Objetivos
+   - Conteúdos
+   - Desenvolvimento da aula:
+     - Abertura (quebra-gelo, ativação de conhecimento prévio)
+     - Desenvolvimento (explicação, atividades)
+     - Fechamento (síntese, avaliação rápida)
+   - Atividade de casa (opcional)
+   - Materiais necessários
+   - Observações (possíveis dificuldades e sugestões de adaptação)
+
+3) Ações:
+   - Botão "Ajustar nível" (turma com dificuldade / turma avançada).
+   - Botão "Simplificar linguagem".
+   - Botão "Gerar versão para slide" (resumo em bullets, pronto pra virar apresentação).
+
+4) Armazenamento:
+   - Cada plano fica salvo ligado à Turma + Data + Disciplina.
+   - Professor pode duplicar/adaptar para outra turma.
+
+========================================
+5. CRIAÇÃO DE ATIVIDADES, PROVAS E QUIZZES
+========================================
+
+### 5.1 Banco de Questões (Professor)
+- Área específica onde o professor vê TODAS as questões criadas:
+  - Colunas: Enunciado (resumo), Disciplina, Série, Tema, Tipo, Dificuldade, Origem (manual/IA).
+  - Filtro por: disciplina, série, tema, nível.
+- A IA pode:
+  - Gerar novas questões a partir de um texto fornecido ou de um Caderno RAG.
+  - Sugerir variações de uma questão já existente.
+
+### 5.2 Criar Prova/Quiz
+- Formulário:
+  - Turma
+  - Título da prova/quiz
+  - Tipo (prova, simulado, atividade valendo ponto, atividade de prática)
+  - Fonte de conteúdo:
+    - Manual (professor digita texto ou cola conteúdo)
+    - A partir de um Caderno RAG
+    - A partir de um Plano de Aula já salvo
+  - Quantidade de questões / tipos.
+
+- IA gera:
+  - Questões com gabarito
+  - Feedback explicativo (para o aluno) opcional
+  - Indica dificuldade (fácil/médio/difícil).
+
+- Ações:
+  - Reordenar questões por drag-and-drop.
+  - Marcar quais questões entram na versão A e B.
+  - Salvar no banco e/ou aplicar para a turma.
+
+========================================
+6. CORREÇÃO ASSISTIDA POR IA (REDAÇÃO E DISCURSIVA)
+========================================
+
+Para qualquer atividade com texto aberto:
+
+- Tela de correção:
+  - Lista de alunos com status (pendente / corrigido).
+  - Ao clicar no aluno:
+    - Mostrar resposta integral.
+    - Mostrar painel da IA com:
+      - Sugestão de nota por critério (conteúdo, argumentação, gramática, estrutura).
+      - Feedback pronto PARA O ALUNO em tom respeitoso e motivador.
+      - Feedback técnico PARA O PROFESSOR (observações mais técnicas, opcionais).
+
+- Professor:
+  - Ajusta nota se quiser.
+  - Edita feedback.
+  - Confirma correção.
+
+- Guardar:
+  - Nota final.
+  - Feedback salvo, visível para o aluno na área dele.
+
+========================================
+7. ACOMPANHAMENTO DA TURMA (VISÃO DE PROFESSOR)
+========================================
+
+Na página da turma, aba "Desempenho":
+
+- Gráficos:
+  - Média da turma ao longo das avaliações.
+  - Distribuição de notas em uma avaliação específica.
+  - Uso do Study.IA pela turma (tempo de estudo, planos concluídos, uso do Notebook RAG).
+
+- Lista de alunos com indicadores:
+  - Nota média
+  - Entregas em dia / atrasadas
+  - Uso da plataforma (baixo / médio / alto)
+  - Status de risco (OK, Atenção, Crítico).
+
+- IA:
+  - Sugere lista de alunos “em risco”.
+  - Sugere ações:
+    - “Enviar mensagem de incentivo”
+    - “Propor atividade de reforço”
+    - “Marcar aula de revisão”.
+
+========================================
+8. QUALIDADE, VISUAL E USABILIDADE
+========================================
+
+- Usar EXATAMENTE os mesmos componentes de:
+  - Botão, card, grids, tabela, inputs, modais, tabs, toasts, skeletons.
+- Respeitar a paleta de cores, tipografia e espaçamentos do Study.IA atual.
+- Layout:
+  - Desktop: sidebar + conteúdo em colunas quando necessário.
+  - Tablet: elementos empilhados com boa legibilidade.
+  - Mobile: tudo em uma coluna, com navegação por abas e botões grandes.
+
+- Performance:
+  - Paginação para listas grandes (turmas, alunos, atividades).
+  - Loading states claros (skeletons).
+  - Tratamento de erro amigável (“Algo deu errado, tente novamente…”).
+
+========================================
+9. PRIORIDADE DE IMPLEMENTAÇÃO
+========================================
+
+FASE 1 (implemente AGORA):
+- Dashboard principal do Professor com:
+  - Minhas Turmas
+  - Atividades Recentes
+  - Atalhos com IA.
+- Integração básica com Notebook (RAG):
+  - Cadernos por turma.
+  - Uso de caderno RAG como base de plano de aula.
+- Criador de Plano de Aula com IA (versão funcional e utilizável).
+
+FASE 2:
+- Criador de Provas/Quizzes com IA integrado ao Banco de Questões.
+- Aplicação online de provas/atividades para turmas.
+- Correção assistida de discursivas/redações (primeira versão).
+
+FASE 3:
+- Gráficos de desempenho e engajamento por turma.
+- Indicadores de risco por aluno.
+- Geração de relatórios em PDF/Excel.
+
+INSTRUÇÃO FINAL:
+Analise primeiro o código e o design atual do Módulo Professor e do Notebook (RAG). Depois implemente a FASE 1 exatamente nesses padrões, sem criar nada fora do design system já existente. Em seguida, avance para as fases seguintes mantendo coesão visual e de código.

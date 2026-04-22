@@ -116,14 +116,12 @@ function Card({ title, icon: Icon, iconColor, children, action }: {
 /* ─── Main Component ──────────────────────────────────────────── */
 export default function AdminPage() {
   const [, navigate] = useLocation();
-  const { getToken } = useAuth();
+  const { isLoaded, isSignedIn } = useAuth();
 
   const adminFetch = useCallback(async (url: string, options: RequestInit = {}) => {
-    const token = await getToken().catch(() => null);
     const headers: Record<string, string> = { ...(options.headers as Record<string, string> ?? {}) };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
     return fetch(url, { ...options, credentials: "include", headers });
-  }, [getToken]);
+  }, []);
 
   /* State */
   const [activeSection, setActiveSection] = useState<Section>("visao");
@@ -328,11 +326,26 @@ export default function AdminPage() {
   }
   async function fetchStats() {
     setStatsLoading(true);
-    try { const res = await adminFetch("/api/admin/stats"); if (res.ok) setStats(await res.json()); }
-    catch { } finally { setStatsLoading(false); }
+    try {
+      const res = await adminFetch("/api/admin/stats");
+      if (res.ok) {
+        setStats(await res.json());
+      } else {
+        console.error("[fetchStats] error", res.status, await res.text().catch(() => ""));
+      }
+    } catch (err) {
+      console.error("[fetchStats] network error", err);
+    } finally {
+      setStatsLoading(false);
+    }
   }
 
-  useEffect(() => { fetchUsers(); fetchRoleRequests(); fetchStats(); }, []);
+  useEffect(() => {
+    if (!isLoaded) return;
+    fetchUsers();
+    fetchRoleRequests();
+    fetchStats();
+  }, [isLoaded]);
   useEffect(() => { if (activeSection === "conteudos") fetchTeacherContent(); }, [activeSection]);
   useEffect(() => { if (activeSection === "banco-dados") fetchKbDocs(); }, [activeSection]);
 

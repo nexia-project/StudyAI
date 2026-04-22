@@ -89,11 +89,15 @@ export async function optionalAuth(req: Request, res: Response, next: NextFuncti
 
   // Log on admin routes to diagnose production auth issues
   if (req.url?.includes("/admin/")) {
+    const authHeader = req.headers["authorization"] ?? "NONE";
+    const hasClerkCookie = !!(req.headers["cookie"] ?? "").includes("__session");
     console.log("[optionalAuth] admin request:", req.url,
       "| clerkId:", clerkId ?? "NULL",
       "| auth.userId:", auth?.userId ?? "NULL",
       "| claims.userId:", auth?.sessionClaims?.userId ?? "NULL",
-      "| claims.sub:", auth?.sessionClaims?.sub ?? "NULL"
+      "| claims.sub:", auth?.sessionClaims?.sub ?? "NULL",
+      "| Authorization header:", authHeader.slice(0, 30) + (authHeader.length > 30 ? "..." : ""),
+      "| has __session cookie:", hasClerkCookie
     );
   }
 

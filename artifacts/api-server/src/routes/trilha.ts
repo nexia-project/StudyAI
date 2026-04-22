@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
+import { logAiUsage } from "../lib/aiCostLogger";
 
 const router = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -125,6 +126,7 @@ Retorne SOMENTE este JSON:
     });
 
     const content = completion.choices[0]?.message?.content || "{}";
+    logAiUsage({ feature: "trilha", model: "gpt-4o-mini", tokensIn: completion.usage?.prompt_tokens ?? 0, tokensOut: completion.usage?.completion_tokens ?? 0, userId: (req as any).userId ?? null });
     const parsed = JSON.parse(content);
     if (!parsed.questions || !Array.isArray(parsed.questions)) {
       return res.status(500).json({ error: "Resposta inválida da IA" });

@@ -6,6 +6,7 @@ import { eq, inArray } from "drizzle-orm";
 import { checkFreeUsage } from "../lib/freeUsage";
 import { searchKnowledge } from "./knowledge";
 import { getBnccContext } from "../data/bncc-data";
+import { logAiUsage } from "../lib/aiCostLogger";
 
 type UserRole = "student" | "teacher" | "institution_admin" | "government" | "admin" | "researcher";
 
@@ -232,6 +233,7 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
     const stream = await openai.chat.completions.create({
       model: "gpt-4o",
       stream: true,
+      stream_options: { include_usage: true },
       max_tokens: isAdvanced ? 1200 : 800,
       temperature: isAdvanced ? 0.5 : 0.8,
       messages: [
@@ -240,12 +242,15 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
       ],
     });
 
+    let usageIn = 0; let usageOut = 0;
     for await (const chunk of stream) {
       const delta = chunk.choices[0]?.delta?.content;
       if (delta) {
         res.write(`data: ${JSON.stringify({ text: delta })}\n\n`);
       }
+      if (chunk.usage) { usageIn = chunk.usage.prompt_tokens; usageOut = chunk.usage.completion_tokens; }
     }
+    logAiUsage({ feature: "tiagao", model: "gpt-4o", tokensIn: usageIn, tokensOut: usageOut, userId: (req as any).userId ?? null });
 
     res.write("data: [DONE]\n\n");
     res.end();

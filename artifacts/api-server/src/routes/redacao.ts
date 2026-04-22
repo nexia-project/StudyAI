@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { db } from "@workspace/db";
 import { redacoesTable } from "@workspace/db/schema";
 import { checkFreeUsage } from "../lib/freeUsage";
+import { logAiUsage } from "../lib/aiCostLogger";
 
 const router = Router();
 const openai = new OpenAI();
@@ -58,6 +59,7 @@ router.post("/api/redacao", checkFreeUsage, async (req, res) => {
     });
 
     const raw = completion.choices[0].message.content ?? "{}";
+    logAiUsage({ feature: "redacao", model: "gpt-4o", tokensIn: completion.usage?.prompt_tokens ?? 0, tokensOut: completion.usage?.completion_tokens ?? 0, userId: (req as any).userId ?? null });
     const result = JSON.parse(raw);
 
     // Save to DB if user is authenticated

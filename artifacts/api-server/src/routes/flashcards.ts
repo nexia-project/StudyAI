@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import OpenAI from "openai";
 import { checkFreeUsage } from "../lib/freeUsage";
 import { getKnowledgeContext } from "../utils/knowledge-context";
+import { logAiUsage } from "../lib/aiCostLogger";
 
 const router: IRouter = Router();
 
@@ -96,6 +97,7 @@ Crie 15 flashcards no formato Anki (Active Recall + Spaced Repetition) para o al
     });
 
     const content = response.choices[0].message.content;
+    logAiUsage({ feature: "flashcards", model: "gpt-4o-mini", tokensIn: response.usage?.prompt_tokens ?? 0, tokensOut: response.usage?.completion_tokens ?? 0, userId: (req as any).userId ?? null });
     if (!content) {
       res.status(500).json({ erro: "Erro ao gerar flashcards." });
       return;

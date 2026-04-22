@@ -221,3 +221,18 @@ export const cadernoNotesTable = pgTable("caderno_notes", {
 
 export type CadernoNote = typeof cadernoNotesTable.$inferSelect;
 export type InsertCadernoNote = typeof cadernoNotesTable.$inferInsert;
+
+// ─── AI Cost Log (tracks token usage + cost per AI call) ─────────────────────
+export const aiCostLogTable = pgTable("ai_cost_log", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 255 }),
+  feature: varchar("feature", { length: 100 }).notNull(),
+  model: varchar("model", { length: 100 }).notNull(),
+  tokensIn: integer("tokens_in").notNull().default(0),
+  tokensOut: integer("tokens_out").notNull().default(0),
+  costUsd: text("cost_usd").notNull().default("0"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type AiCostLog = typeof aiCostLogTable.$inferSelect;
+export type InsertAiCostLog = typeof aiCostLogTable.$inferInsert;

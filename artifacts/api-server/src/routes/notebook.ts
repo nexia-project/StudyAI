@@ -14,15 +14,46 @@ import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { validateFileUpload } from "../middlewares/security";
 import { generateImageBuffer } from "@workspace/integrations-openai-ai-server/image";
+import { logAiUsage } from "../lib/aiCostLogger";
 
 const _require = createRequire(import.meta.url);
 const router: IRouter = Router();
 
 // ─── AI client via Replit AI Integrations proxy ────────────────────────────
-const gpt = new OpenAI({
+const _rawGpt = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? "dummy",
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
 });
+
+// Proxy that auto-logs token usage for every chat completion
+const gpt = new Proxy(_rawGpt, {
+  get(target, prop) {
+    if (prop === "chat") {
+      return new Proxy(target.chat, {
+        get(chatTarget, chatProp) {
+          if (chatProp === "completions") {
+            return new Proxy(chatTarget.completions, {
+              get(compTarget, compProp) {
+                if (compProp === "create") {
+                  return async (params: Parameters<typeof compTarget.create>[0], opts?: Parameters<typeof compTarget.create>[1]) => {
+                    const result = await (compTarget.create as Function)(params, opts);
+                    if (result && typeof result === "object" && "usage" in result && result.usage) {
+                      logAiUsage({ feature: "notebook", model: (params as any).model ?? "gpt-4o-mini", tokensIn: (result as any).usage.prompt_tokens ?? 0, tokensOut: (result as any).usage.completion_tokens ?? 0 });
+                    }
+                    return result;
+                  };
+                }
+                return (compTarget as any)[compProp];
+              }
+            });
+          }
+          return (chatTarget as any)[chatProp];
+        }
+      });
+    }
+    return (target as any)[prop];
+  }
+}) as OpenAI;
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 

@@ -107,7 +107,7 @@ interface PodcastRoteiro {
   destaques: string[];
 }
 
-type Tool = "overview" | "study-guide" | "flashcards" | "questoes" | "mapa-mental" | "podcast" | "tiagao" | "timeline" | "slides" | "infografico";
+type Tool = "overview" | "study-guide" | "flashcards" | "questoes" | "mapa-mental" | "podcast" | "tiagao" | "timeline" | "slides" | "infografico" | "tabela" | "relatorio";
 
 const TOOL_CONFIG: Record<Tool, { label: string; icon: React.ElementType; color: string; desc: string; badge?: string }> = {
   overview:      { label: "Visão Geral",      icon: Star,          color: "indigo",   desc: "Resumo + tópicos-chave + FAQ" },
@@ -119,6 +119,8 @@ const TOOL_CONFIG: Record<Tool, { label: string; icon: React.ElementType; color:
   timeline:      { label: "Linha do Tempo",    icon: Clock,         color: "amber",    desc: "Cronologia didática (História!)", badge: "NOVO" },
   slides:        { label: "Apresentação",      icon: Presentation,  color: "violet",   desc: "Slides profissionais prontos", badge: "NOVO" },
   infografico:   { label: "Infográfico",        icon: Sparkles,      color: "fuchsia",  desc: "Pôster visual gerado por IA",   badge: "NOVO" },
+  tabela:        { label: "Tabela de Dados",   icon: LayoutGrid,    color: "indigo",   desc: "Comparativo estruturado em tabela" },
+  relatorio:     { label: "Relatório",         icon: FileText,      color: "slate",    desc: "Documento acadêmico, blog ou aula" },
   tiagao:        { label: "Tiagão na Lousa",   icon: Zap,           color: "blue",     desc: "Aula animada na lousa" },
 };
 
@@ -1032,7 +1034,7 @@ export default function Notebook() {
   const [selectedDocIds, setSelectedDocIds] = useState<number[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
 
-  const [uploadMode, setUploadMode] = useState<"file" | "text" | "url" | "youtube" | "wikipedia" | "audio" | "image" | null>(null);
+  const [uploadMode, setUploadMode] = useState<"file" | "text" | "url" | "youtube" | "wikipedia" | "audio" | "image" | "xlsx" | "epub" | "gdocs" | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadText, setUploadText] = useState("");
   const [uploadTitle, setUploadTitle] = useState("");
@@ -1072,6 +1074,35 @@ export default function Notebook() {
   const [savedArtifacts, setSavedArtifacts] = useState<SavedArtifact[]>([]);
   // Lightbox para ampliar infográfico
   const [infoFull, setInfoFull] = useState<string | null>(null);
+
+  // Sugestões de perguntas
+  const [suggestedQs, setSuggestedQs] = useState<string[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+
+  // Fast Research
+  const [showFastResearch, setShowFastResearch] = useState(false);
+  const [fastResearchTopic, setFastResearchTopic] = useState("");
+  const [fastResearchResults, setFastResearchResults] = useState<Array<{ titulo: string; url: string; snippet: string }>>([]);
+  const [fastResearchLoading, setFastResearchLoading] = useState(false);
+  const [addingUrl, setAddingUrl] = useState<string | null>(null);
+
+  // Discover
+  const [showDiscover, setShowDiscover] = useState(false);
+  const [discoverResults, setDiscoverResults] = useState<Array<{ titulo: string; url: string; snippet: string; relevancia?: string }>>([]);
+  const [discoverLoading, setDiscoverLoading] = useState(false);
+
+  // Share
+  const [shareToken, setShareToken] = useState<string | null>(null);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+
+  // Drag & drop
+  const [dragOver, setDragOver] = useState(false);
+  const xlsxRef = useRef<HTMLInputElement>(null);
+  const epubRef = useRef<HTMLInputElement>(null);
+
+  // Relatório template
+  const [relatorioTemplate, setRelatorioTemplate] = useState<"academico" | "blog" | "executivo" | "aula">("academico");
 
   const loadCadernos = useCallback(async () => {
     try {
@@ -1150,6 +1181,156 @@ export default function Notebook() {
       setSavedArtifacts(prev => prev.filter(a => a.id !== id));
     } catch { /* silent */ }
   }, []);
+
+  // ─── Suggest questions ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!docs.length || messages.length > 0) { setSuggestedQs([]); return; }
+    let cancelled = false;
+    setLoadingSuggestions(true);
+    (async () => {
+      try {
+        const r = await fetch(`${BASE_URL}/api/notebook/suggest-questions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ docIds: selectedDocIds.length ? selectedDocIds : docs.map(d => d.id).slice(0, 5) }),
+        });
+        if (r.ok && !cancelled) {
+          const data = await r.json();
+          setSuggestedQs(Array.isArray(data.perguntas) ? data.perguntas : []);
+        }
+      } catch { /* silent */ }
+      finally { if (!cancelled) setLoadingSuggestions(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [docs, messages.length]);
+
+  // ─── XLSX upload ──────────────────────────────────────────────────────────
+  const handleXlsxUpload = useCallback(async (file: File) => {
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("title", file.name.replace(/\.[^.]+$/, ""));
+    if (activeCaderno?.id) fd.append("cadernoId", String(activeCaderno.id));
+    try {
+      const r = await fetch(`${BASE_URL}/api/notebook/upload-file`, { method: "POST", body: fd, credentials: "include" });
+      const d = await r.json();
+      setUploadMsg(r.ok ? { ok: true, text: d.message ?? "✅ Planilha adicionada" } : { ok: false, text: d.erro ?? "Erro" });
+      if (r.ok) { setUploadMode(null); loadDocs(activeCaderno?.id); }
+    } catch { setUploadMsg({ ok: false, text: "Erro de rede" }); }
+    finally { setUploading(false); }
+  }, [activeCaderno, loadDocs]);
+
+  // ─── EPUB upload ──────────────────────────────────────────────────────────
+  const handleEpubUpload = useCallback(async (file: File) => {
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("title", file.name.replace(/\.[^.]+$/, ""));
+    if (activeCaderno?.id) fd.append("cadernoId", String(activeCaderno.id));
+    try {
+      const r = await fetch(`${BASE_URL}/api/notebook/upload-file`, { method: "POST", body: fd, credentials: "include" });
+      const d = await r.json();
+      setUploadMsg(r.ok ? { ok: true, text: d.message ?? "✅ E-book adicionado" } : { ok: false, text: d.erro ?? "Erro" });
+      if (r.ok) { setUploadMode(null); loadDocs(activeCaderno?.id); }
+    } catch { setUploadMsg({ ok: false, text: "Erro de rede" }); }
+    finally { setUploading(false); }
+  }, [activeCaderno, loadDocs]);
+
+  // ─── Fast Research ─────────────────────────────────────────────────────────
+  const runFastResearch = useCallback(async () => {
+    if (!fastResearchTopic.trim()) return;
+    setFastResearchLoading(true);
+    setFastResearchResults([]);
+    try {
+      const r = await fetch(`${BASE_URL}/api/notebook/fast-research`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify({ topic: fastResearchTopic }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        setFastResearchResults(Array.isArray(d.resultados) ? d.resultados : []);
+      }
+    } catch { /* silent */ }
+    finally { setFastResearchLoading(false); }
+  }, [fastResearchTopic]);
+
+  const addUrlToNotebook = useCallback(async (url: string, title: string) => {
+    setAddingUrl(url);
+    try {
+      const r = await fetch(`${BASE_URL}/api/notebook/upload-url`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify({ url, title, cadernoId: activeCaderno?.id }),
+      });
+      if (r.ok) loadDocs(activeCaderno?.id);
+    } catch { /* silent */ }
+    finally { setAddingUrl(null); }
+  }, [activeCaderno, loadDocs]);
+
+  // ─── Discover ─────────────────────────────────────────────────────────────
+  const runDiscover = useCallback(async () => {
+    if (!docs.length) return;
+    setDiscoverLoading(true);
+    setDiscoverResults([]);
+    setShowDiscover(true);
+    try {
+      const r = await fetch(`${BASE_URL}/api/notebook/discover`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify({ docIds: selectedDocIds.length ? selectedDocIds : docs.map(d => d.id) }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        setDiscoverResults(Array.isArray(d.sugestoes) ? d.sugestoes : []);
+      }
+    } catch { /* silent */ }
+    finally { setDiscoverLoading(false); }
+  }, [docs, selectedDocIds]);
+
+  // ─── Share link ───────────────────────────────────────────────────────────
+  const generateShareLink = useCallback(async () => {
+    if (!activeCaderno) return;
+    setShareLoading(true);
+    try {
+      const r = await fetch(`${BASE_URL}/api/notebook/share-link`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify({ cadernoId: activeCaderno.id }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        setShareToken(d.token);
+      }
+    } catch { /* silent */ }
+    finally { setShareLoading(false); }
+  }, [activeCaderno]);
+
+  // ─── Drag & drop handler ──────────────────────────────────────────────────
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const files = Array.from(e.dataTransfer.files);
+    for (const file of files.slice(0, 10)) {
+      const name = file.name.toLowerCase();
+      if (name.endsWith(".pdf") || name.endsWith(".docx") || name.endsWith(".txt") || name.endsWith(".pptx")) {
+        // Use existing handleFileUpload-like logic inline
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("title", file.name.replace(/\.[^.]+$/, ""));
+        if (activeCaderno?.id) fd.append("cadernoId", String(activeCaderno.id));
+        setUploading(true);
+        try {
+          const r = await fetch(`${BASE_URL}/api/notebook/upload-file`, { method: "POST", body: fd, credentials: "include" });
+          const d = await r.json();
+          if (r.ok) loadDocs(activeCaderno?.id);
+          else setUploadMsg({ ok: false, text: d.erro ?? "Erro" });
+        } catch { /* silent */ }
+        finally { setUploading(false); }
+      } else if (name.endsWith(".xlsx") || name.endsWith(".csv")) {
+        await handleXlsxUpload(file);
+      } else if (name.endsWith(".epub")) {
+        await handleEpubUpload(file);
+      }
+    }
+  }, [activeCaderno, loadDocs, handleXlsxUpload, handleEpubUpload]);
 
   const saveCaderno = useCallback(async () => {
     if (!cadernoForm.title.trim()) return;
@@ -1433,15 +1614,18 @@ export default function Notebook() {
       timeline: "/api/notebook/timeline",
       slides: "/api/notebook/slides",
       infografico: "/api/notebook/infografico",
+      tabela: "/api/notebook/tabela",
+      relatorio: "/api/notebook/relatorio",
     };
     if (tool === "slides") setSlideIdx(0);
 
     try {
-      const body: any = { docId: targetDocId };
+      const body: any = { docId: targetDocId, docIds: selectedDocIds.length ? selectedDocIds : [targetDocId] };
       if (tool === "infografico") {
         body.estilo = (window as any).__infograficoEstilo ?? "profissional";
         body.orientacao = (window as any).__infograficoOrientacao ?? "quadrado";
       }
+      if (tool === "relatorio") { body.template = relatorioTemplate; }
       const r = await fetch(`${BASE_URL}${endpoints[tool]}`, {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
         body: JSON.stringify(body),
@@ -1494,7 +1678,17 @@ export default function Notebook() {
       </div>
 
       {/* Upload buttons */}
-      <div className="p-3 border-b border-slate-100 flex-shrink-0">
+      <div className="p-3 border-b border-slate-100 flex-shrink-0"
+        onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+      >
+        {dragOver && (
+          <div className="mb-2 p-3 bg-indigo-50 border-2 border-dashed border-indigo-400 rounded-xl text-center text-xs text-indigo-600 font-bold">
+            <Upload className="w-4 h-4 mx-auto mb-1" />
+            Solte os arquivos aqui
+          </div>
+        )}
         <div className="grid grid-cols-4 gap-1.5">
           {[
             { mode: "file" as const, icon: FileText, label: "PDF" },
@@ -1504,6 +1698,9 @@ export default function Notebook() {
             { mode: "wikipedia" as const, icon: BookOpen, label: "Wiki" },
             { mode: "audio" as const, icon: Mic, label: "Áudio" },
             { mode: "image" as const, icon: ImageIcon, label: "Imagem" },
+            { mode: "xlsx" as const, icon: LayoutGrid, label: "Planilha" },
+            { mode: "epub" as const, icon: BookOpen, label: "EPUB" },
+            { mode: "gdocs" as const, icon: ExternalLink, label: "G.Docs" },
           ].map(({ mode, icon: Icon, label }) => (
             <button key={mode} onClick={() => setUploadMode(m => m === mode ? null : mode)}
               className={`flex flex-col items-center gap-1 py-2 rounded-xl border text-[10px] font-bold transition-all ${
@@ -1521,15 +1718,64 @@ export default function Notebook() {
               <div className="pt-3 space-y-2">
                 {uploadMode === "file" && (
                   <>
-                    <input type="file" ref={fileRef} className="hidden"
-                      accept=".pdf,.doc,.docx,.txt"
-                      onChange={e => e.target.files?.[0] && handleFileUpload(e.target.files[0])} />
+                    <input type="file" ref={fileRef} className="hidden" multiple
+                      accept=".pdf,.doc,.docx,.txt,.pptx"
+                      onChange={e => { Array.from(e.target.files ?? []).forEach(f => handleFileUpload(f)); }} />
                     <button onClick={() => fileRef.current?.click()} disabled={uploading}
                       className="w-full border-2 border-dashed border-indigo-300 rounded-xl p-4 text-xs text-indigo-600 font-medium hover:bg-indigo-50 flex flex-col items-center gap-2">
                       {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
-                      {uploading ? "Processando... aguarde" : "Clique para enviar PDF / DOC / TXT"}
-                      {!uploading && <span className="text-[10px] text-slate-400">Máx. 50MB</span>}
+                      {uploading ? "Processando... aguarde" : "Clique ou arraste PDF / DOC / PPTX / TXT"}
+                      {!uploading && <span className="text-[10px] text-slate-400">Múltiplos arquivos — Máx. 50MB cada</span>}
                     </button>
+                  </>
+                )}
+                {uploadMode === "xlsx" && (
+                  <>
+                    <input type="file" ref={xlsxRef} className="hidden"
+                      accept=".xlsx,.xls,.csv"
+                      onChange={e => e.target.files?.[0] && handleXlsxUpload(e.target.files[0])} />
+                    <button onClick={() => xlsxRef.current?.click()} disabled={uploading}
+                      className="w-full border-2 border-dashed border-emerald-300 rounded-xl p-4 text-xs text-emerald-700 font-medium hover:bg-emerald-50 flex flex-col items-center gap-2">
+                      {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <LayoutGrid className="w-5 h-5" />}
+                      {uploading ? "Processando planilha..." : "Clique para enviar XLSX / CSV"}
+                      {!uploading && <span className="text-[10px] text-slate-400">Excel, Sheets exportado como XLSX</span>}
+                    </button>
+                  </>
+                )}
+                {uploadMode === "epub" && (
+                  <>
+                    <input type="file" ref={epubRef} className="hidden"
+                      accept=".epub"
+                      onChange={e => e.target.files?.[0] && handleEpubUpload(e.target.files[0])} />
+                    <button onClick={() => epubRef.current?.click()} disabled={uploading}
+                      className="w-full border-2 border-dashed border-amber-300 rounded-xl p-4 text-xs text-amber-700 font-medium hover:bg-amber-50 flex flex-col items-center gap-2">
+                      {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <BookOpen className="w-5 h-5" />}
+                      {uploading ? "Extraindo e-book..." : "Clique para enviar EPUB"}
+                      {!uploading && <span className="text-[10px] text-slate-400">E-books no formato .epub</span>}
+                    </button>
+                  </>
+                )}
+                {uploadMode === "gdocs" && (
+                  <>
+                    <input value={uploadUrl} onChange={e => setUploadUrl(e.target.value)}
+                      placeholder="https://docs.google.com/document/d/... *"
+                      className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-indigo-400" />
+                    <button onClick={() => {
+                      if (!uploadUrl.trim()) return;
+                      setUploading(true);
+                      fetch(`${BASE_URL}/api/notebook/upload-gdocs`, {
+                        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+                        body: JSON.stringify({ url: uploadUrl, cadernoId: activeCaderno?.id }),
+                      }).then(r => r.json()).then(d => {
+                        setUploadMsg(d.erro ? { ok: false, text: d.erro } : { ok: true, text: d.message ?? "✅ Google Docs importado" });
+                        if (!d.erro) { setUploadUrl(""); setUploadMode(null); loadDocs(activeCaderno?.id); }
+                      }).finally(() => setUploading(false));
+                    }} disabled={uploading || !uploadUrl.trim()}
+                      className="w-full py-1.5 rounded-xl bg-blue-600 text-white text-xs font-bold disabled:opacity-40 flex items-center justify-center gap-1.5">
+                      {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ExternalLink className="w-3.5 h-3.5" />}
+                      Importar Google Doc
+                    </button>
+                    <p className="text-[10px] text-slate-400">Compartilhe o doc como "qualquer pessoa com o link pode ver"</p>
                   </>
                 )}
                 {uploadMode === "text" && (
@@ -1671,6 +1917,94 @@ export default function Notebook() {
         )}
       </div>
 
+      {/* Fast Research */}
+      <div className="border-t border-slate-100 flex-shrink-0">
+        <button
+          onClick={() => setShowFastResearch(v => !v)}
+          className="w-full flex items-center justify-between px-3 py-2 text-[11px] font-bold text-slate-600 hover:bg-slate-50"
+        >
+          <span className="flex items-center gap-1.5"><Search className="w-3.5 h-3.5 text-indigo-500" />Pesquisa Rápida</span>
+          {showFastResearch ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        </button>
+        <AnimatePresence>
+          {showFastResearch && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+              <div className="px-3 pb-3 space-y-2">
+                <div className="flex gap-1.5">
+                  <input value={fastResearchTopic} onChange={e => setFastResearchTopic(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && runFastResearch()}
+                    placeholder="Tema para pesquisar..."
+                    className="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-indigo-400" />
+                  <button onClick={runFastResearch} disabled={fastResearchLoading || !fastResearchTopic.trim()}
+                    className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold disabled:opacity-40 flex items-center gap-1">
+                    {fastResearchLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+                {fastResearchResults.map((item, i) => (
+                  <div key={i} className="bg-slate-50 rounded-xl p-2 space-y-1">
+                    <p className="text-[11px] font-bold text-slate-800 line-clamp-1">{item.titulo}</p>
+                    <p className="text-[10px] text-slate-500 line-clamp-2">{item.snippet}</p>
+                    <div className="flex gap-1.5">
+                      <a href={item.url} target="_blank" rel="noopener noreferrer"
+                        className="flex-1 py-1 rounded-lg border border-slate-200 text-[10px] text-center text-slate-600 hover:bg-white font-semibold">
+                        Abrir
+                      </a>
+                      <button onClick={() => addUrlToNotebook(item.url, item.titulo)}
+                        disabled={addingUrl === item.url}
+                        className="flex-1 py-1 rounded-lg bg-indigo-600 text-white text-[10px] font-bold disabled:opacity-40 flex items-center justify-center gap-1">
+                        {addingUrl === item.url ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                        Adicionar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Discover */}
+      {docs.length > 0 && (
+        <div className="border-t border-slate-100 flex-shrink-0">
+          <button
+            onClick={runDiscover}
+            className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-bold text-slate-600 hover:bg-violet-50 hover:text-violet-700"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-violet-500" />
+            {discoverLoading ? "Buscando leituras..." : "Descobrir mais sobre este tema"}
+            {discoverLoading && <Loader2 className="w-3 h-3 animate-spin ml-auto" />}
+          </button>
+          <AnimatePresence>
+            {showDiscover && discoverResults.length > 0 && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                <div className="px-3 pb-3 space-y-2">
+                  {discoverResults.map((item, i) => (
+                    <div key={i} className="bg-violet-50 rounded-xl p-2 space-y-1">
+                      <p className="text-[11px] font-bold text-violet-900 line-clamp-1">{item.titulo}</p>
+                      {item.relevancia && <p className="text-[10px] text-violet-600 italic">{item.relevancia}</p>}
+                      <p className="text-[10px] text-slate-500 line-clamp-2">{item.snippet}</p>
+                      <div className="flex gap-1.5">
+                        <a href={item.url} target="_blank" rel="noopener noreferrer"
+                          className="flex-1 py-1 rounded-lg border border-violet-200 text-[10px] text-center text-violet-700 hover:bg-white font-semibold">
+                          Abrir
+                        </a>
+                        <button onClick={() => addUrlToNotebook(item.url, item.titulo)}
+                          disabled={addingUrl === item.url}
+                          className="flex-1 py-1 rounded-lg bg-violet-600 text-white text-[10px] font-bold disabled:opacity-40 flex items-center justify-center gap-1">
+                          {addingUrl === item.url ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                          Adicionar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+
       {selectedDocIds.length > 0 && (
         <div className="p-2 border-t border-slate-100 flex-shrink-0">
           <p className="text-[10px] text-indigo-600 font-bold text-center">
@@ -1739,13 +2073,35 @@ export default function Notebook() {
                 : "As respostas vêm exclusivamente do conteúdo que você adicionou"}
             </p>
             {docs.length > 0 && (
-              <div className="flex flex-wrap gap-2 justify-center">
-                {["Faça um resumo do documento", "Quais são os pontos mais importantes?", "Como isso cai no ENEM?", "Explique o conceito principal"].map(q => (
-                  <button key={q} onClick={() => setInputMsg(q)}
-                    className="px-3 py-1.5 rounded-full border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs font-medium hover:bg-indigo-100 transition-colors">
-                    {q}
-                  </button>
-                ))}
+              <div className="flex flex-col items-center gap-2 w-full">
+                {loadingSuggestions ? (
+                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Gerando perguntas sugeridas...
+                  </div>
+                ) : suggestedQs.length > 0 ? (
+                  <>
+                    <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-1">Sugestões baseadas no seu conteúdo</p>
+                    <div className="flex flex-col gap-1.5 w-full">
+                      {suggestedQs.map((q, i) => (
+                        <button key={i} onClick={() => { setInputMsg(q); setSuggestedQs([]); }}
+                          className="w-full text-left px-3 py-2 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-800 text-xs font-medium hover:bg-indigo-100 transition-colors flex items-center gap-2">
+                          <HelpCircle className="w-3.5 h-3.5 flex-shrink-0 text-indigo-400" />
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {["Faça um resumo", "Pontos mais importantes?", "Como cai no ENEM?", "Explique o conceito"].map(q => (
+                      <button key={q} onClick={() => setInputMsg(q)}
+                        className="px-3 py-1.5 rounded-full border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs font-medium hover:bg-indigo-100 transition-colors">
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1817,6 +2173,30 @@ export default function Notebook() {
                     </motion.div>
                   )}
                 </AnimatePresence>
+
+                {/* Ações da mensagem */}
+                {msg.role === "assistant" && (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <button
+                      onClick={() => navigator.clipboard.writeText(msg.text)}
+                      title="Copiar resposta"
+                      className="p-1 rounded-lg text-slate-300 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+                      <ClipboardList className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => { /* feedback positivo — no-op por ora */ }}
+                      title="Boa resposta"
+                      className="p-1 rounded-lg text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 transition-colors text-xs">
+                      👍
+                    </button>
+                    <button
+                      onClick={() => { /* feedback negativo — no-op por ora */ }}
+                      title="Resposta ruim"
+                      className="p-1 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors text-xs">
+                      👎
+                    </button>
+                  </div>
+                )}
 
                 {/* Chips de citações da resposta */}
                 {msg.fontes && msg.fontes.length > 0 && (
@@ -1965,6 +2345,8 @@ export default function Notebook() {
                activeTool === "flashcards" ? "Criando flashcards..." :
                activeTool === "questoes" ? "Gerando questões ENEM..." :
                activeTool === "mapa-mental" ? "Desenhando o mapa..." :
+               activeTool === "tabela" ? "Montando a tabela comparativa..." :
+               activeTool === "relatorio" ? "Redigindo o relatório..." :
                "Gerando..."}
             </p>
           </div>
@@ -2124,6 +2506,98 @@ export default function Notebook() {
                          className="w-full max-h-[60vh] object-contain mx-auto cursor-zoom-in hover:opacity-95 transition-opacity" />
                   </button>
                   <p className="text-[10px] text-slate-400 text-center">Clique para ampliar</p>
+                </div>
+              );
+            })()}
+
+            {activeTool === "tabela" && (() => {
+              const r = toolResult as { titulo?: string; descricao?: string; colunas?: string[]; linhas?: Record<string, string>[]; markdown?: string };
+              if (r.markdown) {
+                return (
+                  <div className="p-3">
+                    <p className="text-xs font-bold text-slate-700 mb-2">{r.titulo}</p>
+                    {r.descricao && <p className="text-[11px] text-slate-500 mb-3">{r.descricao}</p>}
+                    <div className="overflow-x-auto rounded-xl border border-slate-200">
+                      <pre className="text-[11px] p-3 whitespace-pre font-mono text-slate-700 bg-slate-50">{r.markdown}</pre>
+                    </div>
+                    <button onClick={() => navigator.clipboard.writeText(r.markdown!)}
+                      className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-indigo-600 hover:underline">
+                      <ClipboardList className="w-3 h-3" /> Copiar tabela
+                    </button>
+                  </div>
+                );
+              }
+              if (r.colunas && r.linhas) {
+                return (
+                  <div className="p-3">
+                    <p className="text-xs font-bold text-slate-700 mb-2">{r.titulo}</p>
+                    {r.descricao && <p className="text-[11px] text-slate-500 mb-3">{r.descricao}</p>}
+                    <div className="overflow-x-auto rounded-xl border border-slate-200">
+                      <table className="w-full text-[11px]">
+                        <thead>
+                          <tr className="bg-indigo-50">
+                            {r.colunas.map((col, ci) => (
+                              <th key={ci} className="px-2 py-1.5 text-left font-bold text-indigo-700 border-b border-indigo-100 whitespace-nowrap">{col}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {r.linhas.map((row, ri) => (
+                            <tr key={ri} className={ri % 2 === 0 ? "bg-white" : "bg-slate-50"}>
+                              {r.colunas!.map((col, ci) => (
+                                <td key={ci} className="px-2 py-1.5 text-slate-700 border-b border-slate-100 align-top">{row[col] ?? "—"}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+            {activeTool === "relatorio" && (() => {
+              const r = toolResult as { titulo?: string; template?: string; markdown?: string; secoes?: Array<{ titulo: string; conteudo: string }> };
+              return (
+                <div className="p-3 space-y-3">
+                  {/* Template selector */}
+                  <div className="flex gap-1 flex-wrap">
+                    {(["academico", "blog", "executivo", "aula"] as const).map(t => (
+                      <button key={t} onClick={() => setRelatorioTemplate(t)}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                          relatorioTemplate === t ? "bg-indigo-600 border-indigo-600 text-white" : "border-slate-200 text-slate-600 hover:border-indigo-300"
+                        }`}>
+                        {t.charAt(0).toUpperCase() + t.slice(1)}
+                      </button>
+                    ))}
+                    <button onClick={() => runTool("relatorio", selectedDocIds[0])} disabled={toolLoading}
+                      className="px-2 py-1 rounded-lg text-[10px] font-bold border border-emerald-300 text-emerald-700 hover:bg-emerald-50 flex items-center gap-1 disabled:opacity-40">
+                      <RefreshCw className="w-3 h-3" /> Regerar
+                    </button>
+                  </div>
+                  {r.titulo && <h3 className="text-sm font-black text-slate-800">{r.titulo}</h3>}
+                  {r.markdown ? (
+                    <div className="prose prose-sm max-w-none text-slate-700">
+                      <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed">{r.markdown}</pre>
+                    </div>
+                  ) : r.secoes ? (
+                    <div className="space-y-3">
+                      {r.secoes.map((s, i) => (
+                        <div key={i}>
+                          <p className="text-[10px] font-black text-indigo-600 uppercase tracking-wider mb-1">{s.titulo}</p>
+                          <p className="text-xs text-slate-700 leading-relaxed">{s.conteudo}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  {(r.markdown ?? "") && (
+                    <button onClick={() => navigator.clipboard.writeText(r.markdown!)}
+                      className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-600 hover:underline">
+                      <ClipboardList className="w-3 h-3" /> Copiar relatório
+                    </button>
+                  )}
                 </div>
               );
             })()}
@@ -2417,6 +2891,14 @@ export default function Notebook() {
               <span className="text-[10px] font-bold text-emerald-700">{selectedDocIds.length} {selectedDocIds.length === 1 ? "fonte" : "fontes"}</span>
             </div>
           )}
+          <button
+            onClick={() => { setShowShareModal(true); if (!shareToken) generateShareLink(); }}
+            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all"
+            title="Compartilhar caderno"
+          >
+            {shareLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ExternalLink className="w-3.5 h-3.5" />}
+            Compartilhar
+          </button>
           <div className="lg:hidden flex bg-slate-100 rounded-xl p-0.5 gap-0.5">
             {(["sources", "chat", "tools"] as const).map(p => (
               <button key={p} onClick={() => setMobilePanel(p)}
@@ -2500,6 +2982,83 @@ export default function Notebook() {
                     Salvar
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Share modal */}
+      <AnimatePresence>
+        {showShareModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+            onClick={() => setShowShareModal(false)}>
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h3 className="font-black text-slate-800 flex items-center gap-2">
+                    <ExternalLink className="w-4 h-4 text-indigo-500" />
+                    Compartilhar caderno
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Qualquer pessoa com o link pode ver (somente leitura)</p>
+                </div>
+                <button onClick={() => setShowShareModal(false)} className="text-slate-400 hover:text-slate-700">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-5 space-y-4">
+                {shareLoading ? (
+                  <div className="flex items-center justify-center py-8 gap-2 text-slate-400 text-sm">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Gerando link...
+                  </div>
+                ) : shareToken ? (
+                  <>
+                    <div className="flex gap-2">
+                      <input
+                        readOnly
+                        value={`${window.location.origin}/shared/${shareToken}`}
+                        className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono bg-slate-50 text-slate-700 focus:outline-none"
+                        onFocus={e => e.target.select()}
+                      />
+                      <button
+                        onClick={() => navigator.clipboard.writeText(`${window.location.origin}/shared/${shareToken}`)}
+                        className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 flex items-center gap-1.5 whitespace-nowrap">
+                        <ClipboardList className="w-3.5 h-3.5" />
+                        Copiar
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                      <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                      <p className="text-xs text-amber-700">O link dá acesso público de leitura aos documentos e resumos do caderno.</p>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <button onClick={generateShareLink} disabled={shareLoading}
+                        className="text-xs font-bold text-slate-500 hover:text-indigo-600 flex items-center gap-1 disabled:opacity-40">
+                        <RefreshCw className="w-3 h-3" /> Gerar novo link
+                      </button>
+                      <a
+                        href={`/shared/${shareToken}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1">
+                        <ExternalLink className="w-3 h-3" /> Visualizar
+                      </a>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center py-6 gap-3">
+                    <p className="text-sm text-slate-500">Nenhum link gerado ainda.</p>
+                    <button onClick={generateShareLink} disabled={shareLoading}
+                      className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 flex items-center gap-2">
+                      <ExternalLink className="w-4 h-4" />
+                      Gerar link de compartilhamento
+                    </button>
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>

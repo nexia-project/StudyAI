@@ -22,6 +22,18 @@ const ALLOWED_MAGIC: Record<string, { magic: Buffer[]; ext: string }> = {
     magic: [Buffer.from([0x50, 0x4b, 0x03, 0x04])], // ZIP/PPTX magic bytes
     ext: ".pptx",
   },
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+    magic: [Buffer.from([0x50, 0x4b, 0x03, 0x04])], // ZIP/XLSX magic bytes
+    ext: ".xlsx",
+  },
+  "text/csv": {
+    magic: [], // CSV has no magic bytes
+    ext: ".csv",
+  },
+  "application/epub+zip": {
+    magic: [Buffer.from([0x50, 0x4b, 0x03, 0x04])], // ZIP/EPUB magic bytes
+    ext: ".epub",
+  },
 };
 
 export function validateFileUpload(req: Request, res: Response, next: NextFunction) {
@@ -30,7 +42,7 @@ export function validateFileUpload(req: Request, res: Response, next: NextFuncti
   const mime = req.file.mimetype;
 
   if (!ALLOWED_MAGIC[mime]) {
-    res.status(400).json({ erro: "Tipo de arquivo não permitido. Envie PDF, DOCX, DOC ou TXT." });
+    res.status(400).json({ erro: "Tipo de arquivo não permitido. Envie PDF, DOCX, DOC, TXT, XLSX, CSV ou EPUB." });
     return;
   }
 
@@ -43,14 +55,16 @@ export function validateFileUpload(req: Request, res: Response, next: NextFuncti
     }
   }
 
-  // Verify magic bytes for DOCX / PPTX (both are ZIP containers)
+  // Verify magic bytes for DOCX / PPTX / XLSX / EPUB (all are ZIP containers)
   if (
     mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-    mime === "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    mime === "application/vnd.openxmlformats-officedocument.presentationml.presentation" ||
+    mime === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+    mime === "application/epub+zip"
   ) {
     const zipMagic = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
     if (!req.file.buffer.slice(0, 4).equals(zipMagic)) {
-      res.status(400).json({ erro: "Arquivo inválido: não é um arquivo Office real." });
+      res.status(400).json({ erro: "Arquivo inválido: não é um arquivo Office/EPUB real." });
       return;
     }
   }

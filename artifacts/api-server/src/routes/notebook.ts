@@ -207,16 +207,61 @@ router.delete("/notebook/cadernos/:id", async (req: Request, res: Response) => {
 // ─── Text extraction ──────────────────────────────────────────────────────────
 async function extractText(file: Express.Multer.File): Promise<string> {
   const mime = file.mimetype;
+  const name = (file.originalname ?? "").toLowerCase();
 
-  if (mime === "text/plain") return file.buffer.toString("utf8").slice(0, 200_000);
+  if (mime === "text/plain" || name.endsWith(".txt") || name.endsWith(".md")) {
+    return file.buffer.toString("utf8").slice(0, 200_000);
+  }
 
-  if (mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+  if (mime === "text/csv" || name.endsWith(".csv")) {
+    const XLSX = _require("xlsx");
+    const wb = XLSX.read(file.buffer, { type: "buffer" });
+    const texts: string[] = [];
+    for (const sheetName of wb.SheetNames as string[]) {
+      const csv = XLSX.utils.sheet_to_csv(wb.Sheets[sheetName]);
+      texts.push(`=== Planilha: ${sheetName} ===\n${csv}`);
+    }
+    return texts.join("\n\n").slice(0, 200_000);
+  }
+
+  if (
+    mime === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+    name.endsWith(".xlsx") || name.endsWith(".xls")
+  ) {
+    const XLSX = _require("xlsx");
+    const wb = XLSX.read(file.buffer, { type: "buffer" });
+    const texts: string[] = [];
+    for (const sheetName of wb.SheetNames as string[]) {
+      const rows: string[][] = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: "" });
+      const rowTexts = rows.map((r: string[]) => r.join("\t")).filter((r: string) => r.trim());
+      texts.push(`=== Planilha: ${sheetName} ===\n${rowTexts.join("\n")}`);
+    }
+    return texts.join("\n\n").slice(0, 200_000);
+  }
+
+  if (mime === "application/epub+zip" || name.endsWith(".epub")) {
+    const AdmZip = _require("adm-zip");
+    const zip = new AdmZip(file.buffer);
+    const entries = zip.getEntries()
+      .filter((e: any) => {
+        const n = e.entryName.toLowerCase();
+        return (n.endsWith(".xhtml") || n.endsWith(".html")) && !n.includes("nav") && !n.includes("toc");
+      })
+      .sort((a: any, b: any) => a.entryName.localeCompare(b.entryName));
+    const texts = entries.map((e: any) => {
+      const html = e.getData().toString("utf8");
+      return html.replace(/<[^>]+>/g, " ").replace(/&[a-z]+;/g, " ").replace(/\s{2,}/g, " ").trim();
+    }).filter((t: string) => t.length > 50);
+    return texts.join("\n\n").slice(0, 200_000);
+  }
+
+  if (mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || name.endsWith(".docx")) {
     const mammoth = await import("mammoth");
     const r = await mammoth.extractRawText({ buffer: file.buffer });
     return r.value.slice(0, 200_000);
   }
 
-  if (mime === "application/pdf") {
+  if (mime === "application/pdf" || name.endsWith(".pdf")) {
     try {
       const pdfParser = _require("pdf-parse/lib/pdf-parse");
       const parsed = await pdfParser(file.buffer);
@@ -226,6 +271,24 @@ async function extractText(file: Express.Multer.File): Promise<string> {
         .replace(/[^\x20-\x7E\n\r\t\xA0-\xFF]/g, " ")
         .replace(/\s{3,}/g, "\n").trim().slice(0, 200_000);
     }
+  }
+
+  // PPTX: extract text from slide XML nodes
+  if (
+    mime === "application/vnd.openxmlformats-officedocument.presentationml.presentation" ||
+    name.endsWith(".pptx")
+  ) {
+    const AdmZip = _require("adm-zip");
+    const zip = new AdmZip(file.buffer);
+    const slideEntries = zip.getEntries()
+      .filter((e: any) => /ppt\/slides\/slide\d+\.xml/.test(e.entryName))
+      .sort((a: any, b: any) => a.entryName.localeCompare(b.entryName));
+    const texts = slideEntries.map((e: any) => {
+      const xml = e.getData().toString("utf8");
+      const matches = xml.match(/<a:t>([^<]+)<\/a:t>/g) ?? [];
+      return matches.map((m: string) => m.replace(/<[^>]+>/g, "")).join(" ").trim();
+    }).filter((t: string) => t.length > 5);
+    return texts.join("\n\n").slice(0, 200_000);
   }
 
   return "";
@@ -249,7 +312,7 @@ async function saveDocWithChunks(
   userId: string,
   title: string,
   contentText: string,
-  sourceType: "pdf" | "text" | "url" | "youtube" | "wikipedia" | "audio" | "image" | "gdocs",
+  sourceType: "pdf" | "text" | "url" | "youtube" | "wikipedia" | "audio" | "image" | "gdocs" | "xlsx" | "csv" | "epub",
   sourceRef?: string,
   fileSizeKb?: number,
   notebookId?: number,
@@ -336,16 +399,22 @@ router.post("/notebook/upload-file", upload.single("file"), validateFileUpload, 
   if (!req.file) { res.status(400).json({ erro: "Arquivo obrigatório" }); return; }
 
   const title = (req.body.title as string) || req.file.originalname.replace(/\.[^.]+$/, "");
+  const fname = req.file.originalname.toLowerCase();
+  const srcType = fname.endsWith(".xlsx") || fname.endsWith(".xls") ? "xlsx"
+    : fname.endsWith(".csv") ? "csv"
+    : fname.endsWith(".epub") ? "epub"
+    : "pdf";
+
   try {
     const text = await extractText(req.file);
     if (!text || text.length < 20) {
-      res.status(400).json({ erro: "Não foi possível extrair texto do arquivo. Use um PDF com texto selecionável (não escaneado)." });
+      res.status(400).json({ erro: "Não foi possível extrair texto do arquivo. Verifique se o arquivo tem conteúdo." });
       return;
     }
     const chunks = chunkText(text);
     const nbId = await resolveNotebookId(req.userId, req.body.cadernoId);
     const docId = await saveDocWithChunks(
-      req.userId, title, text, "pdf",
+      req.userId, title, text, srcType,
       req.file.originalname, Math.round(req.file.size / 1024), nbId,
     );
     res.json({ id: docId, title, chars: text.length, chunks: chunks.length, message: `✅ "${title}" adicionado — ${chunks.length} trechos indexados` });
@@ -1526,6 +1595,184 @@ Style: clean modern flat vector illustration, sophisticated palette matching "${
   } catch (e: any) {
     console.error("slide imagem:", e);
     res.status(500).json({ erro: e.message ?? "Erro ao gerar imagem" });
+  }
+});
+
+// ─── POST /api/notebook/suggest-questions ────────────────────────────────────
+router.post("/notebook/suggest-questions", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { docIds, cadernoId } = req.body as { docIds?: number[]; cadernoId?: number };
+  try {
+    const chunks = await ragSearch(req.userId, docIds?.length ? docIds : null, "principais tópicos conceitos", 6);
+    if (!chunks.length) { res.json({ perguntas: [] }); return; }
+    const context = chunks.map(c => c.text).join("\n\n").slice(0, 3000);
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini", temperature: 0.7, max_tokens: 350,
+      messages: [
+        { role: "system", content: "Você é assistente de estudos. Com base no contexto, gere EXATAMENTE 5 perguntas inteligentes e específicas que um estudante faria. Retorne APENAS JSON array de strings, sem explicações." },
+        { role: "user", content: `Contexto:\n${context}\n\nGere 5 perguntas em PT-BR.` }
+      ],
+    });
+    const text = completion.choices[0].message.content ?? "[]";
+    const match = text.match(/\[[\s\S]*\]/);
+    const perguntas = match ? JSON.parse(match[0]) : [];
+    res.json({ perguntas: perguntas.slice(0, 5) });
+  } catch (e) {
+    console.error("suggest-questions:", e);
+    res.json({ perguntas: [] });
+  }
+});
+
+// ─── POST /api/notebook/tabela ────────────────────────────────────────────────
+router.post("/notebook/tabela", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { docIds, cadernoId } = req.body as { docIds?: number[]; cadernoId?: number };
+  try {
+    const chunks = await ragSearch(req.userId, docIds?.length ? docIds : null, "dados comparação conceitos", 10);
+    if (!chunks.length) { res.status(400).json({ erro: "Adicione documentos primeiro." }); return; }
+    const context = chunks.map(c => `[${c.title}]\n${c.text}`).join("\n\n").slice(0, 6000);
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini", temperature: 0.3, max_tokens: 1500,
+      messages: [
+        { role: "system", content: 'Analise as fontes e crie uma tabela comparativa dos conceitos/dados principais. Retorne JSON: {"titulo":"string","colunas":["col1","col2",...],"linhas":[["val1","val2",...],...],"notas":"string opcional"}. Mínimo 3 colunas e 5 linhas.' },
+        { role: "user", content: `Fontes:\n${context}` }
+      ],
+    });
+    const text = completion.choices[0].message.content ?? "{}";
+    const match = text.match(/\{[\s\S]*\}/);
+    const tabela = match ? JSON.parse(match[0]) : { titulo: "Tabela", colunas: [], linhas: [] };
+    res.json(tabela);
+  } catch (e) {
+    console.error("tabela:", e);
+    res.status(500).json({ erro: "Erro ao gerar tabela" });
+  }
+});
+
+// ─── POST /api/notebook/relatorio ─────────────────────────────────────────────
+router.post("/notebook/relatorio", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { docIds, cadernoId, template = "academico" } = req.body as { docIds?: number[]; cadernoId?: number; template?: string };
+  try {
+    const chunks = await ragSearch(req.userId, docIds?.length ? docIds : null, "conteúdo principal análise", 12);
+    if (!chunks.length) { res.status(400).json({ erro: "Adicione documentos primeiro." }); return; }
+    const context = chunks.map(c => `[${c.title}]\n${c.text}`).join("\n\n").slice(0, 8000);
+    const templates: Record<string, string> = {
+      academico: "relatório acadêmico formal com abstract, introdução, desenvolvimento, conclusão e referências",
+      blog: "post de blog envolvente com título chamativo, introdução, seções com subtítulos e conclusão",
+      executivo: "briefing executivo com sumário executivo, pontos-chave, análise e recomendações",
+      aula: "plano de aula completo com objetivos, conteúdo, metodologia e avaliação",
+    };
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini", temperature: 0.4, max_tokens: 2000,
+      messages: [
+        { role: "system", content: `Você é especialista em produção de conteúdo. Escreva um ${templates[template] ?? templates.academico} com base nas fontes. Use Markdown formatado. Cite fontes quando relevante.` },
+        { role: "user", content: `Fontes:\n${context}` }
+      ],
+    });
+    res.json({ conteudo: completion.choices[0].message.content ?? "", template });
+  } catch (e) {
+    console.error("relatorio:", e);
+    res.status(500).json({ erro: "Erro ao gerar relatório" });
+  }
+});
+
+// ─── POST /api/notebook/fast-research ─────────────────────────────────────────
+router.post("/notebook/fast-research", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { topic } = req.body as { topic: string };
+  if (!topic?.trim()) { res.status(400).json({ erro: "Tópico obrigatório" }); return; }
+  try {
+    // DuckDuckGo Instant Answer API (free, no key needed)
+    const ddgUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(topic)}&format=json&no_html=1&skip_disambig=1&t=studyai`;
+    const ddgRes = await fetch(ddgUrl, { signal: AbortSignal.timeout(8000) });
+    const ddgData = await ddgRes.json() as any;
+
+    const results: Array<{ titulo: string; url: string; snippet: string }> = [];
+    if (ddgData.AbstractURL && ddgData.AbstractText) {
+      results.push({ titulo: ddgData.Heading || topic, url: ddgData.AbstractURL, snippet: ddgData.AbstractText.slice(0, 250) });
+    }
+    for (const t of (ddgData.RelatedTopics ?? []).slice(0, 9)) {
+      if (t.FirstURL && t.Text) {
+        results.push({ titulo: t.Text.split(" - ")[0].slice(0, 100), url: t.FirstURL, snippet: t.Text.slice(0, 200) });
+      }
+    }
+
+    // Fallback: use GPT to suggest real Wikipedia/educational sources
+    if (results.length < 3) {
+      const completion = await gpt.chat.completions.create({
+        model: "gpt-4o-mini", max_tokens: 700,
+        messages: [
+          { role: "system", content: 'Sugira 6-8 fontes web educacionais reais e relevantes (Wikipedia pt.br, Khan Academy, Brasil Escola, etc). Retorne JSON: [{"titulo":"...","url":"https://...","snippet":"..."}]. Use URLs reais.' },
+          { role: "user", content: `Tópico: ${topic}` }
+        ],
+      });
+      const text = completion.choices[0].message.content ?? "[]";
+      const m = text.match(/\[[\s\S]*\]/);
+      if (m) results.push(...JSON.parse(m[0]));
+    }
+    res.json({ resultados: results.slice(0, 10) });
+  } catch (e) {
+    console.error("fast-research:", e);
+    res.status(500).json({ erro: "Erro na pesquisa" });
+  }
+});
+
+// ─── POST /api/notebook/discover ──────────────────────────────────────────────
+router.post("/notebook/discover", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { docIds, cadernoId } = req.body as { docIds?: number[]; cadernoId?: number };
+  try {
+    const chunks = await ragSearch(req.userId, docIds?.length ? docIds : null, "tópicos principais conceitos", 5);
+    if (!chunks.length) { res.json({ sugestoes: [] }); return; }
+    const context = chunks.slice(0, 3).map(c => c.text).join("\n\n").slice(0, 2000);
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini", max_tokens: 700,
+      messages: [
+        { role: "system", content: 'Com base no material, sugira 6 fontes web complementares reais (Wikipedia, Khan Academy, Brasil Escola, YouTube educativo). Retorne JSON: [{"titulo":"...","url":"https://...","snippet":"...","relevancia":"alta|media"}]. URLs devem ser reais e educacionais.' },
+        { role: "user", content: `Material atual:\n${context}` }
+      ],
+    });
+    const text = completion.choices[0].message.content ?? "[]";
+    const m = text.match(/\[[\s\S]*\]/);
+    const sugestoes = m ? JSON.parse(m[0]) : [];
+    res.json({ sugestoes: sugestoes.slice(0, 8) });
+  } catch (e) {
+    console.error("discover:", e);
+    res.json({ sugestoes: [] });
+  }
+});
+
+// ─── POST /api/notebook/share-link ────────────────────────────────────────────
+router.post("/notebook/share-link", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { cadernoId } = req.body as { cadernoId: number };
+  if (!cadernoId) { res.status(400).json({ erro: "cadernoId obrigatório" }); return; }
+  try {
+    const nbId = await resolveNotebookId(req.userId, cadernoId);
+    const crypto = await import("crypto");
+    const token = crypto.randomBytes(16).toString("hex");
+    await db.execute(sql`ALTER TABLE notebooks ADD COLUMN IF NOT EXISTS share_token varchar(64) DEFAULT NULL`);
+    await db.execute(sql`UPDATE notebooks SET share_token = ${token} WHERE id = ${nbId}`);
+    res.json({ token });
+  } catch (e) {
+    console.error("share-link:", e);
+    res.status(500).json({ erro: "Erro ao gerar link" });
+  }
+});
+
+// ─── GET /api/notebook/shared/:token ─────────────────────────────────────────
+router.get("/notebook/shared/:token", async (req: Request, res: Response) => {
+  const { token } = req.params;
+  try {
+    await db.execute(sql`ALTER TABLE notebooks ADD COLUMN IF NOT EXISTS share_token varchar(64) DEFAULT NULL`);
+    const result = await db.execute(sql`SELECT id, title, emoji, persona FROM notebooks WHERE share_token = ${token}`);
+    if (!result.rows.length) { res.status(404).json({ erro: "Caderno não encontrado" }); return; }
+    const nb = result.rows[0] as any;
+    const docs = await db.execute(sql`SELECT id, title, source_file, file_size_kb FROM knowledge_documents WHERE notebook_id = ${nb.id} LIMIT 20`);
+    res.json({ caderno: nb, docs: docs.rows });
+  } catch (e) {
+    console.error("shared:", e);
+    res.status(500).json({ erro: "Erro ao carregar" });
   }
 });
 

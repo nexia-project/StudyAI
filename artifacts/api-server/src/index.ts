@@ -15,11 +15,33 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
+// ── Guard against unhandled rejections/exceptions crashing the process ────────
+process.on("unhandledRejection", (reason) => {
+  logger.error({ reason }, "unhandledRejection — keeping process alive");
+});
+process.on("uncaughtException", (err) => {
+  logger.error({ err }, "uncaughtException — keeping process alive");
+});
 
-  logger.info({ port }, "Server listening");
+const server = app.listen(port, () => {
+  logger.info({ pid: process.pid, hostname: "localhost", port }, "Server listening");
+});
+
+server.on("error", (err) => {
+  logger.error({ err }, "Server error");
+  process.exit(1);
+});
+
+// ── Graceful shutdown on SIGTERM (sent by Replit during deploys) ──────────────
+process.on("SIGTERM", () => {
+  logger.info("SIGTERM received — shutting down gracefully");
+  server.close(() => {
+    logger.info("All connections closed, process exiting");
+    process.exit(0);
+  });
+  // Force exit after 10 seconds if connections don't close
+  setTimeout(() => {
+    logger.warn("Forced exit after 10s graceful shutdown timeout");
+    process.exit(0);
+  }, 10_000).unref();
 });

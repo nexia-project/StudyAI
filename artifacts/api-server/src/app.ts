@@ -13,6 +13,12 @@ import { sanitizeInputs } from "./middlewares/security";
 
 const app: Express = express();
 
+// ── CRITICAL: Health check MUST respond before any other middleware ───────────
+// This ensures the health check never fails due to Clerk, rate-limiter or DB.
+app.get("/api/healthz", (_req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
 // ── Trust proxy (Replit / Cloudflare sit in front) ──────────────────────────
 app.set("trust proxy", 1);
 

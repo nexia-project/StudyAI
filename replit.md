@@ -82,6 +82,12 @@ Every new AI feature added to ANY surface MUST also be reflected in:
 3. ✅ **Professor's own Notebook**: link "Caderno IA" added to `Professor.tsx` sidebar opening `/notebook`; backend already scopes `knowledge_documents` by `uploaded_by = req.userId`, so each professor sees only their own RAG corpus.
 4. ✅ **Citações inline + filtro por documento** entregue em web e mobile: chips clicáveis [Fonte N] abrem o trecho completo, e tap em qualquer doc da lista marca/desmarca como escopo (web: `selectedDocs` + `restrictToSelected`; mobile: `selectedDocIds` + barra "Travar/Soltar" acima do composer).
 
+### Deploy Fixes (April 2026)
+- **Health check hardened**: `/api/healthz` registered before all middleware (Clerk, rate-limiter, auth) → responds in < 1ms in production.
+- **Graceful SIGTERM**: `index.ts` now handles SIGTERM from Replit deploy orchestrator, closing the server cleanly within 1s (force-exit at 10s).
+- **Unhandled rejection/exception guards**: `process.on("unhandledRejection/uncaughtException")` prevents stray errors from crashing the server.
+- **vite.config.ts fixed**: `PORT` and `BASE_PATH` now have safe defaults so `vite build` works in production without env vars.
+
 ### External Dependencies
 
 - **Database**: PostgreSQL

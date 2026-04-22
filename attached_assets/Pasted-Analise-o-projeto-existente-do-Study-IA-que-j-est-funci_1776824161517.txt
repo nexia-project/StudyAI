@@ -1,0 +1,361 @@
+Analise o projeto existente do Study.IA que já está funcionando neste repositório. O sistema já possui:
+- Auth funcionando
+- Dashboard principal
+- Módulo Professor
+- Módulo Instituição
+- Módulo Governo
+- Painel Admin
+- Plano de Estudos
+- Simulado ENEM
+- Redação
+- Cronograma
+- Aula com o Professor
+- Trilha Mestre
+- Caderno Digital
+- Sala de Estudos
+- Mapa Mental
+- Conquistas
+- Ranking Global
+- Sistema Premium
+- Comunidade
+
+NÃO MEXA em nada que já funciona. NÃO quebre nenhuma funcionalidade existente.
+
+Sua tarefa é EXPANDIR e TURBINAR o módulo "Notebook (RAG)" que já existe no menu "Estudar", transformando-o em um clone completo e superior do Google NotebookLM. Use a mesma stack, mesmos padrões de código, mesmo design system e mesma estrutura de banco de dados que o projeto já utiliza.
+
+=============================================
+MÓDULO NOTEBOOK (RAG) — FUNCIONALIDADES COMPLETAS
+=============================================
+
+## 1. TELA PRINCIPAL DO NOTEBOOK
+
+Quando o usuário clica em "Notebook (RAG)" no menu, deve ver:
+- Lista de cadernos existentes (cards com título, data, nº de fontes)
+- Botão "Criar Novo Caderno"
+- Busca por cadernos
+- Cadernos recentes em destaque
+
+Ao abrir um caderno específico, layout em 3 painéis:
+
+┌──────────────────────────────────────────────────┐
+│ Header: Título do Caderno (editável) | Compartilhar | Config │
+├─────────────┬──────────────────┬─────────────────┤
+│             │                  │                 │
+│  FONTES     │  CHAT COM IA     │  STUDIO         │
+│  (esquerda) │  (centro)        │  (direita)      │
+│             │                  │                 │
+│ + Add fonte │                  │  Gerar:         │
+│             │                  │  • Resumo       │
+│ 📄 Doc1.pdf │  Conversa com    │  • Flashcards   │
+│ 📄 Doc2.pdf │  citações [1][2] │  • Quiz         │
+│ 🔗 Link1   │                  │  • Mapa Mental  │
+│ 🎥 YouTube  │                  │  • Timeline     │
+│ 🎙 Audio1   │  [Pergunte...]   │  • Podcast      │
+│             │                  │  • Slides       │
+│             │                  │  • Vídeo        │
+│             │                  │  • Tabela       │
+│             │                  │  • Relatório    │
+└─────────────┴──────────────────┴─────────────────┘
+
+## 2. FONTES — PAINEL ESQUERDO
+
+Upload e importação dos seguintes tipos de fonte:
+- PDF (extrair texto com pdf-parse, preservar páginas)
+- Documentos Word .docx (parsing com mammoth)
+- Arquivos de texto .txt e .md
+- Links de páginas web (fetch + extrair texto limpo do HTML)
+- Vídeos do YouTube (extrair transcrição/legendas com timestamps)
+- Áudios MP3/WAV/M4A (transcrição com OpenAI Whisper API)
+- Imagens PNG/JPG (OCR com Tesseract.js)
+- Planilhas CSV/XLSX (parsing para texto estruturado)
+- Apresentações .pptx (extração de texto dos slides)
+- Google Docs (via link público)
+- Google Sheets (via link público)
+- EPUB (e-books)
+
+Para cada fonte:
+- Mostrar nome, tipo (ícone), tamanho, data de upload
+- Preview do conteúdo ao clicar
+- Botão de deletar
+- Indicador de status: processando / pronto / erro
+
+Limites: até 50 fontes por caderno, 200MB por arquivo, 500.000 palavras por fonte.
+
+Drag & drop para upload de múltiplos arquivos simultaneamente.
+
+## 3. PIPELINE RAG (BACKEND)
+
+Quando uma fonte é adicionada, executar automaticamente:
+
+a) EXTRAÇÃO: Extrair todo o texto do documento conforme o tipo
+b) CHUNKING: Dividir em chunks de ~500 tokens com overlap de 50 tokens. Cada chunk guarda: texto, sourceId, pageNumber/posição
+c) EMBEDDINGS: Gerar embedding de cada chunk usando OpenAI text-embedding-3-small (1536 dimensões)
+d) ARMAZENAMENTO: Salvar embeddings no PostgreSQL com pgvector (criar extensão se não existir)
+
+Quando o usuário faz uma pergunta no chat:
+a) Gerar embedding da pergunta
+b) Busca vetorial (cosine similarity) nos chunks do caderno — retornar top 15 mais relevantes
+c) Montar contexto com os chunks recuperados, cada um identificado: [Fonte: nome_do_arquivo, Página X]
+d) Enviar para GPT-4o com system prompt:
+
+"Você é um assistente de pesquisa do Study.IA. Responda EXCLUSIVAMENTE com base no contexto fornecido abaixo. Se a informação não estiver no contexto, diga claramente que não encontrou nas fontes do caderno. SEMPRE cite suas fontes usando numeração [1], [2], [3] etc. Seja preciso e útil."
+
+e) Fazer streaming da resposta (Server-Sent Events)
+
+## 4. CHAT — PAINEL CENTRAL
+
+- Input de texto na parte inferior com botão enviar + atalho Enter
+- Respostas da IA em streaming (palavra por palavra)
+- CITAÇÕES CLICÁVEIS: cada [1], [2] etc na resposta é um link. Ao clicar:
+  - Abre popup/tooltip mostrando o trecho exato do documento original
+  - Nome do documento + página
+  - Link "Abrir documento" que leva ao preview completo da fonte
+- Markdown rendering nas respostas (negrito, listas, código, tabelas)
+- Botões nas respostas: Copiar | Regenerar | 👍 👎
+- Histórico de conversas salvo no banco — retomar de onde parou
+- Botão "Nova conversa" para limpar contexto
+- Lista de conversas anteriores acessível
+- Sugestões de perguntas iniciais geradas pela IA com base nas fontes
+
+## 5. CUSTOM GOALS / PERSONA DO CADERNO
+
+- Ícone de engrenagem no caderno abre configurações
+- Campo de texto "Instrução personalizada" (até 5.000 caracteres)
+- O usuário define como a IA deve se comportar naquele caderno
+- Exemplos placeholder:
+  "Aja como um professor paciente de física do ensino médio"
+  "Seja um revisor rigoroso de artigos acadêmicos"
+  "Explique tudo de forma simples, como para uma criança de 10 anos"
+- Essa instrução é injetada no system prompt de toda interação
+
+## 6. STUDIO — PAINEL DIREITO (Geração de Conteúdo)
+
+Cada item abaixo é um botão no painel. Ao clicar, a IA processa TODAS as fontes do caderno e gera o conteúdo. Cada output gerado fica salvo e acessível no painel.
+
+### 6.1 RESUMO
+- 3 formatos: Bullets (5 pontos) | Detalhado (parágrafos) | Por tópicos
+- Sempre com citações das fontes
+- Botão copiar e exportar
+
+### 6.2 GUIA DE ESTUDO
+- Documento completo com tópicos, explicações, conceitos-chave e referências
+- Formatado em Markdown bonito
+- Exportável como PDF
+
+### 6.3 FLASHCARDS
+- IA gera pares pergunta/resposta a partir das fontes
+- Interface interativa: card que vira ao clicar (front/back)
+- Marcar cada card: Fácil | Médio | Difícil
+- Algoritmo de repetição espaçada SM-2 para agendar revisões
+- Contador de cards dominados vs pendentes
+- Barra de progresso
+- Adicionar flashcards manualmente
+- Exportar como CSV
+
+### 6.4 QUIZ
+- IA gera perguntas com base nas fontes
+- Tipos: Múltipla escolha (4 alternativas) | Verdadeiro/Falso | Resposta curta
+- Configurar: nº de perguntas (5, 10, 15, 20), dificuldade (fácil, médio, difícil)
+- Interface de quiz limpa: uma pergunta por vez, progress bar, timer opcional
+- Ao finalizar: score, explicação de cada resposta com citação da fonte
+- Histórico de tentativas com evolução
+
+### 6.5 MAPA MENTAL
+- IA analisa as fontes e gera estrutura hierárquica de conceitos
+- Renderizar com React Flow: nós arrastáveis, zoom, pan
+- Nós: tópico principal no centro, subtópicos ramificando
+- Cores por nível de profundidade
+- Expand/collapse de ramos
+- Exportar como PNG
+
+### 6.6 LINHA DO TEMPO (Timeline)
+- Se as fontes contêm eventos cronológicos, gerar timeline visual
+- Layout vertical com marcadores de data
+- Cada evento: data, título, descrição, citação da fonte
+- Scroll suave entre eventos
+
+### 6.7 TABELA DE DADOS (Data Table)
+- IA extrai informações comparáveis das fontes e organiza em tabela
+- Ex: comparação de conceitos, datas, características
+- Tabela editável pelo usuário (adicionar/remover linhas e colunas)
+- Exportar como CSV ou copiar
+
+### 6.8 AUDIO OVERVIEW (PODCAST) ⭐ FUNCIONALIDADE PRINCIPAL
+Replicar EXATAMENTE o comportamento do NotebookLM:
+
+a) Botão "Gerar Audio Overview"
+b) A IA primeiro gera um SCRIPT de conversa entre dois apresentadores:
+   - Host 1 (voz masculina — OpenAI TTS voz "echo"): conduz a conversa, faz perguntas
+   - Host 2 (voz feminina — OpenAI TTS voz "nova"): responde, complementa, exemplifica
+   - Tom: natural, conversacional, com interjeições ("Exatamente!", "Isso é fascinante...", "E tem mais...")
+   - Estrutura: introdução → desenvolvimento dos tópicos → conclusão com takeaways
+c) Converter o script em áudio usando OpenAI TTS API, alternando entre as duas vozes
+d) Concatenar os áudios em sequência
+
+Formatos disponíveis (selecionável pelo usuário):
+- "Conversa Profunda" — análise detalhada, 15-20 minutos
+- "Resumo Rápido" — highlights em 3-5 minutos
+- "Debate" — os hosts discordam e debatem diferentes perspectivas do material
+
+Configurações:
+- Selecionar em quais fontes focar (todas ou específicas)
+- "Steering prompt": campo de texto para guiar o foco do podcast. Ex: "Foque nas implicações econômicas", "Compare os dois autores"
+- Idioma: Português BR (padrão) ou Inglês
+
+Player de áudio:
+- Play/Pause, barra de progresso arrastável
+- Velocidade: 0.5x, 0.75x, 1x, 1.25x, 1.5x, 2x
+- Pular 10s frente/trás
+- Download MP3
+- Visualização de forma de onda
+
+MODO INTERATIVO DO PODCAST:
+- Botão "Participar da conversa" aparece durante reprodução
+- Ao clicar: áudio pausa
+- Usuário digita ou grava pergunta (input de texto ou botão de microfone)
+- A IA gera resposta dos hosts à pergunta do usuário (com base nas fontes)
+- Converte resposta em áudio com as mesmas vozes
+- Reproduz a resposta
+- O podcast continua de onde parou
+
+### 6.9 VIDEO OVERVIEW
+- IA gera apresentação narrada:
+  a) Cria slides (título + bullets + imagens placeholder) automaticamente
+  b) Gera narração em áudio (TTS) para cada slide
+  c) Combina em formato de vídeo (usar HTML Canvas para renderizar)
+- Estilos visuais selecionáveis: Clássico, Minimalista, Quadro Branco, Colorido
+- Formatos: Explicador completo (10-15 min) | Brief (2-3 min)
+- Steering prompt opcional
+- Player de vídeo com controles padrão
+- Download ou compartilhar por link
+
+### 6.10 GERAÇÃO DE SLIDES
+- IA gera deck de slides a partir das fontes
+- Preview visual de cada slide
+- EDIÇÃO POR SLIDE INDIVIDUAL:
+  - Clicar em um slide → abrir editor
+  - Input: "Simplifique este slide" / "Adicione mais detalhes" / "Mude o título"
+  - IA regenera apenas aquele slide
+  - Fila de edições: pode pedir várias mudanças antes de aplicar
+- Temas: Profissional, Acadêmico, Criativo, Minimalista
+- Exportar como PPTX (PowerPoint)
+
+### 6.11 RELATÓRIO / DOCUMENTO
+- Templates: Relatório acadêmico, Blog post, Briefing executivo, Plano de aula
+- Gera documento completo com seções, citações, referências bibliográficas
+- Exportar como PDF ou DOCX
+
+## 7. DEEP RESEARCH (Pesquisa Profunda na Web)
+
+Adicionar na tela de fontes do caderno um botão "Pesquisar na Web":
+
+### Fast Research:
+- Input: tema/pergunta
+- Busca ~10 fontes web relevantes (usar Serper API ou similar)
+- Mostra lista com título, URL, snippet
+- Botão "Adicionar ao caderno" em cada resultado
+- Resultados viram fontes no caderno
+
+### Deep Research:
+- Input: tema/pergunta complexa
+- A IA cria um PLANO DE PESQUISA (mostra para o usuário)
+- Executa pesquisa autônoma em background:
+  - Busca dezenas de fontes na web
+  - Lê e analisa cada uma
+  - Compila relatório detalhado com citações
+- Barra de progresso + estimativa de tempo
+- Ao finalizar: mostra relatório + lista de fontes encontradas
+- Botão "Adicionar tudo ao caderno"
+
+## 8. DISCOVER (Sugestão Automática de Fontes)
+
+- Seção no painel de fontes: "Fontes sugeridas"
+- O sistema analisa o conteúdo do caderno e sugere até 10 fontes web relevantes
+- Cada sugestão: título, URL, snippet, relevância
+- Botão "Adicionar" para importar ao caderno
+- Atualiza quando novas fontes são adicionadas
+
+## 9. COMPARTILHAMENTO
+
+- Botão "Compartilhar" no header do caderno
+- Compartilhar por email (digitar email do destinatário)
+- Permissões: Apenas visualizar | Pode editar
+- Gerar link público de acesso
+- Em cadernos compartilhados: cada usuário tem seu chat PRIVADO
+- Compartilhar outputs do Studio individualmente (link público para podcast, quiz, etc.)
+
+## 10. BANCO DE DADOS
+
+Adicionar as seguintes tabelas ao banco existente (adaptar nomes e convenções ao padrão que o projeto já usa). NÃO DUPLICAR tabelas que já existem — reutilizar User, etc:
+
+- rag_notebooks (id, title, description, userId, persona, createdAt, updatedAt)
+- rag_sources (id, notebookId, filename, type, originalUrl, storagePath, content, metadata, fileSize, status, createdAt)
+- rag_chunks (id, sourceId, text, embedding vector(1536), pageNumber, position, metadata)
+- rag_conversations (id, notebookId, userId, title, createdAt, updatedAt)
+- rag_messages (id, conversationId, role, content, citations JSON, createdAt)
+- rag_flashcard_sets (id, notebookId, title, createdAt)
+- rag_flashcards (id, setId, front, back, difficulty, interval, repetitions, nextReview)
+- rag_flashcard_reviews (id, flashcardId, userId, quality, reviewedAt)
+- rag_quizzes (id, notebookId, title, questions JSON, createdAt)
+- rag_quiz_attempts (id, quizId, userId, answers JSON, score, startedAt, finishedAt)
+- rag_studio_outputs (id, notebookId, type, content JSON, audioUrl, videoUrl, config JSON, shareLink, createdAt)
+- rag_notebook_shares (id, notebookId, sharedWithEmail, permission, createdAt)
+- rag_deep_research_jobs (id, notebookId, userId, topic, status, plan JSON, report, sources JSON, progress, createdAt, completedAt)
+
+Criar índice pgvector na coluna embedding de rag_chunks:
+CREATE INDEX ON rag_chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+
+## 11. INTEGRAÇÃO COM O SISTEMA EXISTENTE
+
+- O módulo Notebook (RAG) deve aparecer no menu "Estudar" onde já está (com badge "NOVO")
+- Usar o mesmo sistema de auth que já existe — pegar o userId da sessão
+- Seguir o mesmo design system: mesmas cores, componentes, tipografia, layout
+- Seguir a mesma estrutura de pastas e padrões de código do projeto
+- Se o projeto usa algum framework de UI específico, usar o mesmo
+- Respeitar o sistema de Premium que já existe (features avançadas como Deep Research e Audio Overview podem ser Premium)
+- Integrar com Módulo Professor: professores podem atribuir cadernos a turmas
+- Integrar com Módulo Instituição: coordenadores veem métricas de uso do Notebook (RAG)
+
+## 12. PRIORIDADE DE IMPLEMENTAÇÃO
+
+FASE 1 (fazer AGORA):
+□ Tela de listagem de cadernos
+□ Tela do caderno com layout de 3 painéis
+□ Upload de fontes (PDF, TXT, links web)
+□ Pipeline RAG: extração → chunking → embeddings → pgvector
+□ Chat com IA baseado nas fontes com streaming
+□ Citações clicáveis nas respostas
+□ Histórico de conversas
+
+FASE 2:
+□ Mais tipos de fonte (DOCX, áudio/Whisper, YouTube, imagens/OCR, CSV, XLSX)
+□ Resumos
+□ Flashcards com repetição espaçada
+□ Quizzes com correção automática
+□ Guia de estudo
+
+FASE 3:
+□ Audio Overview (podcast com 2 vozes + modo interativo)
+□ Custom Goals/Persona
+□ Mapa Mental (React Flow)
+□ Linha do tempo
+□ Tabela de dados
+
+FASE 4:
+□ Deep Research + Fast Research
+□ Discover
+□ Slides com edição individual + export PPTX
+□ Video Overview
+□ Relatórios/documentos
+
+FASE 5:
+□ Compartilhamento
+□ Integração com Módulo Professor (atribuir cadernos a turmas)
+□ Integração com Módulo Instituição (métricas)
+□ Premium gating nas features avançadas
+
+=============================================
+INSTRUÇÃO FINAL
+=============================================
+
+Analise PRIMEIRO toda a estrutura do projeto existente: pastas, componentes, banco de dados, padrões de código, design system. Depois implemente a FASE 1 do módulo Notebook (RAG) seguindo EXATAMENTE os mesmos padrões. Não quebre nada que já funciona. Comece agora.

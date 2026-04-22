@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { createRequire } from "module";
 import OpenAI from "openai";
 import multer from "multer";
+import AdmZip from "adm-zip";
 import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
@@ -50,10 +51,37 @@ async function extractTextFromFile(file: Express.Multer.File): Promise<string> {
       // Use createRequire (safe) instead of dynamic import (triggers ENOENT bug)
       const pdfParser = _require("pdf-parse/lib/pdf-parse");
       const parsed = await pdfParser(file.buffer);
-      return sanitizeText(parsed.text);
+      const extracted = sanitizeText(parsed.text);
+      if (extracted.trim().length > 20) return extracted;
+      // Fallback for scanned PDFs: use Latin-1 raw text extraction
+      const rawText = file.buffer.toString("latin1");
+      return sanitizeText(rawText.replace(/[^\x20-\x7E\n\r\t\xA0-\xFF]/g, " ").replace(/\s{3,}/g, "\n").trim());
     } catch {
       const rawText = file.buffer.toString("latin1");
       return sanitizeText(rawText.replace(/[^\x20-\x7E\n\r\t\xA0-\xFF]/g, " ").replace(/\s{3,}/g, "\n").trim());
+    }
+  }
+
+  if (mime === "application/vnd.openxmlformats-officedocument.presentationml.presentation") {
+    try {
+      const zip = new AdmZip(file.buffer);
+      const entries = zip.getEntries();
+      const textParts: string[] = [];
+      for (const entry of entries) {
+        // Slide XMLs live at ppt/slides/slide*.xml
+        if (entry.entryName.match(/^ppt\/slides\/slide\d+\.xml$/)) {
+          const xmlContent = entry.getData().toString("utf8");
+          // Extract text from <a:t> tags (DrawingML text runs)
+          const matches = xmlContent.matchAll(/<a:t[^>]*>([^<]+)<\/a:t>/g);
+          for (const m of matches) {
+            const t = m[1].trim();
+            if (t) textParts.push(t);
+          }
+        }
+      }
+      return sanitizeText(textParts.join(" "));
+    } catch {
+      return "";
     }
   }
 
@@ -309,26 +337,30 @@ router.post("/knowledge/upload-file", upload.single("file"), validateFileUpload,
   try {
     let contentText = "";
     let pageCount: number | undefined;
+    let warning: string | undefined;
     const mime = req.file.mimetype;
 
-    if (mime === "application/pdf") {
-      const parsed = await parsePdfBuffer(req.file.buffer);
-      contentText = sanitizeText(parsed.text);
-      pageCount = parsed.numpages || undefined;
-    } else if (mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-      const mammoth = await import("mammoth");
-      const result = await mammoth.extractRawText({ buffer: req.file.buffer });
-      contentText = sanitizeText(result.value);
-    } else {
-      contentText = sanitizeText(req.file.buffer.toString("utf8"));
-    }
+    // Use shared extractor (handles PDF, DOCX, DOC, TXT, PPTX)
+    contentText = await extractTextFromFile(req.file);
 
-    if (!contentText || contentText.trim().length < 20) {
-      res.status(422).json({ erro: "Não foi possível extrair texto legível do arquivo. Verifique se o PDF tem texto selecionável (não é imagem escaneada)." });
-      return;
+    // For PDF, also try to get page count
+    if (mime === "application/pdf") {
+      try {
+        const pdfParser = _require("pdf-parse/lib/pdf-parse");
+        const parsed = await pdfParser(req.file.buffer);
+        pageCount = parsed.numpages || undefined;
+      } catch { /* ignore */ }
     }
 
     const docTitle = title || req.file.originalname.replace(/\.[^.]+$/, "");
+
+    // If text is still too short, save the document with minimal metadata
+    // (admin knows what they're doing — don't reject, just warn)
+    if (!contentText || contentText.trim().length < 20) {
+      contentText = `[Documento: ${docTitle}]\n\nArquivo: ${req.file.originalname}\nTamanho: ${Math.round(req.file.size / 1024)} KB\n\nNota: O texto não pôde ser extraído automaticamente. Este pode ser um PDF escaneado, apresentação com apenas imagens, ou arquivo protegido.`;
+      warning = "Não foi possível extrair texto selecionável do arquivo. O documento foi salvo com metadados. PDFs escaneados ou com apenas imagens não são pesquisáveis pela IA.";
+    }
+
     const fileSizeKb = Math.round(req.file.size / 1024);
     const tagsArr: string[] = typeof tags === "string"
       ? tags.split(",").map((t: string) => t.trim()).filter(Boolean)
@@ -351,7 +383,10 @@ router.post("/knowledge/upload-file", upload.single("file"), validateFileUpload,
 
     res.json({
       ok: true,
-      message: `✅ Processado com sucesso: ${pageCount ? pageCount + " páginas · " : ""}${wordCount.toLocaleString("pt-BR")} palavras · ${result.chunks > 0 ? result.chunks + " partes indexadas" : "indexado como documento único"}`,
+      message: warning
+        ? `⚠️ Salvo com aviso: ${docTitle}. ${warning}`
+        : `✅ Processado: ${pageCount ? pageCount + " páginas · " : ""}${wordCount.toLocaleString("pt-BR")} palavras · ${result.chunks > 0 ? result.chunks + " partes indexadas" : "indexado"}`,
+      warning,
       ...result,
       charCount,
       wordCount,

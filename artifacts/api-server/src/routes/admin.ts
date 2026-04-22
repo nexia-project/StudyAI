@@ -135,13 +135,13 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
     const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
 
-    const [totalUsers] = await db.execute(sql`SELECT COUNT(*)::int AS count FROM users`);
-    const [todayNewUsers] = await db.execute(sql`SELECT COUNT(*)::int AS count FROM users WHERE created_at::date = ${today}::date`);
-    const [premiumUsers] = await db.execute(sql`SELECT COUNT(*)::int AS count FROM users WHERE stripe_subscription_status IN ('active','trialing')`);
-    const [teacherCount] = await db.execute(sql`SELECT COUNT(*)::int AS count FROM users WHERE role = 'teacher'`);
-    const [govCount] = await db.execute(sql`SELECT COUNT(*)::int AS count FROM users WHERE role = 'government'`);
-    const [todayActive] = await db.execute(sql`SELECT COUNT(DISTINCT user_id)::int AS count FROM user_activity WHERE study_date = ${today}`);
-    const [pendingReq] = await db.execute(sql`SELECT COUNT(*)::int AS count FROM role_requests WHERE status = 'pending'`);
+    const totalUsers = await db.execute(sql`SELECT COUNT(*)::int AS count FROM users`);
+    const todayNewUsers = await db.execute(sql`SELECT COUNT(*)::int AS count FROM users WHERE created_at::date = ${today}::date`);
+    const premiumUsers = await db.execute(sql`SELECT COUNT(*)::int AS count FROM users WHERE stripe_subscription_status IN ('active','trialing')`);
+    const teacherCount = await db.execute(sql`SELECT COUNT(*)::int AS count FROM users WHERE role = 'teacher'`);
+    const govCount = await db.execute(sql`SELECT COUNT(*)::int AS count FROM users WHERE role = 'government'`);
+    const todayActive = await db.execute(sql`SELECT COUNT(DISTINCT user_id)::int AS count FROM user_activity WHERE study_date = ${today}`);
+    const pendingReq = await db.execute(sql`SELECT COUNT(*)::int AS count FROM role_requests WHERE status = 'pending'`);
 
     // Study plans last 7 days per day
     const plansPerDay = await db.execute(sql`

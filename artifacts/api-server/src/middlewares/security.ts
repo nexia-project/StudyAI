@@ -18,6 +18,10 @@ const ALLOWED_MAGIC: Record<string, { magic: Buffer[]; ext: string }> = {
     magic: [Buffer.from([0xd0, 0xcf, 0x11, 0xe0])], // DOC magic bytes
     ext: ".doc",
   },
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": {
+    magic: [Buffer.from([0x50, 0x4b, 0x03, 0x04])], // ZIP/PPTX magic bytes
+    ext: ".pptx",
+  },
 };
 
 export function validateFileUpload(req: Request, res: Response, next: NextFunction) {
@@ -39,11 +43,14 @@ export function validateFileUpload(req: Request, res: Response, next: NextFuncti
     }
   }
 
-  // Verify magic bytes for DOCX
-  if (mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-    const docxMagic = ALLOWED_MAGIC[mime].magic[0];
-    if (!req.file.buffer.slice(0, 4).equals(docxMagic)) {
-      res.status(400).json({ erro: "Arquivo inválido: não é um DOCX real." });
+  // Verify magic bytes for DOCX / PPTX (both are ZIP containers)
+  if (
+    mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    mime === "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+  ) {
+    const zipMagic = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
+    if (!req.file.buffer.slice(0, 4).equals(zipMagic)) {
+      res.status(400).json({ erro: "Arquivo inválido: não é um arquivo Office real." });
       return;
     }
   }

@@ -265,7 +265,7 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
       db.execute(sql`SELECT COUNT(*)::int AS count FROM redacoes WHERE created_at >= NOW() - INTERVAL '7 days'`),
       db.execute(sql`SELECT COUNT(*)::int AS count FROM flashcard_reviews WHERE updated_at >= NOW() - INTERVAL '7 days'`),
       db.execute(sql`SELECT COUNT(*)::int AS count FROM teacher_content`),
-      db.execute(sql`SELECT COUNT(*)::int AS count, COUNT(*) FILTER (WHERE is_active = true)::int AS active FROM instituicoes`),
+      db.execute(sql`SELECT COUNT(*)::int AS count, COUNT(*) FILTER (WHERE contract_end IS NULL OR contract_end > NOW())::int AS active FROM instituicoes`),
     ]);
 
     // Storage breakdown for "Conteúdo & Banco"

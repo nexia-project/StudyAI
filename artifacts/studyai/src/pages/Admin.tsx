@@ -42,6 +42,7 @@ type RoleRequest = {
 type AdminStats = {
   totalUsers: number; todayNewUsers: number; premiumUsers: number;
   teacherCount: number; govCount: number; todayActive: number; studyingNow: number; pendingRequests: number;
+  institutionsTotal: number; institutionsActive: number;
   plansPerDay: { day: string; count: number }[];
   simuladosPerDay: { day: string; count: number }[];
   newUsersPerDay: { day: string; count: number }[];
@@ -51,6 +52,13 @@ type AdminStats = {
   loginsByHour: { hour: number; count: number }[];
   topMaterias: { materia: string; count: number; avg_score: number }[];
   activityHeatmap: { study_date: string; active_users: number }[];
+  aiFeatures: { feature: string; uses: number; users: number; last7d: number }[];
+  aiProviders: { id: string; ok: boolean }[];
+  trilhaBySubject: { subject: string; students: number; avgLevel: number; maxLevel: number }[];
+  diagnosticsCompleted30d: number;
+  notebookDocsTotal: number; notebookStorageMb: number; notebookOverviewsTotal: number;
+  teacherContentTotal: number;
+  contentBreakdown: { label: string; value: number; color: string }[];
 };
 
 type Section =
@@ -394,15 +402,15 @@ export default function AdminPage() {
 
   /* ── Charts derived from REAL backend metrics ──────────────────────── */
   // IA & Custos: usage volume per AI feature (last 7d) — replaces hardcoded model bars
-  const aiCostsChart = (stats?.aiFeatures ?? []).map((f: any) => ({
+  const aiCostsChart = (stats?.aiFeatures ?? []).map((f) => ({
     model: f.feature.length > 7 ? f.feature.slice(0, 6) + "…" : f.feature,
     cost: f.last7d || f.uses || 0,
   }));
   const aiFeaturesList = stats?.aiFeatures ?? [];
-  const totalAiUses = aiFeaturesList.reduce((s: number, f: any) => s + (f.uses || 0), 0) || 1;
+  const totalAiUses = Math.max(1, aiFeaturesList.reduce((s, f) => s + (f.uses || 0), 0));
 
   // Status dos provedores de IA (lido do backend; cai pra heurística se ausente)
-  const providersFromApi: any[] = (stats as any)?.aiProviders ?? [];
+  const providersFromApi = stats?.aiProviders ?? [];
   const providerStatus = (id: string) => providersFromApi.find(p => p.id === id);
   const aiProviders = [
     { id: "deepseek",  name: "DeepSeek",       emoji: "🧠", bg: "bg-blue-500/15",   ok: providerStatus("deepseek")?.ok  ?? true,  usage: "Tutor Tiagão · Simulado adaptativo · Notebook" },
@@ -410,21 +418,24 @@ export default function AdminPage() {
     { id: "openai",    name: "OpenAI GPT",     emoji: "🟢", bg: "bg-emerald-500/15", ok: providerStatus("openai")?.ok    ?? true,  usage: "Imagens (slides, infográficos) · TTS Tiagão" },
     { id: "gemini",    name: "Google Gemini",  emoji: "✨", bg: "bg-violet-500/15",  ok: providerStatus("gemini")?.ok    ?? true,  usage: "Resolução de problema por foto · OCR" },
     { id: "openrouter", name: "OpenRouter",    emoji: "🔀", bg: "bg-pink-500/15",    ok: providerStatus("openrouter")?.ok ?? false, usage: "Fallback · Modelos extras (opcional)" },
-    { id: "elevenlabs", name: "ElevenLabs TTS", emoji: "🔊", bg: "bg-cyan-500/15",   ok: providerStatus("elevenlabs")?.ok ?? !!(stats as any)?.aiProviders?.find?.((p:any)=>p.id==="elevenlabs"), usage: "Voz do podcast (opcional)" },
+    { id: "elevenlabs", name: "ElevenLabs TTS", emoji: "🔊", bg: "bg-cyan-500/15",   ok: providerStatus("elevenlabs")?.ok ?? false, usage: "Voz do podcast (opcional)" },
   ];
 
-  const mockRevData = stats?.plansPerDay?.map((d, i) => ({
-    day: d.day.slice(5), revenue: (d.count * 8.2 + i * 120).toFixed(0),
-  })) ?? [];
+  // Receita: MRR atual = premiumUsers * ticket. Série temporal usa loginsByDay como proxy de engajamento.
+  const mockRevData = stats?.loginsByDay?.map((d) => ({
+    day: d.day.slice(5), revenue: ((stats?.premiumUsers ?? 0) * 8.2).toFixed(2),
+  })) ?? (stats?.premiumUsers ? [{ day: "Atual", revenue: ((stats.premiumUsers) * 8.2).toFixed(2) }] : []);
 
   // Conteúdo & Banco: real breakdown from backend
-  const contentPie = (stats?.contentBreakdown ?? []).map((c: any) => ({
+  const contentPie = (stats?.contentBreakdown ?? []).map((c) => ({
     name: c.label.split(" ")[0], value: c.value,
-  })).filter((c: any) => c.value > 0);
+  })).filter((c) => c.value > 0);
 
-  const mockPerf = stats?.newUsersPerDay?.map((d, i) => ({
-    day: d.day.slice(5), minutos: Math.round(25 + i * 3 + Math.sin(i) * 8),
-    xp: Math.round(d.count * 120 + i * 50),
+  // Performance: usa dados reais de atividade diária (user_activity) e logins
+  const mockPerf = stats?.activityHeatmap?.map((d) => ({
+    day: String(d.study_date).slice(5),
+    minutos: d.active_users * 30,
+    xp: d.active_users * 80,
   })) ?? [];
 
   /* ── Nav toggle ── */
@@ -464,7 +475,7 @@ export default function AdminPage() {
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                         <div className="ml-4 pl-3 border-l border-white/[0.07] space-y-0.5 mt-0.5 mb-1">
-                          {item.children.map(child => (
+                          {(item.children ?? []).map(child => (
                             <button key={child.section}
                               onClick={() => setActiveSection(child.section)}
                               className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
@@ -614,7 +625,7 @@ export default function AdminPage() {
                     <div className="col-span-1">
                       <p className="text-[10px] text-white/30 font-bold uppercase mb-2">Logins por dia</p>
                       <ResponsiveContainer width="100%" height={90}>
-                        <AreaChart data={stats?.newUsersPerDay ?? []} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
+                        <AreaChart data={stats?.loginsByDay ?? []} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
                           <defs>
                             <linearGradient id="gLogin" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4} />
@@ -696,8 +707,8 @@ export default function AdminPage() {
                     <div className="flex flex-col justify-center gap-2">
                       {[
                         { label: "Alunos ativos", value: Math.max(0, (stats?.todayActive ?? 0)).toLocaleString("pt-BR"), color: "text-violet-400" },
-                        { label: "Professores ativos", value: (stats?.teacherCount ?? 0).toLocaleString("pt-BR"), color: "text-blue-400" },
-                        { label: "Instituições", value: (stats?.govCount ?? 0).toLocaleString("pt-BR"), color: "text-emerald-400" },
+                        { label: "Professores cadastrados", value: (stats?.teacherCount ?? 0).toLocaleString("pt-BR"), color: "text-blue-400" },
+                        { label: "Instituições", value: (stats?.institutionsTotal ?? 0).toLocaleString("pt-BR"), color: "text-emerald-400" },
                       ].map(r => (
                         <div key={r.label}>
                           <p className={`text-lg font-black ${r.color}`}>{r.value}</p>

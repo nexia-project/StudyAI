@@ -10,6 +10,7 @@ import { logger } from "./lib/logger";
 import { optionalAuth } from "./middlewares/requireAuth";
 import { clerkProxyMiddleware, CLERK_PROXY_PATH } from "./middlewares/clerkProxyMiddleware";
 import { sanitizeInputs } from "./middlewares/security";
+import { trackActivity } from "./middlewares/trackActivity";
 
 const app: Express = express();
 
@@ -151,6 +152,9 @@ app.use("/api", generalLimiter);
 
 // ── Optional auth: sets req.userId for authenticated requests ─────────────────
 app.use(optionalAuth);
+
+// ── Activity tracking: fire-and-forget, records logins + daily activity ───────
+app.use(trackActivity);
 
 app.use("/api", router);
 app.use("/api", subscriptionWebhookRouter);

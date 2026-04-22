@@ -41,11 +41,14 @@ type RoleRequest = {
 };
 type AdminStats = {
   totalUsers: number; todayNewUsers: number; premiumUsers: number;
-  teacherCount: number; govCount: number; todayActive: number; pendingRequests: number;
+  teacherCount: number; govCount: number; todayActive: number; studyingNow: number; pendingRequests: number;
   plansPerDay: { day: string; count: number }[];
   simuladosPerDay: { day: string; count: number }[];
   newUsersPerDay: { day: string; count: number }[];
   recentUsers: { id: string; email: string; first_name: string; last_name: string; stripe_subscription_status: string; role: string; created_at: string }[];
+  recentLogins: { id: string; email: string; first_name: string; last_name: string; role: string; created_at: string }[];
+  loginsByDay: { day: string; count: number }[];
+  loginsByHour: { hour: number; count: number }[];
   topMaterias: { materia: string; count: number; avg_score: number }[];
   activityHeatmap: { study_date: string; active_users: number }[];
 };
@@ -576,7 +579,7 @@ export default function AdminPage() {
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {[
                   { label: "Total de Usuários", value: stats?.totalUsers ?? 0, icon: Users, color: "from-violet-500 to-purple-600", sub: `+${stats?.todayNewUsers ?? 0} hoje`, subUp: true },
-                  { label: "Usuários Ativos Hoje", value: stats?.todayActive ?? 0, icon: Activity, color: "from-blue-500 to-cyan-500", sub: "estudando agora" },
+                  { label: "Ao Vivo Agora", value: stats?.studyingNow ?? 0, icon: Activity, color: "from-blue-500 to-cyan-500", sub: `${stats?.todayActive ?? 0} ativos hoje` },
                   { label: "Novos Cadastros", value: stats?.todayNewUsers ?? 0, icon: UserPlus, color: "from-emerald-500 to-teal-500", sub: "hoje" },
                   { label: "Taxa de Retenção", value: null, display: `${stats ? Math.round((stats.totalUsers - stats.todayNewUsers) / Math.max(stats.totalUsers, 1) * 100) : 0}%`, icon: TrendingUp, color: "from-amber-500 to-orange-500", sub: "usuários retidos" },
                 ].map((kpi) => (
@@ -647,10 +650,10 @@ export default function AdminPage() {
                     <div className="col-span-1">
                       <p className="text-[10px] text-white/30 font-bold uppercase mb-2">Últimos logins</p>
                       <div className="space-y-1.5">
-                        {(stats?.recentUsers ?? []).slice(0, 4).map((u) => {
+                        {(stats?.recentLogins ?? []).slice(0, 4).map((u, i) => {
                           const name = [u.first_name, u.last_name].filter(Boolean).join(" ") || u.email?.split("@")[0] || "User";
                           return (
-                            <div key={u.id} className="flex items-center gap-2">
+                            <div key={`${u.id}-${i}`} className="flex items-center gap-2">
                               <div className="w-5 h-5 rounded-full bg-violet-500/30 flex items-center justify-center text-[9px] font-black text-violet-300 flex-shrink-0">
                                 {name[0]?.toUpperCase()}
                               </div>
@@ -661,7 +664,7 @@ export default function AdminPage() {
                             </div>
                           );
                         })}
-                        {(!stats || stats.recentUsers.length === 0) && (
+                        {(!stats || (stats.recentLogins ?? []).length === 0) && (
                           <p className="text-[10px] text-white/25 text-center py-2">Sem logins recentes</p>
                         )}
                       </div>
@@ -889,16 +892,16 @@ export default function AdminPage() {
                   <div>
                     <p className="text-[10px] text-white/30 font-bold uppercase mb-2">Histórico de logins</p>
                     <div className="space-y-1.5">
-                      {(stats?.recentUsers ?? []).slice(0, 3).map(u => {
+                      {(stats?.recentLogins ?? []).slice(0, 3).map((u, i) => {
                         const name = [u.first_name, u.last_name].filter(Boolean).join(" ") || u.email?.split("@")[0] || "User";
                         return (
-                          <div key={u.id} className="flex items-center gap-2">
+                          <div key={`${u.id}-${i}`} className="flex items-center gap-2">
                             <span className="text-[10px] text-white/60 flex-1 truncate">{name}</span>
                             <span className="text-[9px] text-white/25">{new Date(u.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
                           </div>
                         );
                       })}
-                      {(!stats || stats.recentUsers.length === 0) && <p className="text-[10px] text-white/25">Sem logins registrados</p>}
+                      {(!stats || (stats.recentLogins ?? []).length === 0) && <p className="text-[10px] text-white/25">Sem logins registrados</p>}
                     </div>
                   </div>
                   <div className="bg-white/[0.04] rounded-xl p-3">

@@ -135,6 +135,19 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
     const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
 
+    // Ensure login_events table exists (safe on repeated calls)
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS login_events (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR(255) NOT NULL,
+        event_date DATE NOT NULL DEFAULT CURRENT_DATE,
+        event_hour SMALLINT NOT NULL DEFAULT EXTRACT(HOUR FROM NOW())::smallint,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (user_id, event_date)
+      )
+    `);
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ`);
+
     const totalUsers = await db.execute(sql`SELECT COUNT(*)::int AS count FROM users`);
     const todayNewUsers = await db.execute(sql`SELECT COUNT(*)::int AS count FROM users WHERE created_at::date = ${today}::date`);
     const premiumUsers = await db.execute(sql`SELECT COUNT(*)::int AS count FROM users WHERE stripe_subscription_status IN ('active','trialing')`);
@@ -142,6 +155,36 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
     const govCount = await db.execute(sql`SELECT COUNT(*)::int AS count FROM users WHERE role = 'government'`);
     const todayActive = await db.execute(sql`SELECT COUNT(DISTINCT user_id)::int AS count FROM user_activity WHERE study_date = ${today}`);
     const pendingReq = await db.execute(sql`SELECT COUNT(*)::int AS count FROM role_requests WHERE status = 'pending'`);
+
+    // "Studying now" = users seen in last 30 minutes
+    const studyingNow = await db.execute(sql`
+      SELECT COUNT(*)::int AS count FROM users
+      WHERE last_seen_at >= NOW() - INTERVAL '30 minutes'
+    `);
+
+    // Login events: per day last 30 days (for heatmap)
+    const loginsByDay = await db.execute(sql`
+      SELECT event_date::text AS day, COUNT(*)::int AS count
+      FROM login_events
+      WHERE event_date >= ${thirtyDaysAgo}::date
+      GROUP BY event_date ORDER BY event_date
+    `);
+
+    // Login events: per hour (0–23) for "horários de acesso"
+    const loginsByHour = await db.execute(sql`
+      SELECT event_hour AS hour, COUNT(*)::int AS count
+      FROM login_events
+      GROUP BY event_hour ORDER BY event_hour
+    `);
+
+    // Recent logins (last 20 login events joined with users — one row per event)
+    const recentLogins = await db.execute(sql`
+      SELECT DISTINCT ON (le.id) le.created_at, u.id, u.email, u.first_name, u.last_name, u.role
+      FROM login_events le
+      JOIN users u ON (u.id = le.user_id OR u.clerk_id = le.user_id)
+      ORDER BY le.id DESC, le.created_at DESC
+      LIMIT 20
+    `);
 
     // Study plans last 7 days per day
     const plansPerDay = await db.execute(sql`
@@ -262,11 +305,15 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
       institutionsTotal: (institutionsTotal.rows[0] as any)?.count ?? 0,
       institutionsActive: (institutionsTotal.rows[0] as any)?.active ?? 0,
       todayActive: (todayActive.rows[0] as any)?.count ?? 0,
+      studyingNow: (studyingNow.rows[0] as any)?.count ?? 0,
       pendingRequests: (pendingReq.rows[0] as any)?.count ?? 0,
       plansPerDay: plansPerDay.rows,
       simuladosPerDay: simuladosPerDay.rows,
       newUsersPerDay: newUsersPerDay.rows,
       recentUsers: recentUsers.rows,
+      recentLogins: recentLogins.rows,
+      loginsByDay: loginsByDay.rows,
+      loginsByHour: loginsByHour.rows,
       topMaterias: topMaterias.rows,
       activityHeatmap: activityHeatmap.rows,
       // ─── New AI feature metrics ───────────────────────────────────────

@@ -18,10 +18,6 @@ localPort = 19460
 [services.development]
 run = "pnpm --filter @workspace/studyai-mobile run dev"
 
-[services.production]
-build = [ "pnpm", "--filter", "@workspace/studyai-mobile", "run", "build" ]
-run = [ "pnpm", "--filter", "@workspace/studyai-mobile", "run", "serve" ]
-
 [services.env]
 PORT = "19460"
 BASE_PATH = "/studyai-mobile/"

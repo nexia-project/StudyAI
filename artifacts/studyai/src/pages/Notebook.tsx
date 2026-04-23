@@ -16,7 +16,7 @@ import {
   ExternalLink, ArrowLeft, RefreshCw, Mic, Play, Pause,
   Volume2, Users, Clock, Presentation, Lock, Unlock, Quote, Printer,
   Sparkles, Download, Youtube, Image as ImageIcon, Maximize2, Minimize2, Archive,
-  Search, Pencil, Calendar, LayoutGrid, Tv, Music, Shuffle,
+  Search, Pencil, Calendar, LayoutGrid, Tv, Music, Shuffle, Film,
 } from "lucide-react";
 import { TiagaoCharacter } from "@/components/TiagaoCharacter";
 import { AppNav } from "@/components/AppNav";
@@ -248,30 +248,34 @@ interface PodcastRoteiro {
   dicaEnem?: string;
 }
 
-type Tool = "overview" | "study-guide" | "flashcards" | "questoes" | "mapa-mental" | "podcast" | "tiagao" | "timeline" | "briefing" | "plano-aula" | "tarefa" | "sequencia-didatica" | "aula-viva" | "micro-aulas" | "narrativa" | "remix-cultural" | "plano-aula-versoes" | "slides" | "infografico" | "tabela" | "relatorio";
+type Tool = "overview" | "study-guide" | "flashcards" | "questoes" | "mapa-mental" | "podcast" | "tiagao" | "timeline" | "briefing" | "plano-aula" | "tarefa" | "sequencia-didatica" | "aula-viva" | "aula-viva-formato" | "micro-aulas" | "narrativa" | "remix-cultural" | "plano-aula-versoes" | "avaliacao-voz" | "making-of" | "simulador-aula" | "slides" | "infografico" | "tabela" | "relatorio";
 
 const TOOL_CONFIG: Record<Tool, { label: string; icon: React.ElementType; color: string; desc: string; badge?: string }> = {
-  overview:            { label: "Visão Geral",           icon: Star,          color: "indigo",   desc: "Insight central + pilares + FAQ" },
-  "study-guide":       { label: "Guia de Estudo",        icon: ClipboardList, color: "violet",   desc: "Mapa de Jornada com módulos progressivos" },
-  flashcards:          { label: "Flashcards",             icon: Layers,        color: "pink",     desc: "Flashcards com macetes + SM-2" },
-  questoes:            { label: "Questões ENEM",          icon: GraduationCap, color: "amber",    desc: "Quiz com Taxonomia de Bloom" },
-  "mapa-mental":       { label: "Mapa Mental",            icon: Brain,         color: "green",    desc: "Mapa hierárquico com conexões cruzadas" },
-  podcast:             { label: "Podcast",                icon: Mic,           color: "rose",     desc: "Episódio estilo Nerdcast / Flow", badge: "IA" },
-  briefing:            { label: "Briefing",               icon: FileText,      color: "slate",    desc: "Documento executivo compacto" },
-  "plano-aula":        { label: "Plano de Aula",          icon: Presentation,  color: "violet",   desc: "Plano completo com rúbrica BNCC" },
-  tarefa:              { label: "Tarefa / Atividade",     icon: ClipboardList, color: "emerald",  desc: "Tarefa para casa com gabarito e rúbrica", badge: "NOVO" },
-  "sequencia-didatica":{ label: "Sequência Didática",     icon: Layers,        color: "blue",     desc: "Multi-aula com avaliação integrada", badge: "NOVO" },
-  "aula-viva":         { label: "Aula Viva",              icon: Tv,            color: "orange",   desc: "Roteiro de episódio TV/streaming para sua aula", badge: "PRO" },
-  "micro-aulas":       { label: "Micro-Aulas",            icon: Play,          color: "cyan",     desc: "Versões 15s / 60s / 3min / 10min — TikTok/Reels", badge: "PRO" },
-  narrativa:           { label: "Narrativa Didática",     icon: BookOpen,      color: "fuchsia",  desc: "Transforma o conteúdo em história épica", badge: "PRO" },
-  "remix-cultural":    { label: "Remix Cultural",         icon: Music,         color: "pink",     desc: "Conecta o tema com cultura pop e memes", badge: "PRO" },
-  "plano-aula-versoes":{ label: "5 Versões do Plano",     icon: Shuffle,       color: "violet",   desc: "Difícil / Avançada / Inclusiva / Remota / Híbrida", badge: "PRO" },
-  timeline:            { label: "Linha do Tempo",         icon: Clock,         color: "amber",    desc: "Cronologia didática com causas" },
-  slides:              { label: "Apresentação",           icon: Presentation,  color: "violet",   desc: "Slides profissionais prontos" },
-  infografico:         { label: "Infográfico",            icon: Sparkles,      color: "fuchsia",  desc: "Pôster visual gerado por IA" },
-  tabela:              { label: "Tabela de Dados",        icon: LayoutGrid,    color: "indigo",   desc: "Comparativo estruturado em tabela" },
-  relatorio:           { label: "Relatório",              icon: FileText,      color: "slate",    desc: "Documento acadêmico, blog ou aula" },
-  tiagao:              { label: "Tiagão na Lousa",        icon: Zap,           color: "blue",     desc: "Aula animada na lousa" },
+  overview:             { label: "Visão Geral",           icon: Star,          color: "indigo",   desc: "Insight central + pilares + FAQ" },
+  "study-guide":        { label: "Guia de Estudo",        icon: ClipboardList, color: "violet",   desc: "Mapa de Jornada com módulos progressivos" },
+  flashcards:           { label: "Flashcards",             icon: Layers,        color: "pink",     desc: "Flashcards com macetes + SM-2" },
+  questoes:             { label: "Questões ENEM",          icon: GraduationCap, color: "amber",    desc: "Quiz com Taxonomia de Bloom" },
+  "mapa-mental":        { label: "Mapa Mental",            icon: Brain,         color: "green",    desc: "Mapa hierárquico com conexões cruzadas" },
+  podcast:              { label: "Podcast",                icon: Mic,           color: "rose",     desc: "Episódio estilo Nerdcast / Flow", badge: "IA" },
+  briefing:             { label: "Briefing",               icon: FileText,      color: "slate",    desc: "Documento executivo compacto" },
+  "plano-aula":         { label: "Plano de Aula",          icon: Presentation,  color: "violet",   desc: "Plano completo v2 com Personas + Validação IA", badge: "v2" },
+  tarefa:               { label: "Tarefa / Atividade",     icon: ClipboardList, color: "emerald",  desc: "Tarefa para casa com gabarito e rúbrica" },
+  "sequencia-didatica": { label: "Sequência Didática",     icon: Layers,        color: "blue",     desc: "Multi-aula com avaliação integrada" },
+  "aula-viva":          { label: "Aula Viva",              icon: Tv,            color: "orange",   desc: "Roteiro de episódio TV/streaming para sua aula", badge: "PRO" },
+  "aula-viva-formato":  { label: "Aula Viva Formatos",     icon: Tv,            color: "orange",   desc: "Jornal · Chef · Investigação · Talk Show", badge: "PRO" },
+  "micro-aulas":        { label: "Micro-Aulas",            icon: Play,          color: "cyan",     desc: "Versões 15s / 60s / 3min / 10min — TikTok/Reels", badge: "PRO" },
+  narrativa:            { label: "Narrativa Didática",     icon: BookOpen,      color: "fuchsia",  desc: "Transforma o conteúdo em história épica", badge: "PRO" },
+  "remix-cultural":     { label: "Remix Cultural",         icon: Music,         color: "pink",     desc: "Conecta o tema com cultura pop e memes", badge: "PRO" },
+  "plano-aula-versoes": { label: "5 Versões do Plano",     icon: Shuffle,       color: "violet",   desc: "Difícil / Avançada / Inclusiva / Remota / Híbrida", badge: "PRO" },
+  "avaliacao-voz":      { label: "Avaliação por Voz",      icon: Mic,           color: "rose",     desc: "Podcast · Entrevista Simulada · Debate Estruturado", badge: "NOVO" },
+  "making-of":          { label: "Making Of da Aula",      icon: Film,          color: "slate",    desc: "Bastidores pedagógicos — decisões, erros e segredos", badge: "NOVO" },
+  "simulador-aula":     { label: "Simulador de Aula",      icon: Users,         color: "emerald",  desc: "Turma virtual com 5 alunos-tipo — ensaio completo", badge: "NOVO" },
+  timeline:             { label: "Linha do Tempo",         icon: Clock,         color: "amber",    desc: "Cronologia didática com causas" },
+  slides:               { label: "Apresentação",           icon: Presentation,  color: "violet",   desc: "Slides profissionais prontos" },
+  infografico:          { label: "Infográfico",            icon: Sparkles,      color: "fuchsia",  desc: "Pôster visual gerado por IA" },
+  tabela:               { label: "Tabela de Dados",        icon: LayoutGrid,    color: "indigo",   desc: "Comparativo estruturado em tabela" },
+  relatorio:            { label: "Relatório",              icon: FileText,      color: "slate",    desc: "Documento acadêmico, blog ou aula" },
+  tiagao:               { label: "Tiagão na Lousa",        icon: Zap,           color: "blue",     desc: "Aula animada na lousa" },
 };
 
 const COLOR_MAP: Record<string, string> = {
@@ -1279,8 +1283,24 @@ export default function Notebook() {
   const xlsxRef = useRef<HTMLInputElement>(null);
   const epubRef = useRef<HTMLInputElement>(null);
 
-  // Relatório template
   const [relatorioTemplate, setRelatorioTemplate] = useState<"academico" | "blog" | "executivo" | "aula">("academico");
+
+  // Personas educacionais (/personas/*.py)
+  const [selectedPersona, setSelectedPersona] = useState<string>("planejador");
+  const PERSONAS_OPTIONS = [
+    { key: "planejador",     label: "👨‍🏫 Planejador Experiente", desc: "Realista, BNCC, sem floreios" },
+    { key: "mestre_yoda",   label: "🧙 Mestre Yoda",           desc: "Socrático — nunca entrega a resposta" },
+    { key: "tia_marlene",   label: "👩‍🍳 Tia Marlene",          desc: "Analogias do cotidiano (cozinha, família)" },
+    { key: "coach_energia", label: "⚡ Coach Energia",         desc: "Alta energia, esportes, gamificação" },
+    { key: "cientista_maluco", label: "🧪 Cientista Maluco",  desc: "'E SE...?' — experimentos e surpresas" },
+    { key: "narrador_epico",label: "🎬 Narrador Épico",        desc: "BBC/documentário — tudo é dramático" },
+  ];
+
+  // Aula Viva sub-formatos (/tools/aula_viva/*.py)
+  const [aulaVivaFormato, setAulaVivaFormato] = useState<"jornal" | "chef" | "investigacao" | "talk-show">("jornal");
+
+  // Avaliação por Voz tab
+  const [vozTab, setVozTab] = useState<"podcast" | "entrevista" | "debate">("podcast");
 
   const loadCadernos = useCallback(async () => {
     try {
@@ -1795,10 +1815,14 @@ export default function Notebook() {
       tarefa: "/api/notebook/tarefa",
       "sequencia-didatica": "/api/notebook/sequencia-didatica",
       "aula-viva": "/api/notebook/aula-viva",
+      "aula-viva-formato": "/api/notebook/aula-viva-formato",
       "micro-aulas": "/api/notebook/micro-aulas",
       narrativa: "/api/notebook/narrativa",
       "remix-cultural": "/api/notebook/remix-cultural",
       "plano-aula-versoes": "/api/notebook/plano-aula-versoes",
+      "avaliacao-voz": "/api/notebook/avaliacao-voz",
+      "making-of": "/api/notebook/making-of",
+      "simulador-aula": "/api/notebook/simulador-aula",
       timeline: "/api/notebook/timeline",
       slides: "/api/notebook/slides",
       infografico: "/api/notebook/infografico",
@@ -1814,6 +1838,12 @@ export default function Notebook() {
         body.orientacao = (window as any).__infograficoOrientacao ?? "quadrado";
       }
       if (tool === "relatorio") { body.template = relatorioTemplate; }
+      // Persona injection (/core/orquestrador.py)
+      if (["plano-aula", "aula-viva", "aula-viva-formato", "avaliacao-voz", "making-of", "simulador-aula"].includes(tool)) {
+        body.persona = selectedPersona;
+      }
+      // Aula Viva sub-formatos (/tools/aula_viva/*.py)
+      if (tool === "aula-viva-formato") { body.formato = aulaVivaFormato; }
       const r = await fetch(`${BASE_URL}${endpoints[tool]}`, {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
         body: JSON.stringify(body),
@@ -2596,6 +2626,38 @@ export default function Notebook() {
               </div>
             )}
 
+            {/* ─── Seletor de Persona (/personas/*.py) ──────────────────── */}
+            <div className="mb-2 p-2 bg-slate-50 border border-slate-200 rounded-xl">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1.5">🎭 Persona do Professor</p>
+              <select
+                value={selectedPersona}
+                onChange={e => setSelectedPersona(e.target.value)}
+                className="w-full text-[11px] bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700 font-medium focus:outline-none focus:border-violet-400"
+              >
+                {PERSONAS_OPTIONS.map(p => (
+                  <option key={p.key} value={p.key}>{p.label}</option>
+                ))}
+              </select>
+              <p className="text-[10px] text-slate-400 mt-1">
+                {PERSONAS_OPTIONS.find(p => p.key === selectedPersona)?.desc}
+              </p>
+            </div>
+
+            {/* ─── Seletor de Formato Aula Viva (/tools/aula_viva/*.py) ─── */}
+            {(activeTool === "aula-viva-formato" || true) && (
+              <div className="mb-2 p-2 bg-orange-50 border border-orange-200 rounded-xl">
+                <p className="text-[9px] font-black text-orange-400 uppercase tracking-wider mb-1.5">📺 Formato Aula Viva</p>
+                <div className="grid grid-cols-2 gap-1">
+                  {([["jornal","📰 Jornal"],["chef","👨‍🍳 Chef"],["investigacao","🔍 Investigação"],["talk-show","🎤 Talk Show"]] as const).map(([f, label]) => (
+                    <button key={f} onClick={() => setAulaVivaFormato(f as any)}
+                      className={`text-[10px] font-bold py-1 px-1.5 rounded-lg border transition-all ${aulaVivaFormato === f ? "bg-orange-500 text-white border-orange-500" : "bg-white text-orange-700 border-orange-200 hover:border-orange-400"}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {(Object.entries(TOOL_CONFIG) as [Tool, typeof TOOL_CONFIG[Tool]][]).map(([key, cfg]) => {
               const Icon = cfg.icon;
               const isActive = activeTool === key;
@@ -2612,7 +2674,7 @@ export default function Notebook() {
                     <div className="flex items-center gap-1.5">
                       <p className="text-xs font-bold text-slate-800 truncate">{cfg.label}</p>
                       {cfg.badge && (
-                        <span className="text-[9px] font-black bg-rose-500 text-white px-1 py-0.5 rounded-md">{cfg.badge}</span>
+                        <span className={`text-[9px] font-black px-1 py-0.5 rounded-md ${cfg.badge === "NOVO" ? "bg-emerald-500 text-white" : cfg.badge === "v2" ? "bg-violet-600 text-white" : "bg-rose-500 text-white"}`}>{cfg.badge}</span>
                       )}
                     </div>
                     <p className="text-[10px] text-slate-400">{cfg.desc}</p>
@@ -2645,6 +2707,10 @@ export default function Notebook() {
                activeTool === "narrativa" ? "Construindo a narrativa épica didática..." :
                activeTool === "remix-cultural" ? "Conectando o conteúdo com a cultura pop..." :
                activeTool === "plano-aula-versoes" ? "Gerando as 5 versões do plano de aula..." :
+               activeTool === "aula-viva-formato" ? "Criando o formato especial da Aula Viva..." :
+               activeTool === "avaliacao-voz" ? "Montando podcast, entrevista e debate estruturado..." :
+               activeTool === "making-of" ? "Revelando os bastidores pedagógicos da aula..." :
+               activeTool === "simulador-aula" ? "Simulando a turma virtual com 5 alunos-tipo..." :
                "Gerando..."}
             </p>
           </div>
@@ -3098,9 +3164,72 @@ export default function Notebook() {
                     <div className="flex gap-2 mt-1.5 flex-wrap">
                       <span className="px-2 py-0.5 bg-white/20 rounded text-[9px] font-bold">{r.turma}</span>
                       <span className="px-2 py-0.5 bg-white/20 rounded text-[9px] font-bold">{r.duracao}</span>
+                      {(r as any).persona && <span className="px-2 py-0.5 bg-white/30 rounded text-[9px] font-bold">🎭 {(r as any).persona}</span>}
                     </div>
                     {r.perfilTurma && <p className="text-[9px] text-violet-200 mt-1.5 leading-snug">{r.perfilTurma}</p>}
                   </div>
+
+                  {/* v2: Snapshot Executivo (/schemas/plano_aula_v2.py) */}
+                  {(r as any).snapshotExecutivo && (() => {
+                    const s = (r as any).snapshotExecutivo;
+                    return (
+                      <div className="bg-slate-900 text-white rounded-xl p-3 space-y-1.5">
+                        <p className="text-[9px] font-black text-slate-400 uppercase">⚡ Snapshot Executivo</p>
+                        {s.essencia && <p className="text-[11px] font-bold text-white">"{s.essencia}"</p>}
+                        {s.porqueAgora && <p className="text-[10px] text-slate-300">🎯 {s.porqueAgora}</p>}
+                        {s.comoSaberQueAprendeu && <p className="text-[10px] text-emerald-400">✅ {s.comoSaberQueAprendeu}</p>}
+                        {s.riscoMaior && <p className="text-[10px] text-red-400">⚠️ {s.riscoMaior}</p>}
+                        {s.podaInteligente && <p className="text-[10px] text-amber-300">✂️ {s.podaInteligente}</p>}
+                      </div>
+                    );
+                  })()}
+
+                  {/* v2: Clima de Aula */}
+                  {(r as any).climaDeAula && (() => {
+                    const c = (r as any).climaDeAula;
+                    return (
+                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                        <p className="text-[9px] font-black text-blue-600 uppercase mb-1.5">🌡️ Clima de Aula</p>
+                        <div className="grid grid-cols-2 gap-1 text-[10px]">
+                          {c.energiaEsperada && <p className="text-blue-700">⚡ {c.energiaEsperada}</p>}
+                          {c.temperatura && <p className="text-blue-700">🎭 {c.temperatura}</p>}
+                          {c.atencaoPrevista && <p className="text-blue-600 col-span-2">👁 {c.atencaoPrevista}</p>}
+                          {c.recomendacaoAmbiental && <p className="text-blue-500 col-span-2 italic">🏫 {c.recomendacaoAmbiental}</p>}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* v2: Momento Zero */}
+                  {(r as any).momentoCero && (() => {
+                    const m = (r as any).momentoCero;
+                    return (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                        <p className="text-[9px] font-black text-amber-600 uppercase mb-1.5">🌅 Momento Zero (antes da aula)</p>
+                        {m.chegada && <p className="text-[10px] text-amber-700">🚪 {m.chegada}</p>}
+                        {m.acolhimento && <p className="text-[10px] text-amber-700 mt-0.5">🤝 {m.acolhimento}</p>}
+                        {m.verificacaoHumor && <p className="text-[10px] text-amber-600 italic mt-0.5">💬 {m.verificacaoHumor}</p>}
+                      </div>
+                    );
+                  })()}
+
+                  {/* v2: Validação por Pares (/core/validador_pares.py) */}
+                  {(r as any)._validacaoPares && (() => {
+                    const v = (r as any)._validacaoPares;
+                    const icons: Record<string, string> = { veterano: "👨‍🏫", inclusao: "♿", pesquisador: "🔬" };
+                    return (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                        <p className="text-[9px] font-black text-emerald-600 uppercase mb-1.5">✅ Validação por Pares (3 IAs)</p>
+                        {v.consenso && <p className="text-[10px] font-bold text-emerald-700 mb-1.5">{v.consenso}</p>}
+                        {["veterano", "inclusao", "pesquisador"].map(key => v[key] && (
+                          <div key={key} className="mb-1">
+                            <p className="text-[9px] font-black text-slate-500 uppercase">{icons[key]} {key}</p>
+                            <p className="text-[10px] text-slate-700">{v[key]}</p>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
 
                   {/* BNCC */}
                   {r.bncc && (
@@ -3198,6 +3327,14 @@ export default function Notebook() {
                                   ))}
                                 </div>
                               )}
+                              {/* v2: Diálogo Esperado */}
+                              {(d as any).dialogoEsperado && (
+                                <div className="p-1.5 rounded-lg bg-violet-50 border border-violet-100 mt-1">
+                                  <p className="text-[8px] font-black text-violet-500 uppercase mb-0.5">💬 Diálogo Esperado</p>
+                                  {(d as any).dialogoEsperado.professor && <p className="text-[9px] text-violet-700">👨‍🏫 {(d as any).dialogoEsperado.professor}</p>}
+                                  {(d as any).dialogoEsperado.aluno && <p className="text-[9px] text-violet-500 mt-0.5">👩‍🎓 {(d as any).dialogoEsperado.aluno}</p>}
+                                </div>
+                              )}
                               {d.diferenciacão && (
                                 <div className="flex gap-1 pt-0.5">
                                   <div className="flex-1 p-1.5 rounded bg-emerald-50 border border-emerald-100">
@@ -3278,6 +3415,25 @@ export default function Notebook() {
                       </div>
                     </div>
                   )}
+
+                  {/* v2: Versões de Emergência */}
+                  {(r as any).versoesEmergencia && (() => {
+                    const v = (r as any).versoesEmergencia;
+                    return (
+                      <details className="group">
+                        <summary className="text-[10px] font-black text-orange-600 cursor-pointer list-none flex items-center gap-1">
+                          🚨 Versões de Emergência
+                          <ChevronDown className="w-3 h-3 ml-auto group-open:rotate-180 transition-transform" />
+                        </summary>
+                        <div className="mt-1 space-y-1">
+                          {v.seTurmaEstiverCansada && <div className="p-2 bg-orange-50 border border-orange-100 rounded-lg"><p className="text-[8px] font-black text-orange-500">😴 Se turma estiver cansada</p><p className="text-[9px] text-orange-700">{v.seTurmaEstiverCansada}</p></div>}
+                          {v.seTecnologiaFalhar && <div className="p-2 bg-red-50 border border-red-100 rounded-lg"><p className="text-[8px] font-black text-red-500">📵 Se tecnologia falhar</p><p className="text-[9px] text-red-700">{v.seTecnologiaFalhar}</p></div>}
+                          {v.seTempoAcabar && <div className="p-2 bg-amber-50 border border-amber-100 rounded-lg"><p className="text-[8px] font-black text-amber-500">⏰ Se tempo acabar</p><p className="text-[9px] text-amber-700">{v.seTempoAcabar}</p></div>}
+                          {v.seAlunoDesafiar && <div className="p-2 bg-violet-50 border border-violet-100 rounded-lg"><p className="text-[8px] font-black text-violet-500">😤 Se aluno desafiar</p><p className="text-[9px] text-violet-700">{v.seAlunoDesafiar}</p></div>}
+                        </div>
+                      </details>
+                    );
+                  })()}
 
                   {/* Referências */}
                   {r.referencias && (
@@ -4365,6 +4521,306 @@ export default function Notebook() {
                       </div>
                     );
                   })()}
+                </div>
+              );
+            })()}
+
+            {/* ─── Aula Viva Formato renderer (/tools/aula_viva/*.py) ────── */}
+            {activeTool === "aula-viva-formato" && toolResult && (() => {
+              const r = toolResult as any;
+              const fmt = r.formato ?? aulaVivaFormato;
+              const fmtLabel: Record<string, string> = { jornal: "📰 Jornal da Aula", chef: "👨‍🍳 Aula Chef", investigacao: "🔍 Aula Investigação", "talk-show": "🎤 Aula Talk Show" };
+              return (
+                <div className="p-3 space-y-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm font-black text-orange-600">{fmtLabel[fmt] ?? fmt}</span>
+                    {r.persona && <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">{r.persona}</span>}
+                  </div>
+                  {r.titulo && <div className="bg-orange-50 border border-orange-200 rounded-xl p-3"><p className="text-[11px] font-black text-orange-700">{r.titulo}</p>{r.tema && <p className="text-[10px] text-orange-500 mt-0.5">Tema: {r.tema}</p>}</div>}
+
+                  {/* Jornal da Aula */}
+                  {fmt === "jornal" && (<>
+                    {r.manchetes?.length > 0 && <div className="bg-slate-50 border border-slate-200 rounded-xl p-3"><p className="text-[9px] font-black text-slate-500 uppercase mb-2">📰 Manchetes</p>{r.manchetes.map((m: string, i: number) => <p key={i} className="text-[10px] text-slate-700 font-semibold border-b border-slate-100 py-1">• {m}</p>)}</div>}
+                    {r.abertura && <div className="bg-white border border-slate-200 rounded-xl p-3"><p className="text-[9px] font-black text-slate-500 uppercase mb-1.5">🎤 Abertura</p><p className="text-[10px] text-slate-700"><strong>Âncora:</strong> {r.abertura.ancora}</p>{r.abertura.chamadas?.map((c: string, i: number) => <p key={i} className="text-[10px] text-slate-600 mt-0.5">• {c}</p>)}</div>}
+                    {r.segmentos?.map((s: any, i: number) => <div key={i} className="bg-white border border-slate-200 rounded-xl p-3"><p className="text-[9px] font-black text-slate-500 uppercase mb-1">{s.nome} <span className="text-slate-400">({s.duracao})</span></p><p className="text-[10px] text-slate-700">{s.script}</p>{s.participantes && <p className="text-[10px] text-slate-400 mt-0.5">👥 {s.participantes}</p>}</div>)}
+                    {r.plantaoCuriosidades?.length > 0 && <div className="bg-amber-50 border border-amber-200 rounded-xl p-3"><p className="text-[9px] font-black text-amber-600 uppercase mb-1.5">⚡ Plantão de Curiosidades</p>{r.plantaoCuriosidades.map((c: string, i: number) => <p key={i} className="text-[10px] text-amber-700 mt-0.5">• {c}</p>)}</div>}
+                    {r.debate && <div className="bg-blue-50 border border-blue-200 rounded-xl p-3"><p className="text-[9px] font-black text-blue-600 uppercase mb-1">🗣️ Debate — {r.debate.tema}</p>{r.debate.posicoes?.map((p: string, i: number) => <p key={i} className="text-[10px] text-blue-700">• {p}</p>)}{r.debate.mediacao && <p className="text-[10px] text-blue-500 mt-1">Mediação: {r.debate.mediacao}</p>}</div>}
+                    {r.encerramentoAncora && <div className="bg-slate-800 text-white rounded-xl p-3"><p className="text-[9px] font-black uppercase mb-1">📡 Encerramento</p><p className="text-[10px]">{r.encerramentoAncora}</p></div>}
+                    {r.missaoPosEdicao && <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3"><p className="text-[9px] font-black text-emerald-600 uppercase mb-1">🏠 Missão Pós-Edição</p><p className="text-[10px] text-emerald-700">{r.missaoPosEdicao}</p></div>}
+                  </>)}
+
+                  {/* Aula Chef */}
+                  {fmt === "chef" && (<>
+                    {r.mise_en_place && <div className="bg-amber-50 border border-amber-200 rounded-xl p-3"><p className="text-[9px] font-black text-amber-600 uppercase mb-1.5">🍽️ Mise en Place</p><p className="text-[10px] text-amber-700 mb-1">⏱ {r.mise_en_place.tempoDePreparo}</p>{r.mise_en_place.ingredientes?.map((i: string, idx: number) => <p key={idx} className="text-[10px] text-amber-700">• {i}</p>)}{r.mise_en_place.utensilios?.length > 0 && <p className="text-[10px] text-amber-500 mt-1">🔧 {r.mise_en_place.utensilios?.join(", ")}</p>}</div>}
+                    {r.receita && <div className="bg-orange-50 border border-orange-200 rounded-xl p-3"><p className="text-[9px] font-black text-orange-600 uppercase mb-1">📋 Receita</p><p className="text-[11px] font-bold text-orange-700">{r.receita.nome}</p><p className="text-[10px] text-orange-500">🍽️ {r.receita.porcoes} | Dificuldade: {r.receita.dificuldade}</p></div>}
+                    {r.etapas?.map((e: any, i: number) => <div key={i} className="bg-white border border-slate-200 rounded-xl p-3"><p className="text-[9px] font-black text-slate-500 uppercase mb-1">{e.nome} <span className="text-slate-400">{e.tempoDeAula}</span></p><p className="text-[10px] text-slate-700">🥄 {e.tecnica}</p><p className="text-[10px] text-amber-700 mt-0.5">🧂 Ingrediente: {e.ingredienteConceito}</p>{e.errosComuns && <p className="text-[10px] text-red-500 mt-0.5">⚠️ {e.errosComuns}</p>}{e.sinaisDePontoIdeal && <p className="text-[10px] text-emerald-600 mt-0.5">✅ Ponto ideal: {e.sinaisDePontoIdeal}</p>}</div>)}
+                    {r.degustacao && <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3"><p className="text-[9px] font-black text-emerald-600 uppercase mb-1">👅 Degustação (Avaliação)</p><p className="text-[10px] text-emerald-700">{r.degustacao.instrumento}</p></div>}
+                    {r.receitaCasa && <div className="bg-violet-50 border border-violet-200 rounded-xl p-3"><p className="text-[9px] font-black text-violet-600 uppercase mb-1">🏠 Receita para Casa</p><p className="text-[10px] text-violet-700">{r.receitaCasa}</p></div>}
+                    {r.cardapioProximaAula && <div className="bg-slate-50 border border-slate-200 rounded-xl p-3"><p className="text-[9px] font-black text-slate-500 uppercase mb-1">📅 Próximo Cardápio</p><p className="text-[10px] text-slate-600">{r.cardapioProximaAula}</p></div>}
+                  </>)}
+
+                  {/* Aula Investigação */}
+                  {fmt === "investigacao" && (<>
+                    {r.boletimOcorrencia && <div className="bg-red-50 border border-red-200 rounded-xl p-3"><p className="text-[9px] font-black text-red-600 uppercase mb-1">🚔 Boletim de Ocorrência</p><p className="text-[10px] text-red-700 font-semibold">Crime: {r.boletimOcorrencia.crime}</p><p className="text-[10px] text-red-600 mt-0.5">Investigadores: {r.boletimOcorrencia.investigadores}</p>{r.boletimOcorrencia.evidencias?.map((e: string, i: number) => <p key={i} className="text-[10px] text-red-500">🔍 {e}</p>)}</div>}
+                    {r.perfilSuspeito && <div className="bg-slate-900 text-white rounded-xl p-3"><p className="text-[9px] font-black uppercase mb-1">🕵️ Perfil do Suspeito</p><p className="text-[11px] font-bold">{r.perfilSuspeito.nome}</p>{r.perfilSuspeito.caracteristicas?.map((c: string, i: number) => <p key={i} className="text-[10px] text-slate-300">• {c}</p>)}{r.perfilSuspeito.pontoFraco && <p className="text-[10px] text-emerald-400 mt-1">🎯 Ponto fraco: {r.perfilSuspeito.pontoFraco}</p>}</div>}
+                    {r.investigacao && <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3"><p className="text-[9px] font-black text-yellow-600 uppercase mb-1">🔎 Trabalho de Campo</p><p className="text-[10px] text-yellow-700">{r.investigacao.missao}</p>{r.investigacao.materiais?.map((m: string, i: number) => <p key={i} className="text-[10px] text-yellow-600">📦 {m}</p>)}</div>}
+                    {r.julgamento && <div className="bg-blue-50 border border-blue-200 rounded-xl p-3"><p className="text-[9px] font-black text-blue-600 uppercase mb-1">⚖️ Julgamento</p><p className="text-[10px] text-blue-700">Acusação: {r.julgamento.acusacao}</p><p className="text-[10px] text-blue-600 mt-0.5">Defesa: {r.julgamento.defesa}</p></div>}
+                    {r.vereditoFinal && <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3"><p className="text-[9px] font-black text-emerald-600 uppercase mb-1">🔨 Veredito Final</p><p className="text-[10px] text-emerald-700">{r.vereditoFinal}</p></div>}
+                    {r.proxoCaso && <div className="bg-slate-50 border border-slate-200 rounded-xl p-3"><p className="text-[9px] font-black text-slate-500 uppercase mb-1">📁 Próximo Caso</p><p className="text-[10px] text-slate-600">{r.proxoCaso}</p></div>}
+                  </>)}
+
+                  {/* Aula Talk Show */}
+                  {fmt === "talk-show" && (<>
+                    {r.coldOpen && <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3"><p className="text-[9px] font-black text-yellow-600 uppercase mb-1">🎬 Cold Open</p><p className="text-[10px] text-yellow-700">{r.coldOpen.cena}</p>{r.coldOpen.punchline && <p className="text-[10px] text-yellow-600 font-semibold mt-1">💬 "{r.coldOpen.punchline}"</p>}</div>}
+                    {r.monologo && <div className="bg-slate-50 border border-slate-200 rounded-xl p-3"><p className="text-[9px] font-black text-slate-500 uppercase mb-1">🎤 Monólogo do Host</p><p className="text-[10px] text-slate-700">{r.monologo.roteiro}</p>{r.monologo.piadas?.map((p: string, i: number) => <p key={i} className="text-[10px] text-slate-500 italic mt-0.5">😂 {p}</p>)}</div>}
+                    {r.top3?.length > 0 && <div className="bg-rose-50 border border-rose-200 rounded-xl p-3"><p className="text-[9px] font-black text-rose-600 uppercase mb-1.5">🏆 Top 3 — Fatos do Tema</p>{r.top3.map((f: any, i: number) => <div key={i} className="mb-1.5"><p className="text-[10px] font-bold text-rose-700">{i+1}. {f.fato}</p><p className="text-[10px] text-rose-500">{f.porqueImporta}</p></div>)}</div>}
+                    {r.entrevista && <div className="bg-violet-50 border border-violet-200 rounded-xl p-3"><p className="text-[9px] font-black text-violet-600 uppercase mb-1">🎙️ Entrevista — {r.entrevista.entrevistado}</p>{r.entrevista.perguntas?.map((p: string, i: number) => <p key={i} className="text-[10px] text-violet-700 mt-0.5">Q{i+1}: {p}</p>)}{r.entrevista.reveal_final && <p className="text-[10px] text-violet-800 font-semibold mt-1.5">✨ Reveal: {r.entrevista.reveal_final}</p>}</div>}
+                    {r.mitosVerdades?.length > 0 && <div className="bg-orange-50 border border-orange-200 rounded-xl p-3"><p className="text-[9px] font-black text-orange-600 uppercase mb-1.5">🔮 Mitos e Verdades</p>{r.mitosVerdades.map((m: any, i: number) => <div key={i} className="mb-1.5"><p className="text-[10px] font-bold text-orange-700">{m.veredicto === "Mito" ? "❌" : "✅"} {m.afirmacao}</p><p className="text-[10px] text-orange-500">{m.explicacao}</p></div>)}</div>}
+                    {r.encerramento && <div className="bg-slate-800 text-white rounded-xl p-3"><p className="text-[9px] font-black uppercase mb-1">🌟 Encerramento</p><p className="text-[10px]">{r.encerramento.teaser}</p>{r.encerramento.tarefa && <p className="text-[10px] text-slate-300 mt-1">📝 {r.encerramento.tarefa}</p>}</div>}
+                  </>)}
+                </div>
+              );
+            })()}
+
+            {/* ─── Avaliação por Voz renderer (/endpoints/avaliacao_voz.py) ─ */}
+            {activeTool === "avaliacao-voz" && toolResult && (() => {
+              const r = toolResult as any;
+              return (
+                <div className="p-3 space-y-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Mic className="w-4 h-4 text-rose-500" />
+                    <span className="text-sm font-black text-rose-600">Avaliação por Voz</span>
+                    {r.persona && <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{r.persona}</span>}
+                  </div>
+
+                  {/* Tabs */}
+                  <div className="flex gap-1 bg-slate-100 p-0.5 rounded-xl">
+                    {([["podcast","🎙️ Podcast"],["entrevista","🎤 Entrevista"],["debate","⚖️ Debate"]] as const).map(([t, label]) => (
+                      <button key={t} onClick={() => setVozTab(t)}
+                        className={`flex-1 text-[10px] font-bold py-1 rounded-lg transition-all ${vozTab === t ? "bg-white text-rose-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {vozTab === "podcast" && r.podcast && (<>
+                    <div className="bg-rose-50 border border-rose-200 rounded-xl p-3">
+                      <p className="text-[11px] font-black text-rose-700">{r.podcast.titulo}</p>
+                      <p className="text-[10px] text-rose-500">{r.podcast.formato} · {r.podcast.duracao}</p>
+                    </div>
+                    {r.podcast.roteiro?.map((m: any, i: number) => (
+                      <div key={i} className="bg-white border border-slate-200 rounded-xl p-3">
+                        <p className="text-[9px] font-black text-slate-400 uppercase mb-1">{m.momento}</p>
+                        <p className="text-[10px] text-slate-700">{m.script}</p>
+                        {m.dica && <p className="text-[10px] text-rose-500 mt-0.5 italic">💡 {m.dica}</p>}
+                      </div>
+                    ))}
+                    {r.podcast.criteriosAvaliacao?.length > 0 && (
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                        <p className="text-[9px] font-black text-slate-500 uppercase mb-1.5">📊 Critérios de Avaliação</p>
+                        {r.podcast.criteriosAvaliacao.map((c: any, i: number) => (
+                          <div key={i} className="mb-1.5">
+                            <p className="text-[10px] font-bold text-slate-700">{c.criterio} <span className="text-rose-500">{c.peso}</span></p>
+                            {c.indicadores?.map((ind: string, j: number) => <p key={j} className="text-[10px] text-slate-500">• {ind}</p>)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>)}
+
+                  {vozTab === "entrevista" && r.entrevistaSimulada && (<>
+                    <div className="bg-violet-50 border border-violet-200 rounded-xl p-3">
+                      <p className="text-[9px] font-black text-violet-500 uppercase mb-1">{r.entrevistaSimulada.formato}</p>
+                      <p className="text-[10px] text-violet-700">{r.entrevistaSimulada.abertura}</p>
+                    </div>
+                    {r.entrevistaSimulada.perguntas?.map((p: any, i: number) => (
+                      <div key={i} className="bg-white border border-slate-200 rounded-xl p-3">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="text-[9px] bg-violet-100 text-violet-600 font-black px-1.5 py-0.5 rounded">P{p.numero}</span>
+                          <span className="text-[9px] text-slate-400 uppercase">{p.tipo}</span>
+                        </div>
+                        <p className="text-[10px] font-semibold text-slate-700">{p.pergunta}</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">✅ {p.resposta_esperada}</p>
+                        {p.followup && <p className="text-[10px] text-violet-500 mt-0.5">↩️ {p.followup}</p>}
+                      </div>
+                    ))}
+                  </>)}
+
+                  {vozTab === "debate" && r.debateEstruturado && (<>
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                      <p className="text-[9px] font-black text-blue-500 uppercase mb-1">⚖️ Tese</p>
+                      <p className="text-[11px] font-bold text-blue-700">"{r.debateEstruturado.tese}"</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {r.debateEstruturado.grupos?.map((g: any, i: number) => (
+                        <div key={i} className={`rounded-xl p-2.5 border ${i === 0 ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"}`}>
+                          <p className="text-[9px] font-black uppercase mb-1" style={{color: i===0?"#059669":"#DC2626"}}>{g.nome}</p>
+                          {g.argumentos?.map((a: string, j: number) => <p key={j} className="text-[10px] text-slate-700 mt-0.5">• {a}</p>)}
+                        </div>
+                      ))}
+                    </div>
+                    {r.debateEstruturado.estrutura_debate?.map((rod: any, i: number) => (
+                      <div key={i} className="bg-white border border-slate-200 rounded-xl p-2.5">
+                        <p className="text-[9px] font-black text-slate-400 uppercase">{rod.rodada} · {rod.tempo}</p>
+                        <p className="text-[10px] text-slate-600 mt-0.5">{rod.instrucao}</p>
+                      </div>
+                    ))}
+                    {r.debateEstruturado.reflexao_final && <div className="bg-amber-50 border border-amber-200 rounded-xl p-3"><p className="text-[9px] font-black text-amber-600 uppercase mb-1">🤔 Reflexão Final</p><p className="text-[10px] text-amber-700">{r.debateEstruturado.reflexao_final}</p></div>}
+                  </>)}
+                </div>
+              );
+            })()}
+
+            {/* ─── Making Of renderer (/endpoints/making_of.py) ────────────── */}
+            {activeTool === "making-of" && toolResult && (() => {
+              const r = toolResult as any;
+              return (
+                <div className="p-3 space-y-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Film className="w-4 h-4 text-slate-600" />
+                    <span className="text-sm font-black text-slate-700">Making Of Pedagógico</span>
+                    {r.persona && <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{r.persona}</span>}
+                  </div>
+
+                  {r.historiaDoConteudo && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-1.5">
+                      <p className="text-[9px] font-black text-amber-600 uppercase">📜 História do Conteúdo</p>
+                      <p className="text-[10px] text-amber-700"><strong>Origem:</strong> {r.historiaDoConteudo.origemDoTema}</p>
+                      {r.historiaDoConteudo.evolucoesChave?.map((e: string, i: number) => <p key={i} className="text-[10px] text-amber-600">• {e}</p>)}
+                      {r.historiaDoConteudo.controversiasExistentes && <p className="text-[10px] text-orange-600 italic">⚡ {r.historiaDoConteudo.controversiasExistentes}</p>}
+                      {r.historiaDoConteudo.conexoesSurpreendentes?.map((c: string, i: number) => <p key={i} className="text-[10px] text-amber-500">🔗 {c}</p>)}
+                    </div>
+                  )}
+
+                  {r.decisoesPedagogicas?.map((d: any, i: number) => (
+                    <div key={i} className="bg-white border border-slate-200 rounded-xl p-3">
+                      <p className="text-[9px] font-black text-slate-500 uppercase mb-1">🎯 Decisão {i+1}</p>
+                      <p className="text-[10px] font-bold text-slate-700">{d.decisao}</p>
+                      <p className="text-[10px] text-slate-600 mt-0.5">📚 {d.racionalidade}</p>
+                      <p className="text-[10px] text-red-400 mt-0.5">❌ Rejeitado: {d.alternativaRejeitada}</p>
+                      <p className="text-[10px] text-emerald-600 mt-0.5">✅ {d.porque}</p>
+                    </div>
+                  ))}
+
+                  {r.errosQueJaCometei?.map((e: any, i: number) => (
+                    <div key={i} className="bg-red-50 border border-red-200 rounded-xl p-3">
+                      <p className="text-[9px] font-black text-red-500 uppercase mb-1">💥 Erro que já cometi</p>
+                      <p className="text-[10px] text-red-700 font-semibold">{e.erro}</p>
+                      <p className="text-[10px] text-red-500 mt-0.5">Consequência: {e.consequencia}</p>
+                      <p className="text-[10px] text-emerald-600 mt-0.5">Aprendizado: {e.aprendizado}</p>
+                    </div>
+                  ))}
+
+                  {r.segredosDoProfissional?.map((s: any, i: number) => (
+                    <div key={i} className="bg-violet-50 border border-violet-200 rounded-xl p-3">
+                      <p className="text-[9px] font-black text-violet-500 uppercase mb-1">🔐 Segredo {i+1}</p>
+                      <p className="text-[10px] font-bold text-violet-700">{s.segredo}</p>
+                      <p className="text-[10px] text-violet-500 mt-0.5">✅ Quando usar: {s.contexto}</p>
+                      <p className="text-[10px] text-red-400 mt-0.5">⚠️ {s.aviso}</p>
+                    </div>
+                  ))}
+
+                  {r.reflexaoHonesta && (
+                    <div className="bg-slate-800 text-white rounded-xl p-3 space-y-1">
+                      <p className="text-[9px] font-black uppercase text-slate-400">💬 Reflexão Honesta</p>
+                      <p className="text-[10px]">❤️ {r.reflexaoHonesta.oQueMaisGosto}</p>
+                      <p className="text-[10px] text-slate-300">😓 {r.reflexaoHonesta.oQueMaisTeio}</p>
+                      <p className="text-[10px] text-violet-300 italic mt-1">"{r.reflexaoHonesta.mensagemAosAlunos}"</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* ─── Simulador de Aula renderer (/endpoints/simulador_aula.py) ─ */}
+            {activeTool === "simulador-aula" && toolResult && (() => {
+              const r = toolResult as any;
+              const PERFIL_COLORS: Record<string, string> = {
+                "A Entusiasta": "bg-yellow-50 border-yellow-200",
+                "O Resistente": "bg-red-50 border-red-200",
+                "A Silenciosa Brilhante": "bg-blue-50 border-blue-200",
+                "O Com Dificuldade Real": "bg-orange-50 border-orange-200",
+                "A Avançada Que Se Entedia": "bg-violet-50 border-violet-200",
+              };
+              const PERFIL_EMOJI: Record<string, string> = {
+                "A Entusiasta": "🌟", "O Resistente": "😤", "A Silenciosa Brilhante": "🔵",
+                "O Com Dificuldade Real": "🧱", "A Avançada Que Se Entedia": "🚀",
+              };
+              return (
+                <div className="p-3 space-y-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Users className="w-4 h-4 text-emerald-600" />
+                    <span className="text-sm font-black text-emerald-700">Simulador de Aula</span>
+                    {r.persona && <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{r.persona}</span>}
+                  </div>
+
+                  {/* Turma Virtual */}
+                  {r.turmaVirtual?.length > 0 && (
+                    <div>
+                      <p className="text-[9px] font-black text-slate-400 uppercase mb-1.5">👥 Turma Virtual</p>
+                      <div className="space-y-2">
+                        {r.turmaVirtual.map((aluno: any, i: number) => (
+                          <div key={i} className={`rounded-xl p-2.5 border ${PERFIL_COLORS[aluno.perfil] ?? "bg-slate-50 border-slate-200"}`}>
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className="text-sm">{PERFIL_EMOJI[aluno.perfil] ?? "👤"}</span>
+                              <p className="text-[10px] font-black text-slate-700">{aluno.nome}</p>
+                              <span className="text-[9px] text-slate-400">{aluno.perfil}</span>
+                            </div>
+                            <p className="text-[10px] text-slate-600">{aluno.descricao}</p>
+                            <p className="text-[10px] text-emerald-600 mt-0.5">✅ {aluno.comoEngajar}</p>
+                            <p className="text-[10px] text-red-500 mt-0.5">🚨 {aluno.sinalDePerda}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Simulação momento a momento */}
+                  {r.simulacaoMomento?.length > 0 && (
+                    <div>
+                      <p className="text-[9px] font-black text-slate-400 uppercase mb-1.5">🎬 Simulação da Aula</p>
+                      {r.simulacaoMomento.map((m: any, i: number) => (
+                        <div key={i} className="bg-white border border-slate-200 rounded-xl p-3 mb-2">
+                          <p className="text-[9px] font-black text-slate-500 uppercase mb-1.5">{m.momento}</p>
+                          <p className="text-[10px] font-semibold text-slate-700 mb-1.5">📢 {m.script_professor}</p>
+                          <div className="grid grid-cols-2 gap-1 mb-1.5 text-[9px]">
+                            {[["Ana","🌟",m.reacao_ana],["Carlos","😤",m.reacao_carlos],["Beatriz","🔵",m.reacao_beatriz],["Diego","🧱",m.reacao_diego],["Fernanda","🚀",m.reacao_fernanda]].map(([nome, emoji, reacao]) => (
+                              <div key={nome as string} className="bg-slate-50 rounded-lg p-1.5">
+                                <p className="font-black text-slate-500">{emoji} {nome}</p>
+                                <p className="text-slate-600 mt-0.5">{reacao as string}</p>
+                              </div>
+                            ))}
+                          </div>
+                          {m.intervencao_necessaria && <p className="text-[10px] text-violet-600 border-t border-slate-100 pt-1.5 mt-1.5">🎯 Intervenção: {m.intervencao_necessaria}</p>}
+                          {m.aprendizado_do_ensaio && <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">💡 {m.aprendizado_do_ensaio}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Leitura de Riscos */}
+                  {r.leituraDeRiscos?.length > 0 && (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+                      <p className="text-[9px] font-black text-red-600 uppercase mb-1.5">⚠️ Leitura de Riscos</p>
+                      {r.leituraDeRiscos.map((risco: any, i: number) => (
+                        <div key={i} className="mb-2">
+                          <p className="text-[10px] font-bold text-red-700">{risco.risco} <span className="text-red-400">[{risco.probabilidade}]</span></p>
+                          <p className="text-[10px] text-red-600">Prevenção: {risco.prevencao}</p>
+                          <p className="text-[10px] text-orange-600">Plano B: {risco.plano_b}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Conclusão */}
+                  {r.conclusaoDoEnsaio && (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                      <p className="text-[9px] font-black text-emerald-600 uppercase mb-1.5">✅ Conclusão do Ensaio</p>
+                      {r.conclusaoDoEnsaio.o_que_ajustar?.map((a: string, i: number) => <p key={i} className="text-[10px] text-red-600">🔧 {a}</p>)}
+                      {r.conclusaoDoEnsaio.o_que_manter?.map((m: string, i: number) => <p key={i} className="text-[10px] text-emerald-700">✅ {m}</p>)}
+                      {r.conclusaoDoEnsaio.mantra_da_aula && <p className="text-[11px] font-black text-emerald-800 mt-2 border-t border-emerald-200 pt-2">🙏 "{r.conclusaoDoEnsaio.mantra_da_aula}"</p>}
+                    </div>
+                  )}
                 </div>
               );
             })()}

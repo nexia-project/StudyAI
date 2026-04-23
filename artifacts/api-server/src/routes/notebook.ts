@@ -1991,6 +1991,459 @@ Retorne APENAS JSON válido:
   }
 });
 
+// ─── POST /api/notebook/aula-viva-formato ─────────────────────────────────────
+// /tools/aula_viva/jornal_da_aula.py | aula_chef.py | aula_investigacao.py | aula_talk_show.py
+// 4 sub-formatos especializados de Aula Viva
+router.post("/notebook/aula-viva-formato", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { docId, formato = "jornal", duracao = 50, persona = "planejador" } = req.body as { docId: number; formato?: string; duracao?: number; persona?: string };
+  try {
+    const docs = await db.execute(sql`
+      SELECT content_text, title FROM knowledge_documents
+      WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
+    `);
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
+    const personaInfo = PERSONAS_EDU[persona] ?? PERSONAS_EDU["planejador"];
+
+    const FORMATO_PROMPTS: Record<string, string> = {
+      jornal: `Você é diretor de um JORNAL DA AULA — programa de TV de educação no formato telejornal.
+ESTRUTURA DO TELEJORNAL:
+- Vinheta de abertura + Chamadas das manchetes (1 min)
+- Âncora principal apresenta o "Fato do Dia" = o conteúdo central (5 min)
+- Correspondente de campo = aluno que pesquisou/apresenta dado (3 min)
+- Plantão de curiosidades inusitadas relacionadas ao tema (2 min)
+- Debate com "especialistas" = grupos de alunos com posições diferentes (10 min)
+- Previsão do tempo do estudo = o que vem a seguir na matéria (2 min)
+- Espaço do telespectador = dúvidas da turma (5 min)
+- Encerramento com resumo e "fique de olho" (2 min)
+Retorne JSON com: titulo, manchetes[3], abertura{ancora,chamadas[3]}, segmentos[]{nome,tipo,duracao,script,participantes}, plantaoCuriosidades[3], debate{tema,posicoes[],mediacao}, previsaoEstudo, encerramentoAncora, missaoPosEdicao`,
+      chef: `Você é apresentador do programa AULA CHEF — gastronomia como metáfora pedagógica completa.
+ESTRUTURA DA AULA CHEF:
+- Mise en place: preparação e ingredientes do conteúdo (3 min)
+- O Chef apresenta a receita = plano da aula (2 min)
+- Ingredientes = conceitos fundamentais (com comparações a sabores: amargo, doce, complexo)
+- Técnicas de preparo = metodologias de aprendizagem
+- Erros comuns na cozinha = equívocos conceituais a evitar
+- Degustação = exercício prático de avaliação
+- Crítica gastronômica = autoavaliação do aluno
+- Receita para casa = tarefa
+LINGUAGEM: "O segredo desta receita é...", "Cuidado com o ponto...", "Cada paladar aprecia diferente..."
+Retorne JSON com: titulo, mise_en_place{ingredientes[],utensilios[],tempoDePreparo}, receita{nome,porcoes,dificuldade}, etapas[]{nome,tecnica,ingredienteConceito,tempoDeAula,sinaisDePontoIdeal,errosComuns}, degustacao{instrumento,criterios[]}, criticaGastronomica{perguntas[]}, receitaCasa, cardapioProximaAula`,
+      investigacao: `Você é roteirista de AULA INVESTIGAÇÃO — aula no formato de série policial/crime investigation.
+ESTRUTURA DA INVESTIGAÇÃO:
+- BOLETIM DE OCORRÊNCIA: crime = lacuna de conhecimento, investigadores = alunos (2 min)
+- CENA DO CRIME: pistas espalhadas = conceitos fragmentados para descobrir (5 min)
+- PERFIL DO SUSPEITO: o conceito mais difícil personificado como antagonista (3 min)
+- TRABALHO DE CAMPO: alunos investigam em grupos (15 min)
+- RECONSTITUIÇÃO: reconstrução lógica do conhecimento (8 min)
+- JULGAMENTO: apresentação das conclusões com defesa e acusação (10 min)
+- VEREDITO FINAL: síntese pedagógica + questão aberta para investigação futura (7 min)
+ATMOSFERA: suspense, tensão intelectual, revelações progressivas.
+Retorne JSON com: titulo, boletimOcorrencia{crime,investigadores,evidencias[]}, cenaCrime{pistas[],comoEspalhar}, perfilSuspeito{nome,caracteristicas[],pontoFraco}, investigacao{missao,grupos,materiais[]}, reconstituicao{script}, julgamento{acusacao,defesa,testemunhas[]}, vereditoFinal, proxoCaso`,
+      talk_show: `Você é produtor do AULA TALK SHOW — talk show de entretenimento educacional.
+ESTRUTURA DO TALK SHOW:
+- COLD OPEN: cena cômica ou surpreendente relacionada ao tema (2 min)
+- MONÓLOGO DO HOST: apresentador abre com história pessoal + punchlines educacionais (3 min)
+- SEGMENTO "TOP 3": os 3 fatos mais importantes do tema (formato lista rápida) (5 min)
+- ENTREVISTA DO DIA: professor "entrevista" um conceito personificado ou aluno especialista (8 min)
+- MESA REDONDA: debate leve com posições diferentes (10 min)
+- QUADRO FIXO "MITOS E VERDADES": desmistificar erros comuns (5 min)
+- NÚMERO MUSICAL/ARTÍSTICO: forma criativa de fixar o conceito central (5 min)
+- ENCERRAMENTO "SEMANA QUE VEM": teaser + tarefa como "promessa ao telespectador" (2 min)
+TOM: leve, bem-humorado, mas com profundidade real. Nunca sacrifica o aprendizado pela piada.
+Retorne JSON com: titulo, coldOpen{cena,punchline}, monologo{roteiro,piadas[],gancho}, top3[]{fato,porqueImporta}, entrevista{entrevistado,perguntas[],reveal_final}, mesaRedonda{topico,posicoes[]}, mitosVerdades[]{afirmacao,veredicto,explicacao}, numeroArtistico{forma,conteudo,participacao}, encerramento{teaser,tarefa}`,
+    };
+
+    const promptEspecifico = FORMATO_PROMPTS[formato] ?? FORMATO_PROMPTS["jornal"];
+    const personaSystem = getPersonaSystem(persona);
+
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.8,
+      max_tokens: 4500,
+      messages: [
+        {
+          role: "system",
+          content: `PERSONA: ${personaInfo.nome} — ${personaInfo.tom}\n\n${promptEspecifico}\n\nRetorne APENAS JSON válido com a estrutura especificada acima. Adapte todo o conteúdo ao tema fornecido pelo usuário. Seja específico, criativo e pedagogicamente sólido.`,
+        },
+        { role: "user", content: `Tema: "${row.title}"\nFormato: ${formato}\nDuração: ${duracao} minutos\nPersona: ${personaInfo.nome}\n\nConteúdo:\n${row.content_text.slice(0, 12_000)}` },
+      ],
+    });
+    const raw = completion.choices[0].message.content ?? "{}";
+    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    res.json({ formato, tema: row.title, persona: personaInfo.nome, ...JSON.parse(clean) });
+  } catch (e) {
+    console.error("notebook aula-viva-formato:", e);
+    res.status(500).json({ erro: "Erro ao gerar formato da Aula Viva" });
+  }
+});
+
+// ─── POST /api/notebook/avaliacao-voz ─────────────────────────────────────────
+// /endpoints/avaliacao_voz.py — Tipo 6: Avaliação Oral, Entrevista Simulada e Debate
+router.post("/notebook/avaliacao-voz", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { docId, tipoAvaliacao = "entrevista", nivel = "Ensino Médio", persona = "planejador" } = req.body as { docId: number; tipoAvaliacao?: string; nivel?: string; persona?: string };
+  try {
+    const docs = await db.execute(sql`
+      SELECT content_text, title FROM knowledge_documents
+      WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
+    `);
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
+    const personaInfo = PERSONAS_EDU[persona] ?? PERSONAS_EDU["planejador"];
+
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.65,
+      max_tokens: 4000,
+      messages: [
+        {
+          role: "system",
+          content: `Você é especialista em avaliação oral e comunicação pedagógica (Persona: ${personaInfo.nome}).
+${personaInfo.instrucoes}
+
+Crie uma AVALIAÇÃO POR VOZ completa para o tema fornecido. Retorne APENAS JSON válido:
+{
+  "tema": "Título do tema",
+  "tipoAvaliacao": "${tipoAvaliacao}",
+  "persona": "${personaInfo.nome}",
+  "nivel": "${nivel}",
+
+  "podcast": {
+    "titulo": "Nome do episódio podcast avaliativo",
+    "duracao": "X minutos",
+    "formato": "Solo / Dupla / Painel",
+    "roteiro": [
+      {"momento": "Abertura (X min)", "script": "O que o aluno fala", "dica": "Como apresentar bem"},
+      {"momento": "Desenvolvimento (X min)", "script": "Argumentação central", "dica": "Tom e ritmo"},
+      {"momento": "Síntese (X min)", "script": "Conclusão memorável", "dica": "Como terminar forte"}
+    ],
+    "criteriosAvaliacao": [
+      {"criterio": "Clareza conceitual", "peso": "30%", "indicadores": ["O aluno definiu corretamente", "Usou exemplos"]},
+      {"criterio": "Argumentação", "peso": "30%", "indicadores": ["Usou evidências", "Respondeu objeções"]},
+      {"criterio": "Comunicação oral", "peso": "20%", "indicadores": ["Volume adequado", "Sem vícios de linguagem"]},
+      {"criterio": "Criatividade/Engajamento", "peso": "20%", "indicadores": ["Formato original", "Cativou ouvinte"]}
+    ]
+  },
+
+  "entrevistaSimulada": {
+    "formato": "Entrevista de rádio / bancada / podcast",
+    "papel_entrevistador": "Professor ou aluno par",
+    "abertura": "Como o entrevistador se apresenta",
+    "perguntas": [
+      {"numero": 1, "tipo": "abertura", "pergunta": "Pergunta de aquecimento", "resposta_esperada": "O que boa resposta contém", "followup": "Pergunta de aprofundamento"},
+      {"numero": 2, "tipo": "conceitual", "pergunta": "Pergunta sobre definição ou mecanismo", "resposta_esperada": "Elementos essenciais", "followup": "E em outros contextos?"},
+      {"numero": 3, "tipo": "aplicacao", "pergunta": "Situação real que exige o conceito", "resposta_esperada": "Aplicação correta", "followup": "O que mudaria se...?"},
+      {"numero": 4, "tipo": "critico", "pergunta": "Pergunta que desafia o conceito ou cria dilema", "resposta_esperada": "Análise crítica", "followup": "Como você defende sua posição?"},
+      {"numero": 5, "tipo": "sintese", "pergunta": "O que você levaria desta aula para a vida?", "resposta_esperada": "Conexão pessoal real", "followup": ""}
+    ],
+    "rubricas_entrevista": ["Fluência verbal", "Precisão conceitual", "Capacidade de exemplificar", "Resposta às perguntas inesperadas"]
+  },
+
+  "debateEstruturado": {
+    "tese": "Afirmação controversa ou dilema relacionado ao tema",
+    "grupos": [
+      {"nome": "Time A — Defesa", "posicao": "Argumenta a favor da tese", "argumentos": ["Argumento 1 com base no conteúdo", "Argumento 2", "Argumento 3"]},
+      {"nome": "Time B — Oposição", "posicao": "Argumenta contra a tese", "argumentos": ["Contra-argumento 1", "Contra-argumento 2", "Contra-argumento 3"]}
+    ],
+    "estrutura_debate": [
+      {"rodada": "1ª Rodada — Abertura", "tempo": "2 min cada", "instrucao": "Cada grupo apresenta sua posição principal"},
+      {"rodada": "2ª Rodada — Réplica", "tempo": "1 min cada", "instrucao": "Responde ao argumento adversário"},
+      {"rodada": "3ª Rodada — Perguntas da plateia", "tempo": "3 min", "instrucao": "Outros alunos fazem perguntas"},
+      {"rodada": "Conclusão", "tempo": "1 min cada", "instrucao": "Síntese final irrefutável"}
+    ],
+    "papel_mediador": "Como o professor media sem interferir no conteúdo",
+    "criterio_vencedor": "Como determinar vencedor (sem humilhação)",
+    "reflexao_final": "Pergunta unificadora após o debate"
+  }
+}`,
+        },
+        { role: "user", content: `Tema: "${row.title}"\nNível: ${nivel}\nTipo principal: ${tipoAvaliacao}\n\nConteúdo:\n${row.content_text.slice(0, 12_000)}` },
+      ],
+    });
+    const raw = completion.choices[0].message.content ?? "{}";
+    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    res.json(JSON.parse(clean));
+  } catch (e) {
+    console.error("notebook avaliacao-voz:", e);
+    res.status(500).json({ erro: "Erro ao gerar Avaliação por Voz" });
+  }
+});
+
+// ─── POST /api/notebook/making-of ─────────────────────────────────────────────
+// /endpoints/making_of.py — Tipo 8: Making Of da Aula (bastidores pedagógicos)
+router.post("/notebook/making-of", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { docId, persona = "planejador" } = req.body as { docId: number; persona?: string };
+  try {
+    const docs = await db.execute(sql`
+      SELECT content_text, title FROM knowledge_documents
+      WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
+    `);
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
+    const personaInfo = PERSONAS_EDU[persona] ?? PERSONAS_EDU["planejador"];
+
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.7,
+      max_tokens: 3500,
+      messages: [
+        {
+          role: "system",
+          content: `Você é ${personaInfo.nome}. ${personaInfo.instrucoes}
+Tom: ${personaInfo.tom}
+
+Crie o MAKING OF DA AULA — o documentário dos bastidores pedagógicos. Explique as decisões por trás do design instrucional.
+Retorne APENAS JSON válido:
+{
+  "tema": "Título",
+  "persona": "${personaInfo.nome}",
+  "tag": "Making Of Pedagógico",
+
+  "historiaDoConteudo": {
+    "origemDoTema": "Por que este tema existe? Quem o criou ou descobriu? Qual o contexto histórico?",
+    "evolucoesChave": ["Como o entendimento deste tema mudou ao longo do tempo — 3 marcos"],
+    "controversiasExistentes": "O que ainda é debatido ou mal compreendido sobre este tema",
+    "conexoesSurpreendentes": ["3 conexões inesperadas com outros campos do conhecimento"]
+  },
+
+  "decisoesPedagogicas": [
+    {
+      "decisao": "Por que começar com este gancho?",
+      "racionalidade": "Base teórica (Ausubel, Vygotsky, etc.)",
+      "alternativaRejeitada": "O que eu poderia ter feito, mas não fiz",
+      "porque": "Por que a decisão tomada é melhor para esta turma"
+    },
+    {
+      "decisao": "Por que esta sequência de atividades?",
+      "racionalidade": "Teoria da aprendizagem aplicada",
+      "alternativaRejeitada": "Sequência alternativa descartada",
+      "porque": "Justificativa pedagógica"
+    },
+    {
+      "decisao": "Por que esta forma de avaliação?",
+      "racionalidade": "Coerência com objetivos e atividades",
+      "alternativaRejeitada": "Avaliação mais fácil que foi rejeitada",
+      "porque": "O que esta avaliação revela que a outra não revelaria"
+    }
+  ],
+
+  "errosQueJaCometei": [
+    {"erro": "Erro pedagógico cometido ao ensinar este tema", "consequencia": "O que aconteceu na turma", "aprendizado": "Como corrigi e o que mudou"},
+    {"erro": "Segundo erro comum", "consequencia": "Impacto nos alunos", "aprendizado": "A lição"}
+  ],
+
+  "segredosDoProfissional": [
+    {"segredo": "Técnica ou insight que não está em nenhum livro didático", "contexto": "Quando usar", "aviso": "Quando NÃO usar"},
+    {"segredo": "Segundo segredo", "contexto": "Contexto ideal", "aviso": "Limitação"},
+    {"segredo": "Terceiro segredo", "contexto": "Contexto ideal", "aviso": "Limitação"}
+  ],
+
+  "antesDeAmanh": {
+    "o_que_preparar": ["Lista concreta do que preparar antes da aula"],
+    "testar_antes": ["O que sempre testar antes de apresentar à turma"],
+    "mentalidade": "Estado mental ideal para dar esta aula"
+  },
+
+  "reflexaoHonesta": {
+    "oQueMaisGosto": "O que o professor mais aprecia neste conteúdo",
+    "oQueMaisTeio": "O que é difícil de ensinar e por quê",
+    "mensagemAosAlunos": "O que o professor quer que os alunos entendam além do conteúdo"
+  }
+}`,
+        },
+        { role: "user", content: `Tema: "${row.title}"\nPersona: ${personaInfo.nome}\n\nConteúdo:\n${row.content_text.slice(0, 12_000)}` },
+      ],
+    });
+    const raw = completion.choices[0].message.content ?? "{}";
+    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    res.json(JSON.parse(clean));
+  } catch (e) {
+    console.error("notebook making-of:", e);
+    res.status(500).json({ erro: "Erro ao gerar Making Of" });
+  }
+});
+
+// ─── POST /api/notebook/simulador-aula ────────────────────────────────────────
+// /endpoints/simulador_aula.py — Tipo 7: Simulador de Aula com 5 alunos-tipo virtuais
+router.post("/notebook/simulador-aula", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { docId, nivel = "Ensino Médio", persona = "planejador" } = req.body as { docId: number; nivel?: string; persona?: string };
+  try {
+    const docs = await db.execute(sql`
+      SELECT content_text, title FROM knowledge_documents
+      WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
+    `);
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
+    const personaInfo = PERSONAS_EDU[persona] ?? PERSONAS_EDU["planejador"];
+
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.75,
+      max_tokens: 4500,
+      messages: [
+        {
+          role: "system",
+          content: `Você é ${personaInfo.nome} simulando uma aula completa com 5 perfis de alunos reais.
+${personaInfo.instrucoes}
+
+Crie um SIMULADOR DE AULA — ensaio interativo com turma virtual de 5 alunos-tipo.
+Retorne APENAS JSON válido:
+{
+  "tema": "Título",
+  "persona": "${personaInfo.nome}",
+  "nivel": "${nivel}",
+
+  "turmaVirtual": [
+    {
+      "nome": "Ana",
+      "perfil": "A Entusiasta",
+      "descricao": "Muito motivada, faz muitas perguntas, às vezes dispersa o restante da turma",
+      "pontoForte": "Conexões criativas e interesse genuíno",
+      "pontoFraco": "Dificuldade de aprofundar sem dispersar",
+      "comoEngajar": "Como aproveitar a energia dela produtivamente",
+      "sinalDeEngajamento": "Como saber que Ana está aprendendo",
+      "sinalDePerda": "Como perceber que perdeu o fio"
+    },
+    {
+      "nome": "Carlos",
+      "perfil": "O Resistente",
+      "descricao": "Acha a matéria inútil, questiona por que precisa aprender isso",
+      "pontoForte": "Pensamento crítico genuíno quando engajado",
+      "pontoFraco": "Resistência pode contaminar outros",
+      "comoEngajar": "Como transformar resistência em força motriz",
+      "sinalDeEngajamento": "Quando Carlos começa a participar genuinamente",
+      "sinalDePerda": "Comportamentos de desengajamento"
+    },
+    {
+      "nome": "Beatriz",
+      "perfil": "A Silenciosa Brilhante",
+      "descricao": "Entende tudo mas raramente se manifesta, tem medo de errar em público",
+      "pontoForte": "Profundidade de análise quando estimulada",
+      "pontoFraco": "Invisível se o professor não a incluir ativamente",
+      "comoEngajar": "Como criar espaço seguro para ela participar",
+      "sinalDeEngajamento": "Sinais sutis de que está acompanhando",
+      "sinalDePerda": "Como perceber que se desconectou"
+    },
+    {
+      "nome": "Diego",
+      "perfil": "O Com Dificuldade Real",
+      "descricao": "Lacunas de aprendizagem de séries anteriores, sente-se menos capaz",
+      "pontoForte": "Perseverança quando recebe suporte adequado",
+      "pontoFraco": "Pode se perder na primeira complexidade",
+      "comoEngajar": "Estratégias de scaffolding específicas para este conteúdo",
+      "sinalDeEngajamento": "Pequenos avanços que merecem celebração",
+      "sinalDePerda": "Quando precisa de intervenção imediata"
+    },
+    {
+      "nome": "Fernanda",
+      "perfil": "A Avançada Que Se Entedia",
+      "descricao": "Já sabe grande parte do conteúdo, fica impaciente com o ritmo da turma",
+      "pontoForte": "Pode ser co-educadora se bem aproveitada",
+      "pontoFraco": "Comportamentos disruptivos quando entediada",
+      "comoEngajar": "Extensões e desafios específicos para este conteúdo",
+      "sinalDeEngajamento": "Quando está sendo realmente desafiada",
+      "sinalDePerda": "Comportamentos de desengajamento de aluno avançado"
+    }
+  ],
+
+  "simulacaoMomento": [
+    {
+      "momento": "Abertura — primeiros 5 minutos",
+      "script_professor": "O que o professor faz e diz exatamente",
+      "reacao_ana": "Como Ana reage",
+      "reacao_carlos": "Como Carlos reage",
+      "reacao_beatriz": "Como Beatriz reage",
+      "reacao_diego": "Como Diego reage",
+      "reacao_fernanda": "Como Fernanda reage",
+      "intervencao_necessaria": "Se/como professor intervém nas reações",
+      "aprendizado_do_ensaio": "O que o professor aprende sobre a abertura"
+    },
+    {
+      "momento": "Desenvolvimento — conceito central",
+      "script_professor": "Como o professor apresenta o conceito-chave",
+      "reacao_ana": "Reação: pergunta inesperada que Ana faz",
+      "reacao_carlos": "Questionamento ou resistência de Carlos",
+      "reacao_beatriz": "Sinal sutil de que entendeu ou não",
+      "reacao_diego": "Confusão específica que Diego demonstra",
+      "reacao_fernanda": "Comportamento de Fernanda (entediada ou engajada)",
+      "intervencao_necessaria": "Como o professor lida com cada reação",
+      "aprendizado_do_ensaio": "O que refinar neste momento"
+    },
+    {
+      "momento": "Atividade em grupo",
+      "script_professor": "Como organiza e instrui os grupos",
+      "reacao_ana": "Papel de Ana no grupo",
+      "reacao_carlos": "Como Carlos se posiciona",
+      "reacao_beatriz": "Dinâmica de Beatriz no grupo",
+      "reacao_diego": "Dificuldade específica que Diego enfrenta",
+      "reacao_fernanda": "Como Fernanda usa (ou mal-usa) seu avanço",
+      "intervencao_necessaria": "Micro-intervenções por grupo",
+      "aprendizado_do_ensaio": "O que ajustar na dinâmica"
+    },
+    {
+      "momento": "Fechamento e avaliação formativa",
+      "script_professor": "Como encerra e avalia",
+      "reacao_ana": "Participação no fechamento",
+      "reacao_carlos": "Mudança ou manutenção da resistência",
+      "reacao_beatriz": "Se se manifestou ou não",
+      "reacao_diego": "O que conseguiu ou não consolidar",
+      "reacao_fernanda": "Nível de satisfação com o que aprendeu",
+      "intervencao_necessaria": "Ajustes finais",
+      "aprendizado_do_ensaio": "O grande aprendizado desta simulação"
+    }
+  ],
+
+  "leituraDeRiscos": [
+    {"risco": "Situação que pode dar errado nesta aula", "probabilidade": "Alta/Média/Baixa", "prevencao": "O que fazer antes", "plano_b": "O que fazer se acontecer"},
+    {"risco": "Segundo risco", "probabilidade": "Alta/Média/Baixa", "prevencao": "Prevenção", "plano_b": "Plano B"},
+    {"risco": "Terceiro risco", "probabilidade": "Alta/Média/Baixa", "prevencao": "Prevenção", "plano_b": "Plano B"}
+  ],
+
+  "conclusaoDoEnsaio": {
+    "o_que_ajustar": ["3 ajustes concretos no plano antes de dar a aula"],
+    "o_que_manter": ["2 pontos fortes que devem ser mantidos"],
+    "foco_do_professor": "O que o professor deve monitorar com atenção especial",
+    "mantra_da_aula": "1 frase que resume o espírito desta aula"
+  }
+}`,
+        },
+        { role: "user", content: `Tema: "${row.title}"\nNível: ${nivel}\nPersona: ${personaInfo.nome}\n\nConteúdo:\n${row.content_text.slice(0, 12_000)}` },
+      ],
+    });
+    const raw = completion.choices[0].message.content ?? "{}";
+    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    res.json(JSON.parse(clean));
+  } catch (e) {
+    console.error("notebook simulador-aula:", e);
+    res.status(500).json({ erro: "Erro ao gerar Simulador de Aula" });
+  }
+});
+
+// ─── POST /api/notebook/validador-pares ───────────────────────────────────────
+// /core/validador_pares.py — Validação de plano por 3 IAs (Veterano + Inclusão + Pesquisador)
+router.post("/notebook/validador-pares", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { docId, planoTexto, tema } = req.body as { docId?: number; planoTexto?: string; tema?: string };
+  try {
+    let conteudo = planoTexto ?? "";
+    let titulo = tema ?? "Plano de Aula";
+    if (docId && !planoTexto) {
+      const docs = await db.execute(sql`SELECT content_text, title FROM knowledge_documents WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1`);
+      const row = (docs.rows as any[])[0];
+      if (row) { conteudo = row.content_text; titulo = row.title; }
+    }
+    const feedbacks = await validarPares(conteudo.slice(0, 4000), titulo);
+    res.json({ tema: titulo, validacao: feedbacks });
+  } catch (e) {
+    console.error("notebook validador-pares:", e);
+    res.status(500).json({ erro: "Erro na validação por pares" });
+  }
+});
+
 // ─── POST /api/notebook/micro-aulas ──────────────────────────────────────────
 // Tipo 5: Micro-Aulas — conteúdo em doses TikTok/Shorts/Podcast
 router.post("/notebook/micro-aulas", async (req: Request, res: Response) => {

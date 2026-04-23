@@ -38,6 +38,7 @@ import notebookRouter from "./notebook";
 import geminiRouter from "./gemini";
 import openaiImageRouter from "./openai-image";
 import studioIaRouter from "./studio-ia";
+import comunicacaoRouter from "./comunicacao";
 
 const router: IRouter = Router();
 
@@ -80,5 +81,6 @@ router.use(notebookRouter);
 router.use(geminiRouter);
 router.use(openaiImageRouter);
 router.use(studioIaRouter);
+router.use(comunicacaoRouter);
 
 export default router;

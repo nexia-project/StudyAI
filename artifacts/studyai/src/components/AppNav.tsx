@@ -259,6 +259,29 @@ function ModeSwitcher() {
   );
 }
 
+function MobileModeSection({ mode, onSelect }: { mode: AppMode; onSelect: (m: AppMode) => void }) {
+  const { setMode } = useMode();
+  return (
+    <div className="p-3 border-b border-slate-100">
+      <p className="text-xs font-black text-slate-400 uppercase tracking-widest px-2 mb-2">Modo atual</p>
+      <div className="space-y-1">
+        {(Object.entries(MODE_CONFIG) as [AppMode, typeof MODE_CONFIG[AppMode]][]).map(([m, cfg]) => (
+          <button key={m}
+            onClick={() => { setMode(m); onSelect(m); }}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors text-left",
+              mode === m ? "bg-violet-50 text-violet-700 font-bold" : "text-slate-600 hover:bg-slate-50"
+            )}>
+            <span className="text-lg">{cfg.emoji}</span>
+            {cfg.label}
+            {mode === m && <span className="ml-auto w-2 h-2 rounded-full bg-violet-500" />}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 interface AppNavProps {
   onHome?: () => void;
 }
@@ -367,26 +390,7 @@ export function AppNav({ onHome }: AppNavProps) {
               </div>
 
               {/* Mode switcher mobile */}
-              <div className="p-3 border-b border-slate-100">
-                <p className="text-xs font-black text-slate-400 uppercase tracking-widest px-2 mb-2">Modo atual</p>
-                <div className="space-y-1">
-                  {(Object.entries(MODE_CONFIG) as [AppMode, typeof MODE_CONFIG[AppMode]][]).map(([m, cfg]) => {
-                    const { setMode } = useMode();
-                    return (
-                      <button key={m}
-                        onClick={() => { setMode(m); navigate(cfg.defaultPath); setMobileOpen(false); }}
-                        className={cn(
-                          "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors text-left",
-                          mode === m ? "bg-violet-50 text-violet-700 font-bold" : "text-slate-600 hover:bg-slate-50"
-                        )}>
-                        <span className="text-lg">{cfg.emoji}</span>
-                        {cfg.label}
-                        {mode === m && <span className="ml-auto w-2 h-2 rounded-full bg-violet-500" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              <MobileModeSection mode={mode} onSelect={(m) => { navigate(MODE_CONFIG[m].defaultPath); setMobileOpen(false); }} />
 
               <div className="p-3 space-y-4">
                 {navGroups.map(group => (

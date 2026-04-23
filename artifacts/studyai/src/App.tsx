@@ -32,11 +32,13 @@ import TrilhaPage from "@/pages/Trilha";
 import NotebookPage from "@/pages/Notebook";
 import BaseConhecimentoPage from "@/pages/BaseConhecimento";
 import AtividadesAlunoPage from "@/pages/AtividadesAluno";
+import ComunicacaoPage from "@/pages/Comunicacao";
 import NotFound from "@/pages/not-found";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WhatsAppBanner } from "@/components/WhatsAppBanner";
 import { VoiceProfessor } from "@/components/VoiceProfessor";
 import { CookieConsent } from "@/components/CookieConsent";
+import { ModeProvider } from "@/context/ModeContext";
 
 // Hide the floating Tiagão on full-immersive lesson pages so two voices never overlap.
 function VoiceProfessorGate() {
@@ -254,6 +256,7 @@ function Router() {
         <Route path="/notebook" component={NotebookPage} />
         <Route path="/base-conhecimento" component={BaseConhecimentoPage} />
         <Route path="/atividades" component={AtividadesAlunoPage} />
+        <Route path="/comunicacao" component={ComunicacaoPage} />
         {/* Clerk OAuth callback — handles Google/GitHub sign-in redirects */}
         <Route path="/v1/oauth_callback" component={OAuthCallbackPage} />
         {/* Aliases: navigation shortcuts */}
@@ -296,9 +299,11 @@ function ClerkProviderWithRoutes() {
 function App() {
   return (
     <ErrorBoundary>
-      <WouterRouter base={basePath}>
-        <ClerkProviderWithRoutes />
-      </WouterRouter>
+      <ModeProvider>
+        <WouterRouter base={basePath}>
+          <ClerkProviderWithRoutes />
+        </WouterRouter>
+      </ModeProvider>
     </ErrorBoundary>
   );
 }

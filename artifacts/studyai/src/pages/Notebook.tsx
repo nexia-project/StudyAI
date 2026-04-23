@@ -16,7 +16,7 @@ import {
   ExternalLink, ArrowLeft, RefreshCw, Mic, Play, Pause,
   Volume2, Users, Clock, Presentation, Lock, Unlock, Quote, Printer,
   Sparkles, Download, Youtube, Image as ImageIcon, Maximize2, Minimize2, Archive,
-  Search, Pencil, Calendar, LayoutGrid,
+  Search, Pencil, Calendar, LayoutGrid, Tv, Music, Shuffle,
 } from "lucide-react";
 import { TiagaoCharacter } from "@/components/TiagaoCharacter";
 import { AppNav } from "@/components/AppNav";
@@ -248,7 +248,7 @@ interface PodcastRoteiro {
   dicaEnem?: string;
 }
 
-type Tool = "overview" | "study-guide" | "flashcards" | "questoes" | "mapa-mental" | "podcast" | "tiagao" | "timeline" | "briefing" | "plano-aula" | "tarefa" | "sequencia-didatica" | "slides" | "infografico" | "tabela" | "relatorio";
+type Tool = "overview" | "study-guide" | "flashcards" | "questoes" | "mapa-mental" | "podcast" | "tiagao" | "timeline" | "briefing" | "plano-aula" | "tarefa" | "sequencia-didatica" | "aula-viva" | "micro-aulas" | "narrativa" | "remix-cultural" | "plano-aula-versoes" | "slides" | "infografico" | "tabela" | "relatorio";
 
 const TOOL_CONFIG: Record<Tool, { label: string; icon: React.ElementType; color: string; desc: string; badge?: string }> = {
   overview:            { label: "Visão Geral",           icon: Star,          color: "indigo",   desc: "Insight central + pilares + FAQ" },
@@ -261,6 +261,11 @@ const TOOL_CONFIG: Record<Tool, { label: string; icon: React.ElementType; color:
   "plano-aula":        { label: "Plano de Aula",          icon: Presentation,  color: "violet",   desc: "Plano completo com rúbrica BNCC" },
   tarefa:              { label: "Tarefa / Atividade",     icon: ClipboardList, color: "emerald",  desc: "Tarefa para casa com gabarito e rúbrica", badge: "NOVO" },
   "sequencia-didatica":{ label: "Sequência Didática",     icon: Layers,        color: "blue",     desc: "Multi-aula com avaliação integrada", badge: "NOVO" },
+  "aula-viva":         { label: "Aula Viva",              icon: Tv,            color: "orange",   desc: "Roteiro de episódio TV/streaming para sua aula", badge: "PRO" },
+  "micro-aulas":       { label: "Micro-Aulas",            icon: Play,          color: "cyan",     desc: "Versões 15s / 60s / 3min / 10min — TikTok/Reels", badge: "PRO" },
+  narrativa:           { label: "Narrativa Didática",     icon: BookOpen,      color: "fuchsia",  desc: "Transforma o conteúdo em história épica", badge: "PRO" },
+  "remix-cultural":    { label: "Remix Cultural",         icon: Music,         color: "pink",     desc: "Conecta o tema com cultura pop e memes", badge: "PRO" },
+  "plano-aula-versoes":{ label: "5 Versões do Plano",     icon: Shuffle,       color: "violet",   desc: "Difícil / Avançada / Inclusiva / Remota / Híbrida", badge: "PRO" },
   timeline:            { label: "Linha do Tempo",         icon: Clock,         color: "amber",    desc: "Cronologia didática com causas" },
   slides:              { label: "Apresentação",           icon: Presentation,  color: "violet",   desc: "Slides profissionais prontos" },
   infografico:         { label: "Infográfico",            icon: Sparkles,      color: "fuchsia",  desc: "Pôster visual gerado por IA" },
@@ -270,27 +275,33 @@ const TOOL_CONFIG: Record<Tool, { label: string; icon: React.ElementType; color:
 };
 
 const COLOR_MAP: Record<string, string> = {
-  indigo: "bg-indigo-50/60 border-indigo-200 text-indigo-700",
-  violet: "bg-violet-50/60 border-violet-200 text-violet-700",
-  pink:   "bg-pink-50/60   border-pink-200   text-pink-700",
-  amber:  "bg-amber-50/60  border-amber-200  text-amber-700",
+  indigo:  "bg-indigo-50/60  border-indigo-200  text-indigo-700",
+  violet:  "bg-violet-50/60  border-violet-200  text-violet-700",
+  pink:    "bg-pink-50/60    border-pink-200    text-pink-700",
+  amber:   "bg-amber-50/60   border-amber-200   text-amber-700",
   green:   "bg-emerald-50/60 border-emerald-200 text-emerald-700",
   emerald: "bg-emerald-50/60 border-emerald-200 text-emerald-700",
-  blue:    "bg-blue-50/60   border-blue-200   text-blue-700",
-  rose:    "bg-rose-50/60   border-rose-200   text-rose-700",
+  blue:    "bg-blue-50/60    border-blue-200    text-blue-700",
+  rose:    "bg-rose-50/60    border-rose-200    text-rose-700",
   fuchsia: "bg-fuchsia-50/60 border-fuchsia-200 text-fuchsia-700",
+  orange:  "bg-orange-50/60  border-orange-200  text-orange-700",
+  cyan:    "bg-cyan-50/60    border-cyan-200    text-cyan-700",
+  slate:   "bg-slate-50/60   border-slate-200   text-slate-700",
 };
 
 const ICON_TINT: Record<string, string> = {
-  indigo:  "text-indigo-500 bg-indigo-100",
-  violet:  "text-violet-500 bg-violet-100",
-  pink:    "text-pink-500   bg-pink-100",
-  amber:   "text-amber-600  bg-amber-100",
+  indigo:  "text-indigo-500  bg-indigo-100",
+  violet:  "text-violet-500  bg-violet-100",
+  pink:    "text-pink-500    bg-pink-100",
+  amber:   "text-amber-600   bg-amber-100",
   green:   "text-emerald-500 bg-emerald-100",
   emerald: "text-emerald-500 bg-emerald-100",
-  blue:    "text-blue-500   bg-blue-100",
-  rose:    "text-rose-500   bg-rose-100",
+  blue:    "text-blue-500    bg-blue-100",
+  rose:    "text-rose-500    bg-rose-100",
   fuchsia: "text-fuchsia-500 bg-fuchsia-100",
+  orange:  "text-orange-500  bg-orange-100",
+  cyan:    "text-cyan-500    bg-cyan-100",
+  slate:   "text-slate-500   bg-slate-100",
 };
 
 // ─── Mind Map Renderer ─────────────────────────────────────────────────────
@@ -1213,6 +1224,9 @@ export default function Notebook() {
   const [slideIdx, setSlideIdx] = useState(0);
   const [tarefaShowProfessor, setTarefaShowProfessor] = useState(false);
   const [seqActiveAula, setSeqActiveAula] = useState<number | null>(null);
+  const [microTab, setMicroTab] = useState<"15s" | "60s" | "3min" | "10min" | "serie">("60s");
+  const [narrTab, setNarrTab] = useState<"universo" | "ato1" | "ato2" | "ato3" | "ludico">("universo");
+  const [verTab, setVerTab] = useState<"turmaDificil" | "turmaAvancada" | "turmaInclusiva" | "aulaRemota" | "aulaHibrida">("turmaDificil");
 
   // Home vs Workspace view
   const [notebookView, setNotebookView] = useState<"home" | "workspace">("home");
@@ -1780,6 +1794,11 @@ export default function Notebook() {
       "plano-aula": "/api/notebook/plano-aula",
       tarefa: "/api/notebook/tarefa",
       "sequencia-didatica": "/api/notebook/sequencia-didatica",
+      "aula-viva": "/api/notebook/aula-viva",
+      "micro-aulas": "/api/notebook/micro-aulas",
+      narrativa: "/api/notebook/narrativa",
+      "remix-cultural": "/api/notebook/remix-cultural",
+      "plano-aula-versoes": "/api/notebook/plano-aula-versoes",
       timeline: "/api/notebook/timeline",
       slides: "/api/notebook/slides",
       infografico: "/api/notebook/infografico",
@@ -2621,6 +2640,11 @@ export default function Notebook() {
                activeTool === "plano-aula" ? "Preparando o plano com rúbrica BNCC..." :
                activeTool === "tarefa" ? "Montando a tarefa com gabarito e rúbrica..." :
                activeTool === "sequencia-didatica" ? "Construindo a sequência didática multi-aula..." :
+               activeTool === "aula-viva" ? "Escrevendo o roteiro do episódio TV/streaming..." :
+               activeTool === "micro-aulas" ? "Criando versões 15s, 60s, 3min e 10min..." :
+               activeTool === "narrativa" ? "Construindo a narrativa épica didática..." :
+               activeTool === "remix-cultural" ? "Conectando o conteúdo com a cultura pop..." :
+               activeTool === "plano-aula-versoes" ? "Gerando as 5 versões do plano de aula..." :
                "Gerando..."}
             </p>
           </div>
@@ -3639,6 +3663,708 @@ export default function Notebook() {
                       </div>
                     </details>
                   )}
+                </div>
+              );
+            })()}
+
+            {/* ── AULA VIVA Renderer ── */}
+            {activeTool === "aula-viva" && (() => {
+              const r = toolResult as any;
+              if (!r) return null;
+              return (
+                <div className="p-3 space-y-3">
+                  {/* Ficha Técnica */}
+                  <div className="p-3 rounded-xl bg-orange-600 text-white">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Tv className="w-4 h-4" />
+                      <p className="text-xs font-black">AULA VIVA — {r.titulo}</p>
+                    </div>
+                    <p className="text-[10px] text-orange-100 italic">{r.subtitulo}</p>
+                    <div className="flex gap-1.5 mt-2 flex-wrap">
+                      <span className="px-2 py-0.5 bg-white/20 rounded text-[9px] font-bold">{r.genero}</span>
+                      <span className="px-2 py-0.5 bg-white/20 rounded text-[9px] font-bold">{r.duracaoTotal}</span>
+                      <span className="px-2 py-0.5 bg-white/20 rounded text-[9px] font-bold">🎵 {r.trilhaSonora}</span>
+                    </div>
+                  </div>
+
+                  {/* Snapshot Executivo */}
+                  {r.snapshotExecutivo && (
+                    <div className="p-2.5 rounded-xl bg-orange-50 border border-orange-200">
+                      <p className="text-[9px] font-black text-orange-600 uppercase tracking-wider mb-1.5">📋 Snapshot Executivo</p>
+                      <div className="space-y-1">
+                        {[
+                          ["O que aprenderão", r.snapshotExecutivo.oQueVaoAprender],
+                          ["Por que importa", r.snapshotExecutivo.porQueImporta],
+                          ["Como aprenderão", r.snapshotExecutivo.comoVaoAprender],
+                          ["Como saberemos", r.snapshotExecutivo.comoSaberemos],
+                        ].map(([k, v]) => (
+                          <div key={k} className="flex gap-1.5">
+                            <span className="text-[9px] font-bold text-orange-500 min-w-[80px]">{k}:</span>
+                            <span className="text-[9px] text-slate-700">{v as string}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Elenco */}
+                  {r.elenco && (
+                    <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200">
+                      <p className="text-[9px] font-black text-amber-600 uppercase tracking-wider mb-1.5">🎬 Elenco</p>
+                      <div className="space-y-1">
+                        <p className="text-[9px] text-slate-700"><span className="font-bold">Host:</span> {r.elenco.host}</p>
+                        <p className="text-[9px] text-slate-700"><span className="font-bold">Especialista:</span> {r.elenco.especialistaConvidado}</p>
+                        <p className="text-[9px] text-slate-700"><span className="font-bold">Público:</span> {r.elenco.publico}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cenas */}
+                  {r.cenas?.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">🎥 Roteiro Cena a Cena</p>
+                      {r.cenas.map((cena: any) => {
+                        const tipoColor: Record<string, string> = {
+                          vinheta: "bg-orange-500", recapitulacao: "bg-slate-500", gancho: "bg-red-500",
+                          acao: "bg-blue-500", comercial: "bg-green-500", climax: "bg-purple-600", fechamento: "bg-orange-700"
+                        };
+                        return (
+                          <details key={cena.numero} className="rounded-xl border border-slate-200 overflow-hidden">
+                            <summary className="flex items-center gap-2 px-3 py-2 cursor-pointer bg-slate-50 hover:bg-slate-100">
+                              <span className={`px-1.5 py-0.5 rounded text-[8px] font-black text-white ${tipoColor[cena.tipo] ?? "bg-slate-400"}`}>
+                                CENA {cena.numero}
+                              </span>
+                              <span className="text-[10px] font-bold text-slate-700 flex-1">{cena.nome}</span>
+                              <span className="text-[9px] text-slate-400">{cena.duracao}</span>
+                            </summary>
+                            <div className="px-3 py-2 bg-white space-y-1.5">
+                              {cena.trilha && <p className="text-[9px] text-slate-500">🎵 Trilha: <span className="italic">{cena.trilha}</span></p>}
+                              {cena.conteudoVisual && (
+                                <div>
+                                  <p className="text-[9px] font-bold text-slate-400 uppercase">Visual:</p>
+                                  <p className="text-[9px] text-slate-700">{cena.conteudoVisual}</p>
+                                </div>
+                              )}
+                              <div className="p-2 rounded-lg bg-orange-50 border border-orange-100">
+                                <p className="text-[9px] font-bold text-orange-600 mb-0.5">Fala do Host:</p>
+                                <p className="text-[9px] text-orange-900 italic">"{cena.falaHost}"</p>
+                              </div>
+                              {cena.pontoDeVirada && <p className="text-[9px] text-blue-700">⚡ Ponto de virada: {cena.pontoDeVirada}</p>}
+                              {cena.cliffhanger && <p className="text-[9px] text-purple-700">🎭 Cliffhanger: {cena.cliffhanger}</p>}
+                              {cena.transicao && <p className="text-[9px] text-slate-400">→ {cena.transicao}</p>}
+                            </div>
+                          </details>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Guia de Direção */}
+                  {r.guiaDeDirecao?.versoesAlternativas && (
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider mb-1.5">🎬 Versões Alternativas</p>
+                      {Object.entries(r.guiaDeDirecao.versoesAlternativas).map(([k, v]) => (
+                        <div key={k} className="flex gap-1.5 mb-0.5">
+                          <span className="text-[9px] font-bold text-slate-600 capitalize min-w-[70px]">{k}:</span>
+                          <span className="text-[9px] text-slate-600">{v as string}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* ── MICRO-AULAS Renderer ── */}
+            {activeTool === "micro-aulas" && (() => {
+              const r = toolResult as any;
+              if (!r) return null;
+              return (
+                <div className="p-3 space-y-3">
+                  {/* Header */}
+                  <div className="p-3 rounded-xl bg-cyan-600 text-white">
+                    <div className="flex items-center gap-1.5">
+                      <Play className="w-4 h-4" />
+                      <p className="text-xs font-black">{r.tema}</p>
+                    </div>
+                    <p className="text-[9px] text-cyan-200 mt-1">Micro-aulas em 5 formatos — TikTok • Reels • Shorts • Podcast</p>
+                  </div>
+
+                  {/* Tabs */}
+                  <div className="flex gap-1 overflow-x-auto pb-0.5">
+                    {(["15s", "60s", "3min", "10min", "serie"] as const).map(tab => (
+                      <button key={tab} onClick={() => setMicroTab(tab)}
+                        className={`px-2.5 py-1 rounded-lg text-[9px] font-black whitespace-nowrap flex-shrink-0 transition-colors ${
+                          microTab === tab ? "bg-cyan-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}>
+                        {tab === "serie" ? "📺 Série" : tab}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* 15s */}
+                  {microTab === "15s" && r.conceito15s && (
+                    <div className="space-y-2">
+                      <div className="p-2.5 rounded-xl bg-gradient-to-br from-cyan-50 to-blue-50 border border-cyan-200">
+                        <p className="text-[9px] font-black text-cyan-600 uppercase mb-1">🎬 Versão 15 Segundos (TikTok/Reels)</p>
+                        <div className="space-y-1.5">
+                          <div className="p-2 rounded-lg bg-black/5">
+                            <p className="text-[9px] font-bold text-slate-500">Hook Visual (0-3s)</p>
+                            <p className="text-[9px] text-slate-800">{r.conceito15s.hookVisual}</p>
+                          </div>
+                          <div className="p-2 rounded-lg bg-cyan-600 text-white text-center">
+                            <p className="text-xs font-black">{r.conceito15s.textNaTela}</p>
+                            <p className="text-[9px] text-cyan-200 mt-0.5">texto na tela</p>
+                          </div>
+                          <div className="p-2 rounded-lg bg-white border border-cyan-200">
+                            <p className="text-[9px] font-bold text-slate-500">Fala:</p>
+                            <p className="text-[9px] text-slate-800 italic">"{r.conceito15s.fala}"</p>
+                          </div>
+                          <p className="text-[9px] text-cyan-600 font-bold">CTA: {r.conceito15s.callToAction}</p>
+                          <div className="flex flex-wrap gap-1">
+                            {r.conceito15s.hashtags?.map((h: string, i: number) => (
+                              <span key={i} className="px-1.5 py-0.5 bg-cyan-100 text-cyan-700 rounded text-[8px]">{h}</span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 60s */}
+                  {microTab === "60s" && r.versao60s && (
+                    <div className="space-y-2">
+                      <div className="p-2.5 rounded-xl bg-cyan-50 border border-cyan-200">
+                        <p className="text-[9px] font-black text-cyan-600 uppercase mb-2">⏱️ Versão 60 Segundos</p>
+                        <div className="space-y-1.5">
+                          {r.versao60s.estrutura?.map((e: any, i: number) => (
+                            <div key={i} className="flex gap-2">
+                              <span className="text-[8px] font-bold text-cyan-500 min-w-[50px] mt-0.5">{e.segundo}</span>
+                              <p className="text-[9px] text-slate-700">{e.conteudo}</p>
+                            </div>
+                          ))}
+                        </div>
+                        {r.versao60s.roteiro && (
+                          <div className="mt-2 p-2 rounded-lg bg-white border border-cyan-100">
+                            <p className="text-[9px] font-bold text-slate-500 mb-0.5">Roteiro completo:</p>
+                            <p className="text-[9px] text-slate-800 whitespace-pre-line">{r.versao60s.roteiro}</p>
+                          </div>
+                        )}
+                        {r.versao60s.musica && <p className="text-[9px] text-cyan-600 mt-1">🎵 Trilha: {r.versao60s.musica}</p>}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3min */}
+                  {microTab === "3min" && r.versao3min && (
+                    <div className="p-2.5 rounded-xl bg-cyan-50 border border-cyan-200 space-y-2">
+                      <p className="text-[9px] font-black text-cyan-600 uppercase">📱 Versão 3 Minutos (YouTube Shorts / IGTV)</p>
+                      {[
+                        ["Gancho", r.versao3min.gancho],
+                        ["Contexto", r.versao3min.contexto],
+                        ["Conteúdo", r.versao3min.conteudo],
+                        ["Aplicação", r.versao3min.aplicacao],
+                        ["Fechamento", r.versao3min.fechamento],
+                      ].map(([k, v]) => v && (
+                        <div key={k} className="flex gap-1.5">
+                          <span className="text-[9px] font-bold text-cyan-500 min-w-[65px]">{k}:</span>
+                          <span className="text-[9px] text-slate-700">{v}</span>
+                        </div>
+                      ))}
+                      {r.versao3min.roteiro && (
+                        <div className="p-2 rounded-lg bg-white border border-cyan-100 mt-1">
+                          <p className="text-[9px] font-bold text-slate-500 mb-0.5">Roteiro completo:</p>
+                          <p className="text-[9px] text-slate-800 whitespace-pre-line">{r.versao3min.roteiro}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 10min */}
+                  {microTab === "10min" && r.versao10min && (
+                    <div className="p-2.5 rounded-xl bg-cyan-50 border border-cyan-200 space-y-2">
+                      <p className="text-[9px] font-black text-cyan-600 uppercase">🎧 Versão 10 Minutos (Commute/Podcast)</p>
+                      <p className="text-[9px] text-slate-600 italic">{r.versao10min.descricao}</p>
+                      <div className="space-y-1">
+                        {r.versao10min.estrutura?.map((e: any, i: number) => (
+                          <div key={i} className="flex gap-2">
+                            <span className="text-[8px] font-bold text-cyan-500 min-w-[40px] mt-0.5">{e.minuto} min</span>
+                            <p className="text-[9px] text-slate-700">{e.conteudo}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {r.versao10min.roteiro && (
+                        <div className="p-2 rounded-lg bg-white border border-cyan-100">
+                          <p className="text-[9px] font-bold text-slate-500 mb-0.5">Roteiro completo:</p>
+                          <p className="text-[9px] text-slate-800 whitespace-pre-line">{r.versao10min.roteiro}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Série */}
+                  {microTab === "serie" && r.serieDeMicroAulas && (
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">📺 Série de Micro-Aulas (5 episódios)</p>
+                      {r.serieDeMicroAulas.map((ep: any, i: number) => (
+                        <div key={i} className="p-2.5 rounded-xl border border-cyan-200 bg-white">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className="w-5 h-5 rounded-full bg-cyan-600 text-white text-[8px] font-black flex items-center justify-center flex-shrink-0">{ep.episodio}</span>
+                            <p className="text-[10px] font-bold text-slate-800">{ep.titulo}</p>
+                          </div>
+                          <p className="text-[9px] text-slate-600 ml-7">{ep.conceito}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* ── NARRATIVA DIDÁTICA Renderer ── */}
+            {activeTool === "narrativa" && (() => {
+              const r = toolResult as any;
+              if (!r) return null;
+              return (
+                <div className="p-3 space-y-3">
+                  {/* Header */}
+                  <div className="p-3 rounded-xl bg-fuchsia-700 text-white">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <BookOpen className="w-4 h-4" />
+                      <p className="text-xs font-black">{r.titulo}</p>
+                    </div>
+                    <span className="px-2 py-0.5 bg-white/20 rounded text-[9px] font-bold">{r.genero}</span>
+                  </div>
+
+                  {/* Tabs */}
+                  <div className="flex gap-1 overflow-x-auto pb-0.5">
+                    {[["universo", "🌍 Universo"], ["ato1", "Ato 1"], ["ato2", "Ato 2"], ["ato3", "Ato 3"], ["ludico", "🎮 Lúdico"]].map(([t, l]) => (
+                      <button key={t} onClick={() => setNarrTab(t as typeof narrTab)}
+                        className={`px-2.5 py-1 rounded-lg text-[9px] font-black whitespace-nowrap flex-shrink-0 transition-colors ${
+                          narrTab === t ? "bg-fuchsia-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}>{l}</button>
+                    ))}
+                  </div>
+
+                  {/* Universo + Personagens */}
+                  {narrTab === "universo" && (
+                    <div className="space-y-2">
+                      {r.universo && (
+                        <div className="p-2.5 rounded-xl bg-fuchsia-50 border border-fuchsia-200">
+                          <p className="text-[9px] font-black text-fuchsia-600 mb-1.5">🌍 Universo da História</p>
+                          <div className="space-y-1">
+                            <div><span className="text-[9px] font-bold text-slate-500">Cenário: </span><span className="text-[9px] text-slate-700">{r.universo.cenario}</span></div>
+                            <div><span className="text-[9px] font-bold text-slate-500">Grande Problema: </span><span className="text-[9px] text-slate-700">{r.universo.grandeProblema}</span></div>
+                            <div><span className="text-[9px] font-bold text-slate-500">Stakes: </span><span className="text-[9px] text-slate-700">{r.universo.stakesEmocionais}</span></div>
+                          </div>
+                        </div>
+                      )}
+                      {r.personagens && (
+                        <div className="p-2.5 rounded-xl bg-purple-50 border border-purple-200">
+                          <p className="text-[9px] font-black text-purple-600 mb-1.5">👥 Personagens</p>
+                          <div className="space-y-2">
+                            {r.personagens.protagonista && (
+                              <div className="p-1.5 rounded-lg bg-white border border-purple-100">
+                                <p className="text-[9px] font-bold text-purple-700">🦸 Protagonista: {r.personagens.protagonista.nome}</p>
+                                <p className="text-[9px] text-slate-600">Papel: {r.personagens.protagonista.papel}</p>
+                                <p className="text-[9px] text-slate-600">Habilidade: {r.personagens.protagonista.habilidadeEspecial}</p>
+                                <p className="text-[9px] text-slate-600">Arco: {r.personagens.protagonista.arcoTransformacao}</p>
+                              </div>
+                            )}
+                            {r.personagens.mentor && (
+                              <div className="p-1.5 rounded-lg bg-white border border-purple-100">
+                                <p className="text-[9px] font-bold text-purple-700">🧙 Mentor</p>
+                                <p className="text-[9px] text-slate-600">Papel: {r.personagens.mentor.papel}</p>
+                                <p className="text-[9px] text-slate-600">Limitação: {r.personagens.mentor.limitacao}</p>
+                              </div>
+                            )}
+                            {r.personagens.antagonista && (
+                              <div className="p-1.5 rounded-lg bg-white border border-purple-100">
+                                <p className="text-[9px] font-bold text-red-600">👹 Antagonista</p>
+                                <p className="text-[9px] text-slate-600">{r.personagens.antagonista}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Atos */}
+                  {(narrTab === "ato1" || narrTab === "ato2" || narrTab === "ato3") && (() => {
+                    const atos: Record<string, { label: string; key: keyof typeof r.estruturaDramatica; color: string }> = {
+                      ato1: { label: "Ato 1: Mundo Comum", key: "ato1", color: "from-blue-50 to-indigo-50 border-blue-200" },
+                      ato2: { label: "Ato 2: Mundo Especial", key: "ato2", color: "from-fuchsia-50 to-purple-50 border-fuchsia-200" },
+                      ato3: { label: "Ato 3: Retorno", key: "ato3", color: "from-green-50 to-emerald-50 border-green-200" },
+                    };
+                    const cfg = atos[narrTab];
+                    const ato = r.estruturaDramatica?.[cfg.key] ?? {};
+                    return (
+                      <div className={`p-2.5 rounded-xl bg-gradient-to-br ${cfg.color} border space-y-1.5`}>
+                        <p className="text-[9px] font-black text-slate-600 uppercase mb-1">{cfg.label}</p>
+                        {Object.entries(ato).map(([k, v]) => (
+                          <div key={k}>
+                            <p className="text-[9px] font-bold text-slate-500 capitalize">{k.replace(/([A-Z])/g, ' $1').trim()}:</p>
+                            <p className="text-[9px] text-slate-700">{v as string}</p>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Lúdico */}
+                  {narrTab === "ludico" && r.elementosLudicos && (
+                    <div className="space-y-2">
+                      <div className="p-2.5 rounded-xl bg-yellow-50 border border-yellow-200">
+                        <p className="text-[9px] font-black text-yellow-700 mb-1.5">🎮 Elementos Lúdicos</p>
+                        {Object.entries(r.elementosLudicos).map(([k, v]) => (
+                          <div key={k} className="flex gap-1.5 mb-1">
+                            <span className="text-[9px] font-bold text-yellow-600 capitalize min-w-[80px]">{k.replace(/([A-Z])/g, ' $1').trim()}:</span>
+                            <span className="text-[9px] text-slate-700">{v as string}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {r.avaliacaoNarrativa && (
+                        <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200">
+                          <p className="text-[9px] font-black text-emerald-700 mb-1">✅ Avaliação Narrativa</p>
+                          {Object.entries(r.avaliacaoNarrativa).map(([k, v]) => (
+                            <div key={k} className="mb-0.5">
+                              <span className="text-[9px] font-bold text-emerald-600 capitalize">{k.replace(/([A-Z])/g, ' $1').trim()}: </span>
+                              <span className="text-[9px] text-slate-700">{v as string}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* ── REMIX CULTURAL Renderer ── */}
+            {activeTool === "remix-cultural" && (() => {
+              const r = toolResult as any;
+              if (!r) return null;
+              return (
+                <div className="p-3 space-y-3">
+                  {/* Header */}
+                  <div className="p-3 rounded-xl bg-pink-600 text-white">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Music className="w-4 h-4" />
+                      <p className="text-xs font-black">{r.tema} — Remix Cultural</p>
+                    </div>
+                    {r.fraseDeEngajamento && (
+                      <p className="text-[9px] text-pink-200 italic mt-1">"{r.fraseDeEngajamento}"</p>
+                    )}
+                  </div>
+
+                  {/* Mapeamento de Referências */}
+                  {r.mapeamentoReferencias?.length > 0 && (
+                    <div className="p-2.5 rounded-xl bg-pink-50 border border-pink-200">
+                      <p className="text-[9px] font-black text-pink-600 uppercase tracking-wider mb-1.5">🎯 Mapeamento de Referências</p>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-[9px]">
+                          <thead><tr className="bg-pink-100">
+                            <th className="text-left px-1.5 py-1 font-bold text-pink-700">Categoria</th>
+                            <th className="text-left px-1.5 py-1 font-bold text-pink-700">Referência</th>
+                            <th className="text-left px-1.5 py-1 font-bold text-pink-700">Conexão Pedagógica</th>
+                          </tr></thead>
+                          <tbody>
+                            {r.mapeamentoReferencias.map((ref: any, i: number) => (
+                              <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-pink-50/40"}>
+                                <td className="px-1.5 py-1 font-semibold text-pink-600">{ref.categoria}</td>
+                                <td className="px-1.5 py-1 text-slate-800">{ref.referencia}</td>
+                                <td className="px-1.5 py-1 text-slate-600">{ref.conexaoPedagogica}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Aula Remixada */}
+                  {r.aulaRemixada && (
+                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-pink-50 to-fuchsia-50 border border-pink-200">
+                      <p className="text-[9px] font-black text-pink-600 uppercase tracking-wider mb-1.5">🎪 Aula Remixada</p>
+                      <div className="space-y-1.5">
+                        <div className="p-2 rounded-lg bg-white border border-pink-100">
+                          <p className="text-[9px] font-bold text-pink-500 mb-0.5">Gancho:</p>
+                          <p className="text-[9px] text-slate-800 italic">"{r.aulaRemixada.gancho}"</p>
+                        </div>
+                        {[
+                          ["📖 Desenvolvimento", r.aulaRemixada.desenvolvimento],
+                          ["🔍 Aprofundamento", r.aulaRemixada.aprofundamento],
+                          ["🤔 Crítica", r.aulaRemixada.critica],
+                          ["🎨 Produto", r.aulaRemixada.produto],
+                        ].map(([k, v]) => v && (
+                          <div key={k as string}>
+                            <p className="text-[9px] font-bold text-slate-500">{k as string}</p>
+                            <p className="text-[9px] text-slate-700">{v as string}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Memes Educacionais */}
+                  {r.memesEducacionais?.length > 0 && (
+                    <div className="p-2.5 rounded-xl bg-yellow-50 border border-yellow-200">
+                      <p className="text-[9px] font-black text-yellow-700 uppercase tracking-wider mb-1.5">😂 Memes Educacionais</p>
+                      <div className="space-y-2">
+                        {r.memesEducacionais.map((m: any, i: number) => (
+                          <div key={i} className="p-2 rounded-lg bg-white border border-yellow-200">
+                            <p className="text-[9px] font-bold text-yellow-600">Formato: {m.formato}</p>
+                            {m.imagemDescricao && <p className="text-[9px] text-slate-500 italic">Imagem: {m.imagemDescricao}</p>}
+                            <div className="mt-1 rounded-lg bg-black text-white p-1.5 text-center">
+                              <p className="text-[9px] font-bold">{m.textoSuperior}</p>
+                              <div className="my-1 h-px bg-white/20" />
+                              <p className="text-[9px] font-black text-yellow-300">{m.textoInferior}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Playlist */}
+                  {r.playlistDaAula && (
+                    <div className="p-2.5 rounded-xl bg-pink-50 border border-pink-200">
+                      <p className="text-[9px] font-black text-pink-600 uppercase tracking-wider mb-1.5">🎵 Playlist da Aula</p>
+                      {r.playlistDaAula.musicasQueExplicam?.length > 0 && (
+                        <div className="space-y-1 mb-2">
+                          {r.playlistDaAula.musicasQueExplicam.map((m: any, i: number) => (
+                            <div key={i} className="flex gap-1.5">
+                              <span className="text-[9px] text-pink-400">{i + 1}.</span>
+                              <div>
+                                <span className="text-[9px] font-bold text-slate-800">{m.musica}</span>
+                                <span className="text-[9px] text-slate-500"> — {m.comoConecta}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {r.playlistDaAula.trilhaSonoraPara && (
+                        <p className="text-[9px] text-pink-700">📚 Para estudar: <span className="italic">{r.playlistDaAula.trilhaSonoraPara}</span></p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Conexões Surpreendentes */}
+                  {r.conexoesSurpreendentes?.length > 0 && (
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider mb-1">✨ Conexões Surpreendentes</p>
+                      {r.conexoesSurpreendentes.map((c: string, i: number) => (
+                        <p key={i} className="text-[9px] text-slate-700 mb-0.5">• {c}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* ── PLANO DE AULA — 5 VERSÕES Renderer ── */}
+            {activeTool === "plano-aula-versoes" && (() => {
+              const r = toolResult as any;
+              if (!r) return null;
+              const tabs: Array<[typeof verTab, string]> = [
+                ["turmaDificil", "😤 Difícil"],
+                ["turmaAvancada", "🚀 Avançada"],
+                ["turmaInclusiva", "♿ Inclusiva"],
+                ["aulaRemota", "💻 Remota"],
+                ["aulaHibrida", "🔄 Híbrida"],
+              ];
+              return (
+                <div className="p-3 space-y-3">
+                  {/* Header */}
+                  <div className="p-3 rounded-xl bg-violet-700 text-white">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <Shuffle className="w-4 h-4" />
+                      <p className="text-xs font-black">5 Versões: {r.tema}</p>
+                    </div>
+                    <p className="text-[9px] text-violet-200">{r.nivel} · {r.duracao}</p>
+                    {r.objetivoCentral && <p className="text-[9px] text-violet-200 mt-1 italic">{r.objetivoCentral}</p>}
+                  </div>
+
+                  {/* Versão tabs */}
+                  <div className="flex gap-1 overflow-x-auto pb-0.5">
+                    {tabs.map(([t, l]) => (
+                      <button key={t} onClick={() => setVerTab(t)}
+                        className={`px-2.5 py-1 rounded-lg text-[9px] font-black whitespace-nowrap flex-shrink-0 transition-colors ${
+                          verTab === t ? "bg-violet-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}>{l}</button>
+                    ))}
+                  </div>
+
+                  {/* Turma Difícil */}
+                  {verTab === "turmaDificil" && r.versoes?.turmaDificil && (() => {
+                    const v = r.versoes.turmaDificil;
+                    return (
+                      <div className="space-y-2">
+                        <div className="p-2.5 rounded-xl bg-red-50 border border-red-200">
+                          <p className="text-[9px] font-black text-red-600 mb-1">😤 Turma Difícil — Baixo Engajamento</p>
+                          <p className="text-[9px] text-slate-700 mb-2">{v.diagnostico}</p>
+                          {v.estrategiasEngajamento?.length > 0 && (
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-[9px]">
+                                <thead><tr className="bg-red-100">
+                                  <th className="text-left px-1.5 py-1 font-bold text-red-700">Estratégia</th>
+                                  <th className="text-left px-1.5 py-1 font-bold text-red-700">Como aplicar</th>
+                                </tr></thead>
+                                <tbody>{v.estrategiasEngajamento.map((e: any, i: number) => (
+                                  <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-red-50/40"}>
+                                    <td className="px-1.5 py-1 font-semibold text-red-600">{e.estrategia}</td>
+                                    <td className="px-1.5 py-1 text-slate-700">{e.aplicacao}</td>
+                                  </tr>
+                                ))}</tbody>
+                              </table>
+                            </div>
+                          )}
+                          {v.adaptacoes?.length > 0 && (
+                            <div className="mt-1.5">
+                              <p className="text-[9px] font-bold text-red-500 mb-0.5">Adaptações:</p>
+                              {v.adaptacoes.map((a: string, i: number) => <p key={i} className="text-[9px] text-slate-700">• {a}</p>)}
+                            </div>
+                          )}
+                          {v.abertura && <div className="mt-1.5 p-2 rounded-lg bg-white border border-red-100">
+                            <p className="text-[9px] font-bold text-red-500">Abertura:</p>
+                            <p className="text-[9px] text-slate-700 italic">"{v.abertura}"</p>
+                          </div>}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Turma Avançada */}
+                  {verTab === "turmaAvancada" && r.versoes?.turmaAvancada && (() => {
+                    const v = r.versoes.turmaAvancada;
+                    return (
+                      <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 space-y-2">
+                        <p className="text-[9px] font-black text-blue-600 mb-1">🚀 Turma Avançada — Enriquecimento</p>
+                        <p className="text-[9px] text-slate-700">{v.diagnostico}</p>
+                        {v.estrategiasEnriquecimento?.length > 0 && (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-[9px]">
+                              <thead><tr className="bg-blue-100">
+                                <th className="text-left px-1.5 py-1 font-bold text-blue-700">Estratégia</th>
+                                <th className="text-left px-1.5 py-1 font-bold text-blue-700">Aplicação</th>
+                              </tr></thead>
+                              <tbody>{v.estrategiasEnriquecimento.map((e: any, i: number) => (
+                                <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-blue-50/40"}>
+                                  <td className="px-1.5 py-1 font-semibold text-blue-600">{e.estrategia}</td>
+                                  <td className="px-1.5 py-1 text-slate-700">{e.aplicacao}</td>
+                                </tr>
+                              ))}</tbody>
+                            </table>
+                          </div>
+                        )}
+                        {v.adaptacoes?.length > 0 && (
+                          <div>
+                            <p className="text-[9px] font-bold text-blue-500 mb-0.5">Adaptações:</p>
+                            {v.adaptacoes.map((a: string, i: number) => <p key={i} className="text-[9px] text-slate-700">• {a}</p>)}
+                          </div>
+                        )}
+                        {v.produtoFinal && <p className="text-[9px] text-blue-700 mt-1">🏆 Produto Final: {v.produtoFinal}</p>}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Turma Inclusiva */}
+                  {verTab === "turmaInclusiva" && r.versoes?.turmaInclusiva && (() => {
+                    const v = r.versoes.turmaInclusiva;
+                    return (
+                      <div className="p-2.5 rounded-xl bg-green-50 border border-green-200 space-y-2">
+                        <p className="text-[9px] font-black text-green-600 mb-1">♿ Turma Inclusiva — Acessibilidade Total</p>
+                        {v.perfilEspecifico && <p className="text-[9px] text-slate-700">{v.perfilEspecifico}</p>}
+                        {v.adaptacoesPorNecessidade?.length > 0 && (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-[9px]">
+                              <thead><tr className="bg-green-100">
+                                <th className="text-left px-1.5 py-1 font-bold text-green-700">Necessidade</th>
+                                <th className="text-left px-1.5 py-1 font-bold text-green-700">Adaptação</th>
+                              </tr></thead>
+                              <tbody>{v.adaptacoesPorNecessidade.map((a: any, i: number) => (
+                                <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-green-50/40"}>
+                                  <td className="px-1.5 py-1 font-semibold text-green-600">{a.necessidade}</td>
+                                  <td className="px-1.5 py-1 text-slate-700">{a.adaptacao}</td>
+                                </tr>
+                              ))}</tbody>
+                            </table>
+                          </div>
+                        )}
+                        {v.recursosAcessiveis?.length > 0 && (
+                          <div>
+                            <p className="text-[9px] font-bold text-green-500 mb-0.5">Recursos Acessíveis:</p>
+                            {v.recursosAcessiveis.map((r: string, i: number) => <p key={i} className="text-[9px] text-slate-700">• {r}</p>)}
+                          </div>
+                        )}
+                        {v.avaliacaoAdaptada && <p className="text-[9px] text-green-700 mt-1">📝 Avaliação adaptada: {v.avaliacaoAdaptada}</p>}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Aula Remota */}
+                  {verTab === "aulaRemota" && r.versoes?.aulaRemota && (() => {
+                    const v = r.versoes.aulaRemota;
+                    return (
+                      <div className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200 space-y-2">
+                        <p className="text-[9px] font-black text-indigo-600 mb-1">💻 Aula Remota — 100% Digital</p>
+                        {v.modalidade && <span className="px-2 py-0.5 bg-indigo-100 text-indigo-600 rounded text-[8px] font-bold">{v.modalidade}</span>}
+                        {v.adaptacoesEngajamento?.length > 0 && (
+                          <div className="overflow-x-auto mt-1.5">
+                            <table className="w-full text-[9px]">
+                              <thead><tr className="bg-indigo-100">
+                                <th className="text-left px-1.5 py-1 font-bold text-indigo-700">Desafio</th>
+                                <th className="text-left px-1.5 py-1 font-bold text-indigo-700">Solução</th>
+                              </tr></thead>
+                              <tbody>{v.adaptacoesEngajamento.map((a: any, i: number) => (
+                                <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-indigo-50/40"}>
+                                  <td className="px-1.5 py-1 font-semibold text-indigo-600">{a.desafio}</td>
+                                  <td className="px-1.5 py-1 text-slate-700">{a.solucao}</td>
+                                </tr>
+                              ))}</tbody>
+                            </table>
+                          </div>
+                        )}
+                        {v.interacoesObrigatorias?.length > 0 && (
+                          <div>
+                            <p className="text-[9px] font-bold text-indigo-500 mb-0.5">Interações obrigatórias:</p>
+                            {v.interacoesObrigatorias.map((r: string, i: number) => <p key={i} className="text-[9px] text-slate-700">• {r}</p>)}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Aula Híbrida */}
+                  {verTab === "aulaHibrida" && r.versoes?.aulaHibrida && (() => {
+                    const v = r.versoes.aulaHibrida;
+                    return (
+                      <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 space-y-2">
+                        <p className="text-[9px] font-black text-amber-700 mb-1">🔄 Aula Híbrida — Rotacional</p>
+                        {v.organizacao?.length > 0 && (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-[9px]">
+                              <thead><tr className="bg-amber-100">
+                                <th className="text-left px-1.5 py-1 font-bold text-amber-700">Estação</th>
+                                <th className="text-left px-1.5 py-1 font-bold text-amber-700">Atividade</th>
+                                <th className="text-left px-1.5 py-1 font-bold text-amber-700">Tempo</th>
+                              </tr></thead>
+                              <tbody>{v.organizacao.map((e: any, i: number) => (
+                                <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-amber-50/40"}>
+                                  <td className="px-1.5 py-1 font-semibold text-amber-600">{e.estacao}</td>
+                                  <td className="px-1.5 py-1 text-slate-700">{e.atividade}</td>
+                                  <td className="px-1.5 py-1 text-slate-500">{e.tempo}</td>
+                                </tr>
+                              ))}</tbody>
+                            </table>
+                          </div>
+                        )}
+                        {v.atividadeOnline && <p className="text-[9px] text-amber-700 mt-1">💻 Online: {v.atividadeOnline}</p>}
+                        {v.sincronizacao && <p className="text-[9px] text-amber-700">🔄 Sync: {v.sincronizacao}</p>}
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })()}

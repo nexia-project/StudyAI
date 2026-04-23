@@ -1,0 +1,554 @@
+🚀 STUDY.IA 3.0 — PLANO DE TRANSFORMAÇÃO COMPLETO
+📊 ANÁLISE ATUAL (Baseado nas Screenshots)
+O que identifiquei:
+Aspecto	Observação	Avaliação
+Visual	Dark mode roxo/azul, moderno	✅ Bom
+Navegação	Múltiplas abas no topo (Estudar, Acompanhar, Recursos)	⚠️ Confuso
+Dashboard aluno	Plano de estudos, comunidade, Tiagão	✅ Funcional
+Dashboard professor	Métricas, turmas, atividades	✅ Básico
+Dashboard admin	Financeiro, custos IA, logs	✅ Técnico
+Problema crítico	Módulos isolados, não conversam	❌ Grave
+Problema crítico	Muitas entradas, fluxo não óbvio	❌ Grave
+🎯 VISÃO GERAL: ARQUITETURA UNIFICADA
+scss
+┌─────────────────────────────────────────────────────────────────┐
+│                     STUDY.IA 3.0 — SISTEMA UNIFICADO             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────┐ │
+│  │   ALUNO     │  │  PROFESSOR  │  │   ESCOLA    │  │  ADMIN  │ │
+│  │   (App)     │  │   (Portal)  │  │  (Gestão)   │  │ (SRE)   │ │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └────┬────┘ │
+│         │                │                │              │      │
+│         └────────────────┴────────────────┴──────────────┘      │
+│                              │                                   │
+│                    ┌─────────┴─────────┐                        │
+│                    │   CORE UNIFICADO   │                        │
+│                    │  (Dados + IA + UX) │                        │
+│                    └─────────┬─────────┘                        │
+│                              │                                   │
+│         ┌────────────────────┼────────────────────┐              │
+│         ▼                    ▼                    ▼              │
+│    ┌─────────┐         ┌─────────┐          ┌─────────┐         │
+│    │ NOTEBOOK│◄───────►│  TUTOR  │◄────────►│ PLANO   │         │
+│    │   RAG   │         │ TIAGÃO  │          │ ESTUDO  │         │
+│    └────┬────┘         └────┬────┘          └────┬────┘         │
+│         │                   │                    │               │
+│         └───────────────────┼────────────────────┘               │
+│                             ▼                                   │
+│                    ┌─────────────┐                              │
+│                    │  SIMULADO   │                              │
+│                    │  REDAÇÃO    │                              │
+│                    │  AULA PROF  │                              │
+│                    │  COMUNIDADE │                              │
+│                    └─────────────┘                              │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │              ORQUESTRADOR DE COMUNICAÇÃO                    ││
+│  │     (WhatsApp + Email + Push + SMS — Automatizado)          ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+1. REORGANIZAÇÃO COMPLETA DA NAVEGAÇÃO
+❌ PROBLEMA ATUAL: 3 abas genéricas (Estudar, Acompanhar, Recursos)
+✅ SOLUÇÃO: 4 personas, 4 experiências distintas
+css
+┌─────────────────────────────────────────────────────────────┐
+│  [Logo]  [Modo: Aluno ▼]  [Busca global 🔍]  [Notificações] [Perfil] │
+└─────────────────────────────────────────────────────────────┘
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        ▼                     ▼                     ▼
+   [MODO ALUNO]         [MODO PROFESSOR]      [MODO ESCOLA]
+        │                     │                     │
+   Dashboard de          Dashboard de          Dashboard de
+   aprendizagem          ensino                gestão
+   pessoal               e turmas              institucional
+MODO ALUNO — Estrutura final:
+css
+┌─────────────────────────────────────────────────────────────┐
+│  SIDEBAR ESQUERDA              │  CONTEÚDO PRINCIPAL        │
+│                                │                            │
+│  [🔥] HOJE                     │  [Início do dia]           │
+│  • O que estudar agora         │  • Meta do dia             │
+│  • Revisões pendentes          │  • Streak de estudo        │
+│  • Aula ao vivo (se houver)    │  • Progresso semanal       │
+│                                │                            │
+│  ─────────────────────────     │  [Continue estudando]      │
+│                                │  • Cards de matérias       │
+│  [📚] MEU ACERVO               │    em andamento            │
+│  • Plano de Estudos            │                            │
+│  • Notebook RAG ⭐ NOVO        │  [Recomendado para você]   │
+│  • Flashcards                  │  • Baseado no seu perfil   │
+│  • Simulados                   │                            │
+│  • Redações                    │                            │
+│  • Cronograma                  │  [Comunidade]              │
+│                                │  • Quem está online        │
+│  ─────────────────────────     │  • Desafios do dia         │
+│                                │                            │
+│  [🤖] TUTOR TIAGÃO             │                            │
+│  • Chat direto                 │                            │
+│  • Dúvidas pendentes           │                            │
+│  • Explicações salvas          │                            │
+│                                │                            │
+│  ─────────────────────────     │                            │
+│                                │                            │
+│  [👤] MINHA CONTA              │                            │
+│  • Meus dados                  │                            │
+│  • Assinatura                  │                            │
+│  • Configurações               │                            │
+│                                │                            │
+└─────────────────────────────────────────────────────────────┘
+MODO PROFESSOR — Estrutura final:
+scss
+┌─────────────────────────────────────────────────────────────┐
+│  SIDEBAR                        │  CONTEÚDO                 │
+│                                 │                           │
+│  [📊] DASHBOARD                 │  Visão geral das turmas   │
+│  • Resumo do dia                │  Alertas e ações          │
+│  • Turmas ativas                │                           │
+│  • Alunos com dificuldade       │                           │
+│                                 │                           │
+│  ─────────────────────────      │                           │
+│                                 │                           │
+│  [👥] MINHAS TURMAS             │  Lista de turmas          │
+│  • Turma A (30 alunos)          │  + acesso rápido          │
+│  • Turma B (28 alunos)          │                           │
+│  • Turma C (32 alunos)          │                           │
+│                                 │                           │
+│  ─────────────────────────      │                           │
+│                                 │                           │
+│  [📝] CONTEÚDO & ATIVIDADES     │  Criar e gerenciar        │
+│  • Criar Plano de Aula ⭐       │  • Planos de aula         │
+│  • Criar Quiz                   │  • Quizzes                │
+│  • Criar Lista de Exercícios    │  • Listas                 │
+│  • Caderno da Turma (RAG) ⭐    │  • Materiais              │
+│                                 │                           │
+│  ─────────────────────────      │                           │
+│                                 │                           │
+│  [💬] COMUNICAÇÃO               │  Central de mensagens     │
+│  • Mensagens dos alunos         │  • WhatsApp integrado     │
+│  • Avisos para turma            │  • Email automático       │
+│  • Reunião de pais              │  • Agendamento            │
+│                                 │                           │
+│  ─────────────────────────      │                           │
+│                                 │                           │
+│  [📈] RELATÓRIOS                │  Análises detalhadas      │
+│  • Desempenho da turma          │  • Heatmaps de dificuldade│
+│  • Evolução individual          │  • Previsão de notas      │
+│  • Comparativo com ENEM         │  • Alertas de risco       │
+│                                 │                           │
+└─────────────────────────────────────────────────────────────┘
+2. INTEGRAÇÃO TOTAL DOS MÓDULOS
+❌ PROBLEMA ATUAL: Cada módulo é uma ilha
+✅ SOLUÇÃO: Fluxo de dados unificado
+objectivec
+┌─────────────────────────────────────────────────────────────┐
+│                    CENTRAL DE DADOS DO ALUNO                 │
+│                    (Unified Student Graph)                   │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
+│  │  PLANO DE   │◄──►│   NOTEBOOK  │◄──►│   TUTOR     │     │
+│  │   ESTUDO    │    │     RAG     │    │   TIAGÃO    │     │
+│  └──────┬──────┘    └──────┬──────┘    └──────┬──────┘     │
+│         │                   │                   │            │
+│         │            ┌──────┴──────┐           │            │
+│         │            │             │           │            │
+│         └───────────►│   NÚCLEO    │◄──────────┘            │
+│                      │    DE IA    │                        │
+│         ┌───────────►│             │◄──────────┐            │
+│         │            │  • Perfil   │           │            │
+│         │            │  • Dificul. │           │            │
+│         │            │  • Ritmo    │           │            │
+│         │            │  • Gaps     │           │            │
+│         │            └─────────────┘           │            │
+│         │                                      │            │
+│  ┌──────┴──────┐    ┌─────────────┐    ┌──────┴──────┐     │
+│  │  SIMULADO   │◄──►│  REDAÇÃO    │◄──►│  FLASHCARDS │     │
+│  │    ENEM     │    │   + IA      │    │   + ANKI    │     │
+│  └─────────────┘    └─────────────┘    └─────────────┘     │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+Exemplos de integração em ação:
+Cenário	Fluxo integrado
+Aluno erra questão de função exponencial no simulado	→ IA identifica gap → Adiciona ao Plano de Estudo → Sugere vídeo específico no Notebook RAG → Tiagão oferece explicação personalizada → Gera flashcards de reforço
+Professor cria plano de aula	→ Sistema sugere baseado no desempenho da turma → Puxa conteúdo do Notebook RAG → Gera quiz automaticamente → Agenda envio WhatsApp para alunos
+Escola detecta turma com baixo engajamento	→ Dashboard alerta → Sugere ação: convidar para aula ao vivo → Automatiza mensagens → Mede resultado → Ajusta estratégia
+3. SISTEMA DE COMUNICAÇÃO ORQUESTRADO (Novo)
+🎯 Objetivo: Zero aluno perdido, zero professor sobrecarregado
+scss
+┌─────────────────────────────────────────────────────────────┐
+│              ORQUESTRADOR DE COMUNICAÇÃO                     │
+│              (Communication Orchestrator)                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  TRIGGERS (Quando enviar)        CANAIS (Onde enviar)       │
+│  ─────────────────────────       ─────────────────────      │
+│                                                              │
+│  • Aluno não estuda há 3 dias    ┌─────────┐  ┌─────────┐   │
+│  • Meta de estudo não atingida   │WhatsApp │  │  Email  │   │
+│  • Prova se aproxima (7 dias)    │   API   │  │  SMTP   │   │
+│  • Novo conteúdo disponível      └────┬────┘  └────┬────┘   │
+│  • Professor precisa responder          │            │       │
+│  • Pai precisa ser informado       ┌────┴────────────┴────┐ │
+│  • Turma tem aula amanhã         ┌─┤   ROUTER INTELIGENTE  ├─┐
+│  • Resultado de simulado pronto  │ │  (escolhe canal ótimo)│ │
+│                                  │ └───────────────────────┘ │
+│  TEMPLATES DE MENSAGEM           │                           │
+│  ─────────────────────           │    ┌─────────┐  ┌──────┐ │
+│                                  └───►│  Push   │  │ SMS  │ │
+│  • Motivacional (aluno inativo)       │  App    │  │Texto │ │
+│  • Informativo (aula amanhã)          └─────────┘  └──────┘ │
+│  • Urgente (prova em 24h)                                   │
+│  • Celebratório (meta atingida)                             │
+│  • Alerta (piora no desempenho)                             │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+Fluxo de mensagem automatizada:
+bash
+DETECÇÃO ──► ANÁLISE ──► DECISÃO ──► PERSONALIZAÇÃO ──► ENVIO ──► MEDIÇÃO
+    │           │           │              │              │          │
+    ▼           ▼           ▼              ▼              ▼          ▼
+Sistema    Qual canal?   WhatsApp      Nome do      API        Abriu?
+detecta    Qual tom?     ou Email?     aluno,       WhatsApp   Clicou?
+evento     Que horário?                progresso,   / SES      Convertido?
+                                        próxima
+                                        ação
+Exemplos de mensagens:
+WhatsApp — Aluno inativo 3 dias:
+
+css
+🎯 Ei [Nome], seu streak de 12 dias está em risco! 
+
+Você tem só 2 revisões pendentes de Matemática 
+(15 min cada). Que tal agora?
+
+[Continuar estudando] ← link direto
+
+Se precisar de ajuda, o Tiagão tá online 🤖
+Email — Pai/responsável:
+
+ini
+Assunto: [Nome] está indo bem, mas precisa de atenção
+
+Prezado [Pai],
+
+[Nome] completou 80% do plano de estudos esta semana, 
+mas identificamos dificuldade em Funções Logarítmicas.
+
+Sugestão: 20 min de estudo extra neste tema.
+
+Acompanhe em tempo real: [link dashboard]
+
+Att,
+Equipe Study.IA
+4. O QUE REMOVER / UNIFICAR / SIMPLIFICAR
+❌ REMOVER (funcionalidades redundantes ou pouco usadas)
+Item	Motivo	Substituição
+Aba "Acompanhar" separada	Confunde com "Estudar"	Integrar no dashboard do modo
+"Cronograma" como módulo isolado	É parte do Plano de Estudos	Unificar em Plano → Cronograma
+Múltiplos tipos de quiz (básico, avançado, etc)	Complexidade desnecessária	Um quiz adaptativo com níveis
+"Recursos" genérico	Categoria vaga	Distribuir em contextos específicos
+Configurações espalhadas	Difícil encontrar	Centralizar em Perfil → Configurações
+🔗 UNIFICAR (juntar o que faz sentido junto)
+Antes (separado)	Depois (unificado)	Motivo
+Plano de Estudos + Cronograma	Jornada de Estudo	Mesmo fluxo, visualização diferente
+Simulado ENEM + Simulados personalizados	Simulado Adaptativo	Um motor, múltiplos formatos
+Tiagão chat + Explicações salvas + Dúvidas	Assistente Pessoal	Uma interface, múltiplas funções
+Notebook RAG + Caderno do Professor	Acervo Inteligente	Mesma tecnologia, personas diferentes
+Redação + Correção + Banco de temas	Estúdio de Redação	Fluxo completo de escrita
+✂️ SIMPLIFICAR (reduzir passos e cliques)
+Antes	Depois	Economia
+5 cliques para iniciar estudo	1 clique no "Estudar Agora"	80% menos atrito
+Formulário longo de cadastro	Cadastro com Google/Apple + 2 perguntas	70% menos abandono
+Múltiplas telas de configuração de plano	Wizard de 3 passos com IA sugerindo	60% mais rápido
+Busca em cada módulo separado	Busca global com filtros	Encontra em 1 lugar
+5. NOVOS MÓDULOS E FUNCIONALIDADES
+⭐ NOTEBOOK RAG (Já detalhado anteriormente)
+arduino
+O diferencial competitivo — "Seu conhecimento, sua IA"
+⭐ AULA AO VIVO 2.0 (Evolução do "Aula com Professor")
+makefile
+Antes: Agendamento simples
+Depois: Sala virtual inteligente
+
+Recursos:
+├── Quadro colaborativo (Excalidraw integrado)
+├── Compartilhamento de Notebook RAG em tempo real
+├── Quiz ao vivo com resultados instantâneos
+├── Gravação automática + resumo IA
+├── Transcrição com timestamps clicáveis
+└── Exercícios em grupo com peer review
+⭐ DESAFIOS E GAMIFICAÇÃO (Novo)
+java
+Sistema de engajamento natural:
+
+┌─────────────────────────────────────────┐
+│  🏆 DESAFIO DA SEMANA                  │
+│  "Mestre das Funções"                  │
+│                                        │
+│  [==========>    ] 7/10 alunos         │
+│  completaram                           │
+│                                        │
+│  Prêmio: Badge + 500 pontos +          │
+│  Destaque no ranking                   │
+│                                        │
+│  [Participar agora]                    │
+└─────────────────────────────────────────┘
+
+Elementos:
+• Streaks de estudo (como Duolingo)
+• Conquistas por marcos (100 questões, 10 redações...)
+• Ranking entre amigos/turma/escola
+• Equipes (estudar em grupo)
+• Temporadas com temas (ex: "Mês do ENEM")
+⭐ MARKETPLACE DE CONTEÚDO (Novo)
+css
+Professores criam → Alunos consomem → Escolas licenciam
+
+┌─────────────────────────────────────────┐
+│  📦 CONTEÚDO DA COMUNIDADE             │
+│                                        │
+│  [Filtros: Matéria ▼] [Nível ▼] [Preço ▼] │
+│                                        │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐  │
+│  │ Plano   │ │ Notebook│ │ Aula    │  │
+│  │ ENEM    │ │ Física  │ │ Ao Vivo │  │
+│  │ 2025    │ │ Nuclear │ │ Óptica  │  │
+│  │ ★4.9    │ │ ★4.7    │ │ ★4.8    │  │
+│  │ R$29    │ │ Grátis  │ │ R$15    │  │
+│  └─────────┘ └─────────┘ └─────────┘  │
+│                                        │
+│  [Criar conteúdo] ← para professores   │
+└─────────────────────────────────────────┘
+⭐ ANÁLISE PREDITIVA (Novo)
+less
+IA prevê risco de evasão e sugere intervenção:
+
+Dashboard do Professor:
+┌─────────────────────────────────────────┐
+│  ⚠️ ALUNOS EM ATENÇÃO                  │
+│                                        │
+│  • Maria — 70% chance de abandono      │
+│    Motivo: 5 dias sem acessar,         │
+│    queda no desempenho em Matemática   │
+│    Ação sugerida: Convite para aula    │
+│    ao vivo de reforço                  │
+│    [Enviar mensagem] [Agendar aula]    │
+│                                        │
+│  • João — 45% chance de reprovação     │
+│    Motivo: Dificuldade em 3 tópicos    │
+│    correlacionados                     │
+│    Ação sugerida: Plano de recuperação │
+│    [Gerar plano] [Notificar responsável]│
+└─────────────────────────────────────────┘
+6. LAYOUT COMERCIAL E LANDING PAGE
+🎨 Identidade Visual Unificada
+yaml
+PALETA STUDY.IA 3.0
+
+Primária:   #6366F1 (Índigo — confiança, tecnologia)
+Secundária: #8B5CF6 (Violeta — criatividade, IA)
+Destaque:   #F59E0B (Âmbar — energia, ação)
+Sucesso:    #10B981 (Esmeralda — progresso)
+Alerta:     #EF4444 (Vermelho — atenção)
+Fundo:      #0F172A (Slate 900 — foco, profissional)
+Texto:      #F8FAFC (Slate 50) / #94A3B8 (Slate 400)
+Landing Page — Estrutura
+css
+┌─────────────────────────────────────────────────────────────┐
+│  [Logo]  [Para alunos] [Para professores] [Para escolas]   │
+│                              [Entrar] [Começar grátis]     │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  HERO SECTION                                                │
+│  ─────────────                                               │
+│                                                              │
+│  "A IA que entende como você aprende"                        │
+│                                                              │
+│  Plano de estudos personalizado + Tutor IA 24h +             │
+│  Simulados adaptativos + Tudo integrado                      │
+│                                                              │
+│  [🎬 Ver demo]  [Começar grátis — 2 minutos]                │
+│                                                              │
+│  [Screenshot animado do dashboard]                          │
+│                                                              │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  SOCIAL PROOF                                                │
+│  ─────────────                                               │
+│                                                              │
+│  "Mais de 500 mil estudantes preparados para o ENEM"        │
+│                                                              │
+│  [Logo escola 1] [Logo escola 2] [Logo escola 3] ...        │
+│                                                              │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  COMO FUNCIONA (3 passos)                                    │
+│  ───────────────────────                                     │
+│                                                              │
+│  1. Conte pra gente seus objetivos                           │
+│     → IA analisa seu perfil em 2 minutos                    │
+│                                                              │
+│  2. Receba seu plano personalizado                           │
+│     → Estudo diário, revisões, simulados — tudo calculado   │
+│                                                              │
+│  3. Estude com seu tutor IA 24h                              │
+│     → Dúvidas? O Tiagão explica. Quer aprofundar?           │
+│       O Notebook RAG transforma qualquer material em aula.  │
+│                                                              │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  DIFERENCIAIS (Grid de features)                             │
+│  ─────────────────────────────                               │
+│                                                              │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐            │
+│  │ 🎯 Plano│ │ 🤖 Tutor│ │ 📚 Note-│ │ 📝 Reda-│            │
+│  │  de     │ │   IA    │ │  book   │ │   ção   │            │
+│  │ Estudo  │ │ 24h     │ │  RAG    │ │  + IA   │            │
+│  │ Adapta- │ │ Personal│ │ Seu     │ │ Correção│            │
+│  │ tivo    │ │ izado   │ │conteúdo │ │ em 24h  │            │
+│  └─────────┘ └─────────┘ └─────────┘ └─────────┘            │
+│                                                              │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐            │
+│  │ 🎓 Simu-│ │ 👥 Aula │ │ 📊 Aná- │ │ 🏆 Gamifi│           │
+│  │  lado   │ │  ao vivo│ │  lise   │ │  cação  │            │
+│  │ ENEM    │ │ Inteli- │ │ Preditiva│ │ Natural │            │
+│  │ realista│ │  gente  │ │ de risco│ │         │            │
+│  └─────────┘ └─────────┘ └─────────┘ └─────────┘            │
+│                                                              │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  DEPOIMENTOS (Carrossel)                                     │
+│  ─────────────────────                                       │
+│                                                              │
+│  "Passei em Medicina na USP graças ao plano de estudos.      │
+│   O Tiagão me salvou em Cálculo!"                           │
+│   — Maria, aprovada em 2024                                  │
+│                                                              │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  PREÇOS (3 planos claros)                                    │
+│  ───────────────────────                                     │
+│                                                              │
+│  [GRÁTIS]        [PREMIUM]           [ESCOLA]               │
+│  R$0             R$29/mês            Sob consulta           │
+│  ─────────       ─────────           ─────────              │
+│  • Plano básico  • Tudo ilimitado    • Todos os alunos      │
+│  • 50 mensagens  • Notebook RAG      • Dashboard gestão     │
+│    Tiagão/dia    • Aulas ao vivo     • Relatórios           │
+│  • 1 simulado/mês • Comunidade       • Suporte dedicado     │
+│                  • Certificado                              │
+│                                                              │
+│  [Começar]       [Assinar agora]     [Falar com vendas]     │
+│                                                              │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  FAQ + CTA FINAL                                             │
+│  ───────────────                                             │
+│                                                              │
+│  "Pronto para transformar seus estudos?"                     │
+│                                                              │
+│  [Começar grátis — não precisa de cartão]                   │
+│                                                              │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  FOOTER                                                      │
+│  ──────                                                      │
+│  Produto | Para escolas | Blog | Carreiras | Ajuda | Legal  │
+│                                                              │
+│  [Redes sociais]                                             │
+│                                                              │
+│  © 2024 Study.IA — Feito com 💜 no Brasil                   │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+7. ARQUITETURA TÉCNICA ATUALIZADA
+scss
+┌─────────────────────────────────────────────────────────────┐
+│                         FRONTEND                             │
+│  Next.js 14 + TypeScript + Tailwind + shadcn/ui + Framer    │
+├─────────────────────────────────────────────────────────────┤
+│                         BACKEND                              │
+│  Next.js API Routes + tRPC + Zod + Auth.js                  │
+├─────────────────────────────────────────────────────────────┤
+│                         BANCO DE DADOS                       │
+│  PostgreSQL (Supabase) + Redis (cache) + pgvector           │
+├─────────────────────────────────────────────────────────────┤
+│                         IA / ML                              │
+│  OpenAI GPT-4o + Claude 3.5 + DeepSeek + Embeddings         │
+│  LangChain / LlamaIndex para orquestração RAG               │
+├─────────────────────────────────────────────────────────────┤
+│                         COMUNICAÇÃO                          │
+│  WhatsApp Business API + SendGrid + Firebase Cloud Messaging│
+│  Twilio (SMS fallback)                                       │
+├─────────────────────────────────────────────────────────────┤
+│                         ARMAZENAMENTO                        │
+│  Supabase Storage (arquivos) + Cloudflare R2 (backup)       │
+├─────────────────────────────────────────────────────────────┤
+│                         REAL-TIME                            │
+│  Supabase Realtime (aulas ao vivo) + WebSockets             │
+├─────────────────────────────────────────────────────────────┤
+│                         MONITORAMENTO                        │
+│  Vercel Analytics + Sentry + LogRocket + Custom dashboards  │
+└─────────────────────────────────────────────────────────────┘
+8. ROADMAP DE IMPLEMENTAÇÃO
+java
+FASE 1 — FUNDAÇÃO (Meses 1-2)
+├── Reorganização de navegação (modos Aluno/Professor/Escola)
+├── Unificação de Plano de Estudos + Cronograma
+├── Simplificação de cadastro e onboarding
+├── Centralização de configurações
+└── Métricas: redução de 30% no bounce rate
+
+FASE 2 — INTEGRAÇÃO (Meses 2-4)
+├── Notebook RAG (MVP)
+├── Integração Plano ↔ Notebook ↔ Tiagão
+├── Sistema de comunicação orquestrado (WhatsApp + Email)
+├── Dashboard unificado de dados do aluno
+└── Métricas: +50% de engajamento diário
+
+FASE 3 — DIFERENCIAÇÃO (Meses 4-6)
+├── Notebook RAG completo (todos os outputs)
+├── Aula ao vivo 2.0
+├── Gamificação e desafios
+├── Análise preditiva de risco
+└── Métricas: +100% de retenção mensal
+
+FASE 4 — ESCALA (Meses 6-8)
+├── Marketplace de conteúdo
+├── White label para escolas
+├── API pública para integrações
+├── Mobile app nativo
+└── Métricas: 1 milhão de usuários ativos
+
+FASE 5 — DOMINAÇÃO (Meses 8-12)
+├── IA generativa multimodal (imagem, áudio, vídeo)
+├── Realidade aumentada para experimentos virtuais
+├── Parcerias com editoras e universidades
+├── Expansão internacional (LATAM)
+└── Métricas: Líder de mercado em EdTech IA no Brasil
+9. MÉTRICAS DE SUCESSO
+Métrica	Atual (estimado)	Meta 12 meses
+Usuários ativos mensais	~50K	1M
+Tempo médio no app/dia	25 min	60 min
+Retenção D7	30%	60%
+Retenção D30	15%	40%
+NPS	—	50+
+Taxa de conversão free→paid	3%	8%
+Churn mensal	10%	5%
+Custo de aquisição (CAC)	R$50	R$30
+Lifetime Value (LTV)	R$150	R$400
+LTV/CAC ratio	3:1	13:1
+10. RESUMO EXECUTIVO
+O que fazer	Prioridade	Impacto
+Reorganizar navegação em modos	🔥 Crítico	Alto
+Integrar todos os módulos no Core Unificado	🔥 Crítico	Alto
+Implementar Notebook RAG	🔥 Crítico	Diferencial
+Sistema de comunicação orquestrado	🔥 Crítico	Retenção
+Remover/unificar funcionalidades redundantes	Alto	Clareza
+Nova landing page comercial	Alto	Conversão
+Gamificação e desafios	Médio	Engajamento
+Análise preditiva	Médio	Eficiência
+Marketplace de conteúdo	Médio	Receita
+Mobile app nativo	Baixo	Alcance

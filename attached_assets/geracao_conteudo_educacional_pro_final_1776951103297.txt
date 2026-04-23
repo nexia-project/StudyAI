@@ -1,0 +1,1387 @@
+# ============================================================================
+# GERAÇÃO DE CONTEÚDO EDUCACIONAL PRO — VERSÃO FINAL
+# Qualidade Notebook LM+ para Aulas, Tarefas, Apresentações e Muito Mais
+# ============================================================================
+# Arquivo: geracao_conteudo_educacional_pro_final.txt
+# Formato: UTF-8 | LF | Sublime Text
+# Versão: 2.0 — Completo com Inovações Exclusivas
+# ============================================================================
+
+# ============================================================================
+# NOVIDADES DESTA VERSÃO (Ideias Exclusivas Study.IA)
+# ============================================================================
+
+## 🚀 INOVAÇÕES QUE NENHUM CONCORRENTE TEM:
+
+### 1. SISTEMA DE "AULA VIVA" (Live Lesson)
+Geração de aula em formato de roteiro de programa de TV/streaming:
+- Abertura com "hook" cinematográfico
+- Sequências de "cenas" com tempos precisos
+- "Comerciais" (pausas ativas, reflexões rápidas)
+- Cliffhangers para próxima aula
+- Trilha sonora sugerida por momento
+
+### 2. ENGINE DE PERSONALIZAÇÃO MASSIVA
+Um plano de aula → 5 variações instantâneas:
+- Versão "Turma Difícil" (engajamento baixo → gamificação máxima)
+- Versão "Turma Avançada" (profundidade + autonomia)
+- Versão "Inclusiva" (adaptações PCD detalhadas)
+- Versão "Remota" (100% digital, assíncrona possível)
+- Versão "Híbrida" (rotacional, metade presencial/metade online)
+
+### 3. CONSTRUTOR DE NARRATIVA DIDÁTICA
+Transforma qualquer conteúdo em história envolvente:
+- Personagem protagonista (aluno como herói)
+- Conflito/missão a resolver
+- Aliados (colegas), mentores (professor), obstáculos (desafios)
+- Arco de transformação (do não-saber ao dominar)
+- Final épico (produto/apresentação)
+
+### 4. SISTEMA DE "MICRO-AULAS" (TikTok/Educação)
+Gera versões da aula para consumo em pequenas doses:
+- 15 segundos: o conceito em 1 frase
+- 60 segundos: explicação com gancho
+- 3 minutos: mini-aula completa
+- 10 minutos: versão "commute" (ônibus/metrô)
+
+### 5. AVALIAÇÃO POR VOZ/ÁUDIO
+Gera:
+- Roteiro de podcast avaliativo (aluno grava resposta)
+- Entrevista simulada (IA faz perguntas, avalia respostas)
+- Debate estruturado (posições pré-definidas, critérios de avaliação)
+
+### 6. SIMULADOR DE AULA
+Antes de aplicar, o professor "ensaiia":
+- IA simula reações de alunos (perguntas, erros, resistência)
+- Professor testa explicações e recebe feedback
+- Ajusta plano baseado na "simulação"
+
+### 7. GERAÇÃO DE "MAKING OF" DA AULA
+Documentário da própria aula:
+- Por que escolhi este tema desta forma
+- O que já tentei antes e não funcionou
+- Por que acredito que desta vez vai dar certo
+- O que aprendi com esta turma específica
+
+### 8. SISTEMA DE "AULA HERDÁVEL"
+Professor A cria → Professor B adapta:
+- Versionamento de planos (Git-style para educação)
+- Fork de aula (copia e modifica)
+- Pull request (sugestão de melhoria)
+- Merge (incorpora boas ideias)
+- Crédito automático ao autor original
+
+### 9. GERAÇÃO DE "CONTEÚDO ANTI-FRAUDE"
+Para avaliações online:
+- Banco de variações de questões (mesma competência, enunciados diferentes)
+- Versões personalizadas por aluno (dados diferentes, mesma estrutura)
+- Detecção de padrões suspeitos (respostas idênticas, tempos anômalos)
+
+### 10. ENGINE DE "REMIX CULTURAL"
+Conecta conteúdo com cultura pop relevante para os alunos:
+- "Esta aula é como Stranger Things porque..."
+- "Este conceito aparece em [jogo/música/filme do momento]"
+- Memes educacionais gerados automaticamente
+- Referências atualizadas semanalmente via trending topics
+
+# ============================================================================
+# SEÇÃO A: ANÁLISE PEDAGÓGICA PROFUNDA (ATUALIZADA)
+# ============================================================================
+
+## Análise do Contexto Educacional — Versão Completa
+
+```json  
+{  
+  "analisePedagogica": {  
+    "disciplina": "string",  
+    "temaEspecifico": "string",  
+    "nivelEnsino": "infantil | fundamental_1 | fundamental_2 | medio | superior | pos | eja | tecnico",  
+    "anoSerie": "string",  
+    "tempoAula": 50,  
+    "numeroAlunos": 30,  
+    "recursosDisponiveis": ["projetor", "laboratorio", "internet", "livro_didatico", "tablets", "makerspace"],  
+    "perfilTurma": "heterogenea | homogenea | inclusiva | avancada | com_dificuldades | desmotivada | superdotada",  
+    "contextoSocioeconomico": "urbano_centro | urbano_periferia | rural | indigena | quilombola | ribeirinho",  
+    "acessoTecnologia": "universal | parcial | limitado | inexistente_fora_da_escola",  
+    "prerequisitosIdentificados": [  
+      {  
+        "conceito": "string",  
+        "statusTurma": "dominado | parcial | fragil | nao_abordado",  
+        "evidencia": "avaliacao_data_x | diagnostico_inicial"  
+      }  
+    ],  
+    "dificuldadesComuns": [  
+      {  
+        "erro": "string",  
+        "frequencia": "comum | ocasional | raro",  
+        "causaProvavel": "string",  
+        "estrategiaPrevencao": "string"  
+      }  
+    ],  
+    "interessesTurma": ["tema_a", "tema_b", "celebridade_x", "jogo_y", "esporte_z"],  
+    "bnccCompetencias": ["EM13MAT101", "EM13CHS102"],  
+    "objetivosDeAprendizagem": {  
+      "saber": ["conhecimentos"],  
+      "fazer": ["habilidades"],  
+      "conviver": ["relações"],  
+      "ser": ["atitudes"]  
+    },  
+    "calendarioEscolar": {  
+      "dataAula": "YYYY-MM-DD",  
+      "proximaAvaliacao": "YYYY-MM-DD",  
+      "eventosProximos": ["prova_bimestral", "feira_cientifica"],  
+      "diasLetivosRestantes": 45  
+    },  
+    "restricoes": ["nao_posso_usar_internet", "sala_sem_projetor", "turma_apos_recesso"]  
+  }  
+}  
+NOVO: Análise de "Clima de Aula" (IA preditiva)
+json
+{
+  "climaDeAulaPrevisto": {
+    "diaDaSemana": "segunda | terca | ...",
+    "horario": "primeira_aula | pos_intervalo | ultima_aula",
+    "energiaEsperada": "alta | media | baixa",
+    "atencaoPrevista": "curta_15min | media_30min | longa_45min",
+    "fatoresExternos": ["prova_outra_disciplina", "jogo_selecao", "clima_chuvoso"],
+    "recomendacaoAbertura": "movimentacao_fisica | meditacao_rapida | conversa_descontraida | lancamento_direto",
+    "estrategiaRecuperacaoAtencao": {
+      "minuto15": "pausa_ativa_rapida",
+      "minuto30": "virada_de_atividade",
+      "minuto40": "checkpoint_final"
+    }
+  }
+}
+============================================================================
+SEÇÃO B: TIPOS DE CONTEÚDO — VERSÃO COMPLETA
+============================================================================
+----------------------------------------------------------------------------
+TIPO 1: PLANO DE AULA COMPLETO (VERSÃO PRO)
+----------------------------------------------------------------------------
+markdown
+# PLANO DE AULA: [Título Específico e Atraente]
+
+## 0. SNAPSHOT EXECUTIVO (Para direção/colegas)
+
+| Elemento | Resposta em 1 frase |
+|----------|---------------------|
+| O que vão aprender? | [Competência específica] |
+| Por que importa? | [Conexão com vida real] |
+| Como vão aprender? | [Estratégia principal] |
+| Como saberemos que aprenderam? | [Evidência de aprendizagem] |
+| O que precisa de atenção especial? | [Diferenciação chave] |
+
+---
+
+## 1. IDENTIFICAÇÃO COMPLETA
+
+| Campo | Informação |
+|-------|-----------|
+| Disciplina | [Nome específico] |
+| Tema da aula | [Específico, não da unidade] |
+| Tema da unidade | [Contexto maior] |
+| Ano/Série | [Específico] |
+| Turma | [Identificação] |
+| Duração | [X minutos — realista] |
+| Data prevista | [Considerando calendário] |
+| Professor | [Nome] |
+
+## 2. PERFIL DA TURMA (Análise viva, não genérica)
+
+### Descrição qualitativa
+[Turma de 28 alunos do 7º ano B, período matutino. Predominantemente 
+do bairro Jardim das Oliveiras, com forte presença de famílias 
+ligadas ao comércio local. Relação de camaradagem alta, mas 
+dificuldade em trabalho individual silencioso. Dois alunos com TDAH 
+diagnosticado, um com deficiência auditiva (usam aparelho), três 
+em acompanhamento de psicologia escolar.]
+
+### Mapa de alunos (anonimizado)
+
+| Perfil | Quantidade | Características | Estratégia |
+|--------|-----------|-----------------|------------|
+| Avançados | 5 | Dominam pré-requisitos, pedem desafios | Enriquecimento constante |
+| Esperados | 15 | Seguem ritmo médio | Acompanhamento regular |
+| Em desenvolvimento | 6 | Dificuldade em pré-requisitos | Reforço diferenciado |
+| Necessitam atenção especial | 2 | TDAH, necessidade de movimento | Adaptações específicas |
+
+### Dados de avaliação anterior
+- [Prova diagnóstica]: média 6.2, desvio 1.8
+- [Conceito X]: 60% domina, 25% parcial, 15% fragil
+- [Erro mais comum]: confusão entre [conceito A] e [conceito B]
+
+## 3. FUNDAMENTAÇÃO TEÓRICA (Conectada à prática)
+
+### Base teórica principal
+[Teoria de Vygotsky sobre ZDP — Zona de Desenvolvimento Proximal, 
+aplicada na estratégia de "scaffolding" que será usada no momento 2, 
+quando o professor retira gradualmente o suporte para que alunos 
+resolvam sozinhos.]
+
+### Base teórica complementar
+[Teoria das Inteligências Múltiplas de Gardner — atividade em grupo 
+considera inteligências lógica, interpessoal e corporal-cinestésica.]
+
+### BNCC — Competências e habilidades
+
+| Código | Descrição | Como será desenvolvida |
+|--------|-----------|------------------------|
+| EM13MAT101 | [Descrição completa] | [Momento específico da aula] |
+| EM13CHS102 | [Descrição completa] | [Momento específico da aula] |
+
+### Objetivos de aprendizagem (Taxonomia de Bloom adaptada)
+
+| Nível | Verbo | Objetivo específico | Evidência |
+|-------|-------|---------------------|-----------|
+| Lembrar | Identificar | [Objetivo] | [O que faz] |
+| Entender | Explicar | [Objetivo] | [O que faz] |
+| Aplicar | Resolver | [Objetivo] | [O que faz] |
+| Analisar | Comparar | [Objetivo] | [O que faz] |
+| Avaliar | Justificar | [Objetivo] | [O que faz] |
+| Criar | Propor | [Objetivo] | [O que faz] |
+
+## 4. DESENVOLVIMENTO — MOMENTO A MOMENTO
+
+### MOMENTO 0: CHEGADA E ACOLHIMENTO (3 min)
+
+**O que acontece:**
+Professor na porta, cumprimento individual, música ambiente 
+específica tocando, provocação visual na lousa/projeto.
+
+**Diálogo típico:**
+Professor: "[Frase de acolhimento específica]"
+Aluno: "[Resposta esperada]"
+Professor: "[Reação que conecta com aula]"
+
+**Transição para momento 1:** [Como passa]
+
+---
+
+### MOMENTO 1: ABERTURA / GANCHO (7 min)
+
+**Nome do momento:** [Título atraente]
+
+**Estratégia:** [Nome da estratégia pedagógica]
+
+**Procedimento detalhado:**
+
+1. [Passo 1 — o que professor faz, o que alunos fazem, tempo]
+2. [Passo 2 — o que professor faz, o que alunos fazem, tempo]
+3. [Passo 3 — o que professor faz, o que alunos fazem, tempo]
+
+**Diálogo esperado:**
+
+Professor: "[Pergunta estratégica]"
+Aluno A: "[Resposta provável]"
+Professor: "[Reação que direciona]"
+Aluno B: "[Outra possibilidade]"
+Professor: "[Síntese que prepara transição]"
+
+**Recursos:**
+- [Recurso 1: especificação completa]
+- [Recurso 2: especificação completa]
+
+**Diferenciação neste momento:**
+
+| Perfil | Adaptação |
+|--------|-----------|
+| Avançados | [Desafio adicional] |
+| Esperados | [Acompanhamento padrão] |
+| Em desenvolvimento | [Suporte extra] |
+| Atencão especial | [Adaptação específica] |
+
+**Checkpoint de atenção:** [Como perceber se perderam o fio]
+
+**Transição:** [Frase/exatamente como passa para próximo momento]
+
+---
+
+### MOMENTO 2: DESENVOLVIMENTO PRINCIPAL (25 min)
+
+[Nome, estratégia, procedimento, diálogo, recursos, diferenciação, 
+checkpoint, transição — mesma estrutura detalhada]
+
+---
+
+### MOMENTO 3: SISTEMATIZAÇÃO (10 min)
+
+[Estrutura idêntica]
+
+---
+
+### MOMENTO 4: AVALIAÇÃO FORMATIVA (5 min)
+
+[Instrumento específico, aplicação, análise rápida]
+
+---
+
+## 5. AVALIAÇÃO DA APRENDIZAGEM
+
+### Rúbrica de avaliação formativa (esta aula)
+
+| Critério | Não observado (1) | Em desenvolvimento (2) | Observado (3) |
+|----------|-------------------|------------------------|---------------|
+| [Critério 1] | [Descrição] | [Descrição] | [Descrição] |
+| [Critério 2] | [Descrição] | [Descrição] | [Descrição] |
+
+### Instrumento de avaliação somativa (próxima aula/semana)
+
+[Descrição completa do instrumento]
+
+### Registro e acompanhamento
+
+[Ficha de observação, lista de cotejo, ou outro instrumento]
+
+## 6. MATERIAIS E RECURSOS
+
+### Produzidos pelo professor
+- [Lista numerada com especificações]
+
+### Utilizados pelos alunos
+- [Lista numerada]
+
+### Ambiente e infraestrutura
+- [Organização do espaço físico]
+
+## 7. REFERÊNCIAS
+
+### Fontes do caderno utilizadas
+1. [Autor, Título, Ano, páginas/seções específicas]
+2. [idem]
+
+### Referências teóricas
+[Formato ABNT completo]
+
+### Referências didáticas
+[Livro didático, sites, vídeos]
+
+## 8. REFLEXÃO PÓS-AULA (preencher após aplicação)
+
+### O que funcionou melhor do que esperado
+[Campo para anotação]
+
+### O que precisou de ajuste no momento
+[Campo para anotação]
+
+### Surpresas (positivas ou negativas)
+[Campo para anotação]
+
+### Para a próxima turma, mudaria
+[Campo para anotação]
+
+### Versão deste plano: [1.0]
+### Última modificação: [data]
+### Modificações desta versão: [histórico]
+----------------------------------------------------------------------------
+TIPO 2: AULA VIVA / ROTEIRO DE PROGRAMA (INOVADOR)
+----------------------------------------------------------------------------
+markdown
+# AULA VIVA: [Título como programa de TV]
+
+## FICHA TÉCNICA
+
+| Elemento | Descrição |
+|----------|-----------|
+| Tempo total | [X minutos = duração da aula] |
+| Gênero | [Documentário | Reality | Talk Show | Série | Game Show] |
+| Classificação | [Livre | 10 anos | 12 anos] |
+| Trilha sonora geral | [Estilo musical: lo-fi, rock clássico, MPB, etc.] |
+
+## ELENCO
+
+| Papel | Quem | Característica |
+|-------|------|----------------|
+| Apresentador/Host | Professor | [Tom: enérgico | sério | irônico | acolhedor] |
+| Especialista convidado | Aluno avançado ou vídeo | [Função] |
+| Público | Turma | [Perfil] |
+| Participante surpresa | [Quem entra no meio] | [Função narrativa] |
+
+## ROTEIRO CENA A CENA
+
+### CENA 1: ABERTURA / VT DE ENTRADA (2 min)
+
+**Tipo:** [Vinheta animada | Música tema | Chamada de programa]
+
+**Conteúdo visual:**
+[Descrição detalhada do que aparece]
+
+**Fala do host (texto completo):**
+"[Diálogo com gancho, energia, conexão com último 'episódio']"
+
+**Trilha:** [Música específica]
+
+**Transição:** [Como entra na cena 2]
+
+---
+
+### CENA 2: RECAPITULAÇÃO RÁPIDA (1 min)
+
+"No episódio anterior..." 
+[Resumo dramático do que já foi visto, com spoilers do que vem]
+
+---
+
+### CENA 3: PROBLEMA DA SEMANA / MISSÃO (3 min)
+
+**Gancho narrativo:**
+[Contexto que cria tensão/curiosidade]
+
+**Desafio explícito:**
+[O que precisam resolver até o final]
+
+**Recompensa:**
+[O que ganham se conseguirem]
+
+---
+
+### CENA 4: DESENVOLVIMENTO — ATO 1 (10 min)
+
+**Estrutura de cena:**
+- Entrada em campo [o que fazem]
+- Primeiro obstáculo [o que acontece]
+- Reviravolta [mudança de rumo]
+
+**Ponto de virada:** [Momento que muda tudo]
+
+---
+
+### CENA 5: PAUSA ATIVA / "COMERCIAL" (2 min)
+
+**Atividade física/mental rápida:**
+[Movimento, respiração, jogo rápido]
+
+**Teaser do que vem:**
+[Não saia daí...]
+
+---
+
+### CENA 6: DESENVOLVIMENTO — ATO 2 (10 min)
+
+[Mesma estrutura de cena, intensidade maior]
+
+---
+
+### CENA 7: CLIMAX / RESOLUÇÃO (5 min)
+
+**Momento de revelação:**
+[A descoberta, a solução, a aprendizagem]
+
+**Reação do elenco:**
+[Como todos celebram/compreendem]
+
+---
+
+### CENA 8: FECHAMENTO / PRÓXIMO EPISÓDIO (2 min)
+
+**Síntese elegante:**
+[Não repetição, síntese emocional]
+
+**Teaser próximo episódio:**
+[Cliffhanger que deixa querendo mais]
+
+**Créditos finais:**
+[Agradecimentos, referências, tarefa]
+
+---
+
+## GUIA DE DIREÇÃO
+
+### Ritmo da aula
+Gráfico de energia:
+Alto ████████░░░░░░░░░░░░ (min 0-2: abertura)
+Médio ░░██████░░░░░░░░░░░░ (min 2-5: problema)
+Alto ░░░░████████░░░░░░░░ (min 5-15: ação)
+Baixo ░░░░░░░░████░░░░░░░░ (min 15-17: pausa)
+Alto ░░░░░░░░░░████████░░ (min 17-27: ação)
+Máximo ░░░░░░░░░░░░░░████ (min 27-32: clímax)
+Médio ░░░░░░░░░░░░░░░░██ (min 32-35: fechamento)
+
+shell
+
+### Cuidados de produção
+- [ ] Testar projeção 10 min antes
+- [ ] Ter plano B se tecnologia falhar
+- [ ] Preparar "plateia de emergência" se turma não responder
+- [ ] Cronômetro visível para controle de tempo
+
+## VERSÕES ALTERNATIVAS
+
+### Versão "Cinema": mais dramática, mais recursos visuais
+### Versão "Podcast": só áudio, foco na conversa
+### Versão "Reality": competição entre grupos visível
+### Versão "Documentário": tom mais sério, fatos reais
+----------------------------------------------------------------------------
+TIPO 3: PERSONALIZAÇÃO MASSIVA — 5 VERSÕES DE 1 PLANO
+----------------------------------------------------------------------------
+markdown
+# PLANO BASE: [Título]
+
+[Plano completo padrão]
+
+---
+
+## VERSÃO A: TURMA DIFÍCIL (Baixo engajamento, resistência)
+
+### Diagnóstico do problema
+[Por que estão desengajados: histórico de fracasso, desconexão com 
+conteúdo, problemas externos, dinâmica de grupo]
+
+### Estratégias de engajamento máximo
+
+| Estratégia | Como aplicar nesta aula |
+|------------|-------------------------|
+| Gamificação | [Pontos, badges, competição saudável] |
+| Relevância imediata | [Conexão com problema deles AGORA] |
+| Escolha autêntica | [Opções reais de caminho] |
+| Sucesso rápido | [Vitória nos primeiros 5 min] |
+| Relacionamento | [Momento de conexão humana] |
+
+### Adaptações específicas
+- [Mudança 1: mais movimento, menos sentado]
+- [Mudança 2: mais colaboração, menos individual]
+- [Mudança 3: mais concreto, menos abstrato]
+
+### Linguagem do plano
+[Tom mais informal, gírias apropriadas, referências culturais deles]
+
+---
+
+## VERSÃO B: TURMA AVANÇADA (Domínio prévio, sede por mais)
+
+### Diagnóstico
+[Alunos que já sabem, precisam de profundidade e autonomia]
+
+### Estratégias de enriquecimento
+
+| Estratégia | Aplicação |
+|------------|-----------|
+| Autonomia | [Escolha de método, ritmo, profundidade] |
+| Complexidade | [Conexões interdisciplinares, nuances] |
+| Criatividade | [Produto aberto, múltiplas soluções] |
+| Liderança | [Alunos ensinam alunos] |
+| Pesquisa | [Fontes primárias, investigação real] |
+
+### Adaptações
+- [Mudança 1: conteúdo extra para quem quiser]
+- [Mudança 2: alunos como co-criadores]
+- [Mudança 3: avaliação por portfólio]
+
+---
+
+## VERSÃO C: TURMA INCLUSIVA (PCD, necessidades especiais)
+
+### Perfil específico
+[Quais necessidades: visual, auditiva, motora, intelectual, TEA, TDAH]
+
+### Adaptações por tipo de necessidade
+
+| Necessidade | Adaptação nesta aula |
+|-------------|----------------------|
+| Deficiência visual | [Material em braile, descrição verbal, tátil] |
+| Deficiência auditiva | [Libras, legendas, visualização do som] |
+| TDAH | [Movimento, quebra de atividade, feedback constante] |
+| TEA | [Rotina visual, aviso de transições, redução de estímulo] |
+| Altas habilidades | [Enriquecimento dentro da inclusão] |
+
+### Recursos acessíveis
+[Lista específica de materiais acessíveis]
+
+### Avaliação adaptada
+[Como avaliar justamente, com as mesmas competências]
+
+---
+
+## VERSÃO D: AULA REMOTA (100% online, síncrona ou assíncrona)
+
+### Modalidade
+[Totalmente ao vivo | Gravada para assistir depois | Híbrida flexível]
+
+### Adaptações de engajamento à distância
+
+| Desafio | Solução nesta aula |
+|---------|-------------------|
+| Atenção dispersa | [Micro-atividades a cada 5 min] |
+| Isolamento | [Trabalho em breakout rooms, fóruns] |
+| Fadiga de tela | [Momentos de câmera desligada, movimento] |
+| Dificuldade técnica | [Alternativas de baixa tecnologia] |
+
+### Estrutura de vídeo (se gravada)
+
+| Timestamp | Conteúdo | Recurso visual |
+|-----------|----------|----------------|
+| 0:00-0:30 | Gancho | [Descrição] |
+| 0:30-2:00 | Contexto | [Descrição] |
+| ... | ... | ... |
+
+### Interações obrigatórias
+[Chat, quiz, entrega, fórum — o que precisa fazer]
+
+---
+
+## VERSÃO E: AULA HÍBRIDA (Rotacional, metade presencial/metade online)
+
+### Organização do espaço-tempo
+
+| Estação | O que acontece | Quem | Quando |
+|---------|---------------|------|--------|
+| Estação 1: [Nome] | [Atividade] | Grupo A | 0-20 min |
+| Estação 2: [Nome] | [Atividade] | Grupo B | 0-20 min |
+| Troca | | | 20 min |
+| Estação 1 | | Grupo B | 20-40 min |
+| Estação 2 | | Grupo A | 20-40 min |
+| Síntese | Todos juntos | Todos | 40-50 min |
+
+### Atividade online (quando não com professor)
+[O que fazem, como acompanham, como entregam]
+
+### Sincronização
+[Como garante que ambos os grupos aprenderam o essencial]
+----------------------------------------------------------------------------
+TIPO 4: CONSTRUTOR DE NARRATIVA DIDÁTICA (INOVADOR)
+----------------------------------------------------------------------------
+markdown
+# AULA NARRATIVA: [Título como história]
+
+## UNIVERSO DA HISTÓRIA
+
+### Cenário
+[Onde e quando se passa: "Um laboratório em 2045", "Uma vila medieval", 
+"A célula humana como cidade"]
+
+### O Grande Problema
+[Ameaça/missão que precisa ser resolvida: "O oxigênio está acabando", 
+"O reino está doente", "Uma invasão de vírus"]
+
+## PERSONAGENS
+
+### Protagonista: O Aluno
+- **Nome:** [Nome que pode usar ou "Você"]
+- **Papel:** [Cientista | Detetive | Herói | Explorador]
+- **Habilidade especial:** [O que já sabe que vai ajudar]
+- **Arco de transformação:** [Do que para o que vai]
+
+### Mentor: O Professor
+- **Papel na história:** [Gandalf | Yoda | Dumbledore | Mentora prática]
+- **Como ajuda:** [Dá ferramentas, faz perguntas, dá feedback]
+- **Limitação:** [Não resolve por eles, só guia]
+
+### Aliados: Os Colegas
+- **Como funcionam:** [Equipe com habilidades complementares]
+- **Dinâmica:** [Competição saudável | Colaboração forçada | Escolha de parceiro]
+
+### Obstáculos/Opõem
+- **Antagonista:** [Conceito difícil | Tempo | Recursos limitados | "Vilão" personificado]
+- **Obstáculos internos:** [Dúvida, cansaço, desentendimento de grupo]
+
+## ESTRUTURA DRAMÁTICA
+
+### ATO 1: MUNDO COMUM (Abertura)
+[Como é a vida antes da aventura — o que sabem, o que não sabem]
+
+**Incidente incitante:** [O que muda tudo e inicia a missão]
+
+**Recusa do chamado:** [Por que é difícil, por que hesitam]
+
+**Encontro com o mentor:** [Professor apresenta ferramentas/conhecimento]
+
+### ATO 2: MUNDO ESPECIAL (Desenvolvimento)
+**Cruzamento do primeiro limiar:** [Entram de corpo e alma na aventura]
+
+**Provas, aliados, inimigos:** [Desafios que vão superando, parceiros que encontram]
+
+**Aproximação da caverna secreta:** [Preparação para o maior desafio]
+
+**Provação suprema:** [Momento mais difícil, "tudo ou nada"]
+
+**Recompensa:** [Conquistam o que precisavam — a aprendizagem]
+
+### ATO 3: RETORNO (Fechamento)
+**Caminho de volta:** [Como aplicam o que aprenderam]
+
+**Ressurreição:** [Último teste, provam que realmente aprenderam]
+
+**Retorno com o elixir:** [Trazem conhecimento para "mundo real", compartilham]
+
+## ELEMENTOS LÚDICOS
+
+### Itens coletáveis
+[O que "ganham" ao longo da aula: informações, ferramentas, aliados]
+
+### Níveis de progresso
+[Como sabem que estão avançando: visual, pontos, badges]
+
+### Easter eggs
+[Descobertas opcionais para quem se aprofunda]
+
+### Final alternativo
+[Se fizerem X, desfecho Y; se fizerem Z, desfecho W]
+
+## ROTEIRO DETALHADO POR CENA
+
+[Cada momento da aula como cena da história, com diálogos, 
+decisões dos personagens, consequências]
+
+## AVALIAÇÃO NARRATIVA
+
+### O que o protagonista aprendeu
+[Evidências de aprendizagem na história]
+
+### Como o grupo evoluiu
+[Trabalho colaborativo, resolução de conflitos]
+
+### Versão da história
+[Como seria diferente se tivessem feito escolhas diferentes]
+----------------------------------------------------------------------------
+TIPO 5: MICRO-AULAS (TikTok/Educação) — INOVADOR
+----------------------------------------------------------------------------
+markdown
+# MICRO-AULAS: [Tema] em doses
+
+## VERSÃO 15 SEGUNDOS (Reels/TikTok/Shorts)
+
+**Hook visual:** [O que aparece nos primeiros 3 segundos]
+**Texto na tela:** [Máximo 5 palavras]
+**Fala:** [1 frase, máximo 12 palavras]
+**Call to action:** [Siga para mais | Comente se entendeu | Salve para revisar]
+**Hashtags:** [#tema #estudos #enem2024 #study]
+
+---
+
+## VERSÃO 60 SEGUNDOS
+
+**0-3s:** Gancho visual + pergunta provocadora
+**3-15s:** Problema/contexto (por que importa)
+**15-45s:** Explicação principal (1 conceito apenas)
+**45-55s:** Exemplo visual/memorável
+**55-60s:** Call to action + transição para próximo vídeo
+
+**Roteiro completo:**
+[Fala com marcações de tempo]
+
+**Elementos visuais:**
+[O que aparece em cada segundo]
+
+**Música:** [Trending ou original]
+
+---
+
+## VERSÃO 3 MINUTOS (YouTube Shorts/IGTV)
+
+[Estrutura de mini-aula completa: gancho, contexto, 
+conteúdo, exemplo, aplicação, fechamento]
+
+---
+
+## VERSÃO 10 MINUTOS (Commute/Exercício)
+
+[Podcast visual: pode ouvir sem olhar, mas enriquecido 
+se assistir. Estrutura de aula completa em formato áudio]
+
+---
+
+## SÉRIE DE MICRO-AULAS
+
+### Episódio 1: [Gancho inicial]
+### Episódio 2: [Aprofundamento]
+### Episódio 3: [Aplicação]
+### Episódio 4: [Erros comuns]
+### Episódio 5: [Síntese e desafio]
+
+**Crossover:** Como esta série conecta com [outra série do canal]
+----------------------------------------------------------------------------
+TIPO 6: AVALIAÇÃO POR VOZ/ÁUDIO — INOVADOR
+----------------------------------------------------------------------------
+markdown
+# AVALIAÇÃO EM ÁUDIO: [Tema]
+
+## FORMATO 1: PODCAST AVALIATIVO
+
+### Estrutura do episódio avaliativo
+
+**Duração total:** [X minutos, conforme nível]
+
+**Parte 1: Introdução (1 min)**
+Apresentador explica formato, tranquiliza sobre avaliação
+
+**Parte 2: Conteúdo de apoio (3 min)**
+Breve revisão do que será avaliado
+
+**Parte 3: Questões em áudio (X min)**
+Cada questão:
+- Enunciado lido claramente
+- Tempo para pensar (silêncio de X segundos)
+- Sinal para iniciar resposta
+- Tempo para responder (X minutos)
+- Pergunta de aprofundamento opcional
+
+**Parte 4: Encerramento (1 min)**
+Instruções de envio, prazo, dúvidas
+
+### Rúbrica de avaliação em áudio
+
+| Dimensão | Excelente | Bom | Desenvolvendo | Inicial |
+|----------|-----------|-----|---------------|---------|
+| Clareza | [Critério] | [Critério] | [Critério] | [Critério] |
+| Fundamentação | [Critério] | [Critério] | [Critério] | [Critério] |
+| Organização | [Critério] | [Critério] | [Critério] | [Critério] |
+| Linguagem | [Critério] | [Critério] | [Critério] | [Critério] |
+
+### Feedback em áudio
+[Modelo de resposta gravada pelo professor, personalizada]
+
+---
+
+## FORMATO 2: ENTREVISTA SIMULADA
+
+### Personagens
+- **Entrevistador:** [Perfil: jornalista, especialista, recrutador]
+- **Candidato:** Aluno
+
+### Cenário
+[Contexto da entrevista: processo seletivo, reportagem, podcast]
+
+### Perguntas preparadas
+1. [Pergunta de abertura]
+2. [Pergunta técnica]
+3. [Pergunta de situação]
+4. [Pergunta de aprofundamento]
+5. [Pergunta surpresa]
+
+### Critérios de avaliação
+[O que se espera em cada resposta]
+
+### Feedback estruturado
+[Pontos fortes, pontos de desenvolvimento, próximos passos]
+
+---
+
+## FORMATO 3: DEBATE ESTRUTURADO
+
+### Posições pré-definidas
+- **Posição A:** [Argumento a favor de X]
+- **Posição B:** [Argumento contra X]
+
+### Alunos sorteados ou escolhem posição
+
+### Estrutura do debate
+1. Abertura (2 min por posição)
+2. Réplica (1 min)
+3. Tréplica (30 seg)
+4. Perguntas do "público" (professor/colegas)
+5. Considerações finais (1 min)
+
+### Critérios de avaliação
+[Argumentação, respeito, fundamentação, reatividade]
+
+### Rúbrica específica para debate
+----------------------------------------------------------------------------
+TIPO 7: SIMULADOR DE AULA — INOVADOR
+----------------------------------------------------------------------------
+markdown
+# SIMULADOR DE AULA: Ensaio antes da aplicação
+
+## CENÁRIO SIMULADO
+
+### Turma virtual
+[IA simula 5 "alunos-tipo" com personalidades]
+
+| Aluno | Perfil | Como reage |
+|-------|--------|------------|
+| Ana | Participativa, mas dispersa | Faz perguntas fora do tema |
+| Bruno | Tímido, sabe mas não fala | Precisa ser chamado |
+| Carla | Desmotivada, desafiadora | "Pra que serve isso?" |
+| Diego | Ansioso, quer acertar sempre | Parafraseia o professor |
+| Elisa | Avançada, entediada de esperar | Termina rápido, quer mais |
+
+## ROTEIRO DO SIMULADOR
+
+### Momento 1: Abertura
+
+**Você diz:** [Sua explicação planejada]
+
+**Reações simuladas:**
+- Ana: "[Pergunta tangencial]"
+- Bruno: [Silêncio, olha para baixo]
+- Carla: "[Comentário desmotivado]"
+- Diego: "[Resposta tentando adivinhar o que quer ouvir]"
+- Elisa: [Já fez, olha no celular]
+
+**Feedback do simulador:**
+[O que funcionou, o que não, sugestões de adaptação]
+
+**Sua adaptação:** [O que muda]
+
+---
+
+### Momento 2: Atividade principal
+
+[Mesma estrutura: você propõe, alunos simulados reagem, 
+feedback, adaptação]
+
+---
+
+### Momentos críticos identificados
+
+| Momento | Risco | Estratégia de contingência |
+|---------|-------|---------------------------|
+| [Quando] | [O que pode dar errado] | [O que fazer se acontecer] |
+
+## RELATÓRIO PÓS-SIMULAÇÃO
+
+### Pontos fortes do plano
+[O que o simulador validou]
+
+### Pontos de atenção
+[O que precisa de ajuste]
+
+### Versão recomendada
+[Plano ajustado com base na simulação]
+
+### Probabilidade de sucesso
+[Estimativa baseada na simulação: X%]
+----------------------------------------------------------------------------
+TIPO 8: MAKING OF DA AULA — INOVADOR
+----------------------------------------------------------------------------
+markdown
+# MAKING OF: [Título da aula]
+
+## DOCUMENTÁRIO DA CRIAÇÃO
+
+### Por que este tema, desta forma, neste momento
+
+[História pessoal: o que me levou a criar esta aula. 
+Frustrações anteriores, insights, conversas com alunos.]
+
+### O que já tentei antes
+
+| Tentativa | O que aconteceu | Por que não funcionou |
+|-----------|-----------------|----------------------|
+| [Método X] | [Resultado] | [Análise] |
+| [Método Y] | [Resultado] | [Análise] |
+
+### O insight que mudou tudo
+
+[Momento de descoberta: leitura, conversa, erro, observação]
+
+### Por que acredito que desta vez vai dar certo
+
+[Hipótese pedagógica, base teórica, evidências]
+
+### O que estou arriscando
+
+[O que pode dar errado, o que estou testando]
+
+### O que quero aprender com esta aula
+
+[Perguntas de pesquisa: será que...? e se...?]
+
+---
+
+## VERSÃO PARA COMPARTILHAR
+
+### Vídeo de 3 minutos
+[Roteiro para gravar e compartilhar com comunidade de professores]
+
+### Post/blog
+[Versão escrita para publicação]
+
+### Apresentação em evento
+[Slides para compartilhar experiência]
+----------------------------------------------------------------------------
+TIPO 9: AULA HERDÁVEL / VERSIONAMENTO — INOVADOR
+----------------------------------------------------------------------------
+markdown
+# AULA VERSIONADA: [Título]
+
+## METADADOS DE VERSIONAMENTO
+
+```json  
+{  
+  "versionamento": {  
+    "aulaId": "uuid-unico",  
+    "versaoAtual": "2.3.1",  
+    "autorOriginal": {  
+      "nome": "Maria Silva",  
+      "instituicao": "Escola Estadual X",  
+      "contato": "maria@email.com"  
+    },  
+    "licenca": "CC-BY-SA | Uso educacional livre com atribuição",  
+    "historicoVersoes": [  
+      {  
+        "versao": "1.0.0",  
+        "data": "2024-01-15",  
+        "autor": "Maria Silva",  
+        "mudancas": "Criação inicial",  
+        "contexto": "Turma de 30 alunos, período matutino"  
+      },  
+      {  
+        "versao": "2.0.0",  
+        "data": "2024-03-10",  
+        "autor": "João Santos",  
+        "mudancas": "Adaptação para EJA, inclusão de recursos acessíveis",  
+        "contexto": "Turma noturna, 15 alunos adultos",  
+        "forkDe": "1.0.0"  
+      },  
+      {  
+        "versao": "2.3.1",  
+        "data": "2024-05-20",  
+        "autor": "Ana Costa",  
+        "mudancas": "Hotfix: correção de erro factual no momento 2",  
+        "contexto": "Mesma turma de João"  
+      }  
+    ],  
+    "forksConhecidos": [  
+      {  
+        "aulaId": "outro-uuid",  
+        "autor": "Pedro Lima",  
+        "descricao": "Versão para ensino remoto",  
+        "url": "link"  
+      }  
+    ],  
+    "pullRequestsAbertos": [  
+      {  
+        "proponente": "Carla Dias",  
+        "mudanca": "Sugestão de atividade diferenciada",  
+        "status": "em_analise | aceito | rejeitado"  
+      }  
+    ]  
+  }  
+}  
+COMO USAR ESTA AULA
+Se for usar exatamente como está
+[Instruções mínimas]
+
+Se for adaptar (fork)
+Copie esta aula
+Documente suas mudanças
+Mantenha atribuição ao autor original
+Considere compartilhar de volta
+Se quiser sugerir melhoria (pull request)
+[Como propor mudança para autor original]
+
+Se quiser mesclar boas ideias (merge)
+[Como incorporar melhorias de outros forks]
+
+CRÉDITOS E AGRADECIMENTOS
+[Agradecimentos a quem inspirou, colaborou, testou]
+
+csharp
+
+# ----------------------------------------------------------------------------
+# TIPO 10: CONTEÚDO ANTI-FRAUDE — INOVADOR
+# ----------------------------------------------------------------------------
+
+```markdown  
+# SISTEMA ANTI-FRAUDE: [Avaliação]  
+
+## BANCO DE VARIAÇÕES  
+
+### Questão-base (competência X)  
+
+**Estrutura:** [O que está sendo avaliado]  
+
+### Variação 1 — Contexto A  
+[Enunciado com dados/situação específica A]  
+
+### Variação 2 — Contexto B  
+[Mesma estrutura, dados/situação B]  
+
+### Variação 3 — Contexto C  
+[Mesma estrutura, dados/situação C]  
+
+### Variação 4 — Contexto D  
+[Mesma estrutura, dados/situação D]  
+
+### Variação 5 — Contexto E  
+[Mesma estrutura, dados/situação E]  
+
+[Continuar até 20+ variações por questão]  
+
+---  
+
+## PERSONALIZAÇÃO POR ALUNO  
+
+```json
+{
+  "personalizacao": {
+    "alunoId": "uuid",
+    "seedUnica": "hash-baseada-em-dados-aluno",
+    "variacoesSelecionadas": [3, 7, 12, 4, 19],
+    "ordemEmbaralhada": true,
+    "dadosPersonalizados": {
+      "nomePersonagem": "nome-do-aluno",
+      "cidadeContexto": "cidade-do-aluno",
+      "interesse": "interesse-mapeado-do-aluno"
+    }
+  }
+}
+DETECÇÃO DE PADRÕES SUSPEITOS
+Indicadores monitorados
+Indicador Descrição Ação se detectado
+Respostas idênticas Similaridade > 90% entre alunos Flag para revisão
+Tempo anômalo Muito rápido ou muito lento Flag para revisão
+Mudança de padrão Desempenho muito diferente do histórico Flag para revisão
+IP suspeito Múltiplos alunos mesmo IP externo Verificação
+Navegação Abas/telas durante avaliação  Registro
+Protocolo de investigação
+Flag automática
+Análise humana em 24h
+Entrevista com aluno se necessário
+Decisão: manter, anular, ou reaplicar
+AVALIAÇÃO PRESENCIAL COM APOIO TECNOLÓGICO
+Variações em papel, mas geradas digitalmente
+QR code para conferência de autenticidade
+Fotografia da prova para arquivo
+yaml
+
+# ----------------------------------------------------------------------------
+# TIPO 11: REMIX CULTURAL — INOVADOR
+# ----------------------------------------------------------------------------
+
+```markdown  
+# REMIX CULTURAL: [Tema] nas ruas  
+
+## MAPEAMENTO DE REFERÊNCIAS  
+
+### Tendências atuais (atualizado semanalmente)  
+
+| Categoria | Tendência | Como conectar com [tema] |  
+|-----------|-----------|--------------------------|  
+| Música | [Artista/música do momento] | [Conexão pedagógica] |  
+| Filme/Série | [Lançamento popular] | [Conexão pedagógica] |  
+| Jogo | [Jogo em alta] | [Conexão pedagógica] |  
+| Meme | [Meme viral] | [Versão educacional] |  
+| Esporte | [Evento atual] | [Conexão pedagógica] |  
+| Celebridade | [Notícia relevante] | [Conexão pedagógica] |  
+
+---  
+
+## AULA REMIXADA: [Tema] + [Referência cultural]  
+
+### Gancho  
+"[Referência] virou notícia essa semana. Vocês viram?   
+Sabe o que isso tem a ver com [conteúdo]?"  
+
+### Desenvolvimento  
+[Conteúdo ensinado através da referência cultural]  
+
+### Aprofundamento  
+[Como a referência ilustra, exemplifica, ou questiona o conteúdo]  
+
+### Crítica  
+[A referência acerta ou erra sobre o conteúdo?   
+O que simplifica demais?]  
+
+### Produto  
+[Alunos criam: meme educativo, versão da música,   
+cena da série com roteiro diferente]  
+
+---  
+
+## MEMES EDUCACIONAIS GERADOS  
+
+### Meme 1: [Formato popular]  
+- **Imagem:** [Descrição]  
+- **Texto superior:** [Setup]  
+- **Texto inferior:** [Punchline educativa]  
+
+### Meme 2: [Formato popular]  
+[...]  
+
+---  
+
+## PLAYLIST DA AULA  
+
+### Músicas que explicam o conteúdo  
+1. [Música] — [Como conecta]  
+2. [Música] — [Como conecta]  
+
+### Trilha sonora para estudar  
+[Playlist curada para foco no tema]  
+
+---  
+
+## CONEXÕES SURPREENDENTES  
+
+"[Tema] aparece em [lugar inesperado]:"  
+- [Exemplo 1]  
+- [Exemplo 2]  
+- [Exemplo 3]  
+============================================================================
+SEÇÃO C: PERSONAS DE GERAÇÃO EDUCACIONAL (ATUALIZADAS)
+============================================================================
+Persona: Professor Veterano
+bash
+Você é professor há 20+ anos, já viu de tudo, sabe o que funciona 
+na prática. Seus planos são realistas, não utópicos.
+
+Seu tom: direto, sem floreios, mas com carinho implícito.
+Suas frases: "Na minha turma, isso não funciona assim...", 
+"O que eu aprendi na marra..."
+
+Você NUNCA promete milagres.
+Você SEMPRE tem um plano B.
+Você CONHECE os alunos como indivíduos, não como estatística.
+Persona: Professor Iniciante (com medo)
+bash
+Você está no 1º ou 2º ano de sala de aula. Tem formação teórica 
+excelente, mas pouca prática. Precisa de segurança, de detalhes, 
+de "fale exatamente isso".
+
+Seu tom: acolhedor, encorajador, muito detalhado.
+Suas frases: "Não se preocupe se...", "Uma dica que me deram..."
+
+Você SEMPRE explica o porquê de cada escolha.
+Você SEMPRE dá alternativas se algo der errado.
+Você NUNCA assume que o professor sabe improvisar.
+Persona: Inovador Digital
+arduino
+Você é early adopter de tecnologia educacional. Acredita que 
+gamificação, realidade virtual e IA podem transformar a educação.
+
+Seu tom: entusiasmado, futurista, mas crítico.
+Suas frases: "E se usássemos...", "No mundo pós-pandemia..."
+
+Você SEMPRE justifica o uso da tecnologia pedagógicamente.
+Você NUNCA propõe tecnologia por tecnologia.
+Você SEMPRE considera o digital divide.
+Persona: Especialista em Inclusão
+bash
+Você é professor de educação especial, focado em garantir que 
+TODOS aprendam, independentemente de necessidades especiais.
+
+Seu tom: firme sobre direitos, criativo sobre adaptações.
+Suas frases: "Acessibilidade é direito, não favor...", 
+"Universal Design for Learning..."
+
+Você SEMPRE propõe múltiplas formas de acesso.
+Você NUNCA segrega "os especiais".
+Você SEMPRE consulta os próprios alunos sobre necessidades.
+Persona: Pesquisador-Acadêmico
+bash
+Você é mestre/doutor em educação, escreve artigos, participa 
+de grupos de pesquisa. Fundamenta tudo em teoria.
+
+Seu tom: acadêmico acessível, não hermético.
+Suas frases: "Estudos de Vygotsky mostram...", 
+"A evidência empírica sugere..."
+
+Você SEMPRE cita fontes.
+Você NUNCA confunde opinião com evidência.
+Você SEMPRE conecta teoria com prática do professor.
+============================================================================
+SEÇÃO D: SISTEMA DE QUALIDADE E VALIDAÇÃO
+============================================================================
+Checklist de Qualidade Final (Anti-"Bebezinho")
+Nível 1: Estrutural
+ Título específico (não genérico)
+ Tempos realistas (soma bate com duração da aula)
+ Objetivos com verbos observáveis
+ Atividade principal descrita passo a passo
+ Recursos especificados (não "material de consumo")
+Nível 2: Pedagógico
+ Conexão com vida real dos alunos
+ Diferenciação presente (não apenas mencionada)
+ Avaliação alinhada com objetivos
+ Rúbrica com critérios claros
+ Estratégia de recuperação de atenção
+Nível 3: Contextual
+ Perfil da turma descrito concretamente
+ Pré-requisitos verificados
+ Dificuldades previstas com estratégia
+ Contingências para imprevistos
+ Conexão com aulas anterior e próxima
+Nível 4: Profissional
+ Referências teóricas citadas
+ BNCC/competências mapeadas
+ Espaço para reflexão pós-aula
+ Versionamento se adaptado de outro
+ Créditos e referências completas
+Nível 5: Diferencial Study.IA
+ Versões alternativas (turma difícil, avançada, etc.)
+ Elemento de engajamento emocional
+ Conexão com cultura atual dos alunos
+ Micro-aulas para reforço
+ Possibilidade de simulação antes de aplicar
+Validação por Pares (IA simulando professores)
+yaml
+Validador 1: Professor Veterano
+└── Feedback: "Isso funciona na prática porque... / Não funciona porque..."
+
+Validador 2: Especialista em Inclusão
+└── Feedback: "Acessível porque... / Barreira em..."
+
+Validador 3: Pesquisador
+└── Feedback: "Fundamentado em... / Falta conexão com..."
+
+Consenso: [Aprovação com ressalvas | Aprovação total | Rejeição com sugestões]
+============================================================================
+SEÇÃO E: PROMPTS DE SISTEMA POR TIPO
+============================================================================
+python
+PROMPT_SISTEMA_PLANO_AULA = """
+Você é um {persona} criando um plano de aula COMPLETO e REALISTA.
+
+CONTEXTO DA TURMA:
+{analise_pedagogica}
+
+FONTES DO CADERNO:
+{chunks_relevantes}
+
+REGRAS ABSOLUTAS:
+1. NUNCA escreva "faça uma pesquisa sobre" sem orientar FONTES específicas
+2. NUNCA coloque 40 min de atividade em aula de 45 min (tempos REALISTAS)
+3. NUNCA use verbos inobserváveis como "entender", "saber", "compreender"
+4. SEMPRE inclua estratégia de diferenciação CONCRETA
+5. SEMPRE especifique recursos (não "material de consumo")
+6. SEMPRE deixe espaço para reflexão pós-aula
+
+ESTRUTURA OBRIGATÓRIA:
+{template_estrutura}
+
+TOM: {tom_especifico}
+"""
+
+PROMPT_SISTEMA_AULA_VIVA = """
+Você é roteirista de TV educacional criando uma AULA VIVA.
+
+GÊNERO: {genero}
+PÚBLICO: {perfil_turma}
+DURAÇÃO: {tempo_aula} minutos
+
+REGRAS DE ROTEIRO:
+- Gancho nos primeiros 30 segundos
+- Pico de tensão aos 2/3 do tempo
+- Ritmo: alternância de alta e média energia
+- Diálogos realistas, não didáticos forçados
+- Cliffhanger para próxima aula
+
+ESTRUTURA DE CENA:
+{template_cena}
+"""
+
+# ... prompts para todos os tipos
+============================================================================
+INSTRUÇÃO FINAL E OBJETIVO
+============================================================================
+DEPOIS DESTE ARQUIVO, NUNCA MAIS UM PLANO DE AULA GENÉRICO.
+
+Cada output deve ser:
+
+Especificamente útil para aquele professor, naquela turma, naquele dia
+Profissionalmente apresentável para direção, pais, ou publicação
+Pedagogicamente fundamentado em teoria e evidência
+Humanamente conectado com a realidade dos alunos
+Tecnicamente inovador com recursos exclusivos Study.IA
+O professor que usar este sistema deve sentir:
+"Finalmente alguém que entende o que é estar em sala de aula."
+
+O aluno que viver estas aulas deve sentir:
+"Isso faz sentido pra mim. Isso importa. Eu quero aprender mais."
+
+A direção que avaliar deve sentir:
+"Nossa equipe está no nível mais avançado de planejamento educacional."
+
+VERSÃO: 2.0-FINAL
+DATA: 2024
+SISTEMA: Study.IA — Notebook RAG Educacional Pro

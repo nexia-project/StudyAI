@@ -127,6 +127,56 @@ Every new AI feature added to ANY surface MUST also be reflected in:
 - **Admin UI "IA & Custos"** replaced with real cost dashboard: KPI cards (Custo Hoje / Mês / Chamadas / Tokens), Área chart custo por dia, tabela custo por feature com barras de porcentagem, custo por modelo, provedores de IA
 - USD→BRL conversão fixa `5.85` no endpoint admin
 
+### Geração de Conteúdo Educacional Pro — VERSÃO FINAL 2.0 (April 2026)
+Spec completa de 1387 linhas implementada exatamente como especificado. 21 tools totais no Notebook.
+
+**5 Novos Tools PRO (Inovações Exclusivas Study.IA):**
+
+**Aula Viva** (endpoint `POST /api/notebook/aula-viva`) — Tipo 2 do spec:
+- Roteiro de episódio estilo Netflix/Globoplay/streaming para a aula
+- Ficha técnica com gênero, duração, trilha sonora
+- Elenco: host (professor), especialista convidado, público
+- Snapshot Executivo (tabela 4 linhas: o que / por que / como / evidência)
+- 8 cenas com: tipo (vinheta/gancho/ação/comercial/clímax), trilha, conteúdo visual, fala completa do host, pontos de virada, cliffhanger
+- Guia de direção com ritmo de energia por minuto + versões alternativas (cinema, podcast, reality, documentário)
+
+**Micro-Aulas** (endpoint `POST /api/notebook/micro-aulas`) — Tipo 5 do spec:
+- Versão 15s: hook visual, texto na tela (5 palavras), fala (12 palavras), CTA, hashtags
+- Versão 60s: estrutura por segundo (0-3s / 3-15s / 15-45s / 45-55s / 55-60s), roteiro completo, trilha
+- Versão 3min: gancho, contexto, conteúdo, aplicação, fechamento + roteiro
+- Versão 10min: estrutura por minuto estilo podcast, roteiro completo
+- Série de 5 episódios: gancho → aprofundamento → aplicação → erros comuns → síntese
+- Tabs navegáveis: 15s / 60s / 3min / 10min / Série
+
+**Narrativa Didática** (endpoint `POST /api/notebook/narrativa`) — Tipo 4 do spec:
+- Conteúdo transformado em história épica (aventura/ficção científica/mistério/fantasia)
+- Universo: cenário, grande problema, stakes emocionais
+- Personagens: protagonista (aluno como herói), mentor (professor como Gandalf), aliados (colegas), antagonista (o conceito difícil)
+- Estrutura dramática em 3 atos: Mundo Comum → Mundo Especial → Retorno
+- Elementos lúdicos: itens colecionáveis, níveis de progresso, easter eggs, finais alternativos
+- Tabs navegáveis: Universo | Ato 1 | Ato 2 | Ato 3 | Lúdico
+
+**Remix Cultural** (endpoint `POST /api/notebook/remix-cultural`) — Tipo 11 do spec:
+- Mapeamento de referências atuais: Música / Série-Filme / Jogo / Meme / Esporte / Celebridade → conexão pedagógica
+- Aula remixada com gancho cultural, desenvolvimento, aprofundamento, crítica, produto dos alunos
+- 2 memes educacionais em formato visual (setup + punchline educativa)
+- Playlist da aula: músicas que explicam o conteúdo + trilha para estudar
+- Conexões surpreendentes + frase de engajamento para Instagram/WhatsApp do professor
+
+**5 Versões do Plano** (endpoint `POST /api/notebook/plano-aula-versoes`) — Tipo 3 do spec:
+- Versão Turma Difícil: tabela de estratégias de engajamento máximo (gamificação, relevância imediata, sucesso rápido, escolha autêntica) + adaptações + abertura
+- Versão Turma Avançada: tabela de estratégias de enriquecimento (autonomia, complexidade, liderança, pesquisa) + produto por portfólio
+- Versão Inclusiva: adaptações por necessidade (TDAH, TEA, deficiência auditiva, altas habilidades) + recursos acessíveis + avaliação adaptada
+- Versão Remota: tabela de desafios/soluções (atenção, isolamento, fadiga de tela) + interações obrigatórias
+- Versão Híbrida: tabela de estações com grupos, atividades e tempos + atividade online + sincronização
+- Tabs navegáveis: 😤 Difícil / 🚀 Avançada / ♿ Inclusiva / 💻 Remota / 🔄 Híbrida
+
+**Infraestrutura:**
+- 3 novas cores no COLOR_MAP e ICON_TINT: orange, cyan, slate
+- 3 novos ícones importados: Tv, Music, Shuffle
+- 3 novos estados de componente para tabs: microTab, narrTab, verTab
+- Todas as loading messages adicionadas
+
 ### Geração de Conteúdo Educacional Pro (April 2026)
 Spec completa de 4 camadas implementada ("Planejador Experiente" + "Designer de Aprendizagem" + "Especialista em Avaliação"):
 

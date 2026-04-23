@@ -1724,6 +1724,552 @@ Gere exatamente ${numAulas} aulas no array "aulas" e no "mapaDaSequencia".`,
   }
 });
 
+// ─── POST /api/notebook/aula-viva ────────────────────────────────────────────
+// Tipo 2: Aula Viva — roteiro de programa de TV/streaming para a aula
+router.post("/notebook/aula-viva", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { docId, genero = "Series", duracao = 50, perfilTurma = "heterogenea" } = req.body as { docId: number; genero?: string; duracao?: number; perfilTurma?: string };
+  try {
+    const docs = await db.execute(sql`
+      SELECT content_text, title FROM knowledge_documents
+      WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
+    `);
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
+
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.75,
+      max_tokens: 5000,
+      messages: [
+        {
+          role: "system",
+          content: `Você é roteirista de TV educacional criando uma AULA VIVA — aula no formato de programa de streaming.
+Gênero: ${genero} | Duração: ${duracao} min | Perfil: ${perfilTurma}
+
+REGRAS DE ROTEIRO:
+- Gancho cinematográfico nos primeiros 30 segundos
+- Pico de tensão aos 2/3 do tempo
+- Ritmo: alternância de alta e média energia
+- Diálogos realistas e naturais (não didáticos forçados)
+- Cliffhanger para a próxima aula
+
+Retorne APENAS JSON válido:
+{
+  "titulo": "Título do episódio (estilo Netflix/Globoplay)",
+  "subtitulo": "Tagline impactante de 1 frase",
+  "genero": "${genero}",
+  "duracaoTotal": "${duracao} minutos",
+  "classificacao": "Livre",
+  "trilhaSonora": "Estilo musical recomendado (lo-fi, MPB, indie, etc.)",
+  "elenco": {
+    "host": "Professor — tom e perfil para este episódio",
+    "especialistaConvidado": "Papel do aluno avançado ou vídeo convidado",
+    "publico": "Como os demais alunos participam"
+  },
+  "snapshotExecutivo": {
+    "oQueVaoAprender": "Competência específica em 1 frase",
+    "porQueImporta": "Conexão com vida real em 1 frase",
+    "comoVaoAprender": "Estratégia principal",
+    "comoSaberemos": "Evidência de aprendizagem"
+  },
+  "cenas": [
+    {
+      "numero": 1,
+      "nome": "Abertura / VT de Entrada",
+      "tipo": "vinheta",
+      "duracao": "2 min",
+      "trilha": "Música específica",
+      "conteudoVisual": "O que aparece — descrição detalhada",
+      "falaHost": "Texto completo da fala, com gancho e energia",
+      "transicao": "Como entra na próxima cena"
+    },
+    {
+      "numero": 2,
+      "nome": "No Episódio Anterior...",
+      "tipo": "recapitulacao",
+      "duracao": "1 min",
+      "trilha": "Música de recapitulação",
+      "conteudoVisual": "O que aparece",
+      "falaHost": "Resumo dramático do que já foi visto",
+      "transicao": "Lead-in para o problema desta semana"
+    },
+    {
+      "numero": 3,
+      "nome": "Problema da Semana / Missão",
+      "tipo": "gancho",
+      "duracao": "3 min",
+      "trilha": "Música de tensão crescente",
+      "conteudoVisual": "Contexto visual que cria tensão",
+      "falaHost": "Desafio explícito + recompensa se conseguirem resolver",
+      "transicao": "Entrada na ação"
+    },
+    {
+      "numero": 4,
+      "nome": "Desenvolvimento — Ato 1",
+      "tipo": "acao",
+      "duracao": "${Math.round(duracao * 0.25)} min",
+      "trilha": "Música de ação moderada",
+      "conteudoVisual": "Atividade e recursos visuais",
+      "falaHost": "Explicação em formato de apresentador, não de professor",
+      "pontoDeVirada": "Momento que muda a direção",
+      "transicao": "Pausa ativa"
+    },
+    {
+      "numero": 5,
+      "nome": "Pausa Ativa / Comercial",
+      "tipo": "comercial",
+      "duracao": "2 min",
+      "trilha": "Música energizante",
+      "conteudoVisual": "Atividade física ou mental rápida",
+      "falaHost": "Teaser do que vem: 'Não saia daí...'",
+      "transicao": "Retorno com energia renovada"
+    },
+    {
+      "numero": 6,
+      "nome": "Desenvolvimento — Ato 2",
+      "tipo": "acao",
+      "duracao": "${Math.round(duracao * 0.25)} min",
+      "trilha": "Música de intensidade crescente",
+      "conteudoVisual": "Mesma estrutura do ato 1, intensidade maior",
+      "falaHost": "Aprofundamento com mais dramaticidade",
+      "pontoDeVirada": "Aproximação do clímax",
+      "transicao": "Tensão máxima"
+    },
+    {
+      "numero": 7,
+      "nome": "Clímax / Revelação",
+      "tipo": "climax",
+      "duracao": "5 min",
+      "trilha": "Música épica ou de revelação",
+      "conteudoVisual": "Momento de descoberta e resolução",
+      "falaHost": "A revelação/solução — entregue com dramaticidade",
+      "reacaoElenco": "Como turma celebra ou compreende o momento",
+      "transicao": "Euforia controlada → fechamento"
+    },
+    {
+      "numero": 8,
+      "nome": "Fechamento / Próximo Episódio",
+      "tipo": "fechamento",
+      "duracao": "2 min",
+      "trilha": "Música tema final",
+      "conteudoVisual": "Síntese visual elegante",
+      "falaHost": "Síntese emocional (não repetição) + cliffhanger da próxima aula",
+      "cliffhanger": "Gancho que deixa querendo mais — primeira linha do próximo episódio",
+      "creditos": "Tarefa de casa apresentada como 'missão pós-episódio'"
+    }
+  ],
+  "guiaDeDirecao": {
+    "ritmoDaAula": [
+      {"momento": "0-2 min", "energia": "alta", "descricao": "Abertura impactante"},
+      {"momento": "2-5 min", "energia": "media", "descricao": "Contexto do problema"},
+      {"momento": "5-${Math.round(duracao * 0.5)} min", "energia": "alta", "descricao": "Ação e aprendizagem"},
+      {"momento": "${Math.round(duracao * 0.5)}-${Math.round(duracao * 0.5) + 2} min", "energia": "baixa", "descricao": "Pausa ativa"},
+      {"momento": "${Math.round(duracao * 0.5) + 2}-${duracao - 7} min", "energia": "alta", "descricao": "Ação intensa"},
+      {"momento": "${duracao - 7}-${duracao - 2} min", "energia": "maxima", "descricao": "Clímax"},
+      {"momento": "${duracao - 2}-${duracao} min", "energia": "media", "descricao": "Fechamento"}
+    ],
+    "cuidadosProducao": ["Testar projeção 10 min antes", "Ter plano B se tecnologia falhar", "Cronômetro visível"],
+    "versoesAlternativas": {
+      "cinema": "Versão mais dramática, mais recursos visuais",
+      "podcast": "Versão só áudio, foco na conversa",
+      "reality": "Competição entre grupos visível em tempo real",
+      "documentario": "Tom mais sério, fatos reais em primeiro plano"
+    }
+  }
+}`,
+        },
+        { role: "user", content: `Tema: "${row.title}"\nGênero: ${genero}\nDuração: ${duracao} min\n\nConteúdo:\n${row.content_text.slice(0, 14_000)}` },
+      ],
+    });
+
+    const raw = completion.choices[0].message.content ?? "{}";
+    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    res.json(JSON.parse(clean));
+  } catch (e) {
+    console.error("notebook aula-viva:", e);
+    res.status(500).json({ erro: "Erro ao gerar Aula Viva" });
+  }
+});
+
+// ─── POST /api/notebook/micro-aulas ──────────────────────────────────────────
+// Tipo 5: Micro-Aulas — conteúdo em doses TikTok/Shorts/Podcast
+router.post("/notebook/micro-aulas", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { docId } = req.body as { docId: number };
+  try {
+    const docs = await db.execute(sql`
+      SELECT content_text, title FROM knowledge_documents
+      WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
+    `);
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
+
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.7,
+      max_tokens: 4000,
+      messages: [
+        {
+          role: "system",
+          content: `Você é criador de conteúdo educacional para redes sociais, especialista em micro-aprendizagem (microlearning).
+Você transforma conteúdo complexo em versões curtas, impactantes e virais — mantendo a precisão pedagógica.
+ESTILO: linguagem jovem, direta, sem enrolação. Cada segundo conta.
+
+Retorne APENAS JSON válido:
+{
+  "tema": "Tema central",
+  "conceito15s": {
+    "hookVisual": "O que aparece nos primeiros 3 segundos",
+    "textNaTela": "Máximo 5 palavras — impactante",
+    "fala": "1 frase máximo 12 palavras — o conceito em estado puro",
+    "callToAction": "Ação que o aluno deve tomar (seguir, comentar, salvar)",
+    "hashtags": ["#tema", "#enem", "#estudos", "#studyai"]
+  },
+  "versao60s": {
+    "estrutura": [
+      {"segundo": "0-3s", "conteudo": "Gancho visual + pergunta provocadora"},
+      {"segundo": "3-15s", "conteudo": "Problema/contexto — por que importa"},
+      {"segundo": "15-45s", "conteudo": "Explicação principal — 1 conceito apenas"},
+      {"segundo": "45-55s", "conteudo": "Exemplo visual memorável"},
+      {"segundo": "55-60s", "conteudo": "Call to action + teaser do próximo vídeo"}
+    ],
+    "roteiro": "Fala completa com marcações de tempo",
+    "elementosVisuais": "O que aparece em cada bloco de tempo",
+    "musica": "Estilo de trilha recomendado"
+  },
+  "versao3min": {
+    "gancho": "Primeira frase que prende atenção",
+    "contexto": "Por que este tema importa — 30s",
+    "conteudo": "Explicação principal com exemplo — 90s",
+    "aplicacao": "Como usar no ENEM ou vida real — 30s",
+    "fechamento": "Resumo de 1 frase + desafio para o aluno — 30s",
+    "roteiro": "Roteiro completo de 3 minutos"
+  },
+  "versao10min": {
+    "descricao": "Versão commute/exercício — pode ouvir sem olhar",
+    "estrutura": [
+      {"minuto": "0-1", "conteudo": "Introdução e contexto"},
+      {"minuto": "1-4", "conteudo": "Conceito principal com exemplos vívidos"},
+      {"minuto": "4-7", "conteudo": "Aprofundamento e conexões"},
+      {"minuto": "7-9", "conteudo": "Aplicação prática e ENEM"},
+      {"minuto": "9-10", "conteudo": "Síntese e desafio"}
+    ],
+    "roteiro": "Roteiro completo estilo podcast educacional"
+  },
+  "serieDeMicroAulas": [
+    {"episodio": 1, "titulo": "Gancho inicial", "conceito": "O problema que esta série resolve"},
+    {"episodio": 2, "titulo": "Aprofundamento", "conceito": "O conceito principal"},
+    {"episodio": 3, "titulo": "Aplicação", "conceito": "Como usar na prática"},
+    {"episodio": 4, "titulo": "Erros Comuns", "conceito": "O que todo mundo erra e como evitar"},
+    {"episodio": 5, "titulo": "Síntese e Desafio", "conceito": "Consolidação + desafio final"}
+  ],
+  "dicasProducao": ["Dica de produção para professores que queiram gravar os vídeos"]
+}`,
+        },
+        { role: "user", content: `Tema: "${row.title}"\n\nConteúdo:\n${row.content_text.slice(0, 14_000)}` },
+      ],
+    });
+
+    const raw = completion.choices[0].message.content ?? "{}";
+    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    res.json(JSON.parse(clean));
+  } catch (e) {
+    console.error("notebook micro-aulas:", e);
+    res.status(500).json({ erro: "Erro ao gerar micro-aulas" });
+  }
+});
+
+// ─── POST /api/notebook/narrativa ────────────────────────────────────────────
+// Tipo 4: Narrativa Didática — transforma conteúdo em história envolvente
+router.post("/notebook/narrativa", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { docId, nivel = "Ensino Médio" } = req.body as { docId: number; nivel?: string };
+  try {
+    const docs = await db.execute(sql`
+      SELECT content_text, title FROM knowledge_documents
+      WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
+    `);
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
+
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.8,
+      max_tokens: 4500,
+      messages: [
+        {
+          role: "system",
+          content: `Você é um escritor e pedagogo criando uma NARRATIVA DIDÁTICA — uma história onde o conteúdo educacional é vivido, não apenas explicado.
+O aluno é o PROTAGONISTA da aventura. O professor é o MENTOR (estilo Gandalf/Yoda). O conteúdo é o DESAFIO/MISSÃO a superar.
+Nível: ${nivel}
+
+Retorne APENAS JSON válido:
+{
+  "titulo": "Título da história (como livro ou série de fantasia/ficção)",
+  "genero": "Aventura | Ficção Científica | Mistério | Fantasia | Thriller",
+  "universo": {
+    "cenario": "Onde e quando se passa (ex: 'Um laboratório em 2045' / 'Uma vila medieval')",
+    "grandeProblema": "A ameaça/missão que precisa ser resolvida (conectada ao conteúdo)",
+    "stakesEmocionais": "O que acontece se o protagonista falhar — consequência dramática"
+  },
+  "personagens": {
+    "protagonista": {
+      "nome": "Nome sugerido ou 'Você'",
+      "papel": "Cientista | Detetive | Herói | Explorador | Engenheiro",
+      "habilidadeEspecial": "O que o aluno já sabe que vai ajudar na missão",
+      "arcoTransformacao": "Do estado inicial ao estado final após a aventura"
+    },
+    "mentor": {
+      "papel": "Papel na história (Gandalf | Yoda | Dumbledore | Mentora prática)",
+      "comoAjuda": "Dá ferramentas, faz perguntas, dá feedback sem entregar respostas",
+      "limitacao": "O que o mentor NÃO pode fazer por eles"
+    },
+    "aliados": "Como os colegas funcionam — equipe com habilidades complementares",
+    "antagonista": "O conceito difícil ou vilão personificado que representa o obstáculo"
+  },
+  "estruturaDramatica": {
+    "ato1": {
+      "mundoComum": "Como é antes da aventura — o que sabem, o que não sabem",
+      "incidenteIncitante": "O que muda tudo e inicia a missão",
+      "recusaDoChamado": "Por que é difícil — a resistência inicial",
+      "encontroComMentor": "Professor apresenta ferramentas/conhecimento"
+    },
+    "ato2": {
+      "cruzamentoPrimeirLimiar": "Momento em que entram de corpo e alma",
+      "provasAliados": "Desafios superados, parceiros encontrados, obstáculos vencidos",
+      "provacaoSuprema": "O momento mais difícil — tudo ou nada — o exame do ENEM?",
+      "recompensa": "O que conquistam — a aprendizagem como tesouro"
+    },
+    "ato3": {
+      "caminhoDeVolta": "Como aplicam o que aprenderam no mundo real",
+      "ressureicao": "Último teste que prova que realmente aprenderam",
+      "retornoComElixir": "Compartilham conhecimento com os colegas/comunidade"
+    }
+  },
+  "elementosLudicos": {
+    "itensColeta veis": "O que 'ganham' ao longo da jornada (informações, ferramentas, aliados)",
+    "niveisProgresso": "Como sabem que estão avançando (visual, pontos, badges)",
+    "easterEggs": "Descobertas opcionais para quem se aprofunda além do básico",
+    "finaisAlternativos": "Se fizerem X, desfecho Y; se fizerem Z, desfecho W"
+  },
+  "roteiroPorCena": [
+    {
+      "cena": 1,
+      "titulo": "Nome da cena",
+      "tempoDaAula": "0-X min",
+      "narrativa": "O que acontece na história — descrição dramática",
+      "conteudoEducacional": "O conteúdo que está sendo aprendido nesta cena",
+      "falaDoMentor": "Diálogo do professor no papel de mentor",
+      "decisaoDosPersonagens": "Escolha que os alunos precisam fazer"
+    }
+  ],
+  "avaliacaoNarrativa": {
+    "oQueProtagonistaMprendeu": "Evidências de aprendizagem dentro da narrativa",
+    "comoOGrupoEvoluiu": "Colaboração e resolução de conflitos",
+    "versaoDaHistoria": "Como seria diferente se tivessem feito escolhas diferentes"
+  }
+}`,
+        },
+        { role: "user", content: `Tema: "${row.title}"\nNível: ${nivel}\n\nConteúdo:\n${row.content_text.slice(0, 14_000)}` },
+      ],
+    });
+
+    const raw = completion.choices[0].message.content ?? "{}";
+    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    res.json(JSON.parse(clean));
+  } catch (e) {
+    console.error("notebook narrativa:", e);
+    res.status(500).json({ erro: "Erro ao gerar narrativa didática" });
+  }
+});
+
+// ─── POST /api/notebook/remix-cultural ───────────────────────────────────────
+// Tipo 11: Remix Cultural — conecta conteúdo com cultura pop dos alunos
+router.post("/notebook/remix-cultural", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { docId, nivel = "Ensino Médio" } = req.body as { docId: number; nivel?: string };
+  try {
+    const docs = await db.execute(sql`
+      SELECT content_text, title FROM knowledge_documents
+      WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
+    `);
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
+
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.85,
+      max_tokens: 4000,
+      messages: [
+        {
+          role: "system",
+          content: `Você é um professor inovador e criativo, expert em conectar conteúdo educacional com a cultura pop que os alunos brasileiros REALMENTE vivem em 2024-2025.
+Você usa referências de músicas (funk, sertanejo, pop, trap), séries (Netflix/Globo), jogos (Fortnite, Roblox, Free Fire), memes virais, esportes e celebridades atuais.
+NUNCA use referências antigas ou desatualizadas. Seja genuinamente relevante para adolescentes brasileiros de ${nivel}.
+
+Retorne APENAS JSON válido:
+{
+  "tema": "Tema educacional",
+  "mapeamentoReferencias": [
+    {"categoria": "Música", "referencia": "Artista/música atual relevante", "conexaoPedagogica": "Como conecta com o conteúdo"},
+    {"categoria": "Série/Filme", "referencia": "Lançamento popular", "conexaoPedagogica": "Conexão pedagógica"},
+    {"categoria": "Jogo", "referencia": "Jogo em alta entre jovens", "conexaoPedagogica": "Analogia com o conteúdo"},
+    {"categoria": "Meme", "referencia": "Formato de meme viral", "conexaoPedagogica": "Versão educacional do meme"},
+    {"categoria": "Esporte", "referencia": "Evento esportivo atual", "conexaoPedagogica": "Conexão pedagógica"},
+    {"categoria": "Celebridade", "referencia": "Notícia/celebridade relevante", "conexaoPedagogica": "Conexão pedagógica"}
+  ],
+  "aulaRemixada": {
+    "gancho": "Frase de abertura usando referência cultural — ex: '[Referência] virou notícia essa semana. Vocês viram? Sabe o que isso tem a ver com [conteúdo]?'",
+    "desenvolvimento": "Como o conteúdo é ensinado ATRAVÉS da referência cultural — passo a passo",
+    "aprofundamento": "Como a referência ilustra, exemplifica ou questiona o conteúdo educacional",
+    "critica": "Onde a referência acerta e onde simplifica demais — pensamento crítico",
+    "produto": "O que os alunos criam (meme educativo, versão da música, cena reescrita, etc.)"
+  },
+  "memesEducacionais": [
+    {
+      "formato": "Nome do formato de meme (ex: 'Drake pointing', 'Woman Yelling at Cat')",
+      "imagemDescricao": "Descrição da imagem base",
+      "textoSuperior": "Setup — a situação errada/difícil",
+      "textoInferior": "Punchline educativa — a solução/conceito correto"
+    },
+    {
+      "formato": "Outro formato",
+      "imagemDescricao": "Descrição",
+      "textoSuperior": "Setup",
+      "textoInferior": "Punchline"
+    }
+  ],
+  "playlistDaAula": {
+    "musicasQueExplicam": [
+      {"musica": "Nome — Artista", "comoConecta": "Como esta música exemplifica o conteúdo"}
+    ],
+    "trilhaSonoraPara Estudar": "Estilo/playlist recomendada para estudar este tema"
+  },
+  "conexoesSurpreendentes": [
+    "Este tema aparece em [lugar inesperado] porque...",
+    "Conexão 2",
+    "Conexão 3"
+  ],
+  "fraseDeEngajamento": "Frase de 1 linha para postar no Instagram/WhatsApp do professor que vai fazer os alunos quererem entrar na aula"
+}`,
+        },
+        { role: "user", content: `Tema: "${row.title}"\nNível: ${nivel}\n\nConteúdo:\n${row.content_text.slice(0, 14_000)}` },
+      ],
+    });
+
+    const raw = completion.choices[0].message.content ?? "{}";
+    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    res.json(JSON.parse(clean));
+  } catch (e) {
+    console.error("notebook remix-cultural:", e);
+    res.status(500).json({ erro: "Erro ao gerar remix cultural" });
+  }
+});
+
+// ─── POST /api/notebook/micro-aulas/personalizacao ───────────────────────────
+// Tipo 3: Personalização Massiva — 5 versões de 1 plano de aula
+router.post("/notebook/plano-aula-versoes", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { docId, duracao = 50, nivel = "Ensino Médio" } = req.body as { docId: number; duracao?: number; nivel?: string };
+  try {
+    const docs = await db.execute(sql`
+      SELECT content_text, title FROM knowledge_documents
+      WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
+    `);
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
+
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.6,
+      max_tokens: 5500,
+      messages: [
+        {
+          role: "system",
+          content: `Você é um especialista em diferenciação pedagógica — o mesmo conteúdo, adaptado para 5 realidades diferentes de turma.
+Gere 5 versões do plano de aula, cada uma para um perfil diferente, mantendo os mesmos objetivos de aprendizagem.
+
+Retorne APENAS JSON válido:
+{
+  "tema": "Tema do conteúdo",
+  "nivel": "${nivel}",
+  "duracao": "${duracao} minutos",
+  "objetivoCentral": "Objetivo de aprendizagem que todas as versões compartilham",
+  "versoes": {
+    "turmaDificil": {
+      "diagnostico": "Por que estão desengajados — histórico, desconexão, problemas externos",
+      "estrategiasEngajamento": [
+        {"estrategia": "Gamificação", "aplicacao": "Como aplicar especificamente nesta aula"},
+        {"estrategia": "Relevância imediata", "aplicacao": "Conexão com problema deles AGORA"},
+        {"estrategia": "Sucesso rápido", "aplicacao": "Vitória garantida nos primeiros 5 min"},
+        {"estrategia": "Escolha autêntica", "aplicacao": "Opções reais de caminho na aula"}
+      ],
+      "adaptacoes": ["Mudança 1: mais movimento, menos sentado", "Mudança 2", "Mudança 3"],
+      "abertura": "Como começar esta aula com esta turma — gancho específico",
+      "linguagem": "Tom e vocabulário para esta turma"
+    },
+    "turmaAvancada": {
+      "diagnostico": "Alunos que já sabem — precisam de profundidade e autonomia",
+      "estrategiasEnriquecimento": [
+        {"estrategia": "Autonomia", "aplicacao": "Como aplicar"},
+        {"estrategia": "Complexidade", "aplicacao": "Conexões interdisciplinares"},
+        {"estrategia": "Liderança", "aplicacao": "Alunos ensinam alunos"}
+      ],
+      "adaptacoes": ["Mudança 1: conteúdo extra opcional", "Mudança 2", "Mudança 3"],
+      "abertura": "Como começar com este perfil",
+      "produtoFinal": "Avaliação por portfólio ou produto aberto"
+    },
+    "turmaInclusiva": {
+      "perfilEspecifico": "Quais necessidades: TEA, TDAH, deficiência auditiva/visual/motora",
+      "adaptacoesPorNecessidade": [
+        {"necessidade": "TDAH", "adaptacao": "Movimento, quebra de atividade, feedback constante"},
+        {"necessidade": "TEA", "adaptacao": "Rotina visual, aviso de transições, redução de estímulo"},
+        {"necessidade": "Deficiência auditiva", "adaptacao": "Material visual, legendas, linguagem gestual"},
+        {"necessidade": "Altas habilidades", "adaptacao": "Enriquecimento dentro da inclusão"}
+      ],
+      "recursosAcessiveis": ["Lista de materiais acessíveis necessários"],
+      "avaliacaoAdaptada": "Como avaliar com as mesmas competências, de forma justa"
+    },
+    "aulaRemota": {
+      "modalidade": "Síncrona ao vivo | Gravada | Híbrida flexível",
+      "adaptacoesEngajamento": [
+        {"desafio": "Atenção dispersa", "solucao": "Micro-atividades a cada 5 min"},
+        {"desafio": "Isolamento", "solucao": "Breakout rooms, fóruns colaborativos"},
+        {"desafio": "Fadiga de tela", "solucao": "Momentos câmera desligada, movimento"}
+      ],
+      "estruturaVideo": [
+        {"timestamp": "0:00-0:30", "conteudo": "Gancho", "recursoVisual": "Descrição"},
+        {"timestamp": "0:30-5:00", "conteudo": "Conteúdo principal", "recursoVisual": "Descrição"}
+      ],
+      "interacoesObrigatorias": ["Chat, quiz, entrega, fórum — o que o aluno precisa fazer"]
+    },
+    "aulaHibrida": {
+      "organizacao": [
+        {"estacao": "Estação 1 — com professor", "atividade": "Explicação e prática guiada", "grupo": "Grupo A", "tempo": "0-20 min"},
+        {"estacao": "Estação 2 — independente", "atividade": "Atividade digital autônoma", "grupo": "Grupo B", "tempo": "0-20 min"},
+        {"estacao": "Troca", "atividade": "Grupos trocam", "grupo": "Todos", "tempo": "20 min"},
+        {"estacao": "Síntese", "atividade": "Todos juntos", "grupo": "Todos", "tempo": "40-50 min"}
+      ],
+      "atividadeOnline": "O que fazem quando não estão com o professor",
+      "sincronizacao": "Como garante que ambos os grupos aprenderam o essencial"
+    }
+  }
+}`,
+        },
+        { role: "user", content: `Tema: "${row.title}"\nNível: ${nivel}\nDuração: ${duracao} min\n\nConteúdo:\n${row.content_text.slice(0, 14_000)}` },
+      ],
+    });
+
+    const raw = completion.choices[0].message.content ?? "{}";
+    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    res.json(JSON.parse(clean));
+  } catch (e) {
+    console.error("notebook plano-aula-versoes:", e);
+    res.status(500).json({ erro: "Erro ao gerar versões do plano" });
+  }
+});
+
 // ─── POST /api/notebook/dna ───────────────────────────────────────────────────
 // DNA das Fontes: análise profunda IA do conteúdo do documento
 router.post("/notebook/dna", async (req: Request, res: Response) => {

@@ -1396,7 +1396,157 @@ Gere 4-6 pontos-chave e 3-4 recomendações. Tom direto e executivo — sem rode
 // ─── POST /api/notebook/plano-aula ───────────────────────────────────────────
 router.post("/notebook/plano-aula", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
-  const { docId, duracao = 50, nivel = "Ensino Médio" } = req.body as { docId: number; duracao?: number; nivel?: string };
+  const { docId, duracao = 50, nivel = "Ensino Médio", perfilTurma = "heterogenea" } = req.body as { docId: number; duracao?: number; nivel?: string; perfilTurma?: string };
+  try {
+    const docs = await db.execute(sql`
+      SELECT content_text, title FROM knowledge_documents
+      WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
+    `);
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
+
+    const aberturaMin = Math.round(duracao * 0.15);
+    const dev1Min = Math.round(duracao * 0.30);
+    const dev2Min = Math.round(duracao * 0.30);
+    const fechamentoMin = duracao - aberturaMin - dev1Min - dev2Min;
+
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.55,
+      max_tokens: 5000,
+      messages: [
+        {
+          role: "system",
+          content: `Você é um professor com 15+ anos de experiência, pós-graduado em ensino da sua disciplina (Persona: Planejador Experiente). 
+Você planeja aulas que funcionam na prática, não apenas na teoria.
+Seu estilo: específico (nunca genérico), realista sobre tempos e recursos, atento às diferenças entre alunos, conectado com BNCC.
+NUNCA escreva objetivos com verbos não observáveis ("entender", "saber") — use verbos de ação (identificar, calcular, analisar, comparar, resolver, produzir).
+NUNCA coloque tempos irreais — a soma das etapas deve ser exatamente ${duracao} minutos.
+SEMPRE inclua: contexto específico da turma, estratégias de diferenciação, rúbrica de avaliação, conexão com aulas anteriores.
+
+Retorne APENAS JSON válido com esta estrutura:
+{
+  "titulo": "Título específico e atraente (não genérico como 'Aula de Matemática')",
+  "turma": "${nivel}",
+  "duracao": "${duracao} minutos",
+  "perfilTurma": "Descrição concreta do perfil: tamanho da turma, contexto, pontos fortes e fracos, acesso a recursos",
+  "prerequisitos": [
+    {"conceito": "Conceito que aluno deve dominar", "status": "verificar antes da aula"}
+  ],
+  "dificuldadesPrevisíveis": [
+    {"dificuldade": "Erro ou confusão comum", "prevencao": "Como prevenir ou endereçar"}
+  ],
+  "bncc": {
+    "competencia": "Código e descrição da competência específica (ex: EM13MAT101)",
+    "habilidade": "Código e descrição da habilidade",
+    "objetosConhecimento": ["Objeto 1", "Objeto 2"]
+  },
+  "objetivos": {
+    "geral": "1 objetivo amplo e realizável nesta aula",
+    "especificos": [
+      "Ao final, o estudante será capaz de [verbo de ação] [objeto] — [critério]",
+      "Ao final, o estudante será capaz de [verbo de ação] [objeto] — [critério]",
+      "Ao final, o estudante será capaz de [verbo de ação] [objeto] — [critério]"
+    ],
+    "indicadores": ["Critério observável de sucesso 1", "Critério observável 2"]
+  },
+  "desenvolvimento": [
+    {
+      "tempo": "${aberturaMin} min",
+      "etapa": "Abertura",
+      "nome": "Nome atraente para este momento",
+      "atividade": "Descrição detalhada do gancho motivador ou provocação inicial",
+      "recursos": "Lista específica de materiais necessários",
+      "estrategia": "Como o professor conduz este momento",
+      "perguntasNorteadoras": ["Pergunta que provoca pensamento", "Pergunta que conecta com vida do aluno"],
+      "diferenciacão": {"comDificuldade": "Adaptação para alunos com dificuldade", "avancados": "Enriquecimento para alunos avançados"}
+    },
+    {
+      "tempo": "${dev1Min} min",
+      "etapa": "Desenvolvimento 1",
+      "nome": "Nome do momento",
+      "atividade": "Conteúdo principal com explicação ativa — descreva passo a passo",
+      "recursos": "Slides, exemplos concretos, quadro",
+      "estrategia": "Exposição dialogada com perguntas — como intervir nos erros comuns",
+      "perguntasNorteadoras": ["Pergunta de verificação de entendimento", "Pergunta de aprofundamento"],
+      "diferenciacão": {"comDificuldade": "Adaptação", "avancados": "Extensão"}
+    },
+    {
+      "tempo": "${dev2Min} min",
+      "etapa": "Desenvolvimento 2",
+      "nome": "Nome do momento",
+      "atividade": "Atividade prática ou colaborativa — descreva os passos do que os alunos fazem",
+      "recursos": "Exercícios, material do caderno, fichas",
+      "estrategia": "Aprendizagem ativa — formação de grupos, funções, como circular pela sala",
+      "perguntasNorteadoras": ["Pergunta de metacognição", "Pergunta de aplicação"],
+      "diferenciacão": {"comDificuldade": "Suporte adicional", "avancados": "Desafio extra"}
+    },
+    {
+      "tempo": "${fechamentoMin} min",
+      "etapa": "Fechamento",
+      "nome": "Nome do momento",
+      "atividade": "Síntese integradora + avaliação formativa rápida",
+      "recursos": "Quiz oral/escrito, saída de aprendizagem",
+      "estrategia": "Como verificar se os objetivos foram alcançados — instrumento formativo",
+      "perguntasNorteadoras": ["O que você aprendeu hoje?", "Qual foi o maior desafio?"],
+      "diferenciacão": {"comDificuldade": "Apoio na síntese", "avancados": "Síntese ampliada"}
+    }
+  ],
+  "avaliacao": {
+    "instrumento": "Descrição completa do instrumento avaliativo (prova, projeto, apresentação, etc.)",
+    "rubrica": [
+      {
+        "criterio": "Critério avaliativo 1",
+        "insuficiente": "Descrição do nível D — não atingiu",
+        "regular": "Descrição do nível C — atingiu parcialmente",
+        "bom": "Descrição do nível B — atingiu satisfatoriamente",
+        "excelente": "Descrição do nível A — superou"
+      },
+      {
+        "criterio": "Critério avaliativo 2",
+        "insuficiente": "Descrição",
+        "regular": "Descrição",
+        "bom": "Descrição",
+        "excelente": "Descrição"
+      }
+    ]
+  },
+  "tarefaCasa": "Descrição específica da atividade + conexão com o conteúdo e com a próxima aula",
+  "adaptacoes": {
+    "turmaRapida": "Enriquecimento para alunos que terminaram antes",
+    "turmaDificuldade": "Simplificação e suporte adicional"
+  },
+  "materialComplementar": ["Referência/link 1", "Referência/link 2"],
+  "referencias": {
+    "teoricas": ["Referência teórica 1 (Vygotsky, Piaget, etc.)", "Referência 2"],
+    "didaticas": ["Livro didático ou recurso 1", "Recurso 2"],
+    "fontesCaderno": "Quais partes do documento do caderno foram usadas"
+  },
+  "reflexao": {
+    "oQueFuncionou": "",
+    "oQuePrecisaAjustar": "",
+    "adaptacoesProximaTurma": ""
+  }
+}`,
+        },
+        { role: "user", content: `Tema: "${row.title}"\nNível: ${nivel}\nPerfil da turma: ${perfilTurma}\nDuração: ${duracao} minutos\n\nConteúdo do caderno:\n${row.content_text.slice(0, 14_000)}` },
+      ],
+    });
+
+    const raw = completion.choices[0].message.content ?? "{}";
+    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    res.json(JSON.parse(clean));
+  } catch (e) {
+    console.error("notebook plano-aula:", e);
+    res.status(500).json({ erro: "Erro ao gerar plano de aula" });
+  }
+});
+
+// ─── POST /api/notebook/tarefa ────────────────────────────────────────────────
+// Tipo B: Tarefa / Atividade para Casa com estrutura dual (aluno + professor)
+router.post("/notebook/tarefa", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { docId, tipoTarefa = "estudo-dirigido", nivel = "Ensino Médio" } = req.body as { docId: number; tipoTarefa?: string; nivel?: string };
   try {
     const docs = await db.execute(sql`
       SELECT content_text, title FROM knowledge_documents
@@ -1407,62 +1557,76 @@ router.post("/notebook/plano-aula", async (req: Request, res: Response) => {
 
     const completion = await gpt.chat.completions.create({
       model: "gpt-4o-mini",
-      temperature: 0.5,
-      max_tokens: 4000,
+      temperature: 0.6,
+      max_tokens: 4500,
       messages: [
         {
           role: "system",
-          content: `Você é um pedagogo experiente criando um plano de aula completo e aplicável para ENEM/vestibular.
+          content: `Você é um Designer de Aprendizagem especialista criando tarefas/atividades para casa de qualidade profissional.
+Tipo de tarefa solicitada: ${tipoTarefa} | Nível: ${nivel}
+A tarefa deve ter estrutura DUAL: seção para o aluno (linguagem acessível e motivadora) + seção para o professor (técnica e com rúbrica).
+NUNCA crie tarefas genéricas ("faça uma pesquisa sobre"). Seja específico com fontes, critérios e passo a passo.
+
 Retorne APENAS JSON válido:
 {
-  "titulo": "Plano de Aula: [Tema]",
-  "turma": "${nivel}",
-  "duracao": "${duracao} minutos",
-  "objetivos": ["Objetivo de aprendizagem 1 (verbo de ação)", "Objetivo 2", "Objetivo 3"],
-  "prerequisitos": "O que os alunos já devem saber antes desta aula",
-  "desenvolvimento": [
-    {
-      "tempo": "10 min",
-      "etapa": "Abertura",
-      "atividade": "Gancho motivador ou provocação inicial",
-      "recursos": "Material/ferramenta necessária",
-      "estrategia": "Como o professor conduz"
-    },
-    {
-      "tempo": "${Math.round(duracao * 0.35)} min",
-      "etapa": "Desenvolvimento 1",
-      "atividade": "Conteúdo principal com explicação ativa",
-      "recursos": "Slides, exemplos, quadro",
-      "estrategia": "Exposição dialogada com perguntas"
-    },
-    {
-      "tempo": "${Math.round(duracao * 0.3)} min",
-      "etapa": "Desenvolvimento 2",
-      "atividade": "Atividade prática ou em grupo",
-      "recursos": "Exercícios, material do caderno",
-      "estrategia": "Aprendizagem ativa"
-    },
-    {
-      "tempo": "10 min",
-      "etapa": "Fechamento",
-      "atividade": "Síntese + avaliação formativa rápida",
-      "recursos": "Quiz oral ou escrito",
-      "estrategia": "Revisão e verificação de entendimento"
-    }
-  ],
-  "tarefaCasa": "Descrição da atividade + conexão com o conteúdo do caderno",
-  "avaliacao": {
-    "criterios": ["Critério 1", "Critério 2"],
-    "instrumento": "Como será avaliado"
+  "titulo": "Título específico e motivador para a tarefa",
+  "tipo": "${tipoTarefa}",
+  "nivel": "${nivel}",
+  "tempoEstimado": "Estimativa realista em minutos",
+  "paraAluno": {
+    "oQueVaiFazer": "Descrição clara em linguagem do aluno, não técnica",
+    "porQueImporta": "Conexão com vida real, próximas aulas ou interesse do adolescente",
+    "doQuePreucisa": ["Material 1 específico", "Material 2", "Acesso a X"],
+    "passos": [
+      {
+        "numero": 1,
+        "nome": "Nome do passo",
+        "duracao": "X min",
+        "instrucao": "Instrução clara e específica — uma ação por passo",
+        "dica": "Dica de estratégia (não de conteúdo)"
+      },
+      {
+        "numero": 2,
+        "nome": "Nome do passo",
+        "duracao": "X min",
+        "instrucao": "Instrução clara",
+        "dica": "Dica"
+      },
+      {
+        "numero": 3,
+        "nome": "Nome do passo",
+        "duracao": "X min",
+        "instrucao": "Instrução clara",
+        "dica": "Dica"
+      }
+    ],
+    "comoSaberSeAcertou": "Critérios de autocorreção — como o aluno avalia o próprio trabalho",
+    "seTravar": ["Estratégia 1: onde buscar ajuda", "Estratégia 2: como simplificar", "Estratégia 3: quem perguntar"],
+    "querMaisDesafio": "Extensão opcional para alunos que terminarem rápido"
   },
-  "adaptacoes": {
-    "turmaRapida": "Extensão para alunos que avançaram",
-    "turmaDificuldade": "Simplificação para alunos com dificuldade"
-  },
-  "materialComplementar": ["Sugestão 1", "Sugestão 2"]
+  "paraProfessor": {
+    "objetivo": "Conexão direta com objetivos da aula",
+    "respostaEsperada": "Resposta modelo completa / gabarito",
+    "errosComuns": [
+      {"erro": "Erro provável 1", "causa": "Por que ocorre", "estrategia": "Como corrigir"},
+      {"erro": "Erro provável 2", "causa": "Por que ocorre", "estrategia": "Como corrigir"}
+    ],
+    "rubrica": [
+      {"nivel": "Excelente (A)", "descricao": "O que o aluno faz neste nível", "notaEquivalente": "9-10"},
+      {"nivel": "Bom (B)", "descricao": "O que o aluno faz", "notaEquivalente": "7-8"},
+      {"nivel": "Regular (C)", "descricao": "O que o aluno faz", "notaEquivalente": "5-6"},
+      {"nivel": "Insuficiente (D)", "descricao": "O que o aluno faz", "notaEquivalente": "0-4"}
+    ],
+    "diferenciacao": {
+      "comDificuldade": "Adaptação específica para alunos com dificuldade",
+      "avancados": "Enriquecimento para alunos avançados"
+    },
+    "tempoCorrecao": "Estimativa de tempo para corrigir por aluno",
+    "conexaoProximaAula": "Como esta tarefa alimenta e prepara a próxima aula"
+  }
 }`,
         },
-        { role: "user", content: `Tema: "${row.title}"\n\nConteúdo:\n${row.content_text.slice(0, 14_000)}` },
+        { role: "user", content: `Tema: "${row.title}"\nTipo: ${tipoTarefa}\nNível: ${nivel}\n\nConteúdo:\n${row.content_text.slice(0, 14_000)}` },
       ],
     });
 
@@ -1470,8 +1634,93 @@ Retorne APENAS JSON válido:
     const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     res.json(JSON.parse(clean));
   } catch (e) {
-    console.error("notebook plano-aula:", e);
-    res.status(500).json({ erro: "Erro ao gerar plano de aula" });
+    console.error("notebook tarefa:", e);
+    res.status(500).json({ erro: "Erro ao gerar tarefa" });
+  }
+});
+
+// ─── POST /api/notebook/sequencia-didatica ────────────────────────────────────
+// Tipo D: Sequência Didática multi-aula com avaliação integrada
+router.post("/notebook/sequencia-didatica", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { docId, numAulas = 4, duracaoAula = 50, nivel = "Ensino Médio" } = req.body as { docId: number; numAulas?: number; duracaoAula?: number; nivel?: string };
+  try {
+    const docs = await db.execute(sql`
+      SELECT content_text, title FROM knowledge_documents
+      WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
+    `);
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
+
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.55,
+      max_tokens: 5500,
+      messages: [
+        {
+          role: "system",
+          content: `Você é um especialista em Design Instrucional criando uma SEQUÊNCIA DIDÁTICA profissional para ${numAulas} aulas de ${duracaoAula} minutos cada.
+Nível: ${nivel}
+A sequência deve ter progressão lógica: cada aula constrói sobre a anterior. O produto final deve ser significativo e avaliável.
+SEMPRE inclua: mapa visual da sequência, conexão entre aulas, avaliação integrada com rúbrica por dimensões.
+
+Retorne APENAS JSON válido:
+{
+  "titulo": "Título da sequência didática (unidade temática específica)",
+  "nivel": "${nivel}",
+  "duracaoTotal": "${numAulas} aulas × ${duracaoAula} min = ${numAulas * duracaoAula} min",
+  "produtoFinal": "Descrição do que os alunos produzem/apresentam ao final da sequência",
+  "avaliacaoSomativa": "Como será a avaliação final — instrumento e critérios",
+  "objetivo": "Objetivo central de aprendizagem de toda a sequência",
+  "bncc": {
+    "competencia": "Competência BNCC principal",
+    "habilidades": ["Habilidade 1", "Habilidade 2"]
+  },
+  "mapaDaSequencia": [
+    {"numero": 1, "tema": "Tema da aula 1", "conceito": "Conceito chave", "conexaoAnterior": null},
+    {"numero": 2, "tema": "Tema da aula 2", "conceito": "Conceito chave", "conexaoAnterior": "Como conecta com aula 1"},
+    {"numero": 3, "tema": "Tema da aula 3", "conceito": "Conceito chave", "conexaoAnterior": "Como conecta com aula 2"},
+    {"numero": 4, "tema": "Tema da aula 4", "conceito": "Síntese", "conexaoAnterior": "Como integra tudo"}
+  ],
+  "aulas": [
+    {
+      "numero": 1,
+      "titulo": "Título específico da aula 1",
+      "objetivos": ["Objetivo comportamental 1", "Objetivo 2"],
+      "atividadePrincipal": "Descrição da atividade central desta aula",
+      "recursos": ["Recurso 1", "Recurso 2"],
+      "avaliacaoFormativa": "Como verificar aprendizado ao final desta aula",
+      "conexaoProxima": "O que esta aula prepara na próxima"
+    }
+  ],
+  "avaliacaoIntegrada": {
+    "instrumento": "Descrição completa do instrumento final (projeto, seminário, produção, etc.)",
+    "rubrica": [
+      {"dimensao": "Dimensão 1", "peso": "30%", "criterios": "Descrição dos critérios para esta dimensão"},
+      {"dimensao": "Dimensão 2", "peso": "40%", "criterios": "Descrição"},
+      {"dimensao": "Dimensão 3", "peso": "30%", "criterios": "Descrição"}
+    ]
+  },
+  "recursos": {
+    "permanentes": ["Material usado em toda a sequência"],
+    "porAula": [
+      {"aula": 1, "lista": ["Material específico da aula 1"]},
+      {"aula": 2, "lista": ["Material específico da aula 2"]}
+    ]
+  }
+}
+Gere exatamente ${numAulas} aulas no array "aulas" e no "mapaDaSequencia".`,
+        },
+        { role: "user", content: `Tema: "${row.title}"\nNível: ${nivel}\n${numAulas} aulas de ${duracaoAula} min\n\nConteúdo:\n${row.content_text.slice(0, 14_000)}` },
+      ],
+    });
+
+    const raw = completion.choices[0].message.content ?? "{}";
+    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    res.json(JSON.parse(clean));
+  } catch (e) {
+    console.error("notebook sequencia-didatica:", e);
+    res.status(500).json({ erro: "Erro ao gerar sequência didática" });
   }
 });
 

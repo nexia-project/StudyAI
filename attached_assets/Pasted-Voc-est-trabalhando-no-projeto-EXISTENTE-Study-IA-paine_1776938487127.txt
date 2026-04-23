@@ -1,0 +1,157 @@
+Você está trabalhando no projeto EXISTENTE Study.IA, painel Admin em /admin.
+
+NÃO QUEBRE NADA. Apenas ADICIONE filtros de pesquisa por data em TODAS as seções do Admin que exibem dados, métricas, gráficos, tabelas e relatórios.
+
+Mantenha o tema dark e os componentes visuais já existentes.
+
+=============================================
+FILTROS DE DATA — IMPLEMENTAR EM TODO O ADMIN
+=============================================
+
+Criar um componente reutilizável de filtro de data que será usado em TODAS as páginas do Admin.
+
+### COMPONENTE: DateRangeFilter
+
+Visual: barra horizontal no topo de cada seção de dados, ANTES dos cards/gráficos.
+
+Layout:
+
+┌──────────────────────────────────────────────────────────────┐
+│ [Hoje] [7 dias] [30 dias] [Este mês] [Este ano] [Personalizado 📅]  │
+│                                                              │
+│  Quando "Personalizado" selecionado:                         │
+│  Data início: [__/__/____]  Data fim: [__/__/____]  [Aplicar] │
+└──────────────────────────────────────────────────────────────┘
+
+### Botões de atalho (preset):
+
+| Botão | Período |
+|-------|---------|
+| Hoje | Dia atual (00:00 até agora) |
+| Ontem | Dia anterior completo |
+| 7 dias | Últimos 7 dias |
+| 15 dias | Últimos 15 dias |
+| 30 dias | Últimos 30 dias |
+| Este mês | Do dia 1 do mês atual até hoje |
+| Mês passado | Mês anterior completo |
+| Este ano | Do dia 1 de janeiro até hoje |
+| Ano passado | Ano anterior completo |
+| Personalizado | Abre date picker com data início e data fim |
+
+### Estilo visual:
+- Botões em formato de "pills" / "chips" lado a lado
+- Botão ativo: fundo roxo (#8b5cf6) ou azul (#3b82f6), texto branco
+- Botões inativos: fundo transparente, borda #2d3748, texto #94a3b8
+- Hover: borda mais clara
+- Date picker personalizado: 2 campos de data lado a lado com ícone de calendário
+- Botão "Aplicar": estilo primário (roxo ou azul)
+- Botão "Limpar": texto simples, reseta para "30 dias" (padrão)
+
+### Comportamento:
+- Padrão ao carregar a página: "30 dias" selecionado
+- Ao trocar o filtro: TODOS os dados da página atualizam (cards, gráficos, tabelas)
+- Mostrar loading/skeleton enquanto recarrega
+- Manter o filtro selecionado na URL (query params: ?from=2025-01-01&to=2025-01-31) para que o admin possa compartilhar/favoritar links filtrados
+- O filtro persiste ao navegar entre abas dentro da mesma página (ex: abas da turma)
+
+### ONDE APLICAR (em todas estas páginas):
+
+1. **Visão Geral (/admin)**
+   - Cards de topo (Total de Usuários, Ao Vivo, Novos Cadastros, Retenção) filtram por período
+   - Gráfico de Logins por dia
+   - Horários de pico
+   - Últimos logins
+   - Atividade em tempo real
+   - Features mais usadas
+
+2. **Usuários (/admin/usuarios/alunos, /professores, /instituicoes)**
+   - Filtrar tabela por data de cadastro
+   - Filtrar por último acesso
+   - Adicionar na barra de filtros existente: "Cadastrados entre [data] e [data]"
+   - Adicionar: "Último acesso entre [data] e [data]"
+
+3. **Financeiro (/admin/financeiro)**
+   - Receita do período selecionado
+   - Gráfico de receita diária/mensal adapta ao período
+   - Assinaturas criadas/canceladas no período
+   - MRR do período
+
+4. **IA & Custos (/admin/ia-custos)** ← MAIS IMPORTANTE
+   - Cards (Custo hoje/mês) adaptam ao período selecionado
+   - Custo por provedor: filtra pelo período
+   - Custo por feature: filtra pelo período
+   - Custo por modelo: filtra pelo período
+   - Gráfico de origem (base interna vs IA generativa): filtra pelo período
+   - Top perguntas sem match: filtra pelo período
+   - Recomendações de economia: baseadas no período selecionado
+
+5. **Conteúdos (/admin/conteudos)**
+   - Documentos adicionados no período
+   - Uso da base de conhecimento no período
+   - Gaps identificados no período
+
+6. **Logs (/admin/logs)**
+   - Logs de IA: filtrar por período
+   - Logs de acesso: filtrar por período
+   - Logs de erro: filtrar por período
+
+### BACKEND — Como filtrar:
+
+Toda API route de métricas do Admin deve aceitar query params:
+
+  GET /api/admin/metrics?from=2025-07-01T00:00:00Z&to=2025-07-19T23:59:59Z
+
+  GET /api/admin/ia-costs?from=...&to=...
+  GET /api/admin/ia-costs/by-provider?from=...&to=...
+  GET /api/admin/ia-costs/by-feature?from=...&to=...
+  GET /api/admin/ia-costs/by-model?from=...&to=...
+  GET /api/admin/ia-costs/by-source?from=...&to=...
+  GET /api/admin/users?registeredFrom=...&registeredTo=...&lastAccessFrom=...&lastAccessTo=...
+  GET /api/admin/financial?from=...&to=...
+  GET /api/admin/logs?from=...&to=...
+
+Se from/to não forem enviados, usar padrão de 30 dias.
+
+### Queries no banco:
+
+Aplicar WHERE em TODAS as queries de métricas:
+
+  WHERE createdAt >= $from AND createdAt <= $to
+
+Ou no caso de daily_metrics:
+
+  WHERE date >= $fromDate AND date <= $toDate
+
+### COMPARAÇÃO COM PERÍODO ANTERIOR (BÔNUS):
+
+Quando o admin seleciona um período, mostrar automaticamente a comparação com o período equivalente anterior:
+
+Exemplo:
+- Selecionou "Últimos 30 dias" (01/jul - 30/jul)
+- Sistema compara com 01/jun - 30/jun
+- Exibe: "R$ 45,00 este período (↑ 12% vs período anterior)"
+
+Para cada card de métrica:
+- Número principal: valor do período selecionado
+- Abaixo: ↑ X% ou ↓ X% vs período anterior (verde se positivo para receita/usuários, vermelho se positivo para custos)
+
+### EXPORT COM FILTRO:
+
+Os botões de exportar (CSV, PDF, Excel) devem exportar APENAS os dados do período filtrado.
+
+No arquivo exportado, incluir header:
+- "Relatório Study.IA Admin"
+- "Período: 01/07/2025 a 19/07/2025"
+- "Gerado em: 19/07/2025 às 14:30"
+
+=============================================
+INSTRUÇÃO FINAL
+=============================================
+
+1. Crie o componente DateRangeFilter UMA VEZ, reutilizável.
+2. Aplique em TODAS as páginas listadas acima.
+3. Ajuste TODAS as API routes para aceitar from/to.
+4. Ajuste TODAS as queries do banco para filtrar por período.
+5. Padrão: 30 dias. Sempre funcionar mesmo sem filtro.
+6. Teste: trocar filtro deve atualizar TUDO na página, sem erro, sem dado vazio.
+7. Manter tema dark, mesmos componentes, mesmo layout.

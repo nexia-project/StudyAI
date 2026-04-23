@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
+import { DateRangeFilter, defaultDateRange, computeDates, type DateRange } from "@/components/DateRangeFilter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@clerk/react";
 import {
@@ -43,6 +44,11 @@ type AdminStats = {
   totalUsers: number; todayNewUsers: number; premiumUsers: number;
   teacherCount: number; govCount: number; todayActive: number; studyingNow: number; pendingRequests: number;
   institutionsTotal: number; institutionsActive: number;
+  // Range-based counts with previous period comparison
+  newUsersInRange: number; prevNewUsers: number; newUsersPct: number | null;
+  activeInRange: number;  prevActive: number;   activePct: number | null;
+  loginsInRange: number;  prevLogins: number;   loginsPct: number | null;
+  dateRange: { from: string; to: string; prevFrom: string; prevTo: string; days: number };
   plansPerDay: { day: string; count: number }[];
   simuladosPerDay: { day: string; count: number }[];
   newUsersPerDay: { day: string; count: number }[];
@@ -63,6 +69,8 @@ type AdminStats = {
   recentEvents: { event_type: string; created_at: string; metadata: any; email: string | null; first_name: string | null; last_name: string | null }[];
   eventsByType30d: { event_type: string; count: number; users: number }[];
   aiCost: {
+    rangeUsd: number; rangeBrl: number; prevRangeUsd: number; prevRangeBrl: number;
+    costPct: number | null; callsRange: number; tokensRange: number;
     todayUsd: number; todayBrl: number;
     monthUsd: number; monthBrl: number;
     callsToday: number; callsTotal: number;
@@ -159,6 +167,16 @@ export default function AdminPage() {
   const kbFileRef = useRef<HTMLInputElement>(null);
   const [searchQ, setSearchQ] = useState("");
   const [debugInfo, setDebugInfo] = useState<Record<string, any> | null>(null);
+
+  // ── Date range filter — read initial value from URL ──────────────────────────
+  const searchStr = useSearch();
+  const [dateRange, setDateRange] = useState<DateRange>(() => {
+    const p = new URLSearchParams(searchStr ?? "");
+    const from = p.get("from");
+    const to   = p.get("to");
+    if (from && to) return { from, to, preset: "custom" };
+    return defaultDateRange();
+  });
 
   async function fetchWhoami() {
     try {
@@ -329,10 +347,21 @@ export default function AdminPage() {
     } catch { setRrMsg({ ok: false, text: "Erro de conexão" }); }
     finally { setRrReviewing(null); setTimeout(() => setRrMsg(null), 4000); }
   }
-  async function fetchStats() {
+  // ── URL persistence: push from/to whenever dateRange changes ─────────────────
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    p.set("from", dateRange.from);
+    p.set("to",   dateRange.to);
+    const next = `${window.location.pathname}?${p.toString()}`;
+    window.history.replaceState(null, "", next);
+  }, [dateRange.from, dateRange.to]);
+
+  async function fetchStats(range?: DateRange) {
+    const r = range ?? dateRange;
     setStatsLoading(true);
     try {
-      const res = await adminFetch("/api/admin/stats");
+      const qs = new URLSearchParams({ from: r.from, to: r.to }).toString();
+      const res = await adminFetch(`/api/admin/stats?${qs}`);
       if (res.ok) {
         setStats(await res.json());
       } else {
@@ -345,11 +374,16 @@ export default function AdminPage() {
     }
   }
 
+  // Refetch stats whenever the date range changes
+  useEffect(() => {
+    if (!isLoaded) return;
+    fetchStats(dateRange);
+  }, [isLoaded, dateRange.from, dateRange.to]);
+
   useEffect(() => {
     if (!isLoaded) return;
     fetchUsers();
     fetchRoleRequests();
-    fetchStats();
   }, [isLoaded]);
   useEffect(() => { if (activeSection === "conteudos") fetchTeacherContent(); }, [activeSection]);
   useEffect(() => { if (activeSection === "banco-dados") fetchKbDocs(); }, [activeSection]);
@@ -605,37 +639,69 @@ export default function AdminPage() {
                   <h1 className="text-xl font-black">Dashboard Operacional</h1>
                   <p className="text-white/35 text-sm">Métricas em tempo real da plataforma StudyAI</p>
                 </div>
-                <button onClick={() => { fetchStats(); fetchUsers(); fetchRoleRequests(); }}
+                <button onClick={() => { fetchStats(dateRange); fetchUsers(); fetchRoleRequests(); }}
                   className="flex items-center gap-1.5 text-white/35 hover:text-white text-xs transition-colors bg-white/5 px-3 py-1.5 rounded-xl border border-white/[0.07]">
                   <RefreshCw className={`w-3.5 h-3.5 ${statsLoading ? "animate-spin" : ""}`} /> Atualizar
                 </button>
               </div>
 
-              {/* KPI Row */}
+              {/* Date Range Filter */}
+              <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-4">
+                <DateRangeFilter value={dateRange} onChange={r => setDateRange(r)} loading={statsLoading} />
+              </div>
+
+              {/* KPI Row — range-aware with comparison */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                {[
-                  { label: "Total de Usuários", value: stats?.totalUsers ?? 0, icon: Users, color: "from-violet-500 to-purple-600", sub: `+${stats?.todayNewUsers ?? 0} hoje`, subUp: true },
-                  { label: "Ao Vivo Agora", value: stats?.studyingNow ?? 0, icon: Activity, color: "from-blue-500 to-cyan-500", sub: `${stats?.todayActive ?? 0} ativos hoje` },
-                  { label: "Novos Cadastros", value: stats?.todayNewUsers ?? 0, icon: UserPlus, color: "from-emerald-500 to-teal-500", sub: "hoje" },
-                  { label: "Taxa de Retenção", value: null, display: `${stats ? Math.round((stats.totalUsers - stats.todayNewUsers) / Math.max(stats.totalUsers, 1) * 100) : 0}%`, icon: TrendingUp, color: "from-amber-500 to-orange-500", sub: "usuários retidos" },
-                ].map((kpi) => (
-                  <div key={kpi.label} className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5 relative overflow-hidden">
-                    <div className="flex items-start justify-between mb-3">
-                      <p className="text-xs font-semibold text-white/40 leading-tight pr-2">{kpi.label}</p>
-                      <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${kpi.color} flex items-center justify-center flex-shrink-0`}>
-                        <kpi.icon className="w-4 h-4 text-white" />
+                {(() => {
+                  const pctBadge = (p: number | null | undefined, invertColor = false) => {
+                    if (p == null) return null;
+                    const up = p >= 0;
+                    const color = invertColor ? (up ? "text-red-400" : "text-emerald-400") : (up ? "text-emerald-400" : "text-red-400");
+                    return <span className={`text-[10px] font-bold ${color}`}>{up ? "↑" : "↓"} {Math.abs(p)}% vs período ant.</span>;
+                  };
+                  return [
+                    {
+                      label: "Total de Usuários", value: stats?.totalUsers ?? 0,
+                      icon: Users, color: "from-violet-500 to-purple-600",
+                      sub: `+${stats?.newUsersInRange ?? 0} no período`,
+                      pct: stats?.newUsersPct,
+                    },
+                    {
+                      label: "Logins no Período", value: stats?.loginsInRange ?? 0,
+                      icon: Activity, color: "from-blue-500 to-cyan-500",
+                      sub: `${stats?.studyingNow ?? 0} ao vivo agora`,
+                      pct: stats?.loginsPct,
+                    },
+                    {
+                      label: "Novos Cadastros", value: stats?.newUsersInRange ?? 0,
+                      icon: UserPlus, color: "from-emerald-500 to-teal-500",
+                      sub: `no período selecionado`,
+                      pct: stats?.newUsersPct,
+                    },
+                    {
+                      label: "Ativos no Período", value: stats?.activeInRange ?? 0,
+                      icon: TrendingUp, color: "from-amber-500 to-orange-500",
+                      sub: `${stats?.todayActive ?? 0} ativos hoje`,
+                      pct: stats?.activePct,
+                    },
+                  ].map((kpi) => (
+                    <div key={kpi.label} className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5 relative overflow-hidden">
+                      <div className="flex items-start justify-between mb-3">
+                        <p className="text-xs font-semibold text-white/40 leading-tight pr-2">{kpi.label}</p>
+                        <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${kpi.color} flex items-center justify-center flex-shrink-0`}>
+                          <kpi.icon className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+                      <p className="text-3xl font-black text-white leading-none mb-1">
+                        {statsLoading ? <span className="text-white/20 animate-pulse">—</span> : kpi.value.toLocaleString("pt-BR")}
+                      </p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {pctBadge(kpi.pct)}
+                        {kpi.sub && <p className="text-[10px] text-white/30">{kpi.sub}</p>}
                       </div>
                     </div>
-                    <p className="text-3xl font-black text-white leading-none mb-1">
-                      {kpi.display ?? (kpi.value ?? 0).toLocaleString("pt-BR")}
-                    </p>
-                    {kpi.sub && (
-                      <p className={`text-xs font-semibold ${kpi.subUp ? "text-emerald-400" : "text-white/30"}`}>
-                        {kpi.subUp && "↑ "}{kpi.sub}
-                      </p>
-                    )}
-                  </div>
-                ))}
+                  ));
+                })()}
               </div>
 
               {/* Row: Logins | Alunos/Prof/Escolas */}
@@ -1055,6 +1121,7 @@ export default function AdminPage() {
           {activeSection === "financeiro" && (() => {
             const TICKET = 8.2;
             const dist = stats?.subscriptionDist ?? [];
+            // DateRangeFilter shared component rendered below
             const activeCount = dist.filter(d => d.status === "active").reduce((s, d) => s + d.count, 0);
             const trialCount = dist.filter(d => d.status === "trialing").reduce((s, d) => s + d.count, 0);
             const canceledCount = dist.filter(d => d.status === "canceled").reduce((s, d) => s + d.count, 0);
@@ -1076,6 +1143,10 @@ export default function AdminPage() {
               <div className="flex items-center justify-between mb-1">
                 <h2 className="text-lg font-black flex items-center gap-2"><Wallet className="w-5 h-5 text-emerald-400" /> Financeiro</h2>
                 <span className="text-[10px] text-white/30 font-bold uppercase">Ticket médio: R$ {TICKET.toFixed(2)}/mês</span>
+              </div>
+
+              <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-4">
+                <DateRangeFilter value={dateRange} onChange={r => setDateRange(r)} loading={statsLoading} />
               </div>
 
               {/* KPIs financeiros */}
@@ -1180,25 +1251,40 @@ export default function AdminPage() {
             const ac = stats?.aiCost;
             const fmtBrl = (v: number) => `R$ ${v.toFixed(4)}`;
             const fmtBrlShort = (v: number) => v < 0.01 ? `R$ ${v.toFixed(4)}` : `R$ ${v.toFixed(2)}`;
-            const totalCalls = ac?.callsTotal ?? (ac ? ac.byFeature.reduce((s, f) => s + f.calls, 0) : 0);
-            const totalTokens = ac?.tokensTotal ?? (ac ? ac.byFeature.reduce((s, f) => s + f.tokens, 0) : 0);
+            const callsRange = ac?.callsRange ?? (ac ? ac.byFeature.reduce((s, f) => s + f.calls, 0) : 0);
+            const tokensRange = ac?.tokensRange ?? (ac ? ac.byFeature.reduce((s, f) => s + f.tokens, 0) : 0);
             const noData = !ac || ac.byFeature.length === 0;
+            const costPct = ac?.costPct;
             return (
             <div className="space-y-5">
               <h2 className="text-lg font-black flex items-center gap-2"><Bot className="w-5 h-5 text-blue-400" /> IA & Custos Reais</h2>
 
+              <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-4">
+                <DateRangeFilter value={dateRange} onChange={r => setDateRange(r)} loading={statsLoading} />
+              </div>
+
               {/* KPI cards */}
               <div className="grid grid-cols-4 gap-3">
                 {[
-                  { label: "Custo Hoje", val: fmtBrlShort(ac?.todayBrl ?? 0), sub: `US$ ${(ac?.todayUsd ?? 0).toFixed(4)}`, color: "text-blue-400" },
-                  { label: "Custo este Mês", val: fmtBrlShort(ac?.monthBrl ?? 0), sub: `US$ ${(ac?.monthUsd ?? 0).toFixed(4)}`, color: "text-violet-400" },
-                  { label: "Chamadas de IA", val: totalCalls.toLocaleString("pt-BR"), sub: "registradas", color: "text-amber-400" },
-                  { label: "Total de Tokens", val: totalTokens >= 1000 ? `${(totalTokens/1000).toFixed(1)}k` : String(totalTokens), sub: "in + out", color: "text-emerald-400" },
+                  {
+                    label: "Custo no Período", val: fmtBrlShort(ac?.rangeBrl ?? 0),
+                    sub: `US$ ${(ac?.rangeUsd ?? 0).toFixed(4)}`,
+                    pct: costPct != null ? { v: costPct, invert: true } : null,
+                    color: "text-blue-400"
+                  },
+                  { label: "Custo Hoje", val: fmtBrlShort(ac?.todayBrl ?? 0), sub: `US$ ${(ac?.todayUsd ?? 0).toFixed(4)}`, color: "text-violet-400", pct: null },
+                  { label: "Chamadas no Período", val: callsRange.toLocaleString("pt-BR"), sub: "registradas", color: "text-amber-400", pct: null },
+                  { label: "Tokens no Período", val: tokensRange >= 1000 ? `${(tokensRange/1000).toFixed(1)}k` : String(tokensRange), sub: "in + out", color: "text-emerald-400", pct: null },
                 ].map(k => (
                   <div key={k.label} className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-4">
                     <p className="text-[10px] text-white/40 font-bold uppercase">{k.label}</p>
                     <p className={`text-xl font-black mt-1 ${k.color}`}>{k.val}</p>
                     <p className="text-[10px] text-white/30 mt-0.5">{k.sub}</p>
+                    {k.pct && (() => {
+                      const up = k.pct.v >= 0;
+                      const color = k.pct.invert ? (up ? "text-red-400" : "text-emerald-400") : (up ? "text-emerald-400" : "text-red-400");
+                      return <span className={`text-[10px] font-bold ${color}`}>{up ? "↑" : "↓"} {Math.abs(k.pct.v)}% vs anterior</span>;
+                    })()}
                   </div>
                 ))}
               </div>
@@ -1526,7 +1612,11 @@ export default function AdminPage() {
             <div className="space-y-5">
               <h2 className="text-lg font-black flex items-center gap-2"><Lock className="w-5 h-5 text-red-400" /> Logs & Segurança</h2>
 
-              {/* Evento por tipo nos últimos 30 dias */}
+              <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-4">
+                <DateRangeFilter value={dateRange} onChange={r => setDateRange(r)} loading={statsLoading} />
+              </div>
+
+              {/* Evento por tipo no período selecionado */}
               {eventsByType.length > 0 && (
                 <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
                   <p className="text-sm font-bold text-white/70 mb-4">Eventos por tipo — últimos 30 dias</p>

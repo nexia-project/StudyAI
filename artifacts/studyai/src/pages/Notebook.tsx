@@ -1222,6 +1222,9 @@ export default function Notebook() {
 
   // Citações clicáveis: msgIdx + numero da fonte → expandida
   const [openFonte, setOpenFonte] = useState<{ msgIdx: number; numero: number } | null>(null);
+  // Resposta expandida em modal
+  const [expandedMsg, setExpandedMsg] = useState<{ text: string; idx: number } | null>(null);
+  const [expandedSize, setExpandedSize] = useState<"full" | "three-quarters" | "half">("three-quarters");
   // Toggle "perguntar só sobre os documentos selecionados"
   const [restrictToSelected, setRestrictToSelected] = useState(true);
   // Slides nav
@@ -2481,12 +2484,18 @@ export default function Notebook() {
 
                 {/* Ações da mensagem */}
                 {msg.role === "assistant" && (
-                  <div className="flex items-center gap-1 mt-0.5">
+                  <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                     <button
                       onClick={() => navigator.clipboard.writeText(msg.text)}
                       title="Copiar resposta"
                       className="p-1 rounded-lg text-slate-300 hover:text-slate-600 hover:bg-slate-100 transition-colors">
                       <ClipboardList className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setExpandedMsg({ text: msg.text, idx: i })}
+                      title="Expandir resposta (tela cheia, PDF, compartilhar)"
+                      className="p-1 rounded-lg text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
+                      <Maximize2 className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => { /* feedback positivo — no-op por ora */ }}
@@ -5193,6 +5202,202 @@ export default function Notebook() {
 
       </motion.div>
       )}
+
+      {/* ── MODAL RESPOSTA EXPANDIDA ── */}
+      <AnimatePresence>
+        {expandedMsg && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setExpandedMsg(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.96, y: 16 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.96, y: 16 }}
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              onClick={e => e.stopPropagation()}
+              className={`bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ${
+                expandedSize === "full"
+                  ? "fixed inset-0 rounded-none"
+                  : expandedSize === "three-quarters"
+                  ? "w-full max-w-5xl h-[82vh]"
+                  : "w-full max-w-3xl h-[58vh]"
+              }`}
+            >
+              {/* Barra superior */}
+              <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-100 flex-shrink-0 bg-white">
+                {/* Ícone */}
+                <div className="w-7 h-7 flex-shrink-0">
+                  <TiagaoCharacter state="idle" size={28} showLabel={false} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-black text-slate-700 truncate">Resposta #{expandedMsg.idx + 1}</p>
+                  <p className="text-[10px] text-slate-400">{expandedMsg.text.length} caracteres · StudyAI Notebook</p>
+                </div>
+
+                {/* Tamanho */}
+                <div className="hidden sm:flex items-center bg-slate-100 rounded-xl p-0.5 gap-0.5 text-[11px]">
+                  {([
+                    { key: "half",          label: "½",         title: "Meia tela" },
+                    { key: "three-quarters", label: "¾",        title: "¾ da tela" },
+                    { key: "full",          label: "⛶",         title: "Tela cheia" },
+                  ] as const).map(opt => (
+                    <button key={opt.key} onClick={() => setExpandedSize(opt.key)}
+                      title={opt.title}
+                      className={`w-8 h-6 rounded-lg font-black transition-all ${
+                        expandedSize === opt.key ? "bg-white shadow text-indigo-600" : "text-slate-500 hover:text-slate-700"
+                      }`}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Ações export */}
+                <div className="flex items-center gap-1">
+                  {/* Copiar */}
+                  <button
+                    onClick={() => navigator.clipboard.writeText(expandedMsg.text)}
+                    title="Copiar texto"
+                    className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
+                    <ClipboardList className="w-4 h-4" />
+                  </button>
+
+                  {/* Imprimir / PDF */}
+                  <button
+                    onClick={() => {
+                      const w = window.open("", "_blank");
+                      if (!w) return;
+                      w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head>
+                        <meta charset="utf-8"/>
+                        <title>StudyAI — Resposta #${expandedMsg.idx + 1}</title>
+                        <style>
+                          body { font-family: Georgia, serif; max-width: 700px; margin: 40px auto; color: #1e293b; line-height: 1.8; font-size: 15px; padding: 0 20px; }
+                          h1 { font-size: 18px; color: #4f46e5; margin-bottom: 4px; }
+                          .meta { font-size: 12px; color: #94a3b8; margin-bottom: 32px; }
+                          pre { white-space: pre-wrap; word-break: break-word; }
+                          @media print { body { margin: 20mm; } }
+                        </style>
+                      </head><body>
+                        <h1>StudyAI — Resposta #${expandedMsg.idx + 1}</h1>
+                        <p class="meta">Gerado em ${new Date().toLocaleDateString("pt-BR", { dateStyle: "long" })}</p>
+                        <pre>${expandedMsg.text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
+                      </body></html>`);
+                      w.document.close();
+                      w.focus();
+                      setTimeout(() => w.print(), 500);
+                    }}
+                    title="Imprimir / Salvar como PDF"
+                    className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
+                    <Printer className="w-4 h-4" />
+                  </button>
+
+                  {/* WhatsApp */}
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(`*StudyAI — Resposta:*\n\n${expandedMsg.text.slice(0, 1800)}${expandedMsg.text.length > 1800 ? "...\n\n_Texto completo gerado no StudyAI_" : ""}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Enviar pelo WhatsApp"
+                    className="p-1.5 rounded-xl text-slate-400 hover:text-green-600 hover:bg-green-50 transition-colors">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                    </svg>
+                  </a>
+
+                  {/* Email */}
+                  <a
+                    href={`mailto:?subject=${encodeURIComponent("Resposta StudyAI")}&body=${encodeURIComponent(`Resposta gerada pelo StudyAI:\n\n${expandedMsg.text}`)}`}
+                    title="Enviar por e-mail"
+                    className="p-1.5 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                  </a>
+
+                  {/* Copiar link */}
+                  <button
+                    onClick={() => {
+                      const url = `${window.location.href.split("?")[0]}?msg=${expandedMsg.idx}`;
+                      navigator.clipboard.writeText(url);
+                    }}
+                    title="Copiar link para esta resposta"
+                    className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
+                    <ExternalLink className="w-4 h-4" />
+                  </button>
+
+                  {/* Download .txt */}
+                  <button
+                    onClick={() => {
+                      const blob = new Blob([expandedMsg.text], { type: "text/plain;charset=utf-8" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url; a.download = `studyai-resposta-${expandedMsg.idx + 1}.txt`;
+                      a.click(); URL.revokeObjectURL(url);
+                    }}
+                    title="Baixar como .txt"
+                    className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
+                    <Download className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Fechar */}
+                <button onClick={() => setExpandedMsg(null)}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors ml-1 flex-shrink-0">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Conteúdo */}
+              <div className="flex-1 overflow-y-auto p-6 sm:p-10 bg-white">
+                <div className="max-w-3xl mx-auto">
+                  <p className="text-slate-800 text-base leading-relaxed whitespace-pre-wrap font-[Georgia,serif] selection:bg-indigo-100">
+                    {expandedMsg.text}
+                  </p>
+                </div>
+              </div>
+
+              {/* Rodapé */}
+              <div className="px-6 py-3 bg-slate-50 border-t border-slate-100 flex-shrink-0 flex items-center justify-between">
+                <p className="text-[11px] text-slate-400">Gerado pelo StudyAI • study.ia.br</p>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setExpandedMsg(null)}
+                    className="text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors">
+                    Fechar
+                  </button>
+                  <button
+                    onClick={() => {
+                      const w = window.open("", "_blank");
+                      if (!w) return;
+                      w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head>
+                        <meta charset="utf-8"/>
+                        <title>StudyAI — Resposta #${expandedMsg.idx + 1}</title>
+                        <style>
+                          body { font-family: Georgia, serif; max-width: 700px; margin: 40px auto; color: #1e293b; line-height: 1.8; font-size: 15px; padding: 0 20px; }
+                          h1 { font-size: 18px; color: #4f46e5; margin-bottom: 4px; }
+                          .meta { font-size: 12px; color: #94a3b8; margin-bottom: 32px; }
+                          pre { white-space: pre-wrap; word-break: break-word; }
+                          @media print { body { margin: 20mm; } }
+                        </style>
+                      </head><body>
+                        <h1>StudyAI — Resposta #${expandedMsg.idx + 1}</h1>
+                        <p class="meta">Gerado em ${new Date().toLocaleDateString("pt-BR", { dateStyle: "long" })}</p>
+                        <pre>${expandedMsg.text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
+                      </body></html>`);
+                      w.document.close();
+                      w.focus();
+                      setTimeout(() => w.print(), 500);
+                    }}
+                    className="text-xs font-bold px-4 py-1.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 transition-colors flex items-center gap-1.5">
+                    <Printer className="w-3 h-3" /> Imprimir / PDF
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Caderno modal */}
       <AnimatePresence>

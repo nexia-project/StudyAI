@@ -1,0 +1,1384 @@
+# ============================================================================
+# PROFESSOR TIAGÃO V3.0 — ARQUITETURA PROFISSIONAL COMPLETA
+# Assistente de Voz Inteligente — Study.IA
+# ============================================================================
+# Arquivo: professor_tiagao_v3_arquitetura_profissional.txt
+# Versão: 3.0 — Produção Ready
+# Objetivo: Zero bugs, zero latência, integração total
+# ============================================================================
+
+# ============================================================================
+# DIAGNÓSTICO DOS PROBLEMAS ATUAIS
+# ============================================================================
+
+## ❌ PROBLEMAS IDENTIFICADOS
+
+| Problema | Causa raiz | Impacto |
+|----------|-----------|---------|
+| Delay nos áudios | Pipeline síncrono + processamento pesado no backend | Experiência quebrada |
+| Microfones não reconhecidos | WebRTC mal configurado + falta de fallbacks | Usuário desiste |
+| Desincronismo áudio/lousa | Renderização de texto não acoplada ao áudio | Profissionalismo prejudicado |
+| Latência em comandos | Requisições HTTP síncronas + processamento pesado | Tiagão parece "lento" |
+| Escrita desnecessária | Interface força transcrição visual | Experiência de voz quebrada |
+| Pausas mal detectadas | VAD (Voice Activity Detection) básico | Interrupções indevidas |
+
+## ✅ SOLUÇÕES ARQUITETURAIS
+
+| Problema | Solução técnica | Ganho esperado |
+|----------|----------------|----------------|
+| Delay áudio | Streaming + Edge processing + CDN áudio | <500ms total |
+| Microfones | WebRTC robusto + fallbacks + permissões inteligentes | 99% compatibilidade |
+| Desincronismo | Timeline unificada áudio+visual | Frame-perfect sync |
+| Latência comandos | WebSocket persistente + prefetching + caching | <200ms resposta |
+| Escrita desnecessária | Modo "voz pura" opcional | Experiência imersiva |
+| Pausas | VAD avançado + NLP de contexto | Detecção precisa |
+
+# ============================================================================
+# ARQUITETURA GERAL — TIAGÃO V3
+# ============================================================================
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ CLIENTE (Browser/App) │
+│ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────────┐ │
+│ │ WebRTC │ │ Audio │ │ Visual │ │ Command │ │
+│ │ Manager │ │ Pipeline │ │ Renderer │ │ Interface │ │
+│ │ │ │ │ │ │ │ │ │
+│ │ • getUser │ │ • VAD │ │ • Lousa │ │ • Voice │ │
+│ │ Media │ │ advanced │ │ sync │ │ commands │ │
+│ │ • Fallbacks │ │ • Noise │ │ • Avatar │ │ • Gestures │ │
+│ │ devices │ │ cancel │ │ animated │ │ • Shortcuts │ │
+│ │ • Echo │ │ • Stream │ │ • Text │ │ │ │
+│ │ cancel │ │ encoding │ │ optional │ │ │ │
+│ └──────┬──────┘ └──────┬──────┘ └──────┬──────┘ └────────┬────────┘ │
+│ │ │ │ │ │
+│ └────────────────┴────────────────┴──────────────────┘ │
+│ │ │
+│ ┌─────────┴─────────┐ │
+│ │ State Manager │ │
+│ │ (Zustand/Redux) │ │
+│ │ │ │
+│ │ • Session state │ │
+│ │ • Audio buffer │ │
+│ │ • Visual timeline │ │
+│ │ • Context memory │ │
+│ └─────────┬─────────┘ │
+│ │ │
+│ ┌─────────┴─────────┐ │
+│ │ WebSocket Client │ │
+│ │ (Socket.io v4) │ │
+│ │ │ │
+│ │ • Persistent conn │ │
+│ │ • Auto-reconnect │ │
+│ │ • Binary audio │ │
+│ │ • Heartbeat │ │
+│ └───────────────────┘ │
+│ │ │
+└──────────────────────────────┼─────────────────────────────────────────┘
+│
+┌──────────────────────────────┼─────────────────────────────────────────┐
+│ ▼ │
+│ EDGE NETWORK │
+│ ┌─────────────────────────────────────────────────────────────────┐ │
+│ │ Cloudflare Workers / Vercel Edge / AWS Lambda@Edge │ │
+│ │ │ │
+│ │ • Audio preprocessing (noise gate, normalization) │ │
+│ │ • Initial VAD (fast reject) │ │
+│ │ • Caching de respostas frequentes │ │
+│ │ • Geolocation routing │ │
+│ │ • Rate limiting │ │
+│ │ │ │
+│ │ LATÊNCIA: <50ms │ │
+│ └─────────────────────────────────────────────────────────────────┘ │
+│ │ │
+└──────────────────────────────┼─────────────────────────────────────────┘
+│
+┌──────────────────────────────┼─────────────────────────────────────────┐
+│ ▼ │
+│ ORQUESTRADOR TIAGÃO │
+│ ┌─────────────────────────────────────────────────────────────────┐ │
+│ │ Kubernetes Cluster — Auto-scaling │ │
+│ │ │ │
+│ │ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ │ │
+│ │ │ Gateway │ │ Session │ │ Load │ │ │
+│ │ │ WebSocket │ │ Manager │ │ Balancer │ │ │
+│ │ │ │ │ │ │ │ │ │
+│ │ │ • Auth │ │ • Context │ │ • Least │ │ │
+│ │ │ • Routing │ │ memory │ │ latency │ │ │
+│ │ │ • Metrics │ │ • History │ │ • Geo-aware │ │ │
+│ │ │ │ │ • State │ │ │ │ │
+│ │ └──────┬──────┘ └─────────────┘ └─────────────┘ │ │
+│ │ │ │ │
+│ │ └────────────────┬─────────────────────────────────────┘ │
+│ │ │ │
+│ │ ┌───────────────────────┴─────────────────────────────────────┐ │
+│ │ │ PROCESSING PIPELINE (Async) │ │
+│ │ │ │ │
+│ │ │ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ │ │
+│ │ │ │ Speech-to │───►│ Intent │───►│ Context │ │ │
+│ │ │ │ Text (STT) │ │ Classifier │ │ Enricher │ │ │
+│ │ │ │ │ │ │ │ │ │ │
+│ │ │ │ • Whisper │ │ • NLU │ │ • User data │ │ │
+│ │ │ │ large-v3 │ │ custom │ │ • History │ │ │
+│ │ │ │ • Streaming │ │ • Entity │ │ • Session │ │ │
+│ │ │ │ • Diarization│ │ extraction│ │ • Preferences│ │ │
+│ │ │ └─────────────┘ └─────────────┘ └─────────────┘ │ │
+│ │ │ │ │
+│ │ │ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ │ │
+│ │ │ │ Action │───►│ Response │───►│ Text-to │ │ │
+│ │ │ │ Executor │ │ Generator │ │ Speech │ │ │
+│ │ │ │ │ │ │ │ (TTS) │ │ │
+│ │ │ │ • API calls │ │ • LLM │ │ │ │ │
+│ │ │ │ • DB queries│ │ (GPT-4o/ │ │ • ElevenLabs│ │ │
+│ │ │ │ • File ops │ │ Claude) │ │ Turbo v2.5│ │ │
+│ │ │ │ • External │ │ • RAG │ │ • Streaming │ │ │
+│ │ │ │ services │ │ • Templates │ │ • Emotion │ │ │
+│ │ │ └─────────────┘ └─────────────┘ └─────────────┘ │ │
+│ │ │ │ │
+│ │ │ LATÊNCIA ALVO: <1s para resposta de voz │ │
+│ │ └─────────────────────────────────────────────────────────────┘ │
+│ │ │
+│ └─────────────────────────────────────────────────────────────────────┘
+│ │
+│ ┌───────────────────────────┴─────────────────────────────────────────┐
+│ │ SERVIÇOS AUXILIARES │
+│ │ │
+│ │ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌────────────┐ │
+│ │ │ Redis │ │ PostgreSQL │ │ S3/MinIO │ │ Prometheus│ │
+│ │ │ Cache │ │ State │ │ Audio │ │ + Grafana │ │
+│ │ │ │ │ Persistent │ │ Storage │ │ Metrics │ │
+│ │ │ • Sessions │ │ │ │ │ │ │ │
+│ │ │ • Hot data │ │ • Users │ │ • Recordings│ │ • Latency │ │
+│ │ │ • Queues │ │ • History │ │ • TTS cache │ │ • Errors │ │
+│ │ │ │ │ • Analytics │ │ • Models │ │ • Usage │ │
+│ │ └─────────────┘ └─────────────┘ └─────────────┘ └────────────┘ │
+│ │ │
+│ └─────────────────────────────────────────────────────────────────────┘
+│ │
+└─────────────────────────────────────────────────────────────────────────┘
+
+kotlin
+
+# ============================================================================
+# COMPONENTE 1: AUDIO PIPELINE — ZERO DELAY
+# ============================================================================
+
+## 1.1 Captura de Áudio Robusta
+
+```typescript  
+// audio-capture-manager.ts  
+// Gerencia captura de áudio com fallbacks e otimizações  
+
+interface AudioConfig {  
+  sampleRate: 48000;      // Padrão broadcast  
+  channelCount: 1;        // Mono para voz (eficiente)  
+  echoCancellation: true;  
+  noiseSuppression: true;  
+  autoGainControl: true;  
+  latencyHint: 'interactive'; // <10ms  
+}  
+
+class AudioCaptureManager {  
+  private stream: MediaStream | null = null;  
+  private audioContext: AudioContext | null = null;  
+  private workletNode: AudioWorkletNode | null = null;  
+  private fallbackRecorder: MediaRecorder | null = null;  
+
+  async initialize(): Promise<boolean> {  
+    // Tentativa 1: AudioWorklet (melhor performance)  
+    try {  
+      await this.initAudioWorklet();  
+      return true;  
+    } catch (e) {  
+      console.warn('AudioWorklet failed, trying fallback...');  
+    }  
+
+    // Tentativa 2: MediaRecorder com chunks pequenos  
+    try {  
+      await this.initMediaRecorder();  
+      return true;  
+    } catch (e) {  
+      console.error('All audio capture methods failed');  
+      return false;  
+    }  
+  }  
+
+  private async initAudioWorklet(): Promise<void> {  
+    this.audioContext = new AudioContext({  
+      sampleRate: 48000,  
+      latencyHint: 'interactive'  
+    });  
+
+    // Carrega processador de áudio otimizado  
+    await this.audioContext.audioWorklet.addModule(  
+      '/audio-worklets/vad-processor.js'  
+    );  
+
+    const stream = await navigator.mediaDevices.getUserMedia({  
+      audio: {  
+        sampleRate: 48000,  
+        channelCount: 1,  
+        echoCancellation: true,  
+        noiseSuppression: true,  
+        autoGainControl: true,  
+        // Prioriza dispositivos de áudio de qualidade  
+        deviceId: await this.selectBestAudioDevice()  
+      }  
+    });  
+
+    const source = this.audioContext.createMediaStreamSource(stream);  
+    this.workletNode = new AudioWorkletNode(  
+      this.audioContext,  
+      'vad-processor',  
+      {  
+        processorOptions: {  
+          frameSize: 480,        // 10ms @ 48kHz  
+          bufferSize: 4800,      // 100ms buffer  
+          vadThreshold: 0.6,     // Sensibilidade  
+          silenceTimeout: 800,   // 800ms = fim de fala  
+          minSpeechDuration: 200 // Ignora <200ms (ruído)  
+        }  
+      }  
+    );  
+
+    // Processamento em tempo real  
+    this.workletNode.port.onmessage = (event) => {  
+      const { type, payload } = event.data;  
+      
+      switch (type) {  
+        case 'speech-start':  
+          this.onSpeechStart();  
+          break;  
+        case 'speech-chunk':  
+          this.onSpeechChunk(payload.audioBuffer);  
+          break;  
+        case 'speech-end':  
+          this.onSpeechEnd(payload.duration);  
+          break;  
+        case 'volume':  
+          this.onVolumeUpdate(payload.db);  
+          break;  
+      }  
+    };  
+
+    source.connect(this.workletNode);  
+    this.stream = stream;  
+  }  
+
+  // Seleção inteligente de dispositivo  
+  private async selectBestAudioDevice(): Promise<string | undefined> {  
+    const devices = await navigator.mediaDevices.enumerateDevices();  
+    const audioInputs = devices.filter(d => d.kind === 'audioinput');  
+
+    // Prioridade: headset > usb > bluetooth > built-in  
+    const priority = ['headset', 'usb', 'bluetooth', 'default'];  
+    
+    for (const type of priority) {  
+      const match = audioInputs.find(d =>   
+        d.label.toLowerCase().includes(type)  
+      );  
+      if (match) return match.deviceId;  
+    }  
+
+    return undefined; // Default do sistema  
+  }  
+
+  // Fallback para navegadores limitados  
+  private async initMediaRecorder(): Promise<void> {  
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });  
+    this.fallbackRecorder = new MediaRecorder(stream, {  
+      mimeType: 'audio/webm;codecs=opus',  
+      audioBitsPerSecond: 24000  
+    });  
+
+    const chunks: Blob[] = [];  
+
+    this.fallbackRecorder.ondataavailable = (e) => {  
+      if (e.data.size > 0) chunks.push(e.data);  
+    };  
+
+    // Grava em chunks de 100ms para baixa latência  
+    this.fallbackRecorder.start(100);  
+    
+    // VAD simplificado por análise de volume  
+    this.startFallbackVAD(stream);  
+  }  
+}  
+1.2 VAD (Voice Activity Detection) Avançado
+typescript
+// vad-processor.js — AudioWorklet
+// Executa em thread separada, não bloqueia main thread
+
+class VADProcessor extends AudioWorkletProcessor {
+  constructor(options) {
+    super();
+    this.frameSize = options.processorOptions.frameSize;
+    this.bufferSize = options.processorOptions.bufferSize;
+    this.vadThreshold = options.processorOptions.vadThreshold;
+    this.silenceTimeout = options.processorOptions.silenceTimeout;
+    this.minSpeechDuration = options.processorOptions.minSpeechDuration;
+
+    this.buffer = new Float32Array(this.bufferSize);
+    this.bufferIndex = 0;
+    this.isSpeaking = false;
+    this.silenceFrames = 0;
+    this.speechFrames = 0;
+    this.speechStartTime = 0;
+  }
+
+  process(inputs, outputs, parameters) {
+    const input = inputs[0][0]; // Canal 0
+    if (!input) return true;
+
+    // Calcula energia do frame (RMS)
+    let sum = 0;
+    for (let i = 0; i < input.length; i++) {
+      sum += input[i] * input[i];
+    }
+    const rms = Math.sqrt(sum / input.length);
+    const db = 20 * Math.log10(rms + 1e-10);
+
+    // Detecta fala com histerese (evita oscilação)
+    const isSpeech = rms > this.vadThreshold;
+
+    if (isSpeech && !this.isSpeaking) {
+      // Início de fala
+      this.isSpeaking = true;
+      this.speechStartTime = currentTime;
+      this.silenceFrames = 0;
+      this.port.postMessage({ type: 'speech-start' });
+    }
+
+    if (this.isSpeaking) {
+      if (isSpeech) {
+        this.silenceFrames = 0;
+        this.speechFrames++;
+      } else {
+        this.silenceFrames++;
+      }
+
+      // Acumula no buffer
+      this.buffer.set(input, this.bufferIndex);
+      this.bufferIndex += input.length;
+
+      // Envia chunk para streaming
+      if (this.bufferIndex >= this.frameSize * 5) { // A cada 50ms
+        this.port.postMessage({
+          type: 'speech-chunk',
+          payload: {
+            audioBuffer: this.buffer.slice(0, this.bufferIndex),
+            timestamp: currentTime
+          }
+        }, [this.buffer.slice(0, this.bufferIndex).buffer]); // Transfer ownership
+        
+        this.bufferIndex = 0;
+      }
+
+      // Fim de fala: silêncio prolongado OU buffer cheio
+      const silenceDuration = (this.silenceFrames * 128) / 48000 * 1000; // ms
+      
+      if (silenceDuration > this.silenceTimeout || this.bufferIndex >= this.bufferSize) {
+        const speechDuration = (currentTime - this.speechStartTime) * 1000;
+        
+        if (speechDuration > this.minSpeechDuration) {
+          this.port.postMessage({
+            type: 'speech-end',
+            payload: {
+              duration: speechDuration,
+              finalBuffer: this.buffer.slice(0, this.bufferIndex)
+            }
+          });
+        }
+
+        this.isSpeaking = false;
+        this.speechFrames = 0;
+        this.bufferIndex = 0;
+      }
+    }
+
+    // Feedback de volume para UI
+    this.port.postMessage({
+      type: 'volume',
+      payload: { db: Math.max(-60, db) }
+    });
+
+    return true;
+  }
+}
+
+registerProcessor('vad-processor', VADProcessor);
+1.3 Streaming de Áudio Otimizado
+typescript
+// audio-streamer.ts
+// Envia áudio em tempo real com mínima latência
+
+class AudioStreamer {
+  private ws: WebSocket;
+  private encoder: OpusEncoder;
+  private packetQueue: ArrayBuffer[] = [];
+  private isConnected = false;
+
+  constructor(endpoint: string) {
+    // WebSocket com compressão permessage-deflate
+    this.ws = new WebSocket(endpoint, ['audio-stream'], {
+      perMessageDeflate: true
+    });
+    
+    this.ws.binaryType = 'arraybuffer';
+    this.setupHandlers();
+    
+    // Opus a 24kbps — qualidade de voz excelente, baixo bitrate
+    this.encoder = new OpusEncoder(48000, 1, 24000);
+  }
+
+  private setupHandlers(): void {
+    this.ws.onopen = () => {
+      this.isConnected = true;
+      this.flushQueue();
+      
+      // Envia configuração de sessão
+      this.sendControl({
+        type: 'session-init',
+        config: {
+          sampleRate: 48000,
+          channels: 1,
+          codec: 'opus',
+          language: 'pt-BR',
+          userId: getCurrentUserId(),
+          context: getCurrentContext() // Onde está no sistema
+        }
+      });
+    };
+
+    this.ws.onmessage = (event) => {
+      if (typeof event.data === 'string') {
+        this.handleControlMessage(JSON.parse(event.data));
+      } else {
+        this.handleAudioChunk(event.data);
+      }
+    };
+
+    // Reconexão automática com backoff exponencial
+    this.ws.onclose = () => this.reconnect();
+  }
+
+  streamAudio(pcmBuffer: Float32Array): void {
+    // Codifica para Opus
+    const opusPacket = this.encoder.encode(pcmBuffer);
+    
+    if (this.isConnected) {
+      this.ws.send(opusPacket);
+    } else {
+      this.packetQueue.push(opusPacket);
+    }
+  }
+
+  // Envia imediatamente quando conecta
+  private flushQueue(): void {
+    while (this.packetQueue.length > 0) {
+      this.ws.send(this.packetQueue.shift()!);
+    }
+  }
+
+  private handleAudioChunk(opusData: ArrayBuffer): void {
+    // Decodifica e reproduz com mínima latência
+    const pcm = this.decoder.decode(new Uint8Array(opusData));
+    this.audioPlayer.play(pcm);
+  }
+}
+============================================================================
+COMPONENTE 2: SINCRONISMO ÁUDIO-VISUAL PERFEITO
+============================================================================
+2.1 Timeline Unificada
+typescript
+// sync-timeline.ts
+// Garante que áudio e visual estejam perfeitamente sincronizados
+
+interface TimelineEvent {
+  id: string;
+  type: 'speech' | 'text' | 'highlight' | 'animation' | 'action';
+  startTime: number;    // ms desde início da sessão
+  duration: number;     // ms
+  payload: any;
+  dependencies: string[]; // IDs de eventos que devem completar antes
+}
+
+class SyncTimeline {
+  private events: Map<string, TimelineEvent> = new Map();
+  private audioContext: AudioContext;
+  private startTime: number = 0;
+  private currentEvent: TimelineEvent | null = null;
+
+  constructor() {
+    this.audioContext = new AudioContext();
+  }
+
+  // Inicia nova sessão sincronizada
+  startSession(): void {
+    this.startTime = this.audioContext.currentTime * 1000;
+    this.events.clear();
+  }
+
+  // Agenda evento na timeline
+  schedule(event: Omit<TimelineEvent, 'startTime'> & { delay?: number }): void {
+    const scheduledEvent: TimelineEvent = {
+      ...event,
+      startTime: this.startTime + (event.delay || 0)
+    };
+    
+    this.events.set(event.id, scheduledEvent);
+  }
+
+  // Executa timeline em tempo real
+  async execute(): Promise<void> {
+    const sortedEvents = Array.from(this.events.values())
+      .sort((a, b) => a.startTime - b.startTime);
+
+    for (const event of sortedEvents) {
+      // Aguarda momento correto
+      const now = this.audioContext.currentTime * 1000;
+      const waitTime = event.startTime - now;
+      
+      if (waitTime > 0) {
+        await this.preciseDelay(waitTime);
+      }
+
+      // Executa evento
+      await this.executeEvent(event);
+    }
+  }
+
+  private async executeEvent(event: TimelineEvent): Promise<void> {
+    this.currentEvent = event;
+
+    switch (event.type) {
+      case 'speech':
+        // Áudio começa IMEDIATAMENTE
+        await this.playAudio(event.payload.audioUrl);
+        break;
+      
+      case 'text':
+        // Texto aparece SINCRONIZADO com áudio
+        // Calculado pelo backend baseado na fonética
+        this.renderText(event.payload.text, event.payload.style);
+        break;
+      
+      case 'highlight':
+        // Destaque na lousa sincronizado com palavra sendo falada
+        this.highlightOnBoard(
+          event.payload.elementId,
+          event.payload.duration
+        );
+        break;
+      
+      case 'animation':
+        // Animação do avatar sincronizada com entonação
+        this.animateAvatar(
+          event.payload.animation,
+          event.payload.intensity
+        );
+        break;
+      
+      case 'action':
+        // Comando do sistema (abrir módulo, etc)
+        this.executeSystemAction(event.payload);
+        break;
+    }
+  }
+
+  // Sincronização específica: Tiagão falando + lousa
+  async speakAndWrite(
+    speechAudio: ArrayBuffer,
+    wordTimings: WordTiming[], // [{word: 'olá', start: 0, end: 300}, ...]
+    boardContent: BoardElement[]
+  ): Promise<void> {
+    // Prepara timeline
+    this.startSession();
+
+    // Áudio como referência de tempo
+    this.schedule({
+      id: 'speech-main',
+      type: 'speech',
+      payload: { audioUrl: URL.createObjectURL(new Blob([speechAudio])) },
+      duration: this.getAudioDuration(speechAudio),
+      dependencies: []
+    });
+
+    // Cada palavra sincronizada
+    wordTimings.forEach((timing, index) => {
+      this.schedule({
+        id: `word-${index}`,
+        type: 'text',
+        delay: timing.start,
+        payload: {
+          text: timing.word,
+          style: { color: '#6366F1', fontSize: '24px' }
+        },
+        duration: timing.end - timing.start,
+        dependencies: ['speech-main']
+      });
+
+      // Se tem elemento na lousa, destaca
+      const boardElement = boardContent.find(e => 
+        e.text.includes(timing.word)
+      );
+      
+      if (boardElement) {
+        this.schedule({
+          id: `highlight-${index}`,
+          type: 'highlight',
+          delay: timing.start,
+          payload: {
+            elementId: boardElement.id,
+            duration: timing.end - timing.start
+          },
+          dependencies: [`word-${index}`]
+        });
+      }
+    });
+
+    // Executa tudo sincronizado
+    await this.execute();
+  }
+}
+2.2 Renderização de Lousa Sincronizada
+typescript
+// board-renderer.ts
+// Lousa interativa com sincronismo perfeito
+
+class SyncBoard {
+  private canvas: HTMLCanvasElement;
+  private ctx: CanvasRenderingContext2D;
+  private elements: Map<string, BoardElement> = new Map();
+  private activeHighlights: Set<string> = new Set();
+
+  constructor(container: HTMLElement) {
+    this.canvas = document.createElement('canvas');
+    this.ctx = this.canvas.getContext('2d')!;
+    container.appendChild(this.canvas);
+    
+    this.setupHighDPI();
+    this.startRenderLoop();
+  }
+
+  // Renderização em 60fps sincronizada
+  private startRenderLoop(): void {
+    const render = () => {
+      this.clear();
+      
+      // Desenha elementos
+      this.elements.forEach(el => {
+        this.drawElement(el, this.activeHighlights.has(el.id));
+      });
+
+      requestAnimationFrame(render);
+    };
+    
+    requestAnimationFrame(render);
+  }
+
+  // Destaque sincronizado com fala
+  highlight(elementId: string, duration: number): void {
+    this.activeHighlights.add(elementId);
+    
+    // Efeito visual de pulso sincronizado
+    const element = this.elements.get(elementId);
+    if (element) {
+      this.animateHighlight(element, duration);
+    }
+
+    setTimeout(() => {
+      this.activeHighlights.delete(elementId);
+    }, duration);
+  }
+
+  // Escrita em tempo real (simulando mão)
+  async writeText(
+    text: string,
+    position: { x: number; y: number },
+    speed: number = 50 // ms por caractere
+  ): Promise<void> {
+    let currentText = '';
+    
+    for (const char of text) {
+      currentText += char;
+      
+      // Sincroniza com áudio se disponível
+      const expectedTime = this.getExpectedTimeForChar(char);
+      const now = performance.now();
+      const delay = Math.max(0, expectedTime - now);
+      
+      await this.preciseDelay(delay);
+      
+      this.updateElement('writing', {
+        type: 'text',
+        content: currentText,
+        position
+      });
+    }
+  }
+}
+============================================================================
+COMPONENTE 3: COMANDOS DE VOZ — INTEGRAÇÃO TOTAL
+============================================================================
+3.1 Sistema de Intents
+typescript
+// voice-commands.ts
+// Todos os comandos que Tiagão entende e executa
+
+interface VoiceCommand {
+  intent: string;
+  patterns: RegExp[];           // Padrões de fala reconhecidos
+  entities: string[];           // Dados a extrair
+  action: (context: CommandContext, entities: any) => Promise<void>;
+  requiresConfirmation: boolean;
+  responseType: 'immediate' | 'deferred' | 'streaming';
+}
+
+const TIAGAO_COMMANDS: VoiceCommand[] = [
+  // NAVEGAÇÃO
+  {
+    intent: 'navigate',
+    patterns: [
+      /abra (?:o |a )?(.+)/i,
+      /vá para (?:o |a )?(.+)/i,
+      /mostre (?:o |a )?(.+)/i,
+      /quero ver (?:o |a )?(.+)/i
+    ],
+    entities: ['destination'],
+    action: async (ctx, { destination }) => {
+      const module = resolveModule(destination);
+      await ctx.router.navigate(module);
+      await ctx.tiagao.speak(`Abrindo ${module.name}`);
+    },
+    requiresConfirmation: false,
+    responseType: 'immediate'
+  },
+
+  // CRIAÇÃO RÁPIDA
+  {
+    intent: 'create_study_plan',
+    patterns: [
+      /crie um plano de estudos?(?: para)? (.+)?/i,
+      /quero estudar (.+)/i,
+      /me ajude com (.+)/i
+    ],
+    entities: ['subject', 'topic', 'deadline', 'hours_per_day'],
+    action: async (ctx, entities) => {
+      // Streaming de progresso
+      ctx.tiagao.startStreamingResponse();
+      
+      const plan = await ctx.studyPlanner.create({
+        ...entities,
+        userProfile: ctx.user.profile,
+        currentProgress: ctx.user.progress
+      });
+      
+      // Fala enquanto mostra visual
+      await ctx.tiagao.speakAndShow(
+        `Criei seu plano de estudos para ${plan.subject}. ` +
+        `São ${plan.totalHours} horas distribuídas em ${plan.weeks} semanas. ` +
+        `Vamos começar com ${plan.firstTopic}?`,
+        { type: 'study-plan-preview', data: plan }
+      );
+    },
+    requiresConfirmation: false,
+    responseType: 'streaming'
+  },
+
+  // CRIAÇÃO DE SLIDES
+  {
+    intent: 'create_presentation',
+    patterns: [
+      /crie (?:uma )?apresentação(?: sobre)? (.+)/i,
+      /faça (?:uns )?slides?(?: sobre)? (.+)/i,
+      /preciso de (?:uma )?aula sobre (.+)/i
+    ],
+    entities: ['topic', 'audience', 'duration', 'style'],
+    action: async (ctx, entities) => {
+      ctx.tiagao.speak('Estou criando sua apresentação. Isso leva cerca de 30 segundos.');
+      
+      // Processamento paralelo com updates de voz
+      const generator = ctx.slideGenerator.create(entities);
+      
+      for await (const update of generator.progress()) {
+        if (update.milestone) {
+          await ctx.tiagao.speak(update.milestone);
+        }
+      }
+      
+      const slides = await generator.result();
+      
+      await ctx.tiagao.speakAndShow(
+        `Pronto! Criei ${slides.count} slides sobre ${entities.topic}. ` +
+        `Quer que eu apresente ou você prefere editar primeiro?`,
+        { type: 'presentation-preview', slides }
+      );
+    },
+    requiresConfirmation: false,
+    responseType: 'streaming'
+  },
+
+  // RESOLUÇÃO DE EXERCÍCIOS
+  {
+    intent: 'solve_problem',
+    patterns: [
+      /resolva (?:isso|essa questão|este problema)/i,
+      /como faz (?:isso|essa conta)?/i,
+      /não entendi (?:isso|essa parte)/i,
+      /me explica (?:essa )?questão/i
+    ],
+    entities: ['problem_text', 'subject', 'difficulty'],
+    action: async (ctx, entities) => {
+      // Captura contexto da tela se não fornecido
+      const problem = entities.problem_text || await ctx.screen.captureText();
+      
+      ctx.tiagao.speak('Deixa eu analisar essa questão...');
+      
+      const solution = await ctx.problemSolver.solve({
+        problem,
+        subject: entities.subject || ctx.currentSubject,
+        explanationLevel: ctx.user.preferences.explanationDepth
+      });
+      
+      // Explicação passo a passo com sincronismo
+      for (const step of solution.steps) {
+        await ctx.tiagao.speakAndHighlight(
+          step.explanation,
+          step.visualElement // Destaca na questão
+        );
+        
+        // Pausa para digestão, continua se usuário não interromper
+        await ctx.tiagao.waitOrContinue(3000);
+      }
+    },
+    requiresConfirmation: false,
+    responseType: 'streaming'
+  },
+
+  // CONTROLE DE SISTEMA
+  {
+    intent: 'system_control',
+    patterns: [
+      /(pause|pare|continue|prossiga|reinicie|volte)/i,
+      /(aumente|diminua) (?:o )?volume/i,
+      /modo (?:sem )?interrupção/i,
+      /me deixe em paz/i
+    ],
+    entities: ['action', 'parameter'],
+    action: async (ctx, { action }) => {
+      switch (action) {
+        case 'pause':
+          ctx.tiagao.pause();
+          ctx.audioPlayer.pause();
+          break;
+        case 'continue':
+          ctx.tiagao.resume();
+          break;
+        case 'aumente':
+          ctx.audioPlayer.setVolume(v => Math.min(1, v + 0.1));
+          break;
+        // ... etc
+      }
+    },
+    requiresConfirmation: false,
+    responseType: 'immediate'
+  },
+
+  // CONVERSA GERAL
+  {
+    intent: 'general_chat',
+    patterns: [/.*/], // Fallback
+    entities: [],
+    action: async (ctx, _, rawText) => {
+      // Delega para LLM com contexto completo
+      const response = await ctx.llm.chat({
+        message: rawText,
+        context: ctx.session.getHistory(),
+        userProfile: ctx.user.profile,
+        currentView: ctx.router.currentRoute
+      });
+      
+      await ctx.tiagao.speak(response.text);
+      
+      // Se tem ação sugerida, oferece
+      if (response.suggestedAction) {
+        await ctx.tiagao.suggestAction(response.suggestedAction);
+      }
+    },
+    requiresConfirmation: false,
+    responseType: 'deferred'
+  }
+];
+3.2 Processamento de Comandos
+typescript
+// command-processor.ts
+
+class CommandProcessor {
+  private stt: StreamingSTT;
+  private nlu: NLUModel;
+  private context: CommandContext;
+
+  async processAudioStream(audioStream: AsyncIterable<Float32Array>): Promise<void> {
+    // STT streaming com partial results
+    for await (const transcript of this.stt.transcribe(audioStream)) {
+      // Ignora partial results muito curtos (ruído)
+      if (transcript.isFinal && transcript.text.length < 3) continue;
+
+      // Mostra transcrição apenas em modo debug
+      if (this.context.user.preferences.showTranscript) {
+        this.showTranscript(transcript.text, !transcript.isFinal);
+      }
+
+      if (transcript.isFinal) {
+        await this.executeCommand(transcript.text);
+      }
+    }
+  }
+
+  private async executeCommand(text: string): Promise<void> {
+    // Classifica intent
+    const classification = await this.nlu.classify(text);
+    
+    // Encontra comando correspondente
+    const command = TIAGAO_COMMANDS.find(cmd => 
+      cmd.intent === classification.intent
+    );
+
+    if (!command) {
+      // Fallback para conversa geral
+      await this.executeGeneralChat(text);
+      return;
+    }
+
+    // Extrai entidades
+    const entities = await this.nlu.extractEntities(text, command.entities);
+
+    // Confirma se necessário
+    if (command.requiresConfirmation) {
+      const confirmed = await this.tiagao.confirm(
+        `Você quer que eu ${this.describeAction(command, entities)}?`
+      );
+      if (!confirmed) return;
+    }
+
+    // Executa com timeout e cancelamento
+    const abortController = new AbortController();
+    
+    this.tiagao.onInterrupt(() => abortController.abort());
+
+    try {
+      await Promise.race([
+        command.action(this.context, entities),
+        this.createTimeout(30000, abortController)
+      ]);
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        this.tiagao.speak('Ok, parei. Posso ajudar com outra coisa?');
+      } else {
+        this.tiagao.speak('Desculpe, deu um problema. Vamos tentar de novo?');
+        this.reportError(error);
+      }
+    }
+  }
+}
+============================================================================
+COMPONENTE 4: OTIMIZAÇÃO DE LATÊNCIA — CACHE E PREFETCH
+============================================================================
+4.1 Sistema de Cache Inteligente
+typescript
+// tiagao-cache.ts
+// Reduz latência para comandos frequentes
+
+interface CachedResponse {
+  audio: ArrayBuffer;      // TTS pré-gerado
+  lipSync: LipSyncData;    // Dados de sincronia labial
+  actions: SystemAction[]; // Ações pré-computadas
+  expiresAt: number;
+}
+
+class TiagaoCache {
+  private cache: Map<string, CachedResponse> = new Map();
+  private redis: Redis; // Cache distribuído
+
+  // Cache por padrão de comando + contexto
+  async getCachedResponse(
+    commandPattern: string,
+    contextHash: string
+  ): Promise<CachedResponse | null> {
+    const key = this.generateKey(commandPattern, contextHash);
+    
+    // L1: Memória local
+    const local = this.cache.get(key);
+    if (local && local.expiresAt > Date.now()) {
+      return local;
+    }
+
+    // L2: Redis
+    const remote = await this.redis.get(key);
+    if (remote) {
+      const parsed = JSON.parse(remote);
+      this.cache.set(key, parsed); // Promove para L1
+      return parsed;
+    }
+
+    return null;
+  }
+
+  // Pre-fetching de respostas prováveis
+  async prefetchLikelyResponses(context: UserContext): Promise<void> {
+    const likelyCommands = this.predictLikelyCommands(context);
+    
+    for (const command of likelyCommands) {
+      // Gera em background
+      this.generateAndCache(command, context).catch(console.error);
+    }
+  }
+
+  private predictLikelyCommands(context: UserContext): string[] {
+    const predictions = [];
+
+    // Baseado no momento do dia
+    const hour = new Date().getHours();
+    if (hour >= 7 && hour <= 9) {
+      predictions.push('bom_dia', 'plano_hoje');
+    }
+
+    // Baseado no histórico recente
+    const recent = context.session.recentCommands;
+    if (recent.includes('exercicio_matematica')) {
+      predictions.push('proximo_exercicio', 'explicacao_passo_a_passo');
+    }
+
+    // Baseado no calendário
+    if (context.user.hasExamTomorrow()) {
+      predictions.push('revisao_rapida', 'simulado_rápido');
+    }
+
+    return predictions;
+  }
+}
+4.2 Edge Processing
+typescript
+// edge-worker.js — Cloudflare Worker
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+
+    // STT leve para comandos simples
+    if (url.pathname === '/stt-light') {
+      const audio = await request.arrayBuffer();
+      
+      // Modelo Whisper tiny no edge (~100MB)
+      const result = await env.WHISPER_TINY.transcribe(audio, {
+        language: 'pt',
+        task: 'transcribe'
+      });
+
+      // Classificação de intent leve
+      const intent = await env.INTENT_CLASSIFIER.classify(result.text);
+      
+      // Se for comando simples e confiante, responde imediatamente
+      if (intent.confidence > 0.9 && intent.isSimpleCommand) {
+        const cachedResponse = await env.CACHE.get(`cmd:${intent.name}`);
+        if (cachedResponse) {
+          return new Response(cachedResponse, {
+            headers: { 'X-Cache': 'HIT', 'X-Edge-Processed': 'true' }
+          });
+        }
+      }
+
+      // Senão, passa para origin
+      return fetch(request);
+    }
+
+    // TTS streaming com cache
+    if (url.pathname === '/tts') {
+      const { text, voice } = await request.json();
+      const cacheKey = `tts:${hash(text)}:${voice}`;
+      
+      const cached = await env.AUDIO_CACHE.get(cacheKey, 'arrayBuffer');
+      if (cached) {
+        return new Response(cached, {
+          headers: { 'Content-Type': 'audio/opus', 'X-Cache': 'HIT' }
+        });
+      }
+
+      // Gera e cacheia
+      const audio = await env.ELEVENLABS.generate(text, voice);
+      await env.AUDIO_CACHE.put(cacheKey, audio, { expirationTtl: 86400 });
+      
+      return new Response(audio, {
+        headers: { 'Content-Type': 'audio/opus', 'X-Cache': 'MISS' }
+      });
+    }
+  }
+};
+============================================================================
+COMPONENTE 5: CONFIGURAÇÃO REPLIT — DEPLOYMENT
+============================================================================
+5.1 Estrutura de Arquivos
+bash
+tiagao-v3/
+├── .replit                    # Configuração Replit
+├── replit.nix                 # Pacotes do sistema
+├── package.json               # Dependências
+├── tsconfig.json              # TypeScript
+├── vite.config.ts             # Build
+├── .env.example               # Variáveis de ambiente
+│
+├── src/
+│   ├── client/                # Código do browser
+│   │   ├── audio/
+│   │   │   ├── capture.ts
+│   │   │   ├── vad-processor.worklet.ts
+│   │   │   ├── streamer.ts
+│   │   │   └── player.ts
+│   │   ├── visual/
+│   │   │   ├── board-renderer.ts
+│   │   │   ├── avatar-animator.ts
+│   │   │   └── sync-timeline.ts
+│   │   ├── commands/
+│   │   │   ├── processor.ts
+│   │   │   ├── intents.ts
+│   │   │   └── actions.ts
+│   │   ├── tiagao-client.ts   # Cliente principal
+│   │   └── main.ts            # Entry point
+│   │
+│   ├── server/                # Código do servidor
+│   │   ├── websocket/
+│   │   │   ├── gateway.ts
+│   │   │   ├── session.ts
+│   │   │   └── handlers/
+│   │   ├── processing/
+│   │   │   ├── stt-service.ts
+│   │   │   ├── nlu-service.ts
+│   │   │   ├── tts-service.ts
+│   │   │   └── llm-service.ts
+│   │   ├── cache/
+│   │   │   ├── redis.ts
+│   │   │   └── prefetch.ts
+│   │   └── server.ts          # Entry point
+│   │
+│   └── shared/                # Código compartilhado
+│       ├── types.ts
+│       ├── constants.ts
+│       └── utils.ts
+│
+├── edge/                      # Cloudflare Workers
+│   ├── stt-light.ts
+│   ├── tts-cache.ts
+│   └── intent-classifier.ts
+│
+└── infra/
+    ├── docker-compose.yml     # Redis, PostgreSQL
+    ├── kubernetes/
+    │   ├── deployment.yaml
+    │   ├── service.yaml
+    │   └── hpa.yaml          # Auto-scaling
+    └── monitoring/
+        ├── prometheus.yml
+        └── grafana-dashboard.json
+5.2 Configuração Replit (.replit)
+toml
+# .replit
+run = "npm run dev"
+entrypoint = "src/server/server.ts"
+
+hidden = [".config", "package-lock.json", "node_modules", ".git"]
+
+[nix]
+channel = "stable-23_11"
+
+[env]
+NODE_ENV = "development"
+PORT = "3000"
+WS_PORT = "3001"
+
+# Variáveis de API (substituir em Secrets)
+OPENAI_API_KEY = ""           # GPT-4o para respostas
+ELEVENLABS_API_KEY = ""       # TTS
+DEEPGRAM_API_KEY = ""         # STT alternativo
+REDIS_URL = ""                # Upstash Redis
+DATABASE_URL = ""             # PostgreSQL
+
+[deployment]
+run = ["sh", "-c", "npm run build && npm run start"]
+deploymentTarget = "cloudrun"
+
+[[ports]]
+localPort = 3000
+externalPort = 80
+
+[[ports]]
+localPort = 3001
+externalPort = 3001
+
+[languages.typescript]
+pattern = "**/{*.ts,*.tsx}"
+syntax = "typescript"
+
+[languages.javascript]
+pattern = "**/{*.js,*.jsx}"
+syntax = "javascript"
+
+[debugger]
+program = "node --inspect-brk=0.0.0.0:9229 dist/server/server.js"
+
+[packager]
+language = "nodejs"
+5.3 Dependências (package.json)
+json
+{
+  "name": "tiagao-v3",
+  "version": "3.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "tsx watch src/server/server.ts",
+    "dev:client": "vite",
+    "build": "tsc && vite build",
+    "start": "node dist/server/server.js",
+    "lint": "eslint src --ext .ts,.tsx",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "fastify": "^4.26.0",
+    "@fastify/websocket": "^8.3.0",
+    "@fastify/cors": "^9.0.0",
+    "ioredis": "^5.3.2",
+    "pg": "^8.11.3",
+    "drizzle-orm": "^0.29.0",
+    "openai": "^4.28.0",
+    "@deepgram/sdk": "^3.1.0",
+    "elevenlabs": "^0.2.0",
+    "zod": "^3.22.4",
+    "pino": "^8.18.0",
+    "uuid": "^9.0.1",
+    "opus-decoder": "^1.2.0",
+    "wav-encoder": "^1.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/ws": "^8.5.10",
+    "@types/uuid": "^9.0.7",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.0",
+    "vite": "^5.0.12",
+    "concurrently": "^8.2.2",
+    "vitest": "^1.2.0",
+    "eslint": "^8.56.0",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0"
+  }
+}
+============================================================================
+COMPONENTE 6: MONITORAMENTO E QUALIDADE
+============================================================================
+6.1 Métricas Críticas
+typescript
+// metrics-collector.ts
+
+interface TiagaoMetrics {
+  // Latência
+  sttLatency: number;        // Áudio → Texto
+  nluLatency: number;        // Texto → Intent
+  llmLatency: number;        // Contexto → Resposta
+  ttsLatency: number;        // Texto → Áudio
+  totalLatency: number;      // Fim-da-fala → Início-da-resposta
+
+  // Qualidade
+  sttAccuracy: number;       // WER (Word Error Rate)
+  intentAccuracy: number;    // Classificação correta
+  userSatisfaction: number;  // Feedback explícito
+  completionRate: number;    // Comandos concluídos / iniciados
+
+  // Disponibilidade
+  uptime: number;
+  errorRate: number;
+  reconnections: number;
+}
+
+// Alertas automáticos
+if (metrics.totalLatency > 2000) {
+  alert('LATENCY_HIGH', { threshold: 2000, actual: metrics.totalLatency });
+}
+
+if (metrics.sttAccuracy < 0.85) {
+  alert('STT_QUALITY_LOW', { model: 'whisper', wer: metrics.sttAccuracy });
+}
+6.2 Dashboard de Saúde
+yaml
+┌─────────────────────────────────────────────────────────────┐
+│  TIAGÃO HEALTH DASHBOARD                                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  LATÊNCIA (últimas 24h)                    STATUS: 🟢 BOM   │
+│  ─────────────────────                                       │
+│  Média: 780ms    P95: 1200ms    P99: 1800ms                 │
+│  [████████████████████░░░░░░░░░░░░░░░░░░]                   │
+│                                                              │
+│  STT: 180ms  NLU: 120ms  LLM: 350ms  TTS: 130ms            │
+│                                                              │
+│  ─────────────────────────────────────────────────────────  │
+│                                                              │
+│  QUALIDADE DE RECONHECIMENTO                                │
+│  ───────────────────────────                                 │
+│  Precisão STT: 94.2%  🟢                                     │
+│  Precisão Intent: 91.7%  🟢                                  │
+│  Satisfação usuário: 4.6/5  🟢                               │
+│                                                              │
+│  ─────────────────────────────────────────────────────────  │
+│                                                              │
+│  DISPOSITIVOS                                               │
+│  ─────────────                                               │
+│  Chrome/Win: 45%  🟢                                        │
+│  Safari/Mac: 22%  🟢                                        │
+│  Chrome/Android: 18%  🟡 (microfone em 3% dos casos)       │
+│  Safari/iOS: 12%  🟢                                        │
+│  Outros: 3%  🟡                                              │
+│                                                              │
+│  ─────────────────────────────────────────────────────────  │
+│                                                              │
+│  ALERTAS ATIVOS                                             │
+│  ───────────────                                             │
+│  ⚠️  Latência elevada na região Sudeste (investigando)      │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+============================================================================
+CHECKLIST DE IMPLEMENTAÇÃO
+============================================================================
+Fase 1: Fundação (Semana 1-2)
+ Setup projeto Replit com estrutura de arquivos
+ Implementar AudioCaptureManager com fallbacks
+ Implementar VAD avançado no AudioWorklet
+ WebSocket básico cliente-servidor
+ Teste de latência < 500ms para áudio
+Fase 2: Sincronismo (Semana 3)
+ Timeline unificada áudio-visual
+ Board renderer sincronizado
+ Modo "voz pura" (sem texto)
+ Teste de sync: palavra falada = highlight exato
+Fase 3: Comandos (Semana 4)
+ Sistema de intents completo
+ Integração com módulos Study.IA
+ Criação de plano de estudos por voz
+ Criação de slides por voz
+ Resolução de exercícios por voz
+Fase 4: Otimização (Semana 5)
+ Cache de respostas frequentes
+ Pre-fetching de comandos prováveis
+ Edge processing (Cloudflare)
+ Teste de carga: 1000 sessões simultâneas
+Fase 5: Polish (Semana 6)
+ Teste em 50+ dispositivos diferentes
+ Ajuste fino de VAD para pausas naturais
+ Onboarding de voz para novos usuários
+ Documentação completa
+OBJETIVO FINAL
+"Falar com o Tiagão deve ser mais natural que falar com uma pessoa real."
+
+Latência total: < 1 segundo
+Precisão STT: > 95%
+Satisfação: > 4.5/5
+Uptime: > 99.9%

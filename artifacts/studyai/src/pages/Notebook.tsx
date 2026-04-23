@@ -101,13 +101,86 @@ interface PlanoAula {
   titulo: string;
   turma: string;
   duracao: string;
-  objetivos: string[];
-  prerequisitos: string;
-  desenvolvimento: Array<{ tempo: string; etapa: string; atividade: string; recursos: string; estrategia?: string }>;
+  perfilTurma?: string;
+  prerequisitos: string | Array<{ conceito: string; status: string }>;
+  dificuldadesPrevisíveis?: Array<{ dificuldade: string; prevencao: string }>;
+  bncc?: { competencia: string; habilidade: string; objetosConhecimento: string[] };
+  objetivos: string[] | {
+    geral: string;
+    especificos: string[];
+    indicadores: string[];
+  };
+  desenvolvimento: Array<{
+    tempo: string;
+    etapa: string;
+    nome?: string;
+    atividade: string;
+    recursos: string;
+    estrategia?: string;
+    perguntasNorteadoras?: string[];
+    diferenciacão?: { comDificuldade: string; avancados: string };
+  }>;
+  avaliacao?: {
+    instrumento: string;
+    criterios?: string[];
+    rubrica?: Array<{ criterio: string; insuficiente: string; regular: string; bom: string; excelente: string }>;
+  };
   tarefaCasa: string;
-  avaliacao: { criterios: string[]; instrumento: string };
   adaptacoes: { turmaRapida: string; turmaDificuldade: string };
   materialComplementar: string[];
+  referencias?: { teoricas: string[]; didaticas: string[]; fontesCaderno: string };
+  reflexao?: { oQueFuncionou: string; oQuePrecisaAjustar: string; adaptacoesProximaTurma: string };
+}
+interface Tarefa {
+  titulo: string;
+  tipo: string;
+  nivel: string;
+  tempoEstimado: string;
+  paraAluno: {
+    oQueVaiFazer: string;
+    porQueImporta: string;
+    doQuePreucisa: string[];
+    passos: Array<{ numero: number; nome: string; duracao: string; instrucao: string; dica: string }>;
+    comoSaberSeAcertou: string;
+    seTravar: string[];
+    querMaisDesafio: string;
+  };
+  paraProfessor: {
+    objetivo: string;
+    respostaEsperada: string;
+    errosComuns: Array<{ erro: string; causa: string; estrategia: string }>;
+    rubrica: Array<{ nivel: string; descricao: string; notaEquivalente: string }>;
+    diferenciacao: { comDificuldade: string; avancados: string };
+    tempoCorrecao: string;
+    conexaoProximaAula: string;
+  };
+}
+interface SequenciaDidade {
+  titulo: string;
+  nivel: string;
+  duracaoTotal: string;
+  produtoFinal: string;
+  avaliacaoSomativa: string;
+  objetivo: string;
+  bncc?: { competencia: string; habilidades: string[] };
+  mapaDaSequencia: Array<{ numero: number; tema: string; conceito: string; conexaoAnterior: string | null }>;
+  aulas: Array<{
+    numero: number;
+    titulo: string;
+    objetivos: string[];
+    atividadePrincipal: string;
+    recursos: string[];
+    avaliacaoFormativa: string;
+    conexaoProxima: string;
+  }>;
+  avaliacaoIntegrada: {
+    instrumento: string;
+    rubrica: Array<{ dimensao: string; peso: string; criterios: string }>;
+  };
+  recursos: {
+    permanentes: string[];
+    porAula: Array<{ aula: number; lista: string[] }>;
+  };
 }
 interface DnaFontes {
   temaPrincipal: string;
@@ -175,23 +248,25 @@ interface PodcastRoteiro {
   dicaEnem?: string;
 }
 
-type Tool = "overview" | "study-guide" | "flashcards" | "questoes" | "mapa-mental" | "podcast" | "tiagao" | "timeline" | "briefing" | "plano-aula" | "slides" | "infografico" | "tabela" | "relatorio";
+type Tool = "overview" | "study-guide" | "flashcards" | "questoes" | "mapa-mental" | "podcast" | "tiagao" | "timeline" | "briefing" | "plano-aula" | "tarefa" | "sequencia-didatica" | "slides" | "infografico" | "tabela" | "relatorio";
 
 const TOOL_CONFIG: Record<Tool, { label: string; icon: React.ElementType; color: string; desc: string; badge?: string }> = {
-  overview:      { label: "Visão Geral",      icon: Star,          color: "indigo",   desc: "Insight central + pilares + FAQ" },
-  "study-guide": { label: "Guia de Estudo",   icon: ClipboardList, color: "violet",   desc: "Mapa de Jornada com módulos progressivos" },
-  flashcards:    { label: "Flashcards",        icon: Layers,        color: "pink",     desc: "Flashcards com macetes + SM-2" },
-  questoes:      { label: "Questões ENEM",     icon: GraduationCap, color: "amber",    desc: "Quiz com Taxonomia de Bloom" },
-  "mapa-mental": { label: "Mapa Mental",       icon: Brain,         color: "green",    desc: "Mapa hierárquico com conexões cruzadas" },
-  podcast:       { label: "Podcast",           icon: Mic,           color: "rose",     desc: "Episódio estilo Nerdcast / Flow", badge: "IA" },
-  briefing:      { label: "Briefing",          icon: FileText,      color: "slate",    desc: "Documento executivo compacto", badge: "NOVO" },
-  "plano-aula":  { label: "Plano de Aula",     icon: Presentation,  color: "violet",   desc: "Plano completo para professores", badge: "NOVO" },
-  timeline:      { label: "Linha do Tempo",    icon: Clock,         color: "amber",    desc: "Cronologia didática com causas" },
-  slides:        { label: "Apresentação",      icon: Presentation,  color: "violet",   desc: "Slides profissionais prontos" },
-  infografico:   { label: "Infográfico",       icon: Sparkles,      color: "fuchsia",  desc: "Pôster visual gerado por IA" },
-  tabela:        { label: "Tabela de Dados",   icon: LayoutGrid,    color: "indigo",   desc: "Comparativo estruturado em tabela" },
-  relatorio:     { label: "Relatório",         icon: FileText,      color: "slate",    desc: "Documento acadêmico, blog ou aula" },
-  tiagao:        { label: "Tiagão na Lousa",   icon: Zap,           color: "blue",     desc: "Aula animada na lousa" },
+  overview:            { label: "Visão Geral",           icon: Star,          color: "indigo",   desc: "Insight central + pilares + FAQ" },
+  "study-guide":       { label: "Guia de Estudo",        icon: ClipboardList, color: "violet",   desc: "Mapa de Jornada com módulos progressivos" },
+  flashcards:          { label: "Flashcards",             icon: Layers,        color: "pink",     desc: "Flashcards com macetes + SM-2" },
+  questoes:            { label: "Questões ENEM",          icon: GraduationCap, color: "amber",    desc: "Quiz com Taxonomia de Bloom" },
+  "mapa-mental":       { label: "Mapa Mental",            icon: Brain,         color: "green",    desc: "Mapa hierárquico com conexões cruzadas" },
+  podcast:             { label: "Podcast",                icon: Mic,           color: "rose",     desc: "Episódio estilo Nerdcast / Flow", badge: "IA" },
+  briefing:            { label: "Briefing",               icon: FileText,      color: "slate",    desc: "Documento executivo compacto" },
+  "plano-aula":        { label: "Plano de Aula",          icon: Presentation,  color: "violet",   desc: "Plano completo com rúbrica BNCC" },
+  tarefa:              { label: "Tarefa / Atividade",     icon: ClipboardList, color: "emerald",  desc: "Tarefa para casa com gabarito e rúbrica", badge: "NOVO" },
+  "sequencia-didatica":{ label: "Sequência Didática",     icon: Layers,        color: "blue",     desc: "Multi-aula com avaliação integrada", badge: "NOVO" },
+  timeline:            { label: "Linha do Tempo",         icon: Clock,         color: "amber",    desc: "Cronologia didática com causas" },
+  slides:              { label: "Apresentação",           icon: Presentation,  color: "violet",   desc: "Slides profissionais prontos" },
+  infografico:         { label: "Infográfico",            icon: Sparkles,      color: "fuchsia",  desc: "Pôster visual gerado por IA" },
+  tabela:              { label: "Tabela de Dados",        icon: LayoutGrid,    color: "indigo",   desc: "Comparativo estruturado em tabela" },
+  relatorio:           { label: "Relatório",              icon: FileText,      color: "slate",    desc: "Documento acadêmico, blog ou aula" },
+  tiagao:              { label: "Tiagão na Lousa",        icon: Zap,           color: "blue",     desc: "Aula animada na lousa" },
 };
 
 const COLOR_MAP: Record<string, string> = {
@@ -199,21 +274,23 @@ const COLOR_MAP: Record<string, string> = {
   violet: "bg-violet-50/60 border-violet-200 text-violet-700",
   pink:   "bg-pink-50/60   border-pink-200   text-pink-700",
   amber:  "bg-amber-50/60  border-amber-200  text-amber-700",
-  green:  "bg-emerald-50/60 border-emerald-200 text-emerald-700",
-  blue:   "bg-blue-50/60   border-blue-200   text-blue-700",
-  rose:   "bg-rose-50/60   border-rose-200   text-rose-700",
-  fuchsia:"bg-fuchsia-50/60 border-fuchsia-200 text-fuchsia-700",
+  green:   "bg-emerald-50/60 border-emerald-200 text-emerald-700",
+  emerald: "bg-emerald-50/60 border-emerald-200 text-emerald-700",
+  blue:    "bg-blue-50/60   border-blue-200   text-blue-700",
+  rose:    "bg-rose-50/60   border-rose-200   text-rose-700",
+  fuchsia: "bg-fuchsia-50/60 border-fuchsia-200 text-fuchsia-700",
 };
 
 const ICON_TINT: Record<string, string> = {
-  indigo: "text-indigo-500 bg-indigo-100",
-  violet: "text-violet-500 bg-violet-100",
-  pink:   "text-pink-500   bg-pink-100",
-  amber:  "text-amber-600  bg-amber-100",
-  green:  "text-emerald-500 bg-emerald-100",
-  blue:   "text-blue-500   bg-blue-100",
-  rose:   "text-rose-500   bg-rose-100",
-  fuchsia:"text-fuchsia-500 bg-fuchsia-100",
+  indigo:  "text-indigo-500 bg-indigo-100",
+  violet:  "text-violet-500 bg-violet-100",
+  pink:    "text-pink-500   bg-pink-100",
+  amber:   "text-amber-600  bg-amber-100",
+  green:   "text-emerald-500 bg-emerald-100",
+  emerald: "text-emerald-500 bg-emerald-100",
+  blue:    "text-blue-500   bg-blue-100",
+  rose:    "text-rose-500   bg-rose-100",
+  fuchsia: "text-fuchsia-500 bg-fuchsia-100",
 };
 
 // ─── Mind Map Renderer ─────────────────────────────────────────────────────
@@ -1134,6 +1211,8 @@ export default function Notebook() {
   const [restrictToSelected, setRestrictToSelected] = useState(true);
   // Slides nav
   const [slideIdx, setSlideIdx] = useState(0);
+  const [tarefaShowProfessor, setTarefaShowProfessor] = useState(false);
+  const [seqActiveAula, setSeqActiveAula] = useState<number | null>(null);
 
   // Home vs Workspace view
   const [notebookView, setNotebookView] = useState<"home" | "workspace">("home");
@@ -1699,6 +1778,8 @@ export default function Notebook() {
       podcast: "/api/notebook/podcast",
       briefing: "/api/notebook/briefing",
       "plano-aula": "/api/notebook/plano-aula",
+      tarefa: "/api/notebook/tarefa",
+      "sequencia-didatica": "/api/notebook/sequencia-didatica",
       timeline: "/api/notebook/timeline",
       slides: "/api/notebook/slides",
       infografico: "/api/notebook/infografico",
@@ -2537,7 +2618,9 @@ export default function Notebook() {
                activeTool === "tabela" ? "Montando a tabela comparativa..." :
                activeTool === "relatorio" ? "Redigindo o relatório..." :
                activeTool === "briefing" ? "Gerando o briefing executivo..." :
-               activeTool === "plano-aula" ? "Preparando o plano de aula completo..." :
+               activeTool === "plano-aula" ? "Preparando o plano com rúbrica BNCC..." :
+               activeTool === "tarefa" ? "Montando a tarefa com gabarito e rúbrica..." :
+               activeTool === "sequencia-didatica" ? "Construindo a sequência didática multi-aula..." :
                "Gerando..."}
             </p>
           </div>
@@ -2977,68 +3060,584 @@ export default function Notebook() {
 
             {activeTool === "plano-aula" && (() => {
               const r = toolResult as PlanoAula;
+              const objetivos = Array.isArray(r.objetivos)
+                ? { geral: null, especificos: r.objetivos as string[], indicadores: [] }
+                : r.objetivos as { geral: string; especificos: string[]; indicadores: string[] };
+              const prereqs = Array.isArray(r.prerequisitos)
+                ? r.prerequisitos as Array<{ conceito: string; status: string }>
+                : null;
               return (
                 <div className="p-3 space-y-3">
-                  <div className="p-3 rounded-xl bg-violet-50 border border-violet-200">
-                    <p className="text-xs font-black text-violet-800">{r.titulo}</p>
-                    <div className="flex gap-2 mt-1 flex-wrap">
-                      <span className="text-[9px] font-bold text-violet-600">{r.turma}</span>
-                      <span className="text-[9px] text-violet-400">•</span>
-                      <span className="text-[9px] font-bold text-violet-600">{r.duracao}</span>
+                  {/* Header */}
+                  <div className="p-3 rounded-xl bg-violet-700 text-white">
+                    <p className="text-xs font-black leading-snug">{r.titulo}</p>
+                    <div className="flex gap-2 mt-1.5 flex-wrap">
+                      <span className="px-2 py-0.5 bg-white/20 rounded text-[9px] font-bold">{r.turma}</span>
+                      <span className="px-2 py-0.5 bg-white/20 rounded text-[9px] font-bold">{r.duracao}</span>
                     </div>
+                    {r.perfilTurma && <p className="text-[9px] text-violet-200 mt-1.5 leading-snug">{r.perfilTurma}</p>}
                   </div>
-                  {r.objetivos?.length > 0 && (
-                    <div>
-                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Objetivos</p>
-                      {r.objetivos.map((o, i) => (
-                        <p key={i} className="text-[10px] text-slate-700 flex items-start gap-1.5 mb-0.5">
-                          <CheckCircle className="w-3 h-3 text-violet-400 flex-shrink-0 mt-0.5" />{o}
-                        </p>
-                      ))}
+
+                  {/* BNCC */}
+                  {r.bncc && (
+                    <div className="p-2 rounded-lg bg-blue-50 border border-blue-200">
+                      <p className="text-[9px] font-black text-blue-600 uppercase tracking-wider mb-0.5">BNCC</p>
+                      <p className="text-[9px] text-blue-800 font-semibold">{r.bncc.competencia}</p>
+                      <p className="text-[9px] text-blue-700">{r.bncc.habilidade}</p>
+                      {r.bncc.objetosConhecimento?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {r.bncc.objetosConhecimento.map((o, i) => (
+                            <span key={i} className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[8px] font-medium">{o}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
-                  {r.prerequisitos && (
+
+                  {/* Objetivos */}
+                  <div>
+                    {objetivos.geral && (
+                      <p className="text-[10px] font-semibold text-violet-700 mb-1 italic">{objetivos.geral}</p>
+                    )}
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Objetivos Específicos</p>
+                    {objetivos.especificos?.map((o, i) => (
+                      <p key={i} className="text-[10px] text-slate-700 flex items-start gap-1.5 mb-0.5">
+                        <CheckCircle className="w-3 h-3 text-violet-400 flex-shrink-0 mt-0.5" />{o}
+                      </p>
+                    ))}
+                    {objetivos.indicadores?.length > 0 && (
+                      <div className="mt-1.5">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Indicadores de Sucesso</p>
+                        {objetivos.indicadores.map((ind, i) => (
+                          <p key={i} className="text-[9px] text-slate-600 flex items-center gap-1">
+                            <Star className="w-2.5 h-2.5 text-amber-400 flex-shrink-0" />{ind}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Pré-requisitos */}
+                  {prereqs ? (
                     <div className="p-2 rounded-lg bg-blue-50 border border-blue-100">
                       <p className="text-[9px] font-black text-blue-600 uppercase tracking-wider mb-0.5">Pré-requisitos</p>
-                      <p className="text-[9px] text-blue-800">{r.prerequisitos}</p>
+                      {prereqs.map((p, i) => (
+                        <p key={i} className="text-[9px] text-blue-800">• <strong>{p.conceito}</strong> — {p.status}</p>
+                      ))}
                     </div>
+                  ) : r.prerequisitos ? (
+                    <div className="p-2 rounded-lg bg-blue-50 border border-blue-100">
+                      <p className="text-[9px] font-black text-blue-600 uppercase tracking-wider mb-0.5">Pré-requisitos</p>
+                      <p className="text-[9px] text-blue-800">{r.prerequisitos as string}</p>
+                    </div>
+                  ) : null}
+
+                  {/* Dificuldades Previsíveis */}
+                  {r.dificuldadesPrevisíveis?.length > 0 && (
+                    <details className="group">
+                      <summary className="text-[10px] font-black text-red-500 cursor-pointer list-none flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" /> Dificuldades Previsíveis
+                        <ChevronDown className="w-3 h-3 ml-auto group-open:rotate-180 transition-transform" />
+                      </summary>
+                      <div className="mt-1 space-y-1">
+                        {r.dificuldadesPrevisíveis.map((d, i) => (
+                          <div key={i} className="p-2 rounded-lg bg-red-50 border border-red-100">
+                            <p className="text-[9px] font-bold text-red-700">{d.dificuldade}</p>
+                            <p className="text-[9px] text-slate-600 mt-0.5">→ {d.prevencao}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
                   )}
+
+                  {/* Desenvolvimento */}
                   {r.desenvolvimento?.length > 0 && (
                     <div>
                       <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Desenvolvimento</p>
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
                         {r.desenvolvimento.map((d, i) => (
-                          <div key={i} className="rounded-lg border border-slate-200 overflow-hidden">
-                            <div className="flex items-center gap-2 px-2.5 py-1.5 bg-slate-50">
-                              <span className="text-[9px] font-black text-slate-400 w-10 flex-shrink-0">{d.tempo}</span>
-                              <span className="text-[10px] font-bold text-slate-700">{d.etapa}</span>
+                          <details key={i} className="group rounded-xl border border-slate-200 overflow-hidden">
+                            <summary className="px-2.5 py-1.5 cursor-pointer list-none bg-slate-50 flex items-center gap-2">
+                              <span className="text-[9px] font-black text-violet-500 w-10 flex-shrink-0">{d.tempo}</span>
+                              <span className="text-[10px] font-bold text-slate-700 flex-1">{d.nome ?? d.etapa}</span>
+                              <span className="text-[9px] text-slate-400">{d.etapa}</span>
+                            </summary>
+                            <div className="px-2.5 py-2 space-y-1.5">
+                              <p className="text-[10px] text-slate-700 leading-snug">{d.atividade}</p>
+                              {d.estrategia && <p className="text-[9px] text-slate-500 italic">{d.estrategia}</p>}
+                              <p className="text-[9px] text-slate-400">📦 {d.recursos}</p>
+                              {d.perguntasNorteadoras?.length > 0 && (
+                                <div className="pt-1">
+                                  <p className="text-[9px] font-black text-indigo-500 mb-0.5">Perguntas Norteadoras</p>
+                                  {d.perguntasNorteadoras.map((q, j) => (
+                                    <p key={j} className="text-[9px] text-indigo-700 italic">• {q}</p>
+                                  ))}
+                                </div>
+                              )}
+                              {d.diferenciacão && (
+                                <div className="flex gap-1 pt-0.5">
+                                  <div className="flex-1 p-1.5 rounded bg-emerald-50 border border-emerald-100">
+                                    <p className="text-[8px] font-black text-emerald-600">Avançados</p>
+                                    <p className="text-[8px] text-emerald-800">{d.diferenciacão.avancados}</p>
+                                  </div>
+                                  <div className="flex-1 p-1.5 rounded bg-rose-50 border border-rose-100">
+                                    <p className="text-[8px] font-black text-rose-600">Apoio</p>
+                                    <p className="text-[8px] text-rose-800">{d.diferenciacão.comDificuldade}</p>
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                            <div className="px-2.5 py-1.5">
-                              <p className="text-[10px] text-slate-700">{d.atividade}</p>
-                              <p className="text-[9px] text-slate-400 mt-0.5">Recursos: {d.recursos}</p>
-                            </div>
-                          </div>
+                          </details>
                         ))}
                       </div>
                     </div>
                   )}
+
+                  {/* Avaliação com Rúbrica */}
+                  {r.avaliacao && (
+                    <div>
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Avaliação</p>
+                      <p className="text-[9px] text-slate-700 mb-1.5">{r.avaliacao.instrumento}</p>
+                      {r.avaliacao.rubrica?.length > 0 && (
+                        <details className="group">
+                          <summary className="text-[10px] font-black text-amber-600 cursor-pointer list-none flex items-center gap-1">
+                            📋 Rúbrica de Avaliação
+                            <ChevronDown className="w-3 h-3 ml-auto group-open:rotate-180 transition-transform" />
+                          </summary>
+                          <div className="mt-1.5 overflow-x-auto">
+                            <table className="w-full text-[8px] border-collapse">
+                              <thead>
+                                <tr className="bg-slate-100">
+                                  <th className="px-1.5 py-1 text-left font-black text-slate-600 border border-slate-200">Critério</th>
+                                  <th className="px-1.5 py-1 text-center font-black text-red-600 border border-slate-200">D</th>
+                                  <th className="px-1.5 py-1 text-center font-black text-amber-600 border border-slate-200">C</th>
+                                  <th className="px-1.5 py-1 text-center font-black text-blue-600 border border-slate-200">B</th>
+                                  <th className="px-1.5 py-1 text-center font-black text-emerald-600 border border-slate-200">A</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {r.avaliacao.rubrica.map((row, i) => (
+                                  <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}>
+                                    <td className="px-1.5 py-1 font-semibold text-slate-700 border border-slate-200">{row.criterio}</td>
+                                    <td className="px-1.5 py-1 text-slate-600 border border-slate-200">{row.insuficiente}</td>
+                                    <td className="px-1.5 py-1 text-slate-600 border border-slate-200">{row.regular}</td>
+                                    <td className="px-1.5 py-1 text-slate-600 border border-slate-200">{row.bom}</td>
+                                    <td className="px-1.5 py-1 text-slate-600 border border-slate-200">{row.excelente}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </details>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Tarefa de Casa */}
                   {r.tarefaCasa && (
                     <div className="p-2.5 rounded-lg bg-indigo-50 border border-indigo-100">
-                      <p className="text-[9px] font-black text-indigo-600 uppercase tracking-wider mb-0.5">Tarefa de Casa</p>
+                      <p className="text-[9px] font-black text-indigo-600 uppercase tracking-wider mb-0.5">📚 Tarefa de Casa</p>
                       <p className="text-[9px] text-indigo-800 leading-snug">{r.tarefaCasa}</p>
                     </div>
                   )}
+
+                  {/* Adaptações */}
                   {r.adaptacoes && (
-                    <div className="space-y-1">
+                    <div className="grid grid-cols-2 gap-1.5">
                       <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-100">
-                        <p className="text-[9px] font-black text-emerald-600 mb-0.5">Para turmas rápidas:</p>
-                        <p className="text-[9px] text-emerald-800">{r.adaptacoes.turmaRapida}</p>
+                        <p className="text-[9px] font-black text-emerald-600 mb-0.5">🚀 Turmas Rápidas</p>
+                        <p className="text-[9px] text-emerald-800 leading-snug">{r.adaptacoes.turmaRapida}</p>
                       </div>
                       <div className="p-2 rounded-lg bg-rose-50 border border-rose-100">
-                        <p className="text-[9px] font-black text-rose-600 mb-0.5">Para turmas com dificuldade:</p>
-                        <p className="text-[9px] text-rose-800">{r.adaptacoes.turmaDificuldade}</p>
+                        <p className="text-[9px] font-black text-rose-600 mb-0.5">🤝 Com Dificuldade</p>
+                        <p className="text-[9px] text-rose-800 leading-snug">{r.adaptacoes.turmaDificuldade}</p>
                       </div>
                     </div>
+                  )}
+
+                  {/* Referências */}
+                  {r.referencias && (
+                    <details className="group">
+                      <summary className="text-[10px] font-black text-slate-500 cursor-pointer list-none flex items-center gap-1">
+                        📖 Referências
+                        <ChevronDown className="w-3 h-3 ml-auto group-open:rotate-180 transition-transform" />
+                      </summary>
+                      <div className="mt-1 space-y-1">
+                        {r.referencias.teoricas?.map((ref, i) => (
+                          <p key={i} className="text-[9px] text-slate-600">• {ref}</p>
+                        ))}
+                        {r.referencias.fontesCaderno && (
+                          <p className="text-[9px] text-violet-600 italic">Caderno: {r.referencias.fontesCaderno}</p>
+                        )}
+                      </div>
+                    </details>
+                  )}
+
+                  {/* Reflexão Pós-Aula */}
+                  {r.reflexao !== undefined && (
+                    <details className="group">
+                      <summary className="text-[10px] font-black text-slate-400 cursor-pointer list-none flex items-center gap-1">
+                        🪞 Reflexão Pós-Aula (preencher depois)
+                        <ChevronDown className="w-3 h-3 ml-auto group-open:rotate-180 transition-transform" />
+                      </summary>
+                      <div className="mt-1 space-y-1.5 text-[9px] text-slate-500">
+                        <div className="p-2 rounded bg-slate-50 border border-slate-100">
+                          <p className="font-bold text-slate-600 mb-0.5">✅ O que funcionou</p>
+                          <p className="text-slate-400 italic">{r.reflexao?.oQueFuncionou || "(preencher após a aula)"}</p>
+                        </div>
+                        <div className="p-2 rounded bg-slate-50 border border-slate-100">
+                          <p className="font-bold text-slate-600 mb-0.5">🔧 O que precisa ajustar</p>
+                          <p className="text-slate-400 italic">{r.reflexao?.oQuePrecisaAjustar || "(preencher após a aula)"}</p>
+                        </div>
+                      </div>
+                    </details>
+                  )}
+                </div>
+              );
+            })()}
+
+            {activeTool === "tarefa" && (() => {
+              const r = toolResult as Tarefa;
+              const showProfessor = tarefaShowProfessor;
+              const setShowProfessor = setTarefaShowProfessor;
+              return (
+                <div className="p-3 space-y-3">
+                  {/* Header */}
+                  <div className="p-3 rounded-xl bg-emerald-700 text-white">
+                    <p className="text-xs font-black">{r.titulo}</p>
+                    <div className="flex gap-2 mt-1.5 flex-wrap">
+                      <span className="px-2 py-0.5 bg-white/20 rounded text-[9px] font-bold">{r.tipo}</span>
+                      <span className="px-2 py-0.5 bg-white/20 rounded text-[9px] font-bold">{r.nivel}</span>
+                      <span className="px-2 py-0.5 bg-white/20 rounded text-[9px] font-bold">⏱ {r.tempoEstimado}</span>
+                    </div>
+                  </div>
+
+                  {/* Alternância Aluno / Professor */}
+                  <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+                    <button onClick={() => setShowProfessor(false)}
+                      className={`flex-1 py-1.5 text-[10px] font-black transition-colors ${!showProfessor ? "bg-emerald-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>
+                      📚 Para o Aluno
+                    </button>
+                    <button onClick={() => setShowProfessor(true)}
+                      className={`flex-1 py-1.5 text-[10px] font-black transition-colors ${showProfessor ? "bg-violet-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>
+                      🎓 Para o Professor
+                    </button>
+                  </div>
+
+                  {!showProfessor ? (
+                    /* ─── SEÇÃO DO ALUNO ─── */
+                    <div className="space-y-2.5">
+                      <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider mb-0.5">📋 O que você vai fazer</p>
+                        <p className="text-[10px] text-slate-700 leading-snug">{r.paraAluno?.oQueVaiFazer}</p>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200">
+                        <p className="text-[9px] font-black text-emerald-600 uppercase tracking-wider mb-0.5">🎯 Por que isso importa</p>
+                        <p className="text-[10px] text-emerald-800 leading-snug">{r.paraAluno?.porQueImporta}</p>
+                      </div>
+
+                      {r.paraAluno?.doQuePreucisa?.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">📦 O que você precisa</p>
+                          {r.paraAluno.doQuePreucisa.map((m, i) => (
+                            <p key={i} className="text-[10px] text-slate-700">• {m}</p>
+                          ))}
+                        </div>
+                      )}
+
+                      {r.paraAluno?.passos?.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">📝 Passo a passo</p>
+                          <div className="space-y-1.5">
+                            {r.paraAluno.passos.map((p, i) => (
+                              <div key={i} className="rounded-xl border border-slate-200 overflow-hidden">
+                                <div className="flex items-center gap-2 px-2.5 py-1.5 bg-emerald-50 border-b border-emerald-100">
+                                  <span className="w-5 h-5 rounded-full bg-emerald-600 text-white text-[9px] font-black flex items-center justify-center flex-shrink-0">{p.numero}</span>
+                                  <span className="text-[10px] font-bold text-emerald-800 flex-1">{p.nome}</span>
+                                  <span className="text-[9px] text-emerald-500">{p.duracao}</span>
+                                </div>
+                                <div className="px-2.5 py-2">
+                                  <p className="text-[10px] text-slate-700 leading-snug">{p.instrucao}</p>
+                                  {p.dica && (
+                                    <div className="mt-1.5 flex items-start gap-1.5 p-1.5 rounded-lg bg-amber-50 border border-amber-100">
+                                      <span className="text-[10px]">💡</span>
+                                      <p className="text-[9px] text-amber-700 italic">{p.dica}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200">
+                        <p className="text-[9px] font-black text-blue-600 uppercase tracking-wider mb-0.5">✅ Como saber se acertou</p>
+                        <p className="text-[10px] text-blue-800 leading-snug">{r.paraAluno?.comoSaberSeAcertou}</p>
+                      </div>
+
+                      {r.paraAluno?.seTravar?.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">🤔 Se travar, tente</p>
+                          {r.paraAluno.seTravar.map((s, i) => (
+                            <p key={i} className="text-[10px] text-slate-600">• {s}</p>
+                          ))}
+                        </div>
+                      )}
+
+                      {r.paraAluno?.querMaisDesafio && (
+                        <div className="p-2.5 rounded-xl bg-violet-50 border border-violet-200">
+                          <p className="text-[9px] font-black text-violet-600 uppercase tracking-wider mb-0.5">🚀 Quer mais desafio?</p>
+                          <p className="text-[10px] text-violet-800 leading-snug">{r.paraAluno.querMaisDesafio}</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* ─── SEÇÃO DO PROFESSOR ─── */
+                    <div className="space-y-2.5">
+                      <div className="p-2.5 rounded-xl bg-violet-50 border border-violet-200">
+                        <p className="text-[9px] font-black text-violet-600 uppercase tracking-wider mb-0.5">🎯 Objetivo</p>
+                        <p className="text-[10px] text-violet-800 leading-snug">{r.paraProfessor?.objetivo}</p>
+                      </div>
+
+                      <details className="group rounded-xl border border-slate-200 overflow-hidden">
+                        <summary className="px-2.5 py-2 cursor-pointer list-none bg-slate-50 flex items-center gap-2 text-[10px] font-black text-slate-700">
+                          📖 Resposta Esperada / Gabarito
+                          <ChevronDown className="w-3 h-3 ml-auto group-open:rotate-180 transition-transform" />
+                        </summary>
+                        <div className="px-2.5 py-2 text-[10px] text-slate-700 leading-snug whitespace-pre-wrap">
+                          {r.paraProfessor?.respostaEsperada}
+                        </div>
+                      </details>
+
+                      {r.paraProfessor?.errosComuns?.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-black text-red-500 uppercase tracking-wider mb-1.5">⚠️ Erros Comuns</p>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-[8px] border-collapse">
+                              <thead>
+                                <tr className="bg-slate-100">
+                                  <th className="px-1.5 py-1 text-left font-black text-slate-600 border border-slate-200">Erro</th>
+                                  <th className="px-1.5 py-1 text-left font-black text-slate-600 border border-slate-200">Causa</th>
+                                  <th className="px-1.5 py-1 text-left font-black text-slate-600 border border-slate-200">Estratégia</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {r.paraProfessor.errosComuns.map((e, i) => (
+                                  <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}>
+                                    <td className="px-1.5 py-1 text-red-700 border border-slate-200">{e.erro}</td>
+                                    <td className="px-1.5 py-1 text-slate-600 border border-slate-200">{e.causa}</td>
+                                    <td className="px-1.5 py-1 text-emerald-700 border border-slate-200">{e.estrategia}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {r.paraProfessor?.rubrica?.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-black text-amber-600 uppercase tracking-wider mb-1.5">📋 Rúbrica</p>
+                          <div className="space-y-1">
+                            {r.paraProfessor.rubrica.map((rv, i) => (
+                              <div key={i} className="flex items-start gap-2 p-2 rounded-lg border border-slate-200">
+                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-black flex-shrink-0 ${
+                                  i === 0 ? "bg-emerald-100 text-emerald-700" :
+                                  i === 1 ? "bg-blue-100 text-blue-700" :
+                                  i === 2 ? "bg-amber-100 text-amber-700" :
+                                  "bg-red-100 text-red-700"
+                                }`}>{rv.nivel}</span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[9px] text-slate-700 leading-snug">{rv.descricao}</p>
+                                  <p className="text-[8px] text-slate-400">Nota: {rv.notaEquivalente}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {r.paraProfessor?.diferenciacao && (
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-100">
+                            <p className="text-[9px] font-black text-emerald-600 mb-0.5">Avançados</p>
+                            <p className="text-[9px] text-emerald-800">{r.paraProfessor.diferenciacao.avancados}</p>
+                          </div>
+                          <div className="p-2 rounded-lg bg-rose-50 border border-rose-100">
+                            <p className="text-[9px] font-black text-rose-600 mb-0.5">Com Dificuldade</p>
+                            <p className="text-[9px] text-rose-800">{r.paraProfessor.diferenciacao.comDificuldade}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 flex-wrap">
+                        {r.paraProfessor?.tempoCorrecao && (
+                          <div className="p-2 rounded-lg bg-slate-100 flex-1">
+                            <p className="text-[9px] font-black text-slate-500 mb-0.5">Tempo de Correção</p>
+                            <p className="text-[9px] text-slate-700">{r.paraProfessor.tempoCorrecao}</p>
+                          </div>
+                        )}
+                        {r.paraProfessor?.conexaoProximaAula && (
+                          <div className="p-2 rounded-lg bg-indigo-50 border border-indigo-100 flex-1">
+                            <p className="text-[9px] font-black text-indigo-600 mb-0.5">Próxima Aula</p>
+                            <p className="text-[9px] text-indigo-800">{r.paraProfessor.conexaoProximaAula}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {activeTool === "sequencia-didatica" && (() => {
+              const r = toolResult as SequenciaDidade;
+              const activeAula = seqActiveAula;
+              const setActiveAula = setSeqActiveAula;
+              return (
+                <div className="p-3 space-y-3">
+                  {/* Header */}
+                  <div className="p-3 rounded-xl bg-blue-700 text-white">
+                    <p className="text-xs font-black leading-snug">{r.titulo}</p>
+                    <div className="flex gap-2 mt-1.5 flex-wrap">
+                      <span className="px-2 py-0.5 bg-white/20 rounded text-[9px] font-bold">{r.nivel}</span>
+                      <span className="px-2 py-0.5 bg-white/20 rounded text-[9px] font-bold">{r.duracaoTotal}</span>
+                    </div>
+                    {r.objetivo && <p className="text-[9px] text-blue-200 mt-1.5 leading-snug">{r.objetivo}</p>}
+                  </div>
+
+                  {/* Produto Final */}
+                  <div className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200">
+                    <p className="text-[9px] font-black text-indigo-600 uppercase tracking-wider mb-0.5">🏆 Produto Final</p>
+                    <p className="text-[10px] text-indigo-800 font-semibold">{r.produtoFinal}</p>
+                    <p className="text-[9px] text-indigo-600 mt-0.5">{r.avaliacaoSomativa}</p>
+                  </div>
+
+                  {/* BNCC */}
+                  {r.bncc && (
+                    <div className="p-2 rounded-lg bg-blue-50 border border-blue-100">
+                      <p className="text-[9px] font-black text-blue-600 mb-0.5">BNCC</p>
+                      <p className="text-[9px] text-blue-800">{r.bncc.competencia}</p>
+                      <div className="flex flex-wrap gap-1 mt-0.5">
+                        {r.bncc.habilidades?.map((h, i) => (
+                          <span key={i} className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[8px]">{h}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mapa da Sequência */}
+                  {r.mapaDaSequencia?.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">🗺️ Mapa da Sequência</p>
+                      <div className="flex gap-1 flex-wrap">
+                        {r.mapaDaSequencia.map((m, i) => (
+                          <button key={i} onClick={() => setActiveAula(activeAula === m.numero ? null : m.numero)}
+                            className={`flex-1 min-w-[60px] p-2 rounded-lg border text-left transition-all ${
+                              activeAula === m.numero
+                                ? "bg-blue-600 border-blue-600 text-white"
+                                : "bg-slate-50 border-slate-200 text-slate-700 hover:border-blue-300"
+                            }`}>
+                            <p className="text-[8px] font-black mb-0.5">Aula {m.numero}</p>
+                            <p className="text-[9px] font-semibold leading-tight line-clamp-2">{m.tema}</p>
+                            {m.conceito && <p className={`text-[8px] mt-0.5 ${activeAula === m.numero ? "text-blue-200" : "text-slate-400"}`}>{m.conceito}</p>}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Aulas Detalhadas */}
+                  {r.aulas?.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Aulas Detalhadas</p>
+                      {r.aulas.map((aula, i) => (
+                        <details key={i} className="group rounded-xl border border-blue-200 overflow-hidden">
+                          <summary className="px-2.5 py-2 cursor-pointer list-none bg-blue-50 flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[9px] font-black flex items-center justify-center flex-shrink-0">{aula.numero}</span>
+                            <p className="text-[10px] font-bold text-slate-800 flex-1 line-clamp-1">{aula.titulo}</p>
+                            <ChevronDown className="w-3 h-3 text-slate-400 group-open:rotate-180 transition-transform flex-shrink-0" />
+                          </summary>
+                          <div className="px-2.5 py-2.5 space-y-2">
+                            {aula.objetivos?.length > 0 && (
+                              <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Objetivos</p>
+                                {aula.objetivos.map((o, j) => (
+                                  <p key={j} className="text-[9px] text-slate-700 flex items-start gap-1">
+                                    <CheckCircle className="w-2.5 h-2.5 text-blue-400 flex-shrink-0 mt-0.5" />{o}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Atividade Principal</p>
+                              <p className="text-[10px] text-slate-700 leading-snug">{aula.atividadePrincipal}</p>
+                            </div>
+                            {aula.recursos?.length > 0 && (
+                              <p className="text-[9px] text-slate-400">📦 {aula.recursos.join(", ")}</p>
+                            )}
+                            {aula.avaliacaoFormativa && (
+                              <div className="p-1.5 rounded bg-amber-50 border border-amber-100">
+                                <p className="text-[9px] text-amber-700"><strong>Avaliação formativa:</strong> {aula.avaliacaoFormativa}</p>
+                              </div>
+                            )}
+                            {aula.conexaoProxima && (
+                              <div className="flex items-start gap-1.5">
+                                <span className="text-[10px]">→</span>
+                                <p className="text-[9px] text-slate-500 italic">{aula.conexaoProxima}</p>
+                              </div>
+                            )}
+                          </div>
+                        </details>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Avaliação Integrada */}
+                  {r.avaliacaoIntegrada && (
+                    <div>
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">📊 Avaliação Integrada</p>
+                      <p className="text-[9px] text-slate-700 mb-1.5">{r.avaliacaoIntegrada.instrumento}</p>
+                      {r.avaliacaoIntegrada.rubrica?.length > 0 && (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-[8px] border-collapse">
+                            <thead>
+                              <tr className="bg-slate-100">
+                                <th className="px-1.5 py-1 text-left font-black text-slate-600 border border-slate-200">Dimensão</th>
+                                <th className="px-1.5 py-1 text-center font-black text-slate-600 border border-slate-200">Peso</th>
+                                <th className="px-1.5 py-1 text-left font-black text-slate-600 border border-slate-200">Critérios</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {r.avaliacaoIntegrada.rubrica.map((row, i) => (
+                                <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}>
+                                  <td className="px-1.5 py-1 font-semibold text-blue-700 border border-slate-200">{row.dimensao}</td>
+                                  <td className="px-1.5 py-1 text-center font-bold text-slate-700 border border-slate-200">{row.peso}</td>
+                                  <td className="px-1.5 py-1 text-slate-600 border border-slate-200 leading-snug">{row.criterios}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Recursos */}
+                  {r.recursos?.permanentes?.length > 0 && (
+                    <details className="group">
+                      <summary className="text-[10px] font-black text-slate-500 cursor-pointer list-none flex items-center gap-1">
+                        📦 Recursos da Sequência
+                        <ChevronDown className="w-3 h-3 ml-auto group-open:rotate-180 transition-transform" />
+                      </summary>
+                      <div className="mt-1">
+                        <p className="text-[9px] font-bold text-slate-600 mb-0.5">Permanentes:</p>
+                        {r.recursos.permanentes.map((m, i) => (
+                          <p key={i} className="text-[9px] text-slate-600">• {m}</p>
+                        ))}
+                      </div>
+                    </details>
                   )}
                 </div>
               );

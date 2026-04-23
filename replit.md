@@ -127,6 +127,29 @@ Every new AI feature added to ANY surface MUST also be reflected in:
 - **Admin UI "IA & Custos"** replaced with real cost dashboard: KPI cards (Custo Hoje / Mês / Chamadas / Tokens), Área chart custo por dia, tabela custo por feature com barras de porcentagem, custo por modelo, provedores de IA
 - USD→BRL conversão fixa `5.85` no endpoint admin
 
+### Geração de Conteúdo Educacional Pro (April 2026)
+Spec completa de 4 camadas implementada ("Planejador Experiente" + "Designer de Aprendizagem" + "Especialista em Avaliação"):
+
+**Plano de Aula — Upgrade Pro**:
+- Persona "Planejador Experiente": objetivos só com verbos observáveis, tempos somam exatamente a duração
+- Novo JSON completo: `perfilTurma`, `dificuldadesPrevisíveis`, `bncc` (competência+habilidade+objetos), `objetivos.{geral,especificos,indicadores}`, `desenvolvimento[].{nome,perguntasNorteadoras[],diferenciacão}`, `avaliacao.rubrica[]` (4 níveis A/B/C/D), `referencias.{teoricas,didaticas,fontesCaderno}`, `reflexao.{oQueFuncionou,oQuePrecisaAjustar}`
+- Renderer totalmente reescrito: header violeta com perfil, BNCC como card azul, objetivos com indicadores, tabela de rúbrica renderizada, perguntas norteadoras por etapa, diferenciação colapsável, referências, seção de reflexão pós-aula
+
+**Novo: Tarefa / Atividade para Casa** (endpoint `POST /api/notebook/tarefa`):
+- Tipo B do spec: tarefa com estrutura DUAL — seção do aluno + seção do professor
+- Para o aluno: oQueVaiFazer, porQueImporta, passo a passo com dica por passo, comoSaberSeAcertou, seTravar, querMaisDesafio
+- Para o professor: objetivo, respostaEsperada/gabarito, tabela de erros comuns (erro/causa/estratégia), rúbrica 4 níveis, diferenciação, tempoCorrecao, conexaoProximaAula
+- Renderer com toggle "Para o Aluno / Para o Professor" e layouts distintos
+
+**Novo: Sequência Didática Multi-aula** (endpoint `POST /api/notebook/sequencia-didatica`):
+- Tipo D do spec: sequência de N aulas com progressão lógica, produto final, avaliação somativa
+- Estrutura: mapaDaSequencia (botões clicáveis), aulas detalhadas (objetivos+atividade+recursos+avaliação formativa+conexão), avaliacaoIntegrada com rúbrica por dimensão (peso %), recursos permanentes/por aula
+- BNCC integrada com competência e habilidades
+- Renderer: cards de mapa navegáveis, accordions por aula, tabela de rúbrica integrada
+
+**Novos ícones no TOOL_CONFIG**: "emerald" adicionado ao COLOR_MAP e ICON_TINT
+**Total de tools**: 16 (adicionados "tarefa" e "sequencia-didatica")
+
 ### Notebook RAG — Rebuild Completo (April 2026)
 Full rebuild of the Notebook feature targeting NotebookLM professional quality for ENEM/vestibular students:
 

@@ -359,14 +359,24 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
       { feature: "Redação",       uses: (redacoesRange as any)?.count ?? 0, users: (redacoesAll as any)?.users ?? 0, last7d: (redacoesRange as any)?.count ?? 0 },
       { feature: "Flashcards",    uses: (flashRevRange as any)?.count ?? 0, users: 0, last7d: (flashRevRange as any)?.count ?? 0 },
     ],
-    aiProviders: [
-      { id: "deepseek",   ok: !!process.env.DEEPSEEK_API_KEY },
-      { id: "anthropic",  ok: !!process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY && process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY !== "_DUMMY_API_KEY_" },
-      { id: "openai",     ok: !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY && process.env.AI_INTEGRATIONS_OPENAI_API_KEY !== "_DUMMY_API_KEY_" },
-      { id: "gemini",     ok: !!process.env.AI_INTEGRATIONS_GEMINI_API_KEY && process.env.AI_INTEGRATIONS_GEMINI_API_KEY !== "_DUMMY_API_KEY_" },
-      { id: "openrouter", ok: !!process.env.AI_INTEGRATIONS_OPENROUTER_API_KEY && process.env.AI_INTEGRATIONS_OPENROUTER_API_KEY !== "_DUMMY_API_KEY_" },
-      { id: "elevenlabs", ok: !!process.env.ELEVENLABS_API_KEY },
-    ],
+    // _DUMMY_API_KEY_ = Replit proxy integration IS connected (proxy handles auth transparently)
+    // Only truly missing (NOT SET) = PENDENTE
+    aiProviders: (() => {
+      const hasIntegration = (integrationVar: string, directVar?: string) => {
+        const iv = process.env[integrationVar];
+        if (iv && iv.length > 0) return true;          // set (even dummy = proxy is active)
+        if (directVar) return !!process.env[directVar]; // fallback to direct API key
+        return false;
+      };
+      return [
+        { id: "deepseek",   ok: !!process.env.DEEPSEEK_API_KEY },
+        { id: "anthropic",  ok: hasIntegration("AI_INTEGRATIONS_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY") },
+        { id: "openai",     ok: hasIntegration("AI_INTEGRATIONS_OPENAI_API_KEY",     "OPENAI_API_KEY") },
+        { id: "gemini",     ok: hasIntegration("AI_INTEGRATIONS_GEMINI_API_KEY",     "GEMINI_API_KEY") },
+        { id: "openrouter", ok: hasIntegration("AI_INTEGRATIONS_OPENROUTER_API_KEY", "OPENROUTER_API_KEY") },
+        { id: "elevenlabs", ok: !!process.env.ELEVENLABS_API_KEY },
+      ];
+    })(),
     trilhaBySubject: trilhaRows.map((r: any) => ({ subject: r.subject, students: r.cnt, avgLevel: r.avg_level, maxLevel: r.max_level })),
     diagnosticsCompleted30d: 0,
     notebookDocsTotal: (notebookDocs as any)?.count ?? 0,

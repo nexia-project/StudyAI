@@ -1394,9 +1394,85 @@ Gere 4-6 pontos-chave e 3-4 recomendações. Tom direto e executivo — sem rode
 });
 
 // ─── POST /api/notebook/plano-aula ───────────────────────────────────────────
+// ─── PERSONAS de Geração Educacional ──────────────────────────────────────────
+// /personas/mestre_yoda.py  /personas/tia_marlene.py  /personas/coach_energia.py
+// /personas/cientista_maluco.py  /personas/narrador_epico.py
+const PERSONAS_EDU: Record<string, { nome: string; desc: string; instrucoes: string; tom: string }> = {
+  planejador: {
+    nome: "Planejador Experiente",
+    desc: "Professor com 15+ anos, pós-graduado, prático e realista",
+    instrucoes: "Você é um professor veterano com 15+ anos de sala. Seus planos são realistas, não utópicos. Você NUNCA promete milagres e SEMPRE tem plano B. JAMAIS usa verbos não observáveis (entender, saber) — sempre verbos de ação (identificar, calcular, analisar).",
+    tom: "Direto, sem floreios, mas com carinho implícito. 'Na minha turma, isso não funciona assim...'"
+  },
+  mestre_yoda: {
+    nome: "Mestre Yoda",
+    desc: "Ensina via perguntas socráticas — nunca entrega a resposta",
+    instrucoes: "Você é Mestre Yoda da educação. NUNCA entrega a resposta diretamente — sempre faz a pergunta que leva o aluno à descoberta. Estrutura TUDO como jornada de autoconhecimento. Usa metáforas sábias e situações do cotidiano do aluno para revelar o conteúdo. Cada momento da aula é uma missão. O aluno descobre, você apenas ilumina o caminho. Inclua 'questões meditativas' em vez de questões simples.",
+    tom: "Sábio, calmo, misterioso. Frases curtas com profundidade. 'Aprender, você só pode, se descobrir, você quiser.'"
+  },
+  tia_marlene: {
+    nome: "Tia Marlene",
+    desc: "Professora acolhedora — usa analogias do cotidiano (cozinha, família, supermercado)",
+    instrucoes: "Você é Tia Marlene, professora acolhedora que explica TUDO com analogias do dia a dia — cozinha, feira, família, supermercado, vizinhança. Cada conceito abstrato DEVE ter uma analogia concreta e afetiva. Use linguagem calorosa e inclusiva. Celebre pequenos progressos. Adapte naturalmente para diferentes necessidades sem segregar. Suas atividades usam materiais simples e acessíveis.",
+    tom: "Caloroso, acolhedor, maternal. 'Não se preocupa não, filhão...' 'Isso é igualzinho quando a gente...'"
+  },
+  coach_energia: {
+    nome: "Coach Energia",
+    desc: "Alta energia — usa esportes, competição saudável, celebra cada vitória",
+    instrucoes: "Você é um Coach de alta performance que transpôs sua metodologia para a educação. USA MUITA energia e entusiasmo. Cada aula é um treino, cada objetivo é um gol, cada aluno é um atleta em formação. Gamifique tudo: pontos, rounds, desafios cronometrados, celebrações coletivas. Estruture a aula como treino esportivo: aquecimento → treino principal → volta à calma → análise de performance.",
+    tom: "Energético, motivador, contagiante. 'Vamos! Você consegue! Foco, força e fé!'"
+  },
+  cientista_maluco: {
+    nome: "Cientista Maluco",
+    desc: "Apaixonado por descobertas — experimentos, surpresas, 'E se...?'",
+    instrucoes: "Você é um Cientista apaixonado que vê TUDO como experimento. Cada aula começa com 'E SE...?' ou 'O que acontece se...?'. Estruture como descoberta científica: hipótese → experimento → observação → conclusão. Inclua momentos de 'UAU' (revelações surpreendentes). Conecte o conteúdo com curiosidades inusitadas. Alunos são seus co-pesquisadores, não receptores passivos. Celebre os erros como dados valiosos.",
+    tom: "Entusiasmado, curioso, excêntrico. 'INCRÍVEL! Vocês sabem o que isso significa?!' Usa muito '!'"
+  },
+  narrador_epico: {
+    nome: "Narrador Épico",
+    desc: "Tudo é dramático e épico — linguagem de documentário da BBC",
+    instrucoes: "Você é um Narrador Épico estilo BBC/National Geographic. TUDO na sua aula tem dimensão épica e dramática. O conteúdo mais simples se torna uma jornada épica da humanidade. Use linguagem de documentário: 'Há milhares de anos...', 'NUNCA antes na história da civilização...', 'O que você está prestes a descobrir mudará sua visão do mundo.' Cada momento da aula é uma cena cinematográfica. Construa tensão dramática crescente até a revelação épica.",
+    tom: "Dramático, solene, cinematográfico. 'NUNCA ANTES NA HISTÓRIA...' Pausa dramática antes das revelações."
+  },
+};
+
+// /core/orquestrador.py — Orquestrador de Personas
+function getPersonaSystem(personaKey: string): string {
+  const p = PERSONAS_EDU[personaKey] ?? PERSONAS_EDU["planejador"];
+  return `${p.instrucoes}\n\nTOM: ${p.tom}`;
+}
+
+// /core/validador_pares.py — Validação por Pares (3 IAs)
+async function validarPares(planoJson: string, tema: string): Promise<Record<string, string>> {
+  const validadores = [
+    { key: "veterano", perfil: "Professor Veterano com 20+ anos de sala de aula, realista e pragmático" },
+    { key: "inclusao", perfil: "Especialista em Educação Inclusiva e acessibilidade pedagógica" },
+    { key: "pesquisador", perfil: "Pesquisador-acadêmico de doutorado em educação, fundamenta tudo em teoria" },
+  ];
+  const feedbacks: Record<string, string> = {};
+  for (const v of validadores) {
+    try {
+      const r = await gpt.chat.completions.create({
+        model: "gpt-4o-mini", temperature: 0.5, max_tokens: 400,
+        messages: [
+          { role: "system", content: `Você é ${v.perfil}. Analise este plano de aula e dê um feedback HONESTO e ESPECÍFICO em 2-4 frases: o que funciona, o que não funciona, 1 sugestão de melhoria. Seja direto.` },
+          { role: "user", content: `Tema: ${tema}\n\nPlano:\n${planoJson.slice(0, 3000)}` },
+        ],
+      });
+      feedbacks[v.key] = r.choices[0].message.content ?? "";
+    } catch { feedbacks[v.key] = "Validação indisponível"; }
+  }
+  // Consenso
+  const aprovados = Object.values(feedbacks).filter(f => !f.toLowerCase().includes("não funciona") && !f.toLowerCase().includes("problema grave")).length;
+  feedbacks["consenso"] = aprovados === 3 ? "✅ Aprovação total pelos 3 validadores"
+    : aprovados >= 2 ? "⚠️ Aprovação com ressalvas — ajuste antes de aplicar"
+    : "❌ Recomenda revisão — veja os feedbacks individuais";
+  return feedbacks;
+}
+
 router.post("/notebook/plano-aula", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
-  const { docId, duracao = 50, nivel = "Ensino Médio", perfilTurma = "heterogenea" } = req.body as { docId: number; duracao?: number; nivel?: string; perfilTurma?: string };
+  const { docId, duracao = 50, nivel = "Ensino Médio", perfilTurma = "heterogenea", persona = "planejador" } = req.body as { docId: number; duracao?: number; nivel?: string; perfilTurma?: string; persona?: string };
   try {
     const docs = await db.execute(sql`
       SELECT content_text, title FROM knowledge_documents
@@ -1410,74 +1486,103 @@ router.post("/notebook/plano-aula", async (req: Request, res: Response) => {
     const dev2Min = Math.round(duracao * 0.30);
     const fechamentoMin = duracao - aberturaMin - dev1Min - dev2Min;
 
+    const personaSystem = getPersonaSystem(persona);
+    const personaInfo = PERSONAS_EDU[persona] ?? PERSONAS_EDU["planejador"];
+
     const completion = await gpt.chat.completions.create({
       model: "gpt-4o-mini",
-      temperature: 0.55,
-      max_tokens: 5000,
+      temperature: 0.6,
+      max_tokens: 6500,
       messages: [
         {
           role: "system",
-          content: `Você é um professor com 15+ anos de experiência, pós-graduado em ensino da sua disciplina (Persona: Planejador Experiente). 
-Você planeja aulas que funcionam na prática, não apenas na teoria.
-Seu estilo: específico (nunca genérico), realista sobre tempos e recursos, atento às diferenças entre alunos, conectado com BNCC.
-NUNCA escreva objetivos com verbos não observáveis ("entender", "saber") — use verbos de ação (identificar, calcular, analisar, comparar, resolver, produzir).
-NUNCA coloque tempos irreais — a soma das etapas deve ser exatamente ${duracao} minutos.
-SEMPRE inclua: contexto específico da turma, estratégias de diferenciação, rúbrica de avaliação, conexão com aulas anteriores.
+          content: `${personaSystem}
 
-Retorne APENAS JSON válido com esta estrutura:
+REGRAS OBRIGATÓRIAS:
+- NUNCA escreva objetivos com verbos não observáveis ("entender", "saber") — use verbos de ação.
+- A soma das etapas deve ser exatamente ${duracao} minutos.
+- SEMPRE inclua diferenciação real por perfil de aluno.
+
+Retorne APENAS JSON válido com esta estrutura (plano_aula_v2.py — schema atualizado):
 {
-  "titulo": "Título específico e atraente (não genérico como 'Aula de Matemática')",
+  "titulo": "Título específico e atraente",
+  "persona": "${personaInfo.nome}",
   "turma": "${nivel}",
   "duracao": "${duracao} minutos",
-  "perfilTurma": "Descrição concreta do perfil: tamanho da turma, contexto, pontos fortes e fracos, acesso a recursos",
+  "perfilTurma": "Descrição concreta do perfil da turma",
+
+  "snapshotExecutivo": {
+    "essencia": "1 frase que captura a alma desta aula",
+    "porqueAgora": "Por que este conteúdo importa para o aluno HOJE",
+    "comoSaberQueAprendeu": "1 critério observável de sucesso",
+    "riscoMaior": "O que pode dar errado e como prevenir",
+    "podaInteligente": "O que NÃO fazer nesta aula (corte pedagógico)"
+  },
+
+  "climaDeAula": {
+    "energiaEsperada": "Alta / Média / Baixa — justificativa",
+    "atencaoPrevista": "Contínua / Intervalada / Focada em momentos-chave",
+    "temperatura": "Acolhedora / Desafiadora / Exploratória / Competitiva",
+    "recomendacaoAmbiental": "Como preparar o espaço físico/virtual"
+  },
+
+  "momentoCero": {
+    "chegada": "O que o professor faz nos 3 min antes de começar (música, frase na lousa, etc.)",
+    "acolhimento": "Como criar segurança psicológica antes do conteúdo",
+    "verificacaoHumor": "Como checar rapidamente o estado emocional da turma"
+  },
+
   "prerequisitos": [
-    {"conceito": "Conceito que aluno deve dominar", "status": "verificar antes da aula"}
+    {"conceito": "Conceito necessário", "status": "verificar antes"}
   ],
   "dificuldadesPrevisíveis": [
-    {"dificuldade": "Erro ou confusão comum", "prevencao": "Como prevenir ou endereçar"}
+    {"dificuldade": "Erro comum", "prevencao": "Como prevenir"}
   ],
   "bncc": {
-    "competencia": "Código e descrição da competência específica (ex: EM13MAT101)",
-    "habilidade": "Código e descrição da habilidade",
-    "objetosConhecimento": ["Objeto 1", "Objeto 2"]
+    "competencia": "Código e descrição",
+    "habilidade": "Código e descrição",
+    "objetosConhecimento": ["Objeto 1"]
   },
   "objetivos": {
-    "geral": "1 objetivo amplo e realizável nesta aula",
+    "geral": "1 objetivo amplo realizável nesta aula",
     "especificos": [
-      "Ao final, o estudante será capaz de [verbo de ação] [objeto] — [critério]",
-      "Ao final, o estudante será capaz de [verbo de ação] [objeto] — [critério]",
-      "Ao final, o estudante será capaz de [verbo de ação] [objeto] — [critério]"
+      "Ao final, o estudante será capaz de [verbo de ação] — [critério]",
+      "Ao final, o estudante será capaz de [verbo de ação] — [critério]",
+      "Ao final, o estudante será capaz de [verbo de ação] — [critério]"
     ],
-    "indicadores": ["Critério observável de sucesso 1", "Critério observável 2"]
+    "indicadores": ["Critério observável 1", "Critério observável 2"]
   },
   "desenvolvimento": [
     {
       "tempo": "${aberturaMin} min",
       "etapa": "Abertura",
       "nome": "Nome atraente para este momento",
-      "atividade": "Descrição detalhada do gancho motivador ou provocação inicial",
-      "recursos": "Lista específica de materiais necessários",
+      "atividade": "Descrição detalhada do gancho motivador",
+      "recursos": "Lista específica de materiais",
       "estrategia": "Como o professor conduz este momento",
+      "dialogoEsperado": {"professor": "Fala ou pergunta de abertura exata do professor", "aluno": "Resposta esperada e como aproveitar respostas inesperadas"},
       "perguntasNorteadoras": ["Pergunta que provoca pensamento", "Pergunta que conecta com vida do aluno"],
-      "diferenciacão": {"comDificuldade": "Adaptação para alunos com dificuldade", "avancados": "Enriquecimento para alunos avançados"}
+      "diferenciacão": {"comDificuldade": "Adaptação específica", "avancados": "Enriquecimento específico"}
     },
     {
       "tempo": "${dev1Min} min",
       "etapa": "Desenvolvimento 1",
       "nome": "Nome do momento",
-      "atividade": "Conteúdo principal com explicação ativa — descreva passo a passo",
-      "recursos": "Slides, exemplos concretos, quadro",
-      "estrategia": "Exposição dialogada com perguntas — como intervir nos erros comuns",
-      "perguntasNorteadoras": ["Pergunta de verificação de entendimento", "Pergunta de aprofundamento"],
+      "atividade": "Conteúdo principal — descreva passo a passo",
+      "recursos": "Materiais necessários",
+      "estrategia": "Como conduzir e intervir nos erros",
+      "dialogoEsperado": {"professor": "Fala ou pergunta central deste momento", "aluno": "O que observar para saber se está entendendo"},
+      "perguntasNorteadoras": ["Pergunta de verificação", "Pergunta de aprofundamento"],
       "diferenciacão": {"comDificuldade": "Adaptação", "avancados": "Extensão"}
     },
     {
       "tempo": "${dev2Min} min",
       "etapa": "Desenvolvimento 2",
       "nome": "Nome do momento",
-      "atividade": "Atividade prática ou colaborativa — descreva os passos do que os alunos fazem",
-      "recursos": "Exercícios, material do caderno, fichas",
-      "estrategia": "Aprendizagem ativa — formação de grupos, funções, como circular pela sala",
+      "atividade": "Atividade prática ou colaborativa",
+      "recursos": "Materiais da atividade",
+      "estrategia": "Como formar grupos, circular, intervir",
+      "dialogoEsperado": {"professor": "Como mediar a atividade", "aluno": "Sinais de engajamento vs dificuldade"},
       "perguntasNorteadoras": ["Pergunta de metacognição", "Pergunta de aplicação"],
       "diferenciacão": {"comDificuldade": "Suporte adicional", "avancados": "Desafio extra"}
     },
@@ -1485,57 +1590,51 @@ Retorne APENAS JSON válido com esta estrutura:
       "tempo": "${fechamentoMin} min",
       "etapa": "Fechamento",
       "nome": "Nome do momento",
-      "atividade": "Síntese integradora + avaliação formativa rápida",
-      "recursos": "Quiz oral/escrito, saída de aprendizagem",
-      "estrategia": "Como verificar se os objetivos foram alcançados — instrumento formativo",
-      "perguntasNorteadoras": ["O que você aprendeu hoje?", "Qual foi o maior desafio?"],
+      "atividade": "Síntese integradora + avaliação formativa",
+      "recursos": "Instrumento de saída",
+      "estrategia": "Como verificar se os objetivos foram alcançados",
+      "dialogoEsperado": {"professor": "Pergunta de síntese final", "aluno": "O que a resposta revela sobre o aprendizado"},
+      "perguntasNorteadoras": ["O que você aprendeu hoje?", "O que ainda ficou com dúvida?"],
       "diferenciacão": {"comDificuldade": "Apoio na síntese", "avancados": "Síntese ampliada"}
     }
   ],
+
+  "versoesEmergencia": {
+    "seTurmaEstiverCansada": "Adaptação rápida do plano — o que cortar e o que manter",
+    "seTecnologiaFalhar": "Versão analógica completa",
+    "seTempoAcabar": "O mínimo irredutível que precisa acontecer",
+    "seAlunoDesafiar": "Como aproveitar a resistência como aprendizagem"
+  },
+
   "avaliacao": {
-    "instrumento": "Descrição completa do instrumento avaliativo (prova, projeto, apresentação, etc.)",
+    "instrumento": "Descrição do instrumento avaliativo",
     "rubrica": [
-      {
-        "criterio": "Critério avaliativo 1",
-        "insuficiente": "Descrição do nível D — não atingiu",
-        "regular": "Descrição do nível C — atingiu parcialmente",
-        "bom": "Descrição do nível B — atingiu satisfatoriamente",
-        "excelente": "Descrição do nível A — superou"
-      },
-      {
-        "criterio": "Critério avaliativo 2",
-        "insuficiente": "Descrição",
-        "regular": "Descrição",
-        "bom": "Descrição",
-        "excelente": "Descrição"
-      }
+      {"criterio": "Critério 1", "insuficiente": "Nível D", "regular": "Nível C", "bom": "Nível B", "excelente": "Nível A"},
+      {"criterio": "Critério 2", "insuficiente": "Nível D", "regular": "Nível C", "bom": "Nível B", "excelente": "Nível A"}
     ]
   },
-  "tarefaCasa": "Descrição específica da atividade + conexão com o conteúdo e com a próxima aula",
-  "adaptacoes": {
-    "turmaRapida": "Enriquecimento para alunos que terminaram antes",
-    "turmaDificuldade": "Simplificação e suporte adicional"
-  },
-  "materialComplementar": ["Referência/link 1", "Referência/link 2"],
+  "tarefaCasa": "Atividade específica + conexão com próxima aula",
+  "adaptacoes": {"turmaRapida": "Enriquecimento", "turmaDificuldade": "Suporte"},
+  "materialComplementar": ["Referência 1", "Referência 2"],
   "referencias": {
-    "teoricas": ["Referência teórica 1 (Vygotsky, Piaget, etc.)", "Referência 2"],
-    "didaticas": ["Livro didático ou recurso 1", "Recurso 2"],
-    "fontesCaderno": "Quais partes do documento do caderno foram usadas"
+    "teoricas": ["Referência teórica 1", "Referência 2"],
+    "didaticas": ["Recurso 1", "Recurso 2"],
+    "fontesCaderno": "Partes do caderno usadas"
   },
-  "reflexao": {
-    "oQueFuncionou": "",
-    "oQuePrecisaAjustar": "",
-    "adaptacoesProximaTurma": ""
-  }
+  "reflexao": {"oQueFuncionou": "", "oQuePrecisaAjustar": "", "adaptacoesProximaTurma": ""}
 }`,
         },
-        { role: "user", content: `Tema: "${row.title}"\nNível: ${nivel}\nPerfil da turma: ${perfilTurma}\nDuração: ${duracao} minutos\n\nConteúdo do caderno:\n${row.content_text.slice(0, 14_000)}` },
+        { role: "user", content: `Tema: "${row.title}"\nNível: ${nivel}\nPerfil da turma: ${perfilTurma}\nDuração: ${duracao} minutos\nPersona escolhida: ${personaInfo.nome}\n\nConteúdo do caderno:\n${row.content_text.slice(0, 12_000)}` },
       ],
     });
 
     const raw = completion.choices[0].message.content ?? "{}";
     const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    res.json(JSON.parse(clean));
+    const planoJson = clean;
+    const validacao = await validarPares(planoJson, row.title);
+    const plano = JSON.parse(planoJson);
+    plano._validacaoPares = validacao;
+    res.json(plano);
   } catch (e) {
     console.error("notebook plano-aula:", e);
     res.status(500).json({ erro: "Erro ao gerar plano de aula" });

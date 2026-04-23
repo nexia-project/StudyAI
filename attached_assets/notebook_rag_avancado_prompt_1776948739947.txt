@@ -1,0 +1,927 @@
+text
+# ============================================================================
+# NOTEBOOK RAG AVANÇADO — PROMPT COMPLETO PARA STUDY.IA
+# ============================================================================
+# Arquivo: notebook_rag_avancado_prompt.txt
+# Formato: UTF-8 | LF | Sublime Text
+# Versão: 1.0
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# SEÇÃO A: ARQUITETURA E STACK
+# ----------------------------------------------------------------------------
+
+## Stack Tecnológico
+
+| Camada | Tecnologia |
+|--------|-----------|
+| Frontend | Next.js 14 + TypeScript + Tailwind CSS + shadcn/ui |
+| Backend | Next.js API Routes |
+| Banco Vetorial | Supabase pgvector (ou Pinecone/Weaviate) |
+| Embeddings | text-embedding-3-small (OpenAI) ou modelo multilíngue |
+| IA Generativa | Multi-provedor (DeepSeek, Claude, GPT-4o, Gemini) |
+| Áudio | Whisper (transcrição) + ElevenLabs/OpenAI TTS |
+| PDF | pdf-parse, mammoth, pdf-lib |
+| Vídeo | yt-dlp + Whisper |
+| Storage | Supabase Storage |
+
+## Estrutura de Dados (Prisma Schema)
+
+```prisma  
+model Notebook {  
+  id            String   @id @default(cuid())  
+  userId        String  
+  title         String  
+  description   String?  
+  subject       String?  
+  gradeLevel    String?  
+  createdAt     DateTime @default(now())  
+  updatedAt     DateTime @updatedAt  
+  isPublic      Boolean  @default(false)  
+  shareCode     String?  @unique  
+  collaborators String[]  
+  settings      Json     // { defaultModel, audioVoice, studyStyle }  
+  
+  sources       NotebookSource[]  
+  chunks        NotebookChunk[]  
+  conversations NotebookConversation[]  
+  outputs       NotebookStudioOutput[]  
+  
+  @@index([userId])  
+  @@index([shareCode])  
+}  
+
+model NotebookSource {  
+  id                String   @id @default(cuid())  
+  notebookId        String  
+  type              SourceType // PDF, WEB, YOUTUBE, AUDIO, TEXT, IMAGE  
+  title             String  
+  originalUrl       String?  
+  filePath          String?  
+  fileSize          Int?  
+  contentText       String?  @db.Text  
+  transcript        String?  @db.Text  
+  processingStatus  ProcessingStatus // PENDING, PROCESSING, DONE, ERROR  
+  chunksCount       Int      @default(0)  
+  metadata          Json     // { pages, duration, author, date }  
+  createdAt         DateTime @default(now())  
+  
+  notebook  Notebook  @relation(fields: [notebookId], references: [id])  
+  chunks    NotebookChunk[]  
+  
+  @@index([notebookId])  
+  @@index([processingStatus])  
+}  
+
+model NotebookChunk {  
+  id          String           @id @default(cuid())  
+  sourceId    String  
+  notebookId  String  
+  content     String           @db.Text  
+  embedding   Unsupported("vector(1536)")  
+  metadata    Json             // { pageNum, timestamp, sectionTitle }  
+  
+  source   NotebookSource @relation(fields: [sourceId], references: [id])  
+  notebook Notebook       @relation(fields: [notebookId], references: [id])  
+  
+  @@index([notebookId])  
+}  
+
+model NotebookConversation {  
+  id          String   @id @default(cuid())  
+  notebookId  String  
+  userId      String  
+  title       String?  
+  createdAt   DateTime @default(now())  
+  
+  notebook Notebook         @relation(fields: [notebookId], references: [id])  
+  messages NotebookMessage[]  
+  
+  @@index([notebookId, userId])  
+}  
+
+model NotebookMessage {  
+  id              String   @id @default(cuid())  
+  conversationId  String  
+  role            MessageRole // USER, ASSISTANT  
+  content         String     @db.Text  
+  sourcesCited    String[]   // IDs dos chunks citados  
+  createdAt       DateTime   @default(now())  
+  
+  conversation NotebookConversation @relation(fields: [conversationId], references: [id])  
+  
+  @@index([conversationId])  
+}  
+
+model NotebookStudioOutput {  
+  id        String      @id @default(cuid())  
+  notebookId String  
+  type      OutputType  // SUMMARY, FLASHCARDS, QUIZ, AUDIO, STUDY_GUIDE, TIMELINE, FAQ, BRIEFING, MINDMAP, LESSON_PLAN  
+  title     String  
+  content   Json        // Estrutura varia por tipo  
+  audioUrl  String?  
+  createdAt DateTime    @default(now())  
+  
+  notebook Notebook @relation(fields: [notebookId], references: [id])  
+  
+  @@index([notebookId, type])  
+}  
+
+enum SourceType {  
+  PDF  
+  WEB  
+  YOUTUBE  
+  AUDIO  
+  TEXT  
+  IMAGE  
+}  
+
+enum ProcessingStatus {  
+  PENDING  
+  PROCESSING  
+  DONE  
+  ERROR  
+}  
+
+enum MessageRole {  
+  USER  
+  ASSISTANT  
+}  
+
+enum OutputType {  
+  SUMMARY  
+  FLASHCARDS  
+  QUIZ  
+  AUDIO  
+  STUDY_GUIDE  
+  TIMELINE  
+  FAQ  
+  BRIEFING  
+  MINDMAP  
+  LESSON_PLAN  
+}  
+----------------------------------------------------------------------------
+SEÇÃO B: INTERFACE — LAYOUT 3 COLUNAS
+----------------------------------------------------------------------------
+Wireframe ASCII
+less
+┌─────────────────┬─────────────────────────────┬─────────────────┐
+│                 │                             │                 │
+│   [ FONTES ]    │      [ CHAT ]               │   [ STUDIO ]    │
+│                 │                             │                 │
+│  [+ Adicionar]  │  ┌─────────────────────┐   │  [Gerar ▼]      │
+│                 │  │                     │   │                 │
+│  📄 PDF 1       │  │  Histórico de msgs  │   │  📋 Resumo      │
+│  🌐 Site A      │  │                     │   │  🎴 Flashcards  │
+│  🎥 Vídeo B     │  │  Usuário: pergunta  │   │  ❓ Quiz        │
+│  🎙️ Áudio C     │  │                     │   │  🎧 Podcast     │
+│                 │  │  IA: resposta com   │   │  📚 Guia Estudo │
+│  ─────────────  │  │  citações [1][2]    │   │  🗺️ Mapa Mental │
+│  📊 Progresso   │  │                     │   │  📅 Timeline    │
+│  🧬 DNA Fontes  │  │  [1] Fonte A, p.3   │   │  ❓ FAQ         │
+│                 │  │  [2] Fonte B, 2:15  │   │  📄 Briefing    │
+│                 │  │                     │   │  🎯 Plano Aula  │
+│                 │  └─────────────────────┘   │                 │
+│                 │                             │                 │
+│                 │  [Digite sua pergunta...]  │                 │
+│                 │                             │                 │
+└─────────────────┴─────────────────────────────┴─────────────────┘
+Breakpoints Responsivos
+Dispositivo Layout
+Desktop (≥1280px) 3 colunas fixas (280px
+Tablet (768-1279px) 2 colunas + drawer para Studio
+Mobile (<768px) Abas: Fontes
+----------------------------------------------------------------------------
+SEÇÃO C: MÓDULO FONTES
+----------------------------------------------------------------------------
+Tipos de Fonte Suportados
+Tipo  Extensões Processamento Extração
+PDF .pdf  pdf-parse Texto + número página
+Word  .docx, .doc mammoth Texto estruturado
+Texto .txt, .md Leitura direta  Conteúdo raw
+Web URL Crawler + Readability Artigo limpo
+YouTube youtube.com/... yt-dlp + Whisper  Transcrição com timestamps
+Áudio .mp3, .wav, .m4a  Whisper Transcrição
+Imagem  .jpg, .png, .webp OCR (Gemini/Tesseract)  Texto extraído
+Colado  — Editor inline Formatação básica
+Pipeline de Processamento
+markdown
+UPLOAD → VALIDAÇÃO → EXTRAÇÃO → CHUNKING → EMBEDDING → INDEXAÇÃO
+   │         │           │          │          │           │
+   ▼         ▼           ▼          ▼          ▼           ▼
+ Arquivo  Tamanho    Texto     Pedacos   Vetores    Banco
+ recebido  tipo      puro      ~1000tok   1536d    vetorial
+                              overlap 200
+DNA das Fontes (Análise IA)
+json
+{
+  "dnaFontes": {
+    "temaPrincipal": "string",
+    "subtemas": ["string"],
+    "nivelDificuldade": "basico | intermediario | avancado",
+    "prerequisitosSugeridos": ["string"],
+    "conceitosChave": [
+      {
+        "termo": "string",
+        "importancia": 0.0-1.0,
+        "relacoes": ["string"]
+      }
+    ],
+    "pessoasImportantes": ["string"],
+    "datasImportantes": ["string"],
+    "relacoesEntreFontes": {
+      "nome_arquivo": "papel_no_conjunto"
+    },
+    "lacunas": ["string"],
+    "sugestoesFontes": ["string"]
+  }
+}
+----------------------------------------------------------------------------
+SEÇÃO D: MÓDULO CHAT
+----------------------------------------------------------------------------
+Recursos do Chat
+Recurso Descrição Técnica
+Citações automáticas  Regex [n] → link para chunk com highlight
+Ver no contexto Scroll para página/segundo exato na fonte
+Modo foco Zen mode: fullscreen, sem UI chrome
+Histórico múltiplo  Conversas nomeáveis, persistidas
+Exportar  PDF (jsPDF), Markdown, Clipboard
+Modo aprofundado  IA faz perguntas de volta (Socratic)
+Modo simplificado Rewriting: complexidade ~5º ano
+Modo Socrático  IA guia com perguntas, não respostas
+Modos de Chat (Toggle)
+css
+┌─────────────────────────────────────────┐
+│  [Padrão] [Estudo] [Pesquisa] [Revisão] [Dúvidas] │
+└─────────────────────────────────────────┘
+Modo  Prompt System Adicional
+Padrão  Equilibrado, adaptativo
+Estudo  "Você é tutor paciente. Use analogias, exemplos, verificação de entendimento."
+Pesquisa  "Tom acadêmico. Cite metodologias, limite-se às fontes, indique lacunas."
+Revisão "Foco em pontos-chave, mnemônicos, padrões de prova."
+Dúvidas "Zero julgamento. Qualquer pergunta é válida. Confirme: 'Entendi, você quer saber...'"
+Memória de Contexto
+java
+Contexto enviado em CADA mensagem:
+├── DNA das Fontes (resumo estruturado)
+├── Histórico da conversa (últimas 10 mensagens)
+├── Chunks relevantes da pergunta atual (RAG top-k)
+└── Preferências do usuário (modo ativo, nível)
+----------------------------------------------------------------------------
+SEÇÃO E: MÓDULO STUDIO — OUTPUTS
+----------------------------------------------------------------------------
+1. RESUMO
+Formato Bullets
+markdown
+# Insight Central
+[1 frase impactante]
+
+## Contexto
+[2-3 frases de por que importa]
+
+## Pilares
+• **Conceito 1**: explicação + conexão com insight
+• **Conceito 2**: explicação + conexão com insight
+• **Conceito 3**: explicação + conexão com insight
+
+## Aplicação Prática
+[Onde isso se usa]
+
+## Questão Provocadora
+[Pergunta para reflexão]
+
+## Próximos Passos
+[O que estudar depois]
+Formato Detalhado
+markdown
+# Síntese Executiva
+[Parágrafo standalone]
+
+## Mapeamento Conceitual
+### Conceito A
+- Definição acessível
+- Origem/contexto
+- Mecanismo
+- Evidências das fontes
+- Críticas/limitações
+
+### Conceito B
+[...]
+
+## Conexões e Sistemas
+[Diagrama descrito em texto]
+
+## Perspectivas e Debates
+
+## Implicações
+
+## Glossário Contextualizado
+2. FLASHCARDS
+json
+{
+  "deck": {
+    "title": "string",
+    "description": "string",
+    "cards": [
+      {
+        "id": "string",
+        "front": "pergunta ativa",
+        "back": "resposta completa",
+        "mnemonic": "opcional",
+        "difficulty": "novice | intermediate | expert",
+        "tags": ["string"],
+        "sourceChunkId": "string"
+      }
+    ],
+    "settings": {
+      "algorithm": "SM-2",
+      "dailyNewCards": 20,
+      "dailyReviewCards": 100
+    }
+  }
+}
+Tipos de Cartas
+Tipo  Estrutura Frente  Estrutura Verso
+Fato  Pergunta direta Resposta + dica numérica
+Conceito  "O que diferencia X de Y?"  Definição + analogia
+Comparação  "X vs Y: aspecto Z" Contraste lado a lado
+Aplicação "Cenário: o que ocorre?"  Explicação + princípio
+3. QUIZ
+json
+{
+  "quiz": {
+    "title": "string",
+    "description": "string",
+    "timeLimit": "number", // minutos
+    "questions": [
+      {
+        "id": "string",
+        "type": "multiple_choice | true_false | short_answer | matching | ordering",
+        "difficulty": 1-5, // Bloom's taxonomy
+        "bloomLevel": "remember | understand | apply | analyze | evaluate | create",
+        "statement": "string",
+        "options": ["A", "B", "C", "D"], // para MC
+        "correctAnswer": "string",
+        "explanation": "string",
+        "sourceChunkIds": ["string"]
+      }
+    ],
+    "scoring": {
+      "correct": 1,
+      "partial": 0.5,
+      "incorrect": 0
+    }
+  }
+}
+4. PODCAST — AUDIO OVERVIEW
+Arquitetura de Geração
+lua
+ETAPA 1: ANÁLISE ESTRUTURAL
+├── Identificar tema central e ângulo único
+├── Mapear 3-5 "momentos de insight"
+├── Detectar tensão/dilema subjacente
+└── Conectar com atualidade
+
+ETAPA 2: PERSONAGENS
+├── Host A (Especialista/Guia)
+│   └── Tom: curioso, acessível, profundo
+│   └── Função: introduz, explica, conecta
+│   └── Frase-tipo: "Isso me lembra..."
+│
+└── Host B (Ouvinte/Questionador)
+    └── Tom: inteligente, não-especialista
+    └── Função: representa dúvidas do público
+    └── Frase-tipo: "Então quer dizer que..."
+
+ETAPA 3: ROTEIRO
+├── INTRO (90s): gancho, tema, relevância
+├── SEÇÃO 1 (3min): contexto + analogia central
+├── SEÇÃO 2 (5min): insights principais
+├── SEÇÃO 3 (4min): tensão/debate
+├── SEÇÃO 4 (3min): aplicação prática
+└── ENCERRAMENTO (2min): síntese + reflexão
+Exemplo de Trecho
+less
+HOST A: Você sabia que, a cada respiração que você dá, está 
+consumindo o resultado de uma das maiores revoluções da história 
+da Terra?
+
+HOST B: Revolução? Tô falando errado, é?
+
+HOST A: [riso] Não, não. É que há 2,4 bilhões de anos, umas 
+bactérias descobriram como usar a luz do sol para fazer comida. 
+E essa "invenção" — a fotossíntese — mudou o planeta inteiro. 
+Liberou tanto oxigênio que envenenou quase toda vida existente 
+na época.
+
+HOST B: Espera, oxigênio envenenou? Eu aprendi que oxigênio é vida!
+
+HOST A: É agora, sim. Mas naquela época era um gás tóxico. A Grande 
+Oxidação, chamam. E essas bactérias — as cianobactérias — eram 
+basicamente as primeiras poluidoras da história. Só que o "lixo" 
+delas se tornou o ar que a gente respira.
+Configuração de Geração
+json
+{
+  "podcastConfig": {
+    "duration": "5min | 10min | 15min | 20min",
+    "tone": "conversational_friendly | formal_academic | humorous | motivational",
+    "depthLevel": "basic | intermediate | advanced",
+    "focus": "causes_consequences | chronology | people | debates",
+    "hosts": {
+      "hostA": { "name": "Ana", "personality": "curious_guide" },
+      "hostB": { "name": "Pedro", "personality": "intelligent_learner" }
+    },
+    "include": {
+      "analogies": true,
+      "curiosities": true,
+      "currentConnections": true
+    },
+    "referenceStyle": "Flow Podcast | Nerdcast | Lex Fridman",
+    "backgroundMusic": "none | soft | dramatic"
+  }
+}
+5. GUIA DE ESTUDO
+markdown
+# Mapa de Jornada
+> Ao final deste guia, você será capaz de...
+
+[Checklist de competências]
+
+## Pré-requisitos e Ponte
+[O que precisa saber antes]
+
+**Quiz Diagnóstico (3 questões rápidas)**
+
+---
+
+## Módulo 1: [Título] (15-20 min)
+
+### Objetivo
+[Competência específica]
+
+### Conceito Central
+[Explicação com analogia]
+
+### Aprofundamento
+[Detalhes técnicos]
+
+### Exemplo Resolvido
+[Passo a passo guiado]
+
+### Erros Comuns
+[O que evitar]
+
+### Checkpoint
+[Perguntas para autoavaliação]
+
+---
+
+## Módulo 2: [Título]
+[...]
+
+## Síntese Integradora
+[Mapa mental descrito]
+
+## Aplicação Prática
+[Caso real + exercício de transferência]
+
+## Expansão
+- Leituras complementares (priorizadas)
+- Vídeos/documentários
+- Conexões com outros temas
+6. MAPA MENTAL
+markdown
+# Mapa Mental: [Tema]
+
+## Nó Central
+[Tema principal] + ícone sugerido
+
+### Ramo 1: [Categoria] (cor: #hex)
+- Sub-ramo 1.1
+  - Detalhe A
+  - Detalhe B
+- Sub-ramo 1.2
+  - → conexão com Ramo 3
+
+### Ramo 2: [Categoria] (cor: #hex)
+[...]
+
+### Ramo 3: [Categoria] (cor: #hex)
+[...]
+
+## Conexões Cruzadas
+- Ramo 1 → Ramo 3: [relação]
+- Ramo 2 → Ramo 4: [relação]
+
+## Elementos Visuais Sugeridos
+| Nó | Forma | Cor | Ícone |
+|----|-------|-----|-------|
+| Central | Círculo | #8b5cf6 | 🎯 |
+| Conceito | Quadrado | #06b6d4 | 💡 |
+| Fato | Círculo | #22c55e | 📊 |
+| Processo | Seta | #eab308 | ⚡ |
+7. TIMELINE
+markdown
+# Linha do Tempo: [Tema]
+
+## Período: [Nome]
+├─ [Data]
+│  [Ícone] [Título do evento]
+│  Descrição: [texto]
+│  Impacto: [consequência]
+│  → [conexão com próximo evento]
+│
+├─ [Data]
+│  [...]
+│
+└─ [Data]
+   [...]
+
+## Período: [Nome]
+[...]
+8. FAQ
+markdown
+# Perguntas Frequentes: [Tema]
+
+## [Pergunta 1]
+**Resposta:** [baseada nas fontes]
+
+**Fonte:** [citação específica]
+
+---
+
+## [Pergunta 2]
+[...]
+
+---
+
+## Sua Pergunta
+[Aluno pode adicionar pergunta → IA responde → vira FAQ se relevante]
+9. BRIEFING DOCUMENT
+markdown
+# Briefing: [Tema]
+
+## Problema/Contexto
+[2-3 frases]
+
+## Pontos-Chave
+1. [bullet impactante]
+2. [bullet impactante]
+3. [bullet impactante]
+
+## Conclusões
+[Resumo executivo]
+
+## Recomendações
+- [Ação 1]
+- [Ação 2]
+- [Ação 3]
+
+## Próximos Passos
+[Timeline sugerida]
+10. PLANO DE AULA
+markdown
+# Plano de Aula: [Tema]
+
+## Informações Gerais
+- Turma: [série/disciplina]
+- Duração: [minutos]
+- Fontes do caderno: [lista]
+
+## Objetivos de Aprendizagem
+- [Objetivo 1]
+- [Objetivo 2]
+
+## Pré-requisitos dos Alunos
+[O que já devem saber]
+
+## Desenvolvimento
+
+| Tempo | Etapa | Atividade | Recursos |
+|-------|-------|-----------|----------|
+| 10min | Abertura | [gancho, provocação] | [slide, vídeo] |
+| 15min | Meio 1 | [conteúdo principal] | [explicação, exemplo] |
+| 15min | Meio 2 | [atividade em grupo] | [material do caderno] |
+| 10min | Fechamento | [síntese, avaliação] | [quiz rápido] |
+
+## Tarefa de Casa
+[Descrição + vinculação com caderno]
+
+## Material Complementar
+[Do caderno + externos]
+
+## Avaliação
+- Critérios: [lista]
+- Instrumento: [descrição]
+
+## Adaptações
+- Para turmas mais rápidas: [extensão]
+- Para turmas com dificuldade: [simplificação]
+----------------------------------------------------------------------------
+SEÇÃO F: FUNCIONALIDADES EXCLUSIVAS
+----------------------------------------------------------------------------
+F1. Múltiplos Cadernos Organizados
+less
+Dashboard
+├── Meus Cadernos
+│   ├── 📘 História - Revolução Francesa
+│   │   └── 5 fontes • ontem • [Continuar]
+│   ├── 📗 Biologia - Fotossíntese
+│   │   └── 3 fontes • flashcards ✓
+│   └── 📕 Literatura - Modernismo
+│       └── 8 fontes • podcast 2x
+│
+├── 📁 Pastas
+│   └── Vestibular 2025 (3 cadernos)
+│
+├── 🏷️ Tags
+│   #enem #biologia #revisão
+│
+└── 🤝 Compartilhados
+    └── [Cadernos de outros]
+F2. Modo Colaborativo
+Permissão Pode fazer
+Visualizar  Ler fontes, ver chat histórico
+Comentar  + Sugerir em threads
+Editar  + Adicionar fontes, conversar no chat
+F3. Integração Plano de Estudos
+css
+[Caderno] ──► [Criar Plano] ──► [Cronograma automático]
+                                    │
+                                    ├── Sessões vinculadas a chunks
+                                    ├── Metas de revisão espaçada
+                                    └── Quiz de checkpoint
+F4. Modo Professor
+sql
+Professor cria caderno ──► Compartilha com turma
+                                │
+                                ├── Alunos: view-only das fontes
+                                ├── Chat: perguntas (priv/público)
+                                ├── Estatísticas: quem leu, perguntou
+                                └── Gera atividades → atribui
+F5. PWA / Offline
+yaml
+Service Worker
+├── Cache: fontes processadas (texto)
+├── Cache: flashcards para revisão
+├── Cache: podcasts baixados
+└── Sync: quando online, sincroniza progresso
+F6. Anotações e Destaques
+yaml
+Fonte PDF
+├── Destaque amarelo: [trecho]
+│   └── Nota: "Lembrar disso para prova"
+├── Destaque verde: [trecho]
+│   └── Nota: "Conexão com aula passada"
+└── Ver: [meus destaques] | [todos os destaques]
+F7. Busca Semântica Avançada
+ini
+Busca: "encontre onde fala sobre impacto econômico"
+├── Resultados por similaridade:
+│   1. [Chunk A] - Score: 0.94
+│   2. [Chunk B] - Score: 0.87
+│   3. [Chunk C] - Score: 0.82
+└── Filtros: [por fonte] [por data] [por tipo]
+F8. Comparador de Fontes
+bash
+Selecionado: Fonte A + Fonte B
+├── Análise: "Compare estes artigos"
+│   ├── Pontos de concordância
+│   ├── Divergências de opinião
+│   ├── Qualidade das evidências
+│   └── Mais atual/confiável: [resultado]
+----------------------------------------------------------------------------
+SEÇÃO G: INTEGRAÇÃO STUDY.IA
+----------------------------------------------------------------------------
+Matriz de Integração
+Feature Study.IA  Integração com Notebook RAG
+Plano de Estudos  Caderno vira matéria; outputs viram atividades
+Quiz  Quiz do studio → quiz oficial
+Flashcards  Deck → coleção Study.IA
+Redação Fontes → base para tema
+Simulado  Conteúdo → questões
+Tutor Tiagão  Acesso aos cadernos do aluno
+Aula Professor  Professor vê cadernos antes
+Módulo Professor  Planos de aula → módulo direto
+Sincronização de Progresso
+Notebook RAG          Study.IA Dashboard
+─────────────────     ─────────────────
+Tempo lendo fontes ──► Tempo de estudo
+Flashcards revisados ─► Flashcards revisados
+Quiz completado ──────► Atividade completada
+----------------------------------------------------------------------------
+SEÇÃO H: SISTEMA DE EVENTOS
+----------------------------------------------------------------------------
+Tabela notebook_events
+Evento  Quando disparar Dados
+notebook_created  Criação do caderno  userId, timestamp
+source_added  Upload concluído  sourceType, fileSize
+source_processed  Processamento finalizado  chunksCount, duration
+chat_message_sent Usuário envia mensagem  messageLength
+chat_response_received  IA responde tokensUsed, responseTime
+studio_output_generated Geração concluída outputType, cost
+flashcard_reviewed  Revisão de card difficulty, result
+quiz_answered Resposta submetida  correct, timeSpent
+podcast_played  Play iniciado position
+podcast_completed Finalizado  completionRate
+shared  Compartilhamento  permissionLevel
+collaborator_added  Novo colaborador  userId
+Tabela notebook_daily_metrics
+sql
+CREATE TABLE notebook_daily_metrics (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL,
+  notebook_id TEXT,
+  date DATE NOT NULL,
+  
+  -- Engajamento
+  total_study_minutes INTEGER DEFAULT 0,
+  sources_read INTEGER DEFAULT 0,
+  messages_sent INTEGER DEFAULT 0,
+  
+  -- Outputs
+  outputs_generated INTEGER DEFAULT 0,
+  outputs_by_type JSONB DEFAULT '{}',
+  
+  -- Flashcards
+  flashcards_reviewed INTEGER DEFAULT 0,
+  flashcards_mastered INTEGER DEFAULT 0,
+  
+  -- Quiz
+  quizzes_taken INTEGER DEFAULT 0,
+  quiz_avg_score DECIMAL(5,2),
+  
+  -- Podcast
+  podcasts_listened INTEGER DEFAULT 0,
+  podcast_minutes INTEGER DEFAULT 0,
+  
+  UNIQUE(user_id, date)
+);
+----------------------------------------------------------------------------
+SEÇÃO I: CUSTOS E OTIMIZAÇÃO
+----------------------------------------------------------------------------
+Matriz de Custo por Operação
+Operação  Custo aprox.  Otimização
+Embedding (1M tokens) $0.02 Batch processing, modelo pequeno
+Chat completion Variável  Cache semântico, RAG eficiente
+Studio output $0.01-0.10  Preview parcial, cache
+Transcrição Whisper $0.006/min  Local se possível
+TTS ElevenLabs  $0.30/1000chars Cache de vozes comuns
+Planos e Limites
+Plano Cadernos  Fontes/Caderno  Chat/Mês  Podcast/Mês
+Free  3 10  50  0
+Premium ∞ 50  ∞ 10
+Institucional ∞ ∞ ∞ ∞
+Estratégias de Cache
+sql
+Cache Semântico
+├── Pergunta similar > 0.95 → resposta cacheada
+├── TTL: 24h / 7d / 30d (configurável)
+└── Economia: ~30% das perguntas
+
+Cache de Outputs
+├── Studio outputs salvos
+├── "Usar versão anterior" vs "Regenerar"
+└── Economia: ~50% em re-gerações
+----------------------------------------------------------------------------
+SEÇÃO J: PRIORIDADE DE IMPLEMENTAÇÃO
+----------------------------------------------------------------------------
+FASE 1 — MVP (4 semanas)
+ Criar caderno (título, descrição)
+ Upload PDF, texto, URL
+ Chunking + embeddings
+ Chat básico com citações
+ Resumo (studio #1)
+ Lista de cadernos
+ Sistema de eventos
+FASE 2 — Fontes (3 semanas)
+ YouTube (download + Whisper)
+ Áudio upload
+ Imagem OCR
+ Word/DOCX
+ Chat: modos, memória, export
+FASE 3 — Studio Completo (4 semanas)
+ Flashcards + modo estudo
+ Quiz + correção
+ Podcast configurável
+ Guia de estudo
+ Timeline, Briefing
+ Mapa mental
+FASE 4 — Diferenciais (3 semanas)
+ Múltiplos cadernos + pastas
+ Modo colaborativo
+ Integração Plano de Estudos
+ Modo Professor
+ Anotações e destaques
+ Busca semântica avançada
+ Comparador de fontes
+FASE 5 — Polish (2 semanas)
+ PWA / offline
+ Integrações finais Study.IA
+ Dashboards e métricas
+ Otimização de custos
+ Testes, bugs, performance
+----------------------------------------------------------------------------
+SEÇÃO K: ARQUITETURA DE QUALIDADE DO OUTPUT
+----------------------------------------------------------------------------
+3 Camadas de Geração
+swift
+┌─────────────────────────────────────────┐
+│  CAMADA 1: CONTEXT BUILDER              │
+│  Análise profunda das fontes            │
+│  → Gera ANÁLISE_PRÉVIA estruturada      │
+└─────────────────┬───────────────────────┘
+                  ▼
+┌─────────────────────────────────────────┐
+│  CAMADA 2: OUTPUT DIRECTOR              │
+│  Seleciona: template + persona + nível  │
+│  → Configuração de geração              │
+└─────────────────┬───────────────────────┘
+                  ▼
+┌─────────────────────────────────────────┐
+│  CAMADA 3: GENERATION ENGINE            │
+│  Prompt enriquecido + modelo adequado   │
+│  → Output bruto                         │
+└─────────────────┬───────────────────────┘
+                  ▼
+┌─────────────────────────────────────────┐
+│  PÓS-PROCESSAMENTO                      │
+│  Verificação de qualidade + refinamento │
+│  → Output final entregue ao usuário     │
+└─────────────────────────────────────────┘
+Análise Prévia (Context Builder)
+json
+{
+  "analisePrev": {
+    "tipoFonte": "artigo_cientifico | livro | aula_gravada | pdf_academico | noticia",
+    "dominio": "biologia | historia | literatura | ...",
+    "nivelComplexidade": "basico | intermediario | avancado",
+    "extensao": "curto | medio | longo",
+    "estruturaPrincipal": ["introducao", "metodologia", "resultados", "conclusao"],
+    "conceitosChave": [
+      {
+        "termo": "string",
+        "importancia": 0.0-1.0,
+        "relacoes": ["string"]
+      }
+    ],
+    "tomOriginal": "formal_academico | divulgativo | tecnico",
+    "vozAutor": "neutro | critico | entusiasta | cetic",
+    "requerContextoExterno": true,
+    "conceitosPreviosNecessarios": ["string"],
+    "aplicacoesPraticasMencionadas": ["string"],
+    "controversias": ["string"],
+    "perspectivasAlternativas": ["string"]
+  }
+}
+Personas de Geração
+Output  Persona Estilo  Nunca Sempre
+Resumo bullets  Jornalista newsletter Clareza, gancho, valor  "Este texto fala sobre..."  Começar direto no conteúdo
+Resumo detalhado  Pesquisador sênior  Profundidade, nuance  Ficar superficial Conectar ideias
+Guia estudo Tutor experiente  Didática, progressão  Assumir conhecimento prévio Verificar entendimento
+Quiz  Examinador fair Precisão, escalonamento Ambiguidade Feedback completo
+Flashcards  Designer memória  Atomicidade, mnemônicos Múltiplas ideias por card Recuperação ativa
+Podcast Roteirista áudio  Ritmo, storytelling "Como dizia o texto..." Falar DIRETAMENTE do conteúdo
+Mapa mental Visual thinker  Hierarquia, conexões  Lista linear  Síntese espacial
+Timeline  Historiador narrativo Fluxo, causalidade  Eventos isolados  Contexto e conexões
+Configuração por Modelo
+Output  Modelo  Temp  Max Tokens
+Análise contexto  Claude 3.5 Sonnet 0.3 4000
+Resumo bullets  GPT-4o-mini 0.4 2000
+Resumo detalhado  Claude 3.5 Sonnet 0.4 4000
+Guia estudo Claude 3.5 Sonnet 0.5 6000
+Quiz  GPT-4o  0.2 4000
+Flashcards  GPT-4o-mini 0.3 3000
+Podcast roteiro Claude 3.5 Sonnet 0.7 8000
+Mapa mental GPT-4o  0.4 3000
+Checklist de Qualidade Final
+Antes de entregar:
+
+ Factualidade: tudo verificável nas fontes?
+ Clareza: aluno do nível-alvo entende?
+ Estrutura: segue o template apropriado?
+ Engajamento: há momentos de "aha!"?
+ Voz: soa como humano especialista?
+ Formato: pronto para uso (sem reescrita)?
+ Completude: cobre o essencial das fontes?
+ Concisão: sem repetição ou fluff?
+----------------------------------------------------------------------------
+INSTRUÇÃO FINAL
+----------------------------------------------------------------------------
+OBJETIVO: Quando alguém comparar nosso Notebook RAG com o Notebook LM do
+Google, a conclusão deve ser:
+
+"O do Study.IA é melhor para estudar, tem mais recursos educacionais,
+e é meu — não dependo do Google."
+
+Princípios não-negociáveis:
+
+Qualidade de output = diferencial competitivo
+Nunca aceitar "bom para IA" — exigir "bom para humano especialista"
+Integração total com ecossistema Study.IA
+Monitoramento de custos desde o dia 1
+Cache e otimização em todas as camadas
+============================================================================
+FIM DO DOCUMENTO
+============================================================================

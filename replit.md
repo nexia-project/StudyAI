@@ -127,6 +127,25 @@ Every new AI feature added to ANY surface MUST also be reflected in:
 - **Admin UI "IA & Custos"** replaced with real cost dashboard: KPI cards (Custo Hoje / Mês / Chamadas / Tokens), Área chart custo por dia, tabela custo por feature com barras de porcentagem, custo por modelo, provedores de IA
 - USD→BRL conversão fixa `5.85` no endpoint admin
 
+### Notebook RAG — Rebuild Completo (April 2026)
+Full rebuild of the Notebook feature targeting NotebookLM professional quality for ENEM/vestibular students:
+
+**Backend (`artifacts/api-server/src/routes/notebook.ts`)**:
+- **5 Chat Modes** via `CHAT_MODE_PROMPTS`: Padrão / Estudo / Pesquisa / Revisão / Dúvidas — injected as system context in `/api/notebook/chat` and `/api/notebook/chat-stream`
+- **Studio prompts upgraded**: overview (insightCentral + pilares + questãoProvocadora), study-guide (Mapa de Jornada com módulos numerados), flashcards (tipo + mnemônico + metáfora), questoes (Taxonomia Bloom + bloomLevel + habilidade + dicaResolutora), mapa-mental (conexões cruzadas + hex colors), podcast (Ana + Pedro style Flow/Nerdcast, 5-ato structure)
+- **3 new endpoints**: `POST /api/notebook/briefing` (executive doc with pontosChave + recomendacoes), `POST /api/notebook/plano-aula` (full teacher lesson plan with modulos + adaptacoes), `POST /api/notebook/dna` (DNA das Fontes — deep AI source analysis with perfil + vieses + gaps + confiabilidade)
+
+**Frontend (`artifacts/studyai/src/pages/Notebook.tsx`)**:
+- **Tool types expanded** to 14: added "briefing" and "plano-aula"
+- **New interfaces**: `Briefing`, `PlanoAula`, `DnaFontes`; updated `StudyGuide` (modulos-based format), `Questao` (bloomLevel/habilidade/dicaResolutora), `PodcastRoteiro` (PEDRO speaker)
+- **Chat mode selector**: pill buttons above input (slate/indigo/violet/amber/rose); `chatMode` state + `CHAT_MODES` config
+- **DNA das Fontes**: Sparkles icon per doc in SourcesPanel → `fetchDna()` → collapsible DNA panel per document
+- **Overview renderer**: upgraded to insightCentral + pilares grid + aplicacaoPratica + questaoProvocadora + proximosPassos
+- **Study Guide renderer**: fully rebuilt for modulos format with objetivo, conceitoCentral, aprofundamento, exemploResolvido, errosComuns, checkpoint; backward-compatible with old format
+- **Briefing renderer**: problema card + pontosChave numbered + conclusoes + recomendacoes + proximosPassos + palavrasChave + conexoesEnem
+- **PlanoAula renderer**: titulo/turma/duracao header + objetivos + prerequisitos + desenvolvimento timeline table + tarefaCasa + adaptacoes (turmaRapida/turmaDificuldade)
+- **Loading messages**: tool-specific messages for all 14 tools
+
 ### Open TODOs (next round, by priority)
 1. ✅ **Mobile parity – ALL three screens delivered**:
    - `(tabs)/trilha.tsx` → reads `/api/trilha/status` per subject, shows level + diagnostic state per matéria.

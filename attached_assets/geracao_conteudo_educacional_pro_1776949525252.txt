@@ -1,0 +1,654 @@
+text
+# ============================================================================
+# GERAÇÃO DE CONTEÚDO EDUCACIONAL PRO
+# Qualidade Notebook LM+ para Aulas, Tarefas e Apresentações
+# ============================================================================
+# Arquivo: geracao_conteudo_educacional_pro.txt
+# Formato: UTF-8 | LF | Sublime Text
+# Versão: 1.0 — Foco: Qualidade Profissional
+# ============================================================================
+
+# PROBLEMA IDENTIFICADO
+# ----------------------------------------------------------------------------
+# Conteúdo gerado anteriormente era:
+# ❌ Genérico ("faça uma pesquisa sobre...")
+# ❌ Sem estrutura pedagógica clara
+# ❌ Sem diferenciação por nível/idade
+# ❌ Sem conexão com fontes reais
+# ❌ Sem sequência lógica de aprendizagem
+# ❌ Sem critérios de avaliação claros
+# ❌ Sem adaptações para diferentes perfis
+#
+# SOLUÇÃO: Arquitetura de 4 camadas para conteúdo de qualidade profissional
+
+# ============================================================================
+# CAMADA 1: ANÁLISE PEDAGOGICA PROFUNDA
+# ============================================================================
+
+## Análise do Contexto Educacional
+
+```json  
+{  
+  "analisePedagogica": {  
+    "disciplina": "string",  
+    "temaEspecifico": "string",  
+    "nivelEnsino": "infantil | fundamental_1 | fundamental_2 | medio | superior | pos",  
+    "anoSerie": "string",  
+    "tempoAula": 50,  
+    "numeroAlunos": 30,  
+    "recursosDisponiveis": ["projetor", "laboratorio", "internet", "livro_didatico"],  
+    "perfilTurma": "heterogenea | homogenea | inclusiva | avancada | com_dificuldades",  
+    "prerequisitosIdentificados": ["conceito_a", "conceito_b"],  
+    "dificuldadesComuns": ["erro_x", "confusao_y"],  
+    "bnccCompetencias": ["EM13MAT101", "EM13CHS102"],  
+    "objetivosDeAprendizagem": ["saber", "fazer", "conviver", "ser"],  
+    "contextoLocal": "urbano | rural | periferia | centro | indigena | quilombola"  
+  }  
+}  
+Análise das Fontes do Caderno
+json
+{
+  "analiseFontes": {
+    "fontesPrincipais": [
+      {
+        "id": "string",
+        "tipo": "livro | artigo | video | audio | imagem",
+        "confiabilidade": "alta | media | baixa",
+        "adequacaoNivel": "adequada | desafiadora | simplificada",
+        "conteudosCobertos": ["topico_a", "topico_b"],
+        "lacunasParaComplementar": ["topico_c"]
+      }
+    ],
+    "convergenciasEntreFontes": ["ponto_de_acordo"],
+    "divergenciasEntreFontes": ["debate_possivel"],
+    "atualidadeDoConteudo": "atualizado | parcialmente_desatualizado | desatualizado",
+    "riquezaDeExemplos": "rica | moderada | pobre",
+    "potencialParaAtividades": "alto | medio | baixo"
+  }
+}
+============================================================================
+CAMADA 2: ARQUITETURA DE GERAÇÃO POR TIPO
+============================================================================
+----------------------------------------------------------------------------
+TIPO A: PLANO DE AULA COMPLETO
+----------------------------------------------------------------------------
+Estrutura Profissional (NUNCA simplificada)
+markdown
+# PLANO DE AULA: [Título Específico e Atraente]
+
+## 1. IDENTIFICAÇÃO
+
+| Campo | Informação |
+|-------|-----------|
+| Disciplina | [Nome específico, não genérico] |
+| Tema | [Tema da aula, não da unidade] |
+| Ano/Série | [Específico: 7º ano, 2ª série EM] |
+| Duração | [X minutos — realista] |
+| Data prevista | [Considerando calendário escolar] |
+
+## 2. CONTEXTUALIZAÇÃO DA TURMA
+
+### Perfil dos estudantes
+[Descrição específica, não genérica. Ex: "Turma de 32 alunos, 
+predominantemente do bairro X, com acesso irregular à internet 
+em casa. Forte em colaboração, mas com dificuldade em 
+trabalho individual prolongado."]
+
+### Pré-requisitos mapeados
+- [Conceito 1]: verificado em [avaliação anterior/data]
+- [Conceito 2]: [status de domínio da turma]
+
+### Dificuldades previsíveis
+- [Dificuldade 1]: [estratégia de prevenção]
+- [Dificuldade 2]: [estratégia de prevenção]
+
+## 3. FUNDAMENTAÇÃO TEÓRICA
+
+### Base teórica
+[Referência a teoria educacional relevante: Vygotsky, Piaget, 
+Freire, Pozo, etc. Conexão explícita com estratégias da aula.]
+
+### BNCC / Currículo
+- Competência específica: [código e descrição]
+- Habilidade: [código e descrição]
+- Objetos de conhecimento: [lista]
+
+## 4. OBJETIVOS DE APRENDIZAGEM
+
+### Objetivo Geral
+[1 objetivo amplo, realizável nesta aula]
+
+### Objetivos Específicos
+Ao final desta aula, o estudante será capaz de:
+1. [Objetivo comportamental observável — verbo no infinitivo]
+2. [Objetivo comportamental observável]
+3. [Objetivo comportamental observável]
+
+### Indicadores de avaliação
+- [Critério observável de que o objetivo foi alcançado]
+- [Critério observável]
+
+## 5. CONTEÚDOS
+
+### Conteúdo conceitual
+- [Conceito 1: definição operacional para este nível]
+- [Conceito 2: definição operacional]
+
+### Conteúdo procedimental
+- [Procedimento 1: como fazer]
+- [Procedimento 2: como fazer]
+
+### Conteúdo attitudinal
+- [Valor/atitude a ser desenvolvida]
+
+## 6. DESENVOLVIMENTO DA AULA
+
+### 6.1 ABERTURA / MOMENTO 1: [Nome do momento] (X min)
+
+**Proposta:**
+[Descrição detalhada do que o professor faz e o que os alunos fazem]
+
+**Recursos:**
+- [Lista específica, não genérica]
+
+**Estratégia diferenciada:**
+- Para alunos com dificuldade: [adaptação]
+- Para alunos avançados: [enriquecimento]
+
+**Perguntas norteadoras:**
+1. [Pergunta que provoca pensamento]
+2. [Pergunta que conecta com vida do aluno]
+
+---
+
+### 6.2 DESENVOLVIMENTO / MOMENTO 2: [Nome] (X min)
+
+**Proposta:**
+[Descrição detalhada]
+
+**Atividade principal:**
+[Passo a passo do que os alunos fazem]
+
+**Intervenções do professor:**
+- [Quando e como intervir]
+- [Erros comuns e como endereçar]
+
+**Grupos:**
+- [Como formar: aleatório, por afinidade, heterogêneo]
+- [Funções dentro do grupo]
+
+---
+
+### 6.3 FECHAMENTO / MOMENTO 3: [Nome] (X min)
+
+**Proposta:**
+[Síntese, avaliação formativa, previsão da próxima aula]
+
+**Avaliação formativa:**
+- [Como verificar se objetivos foram alcançados]
+- [Instrumento: quiz, oral, produção, etc.]
+
+## 7. AVALIAÇÃO DA APRENDIZAGEM
+
+### Instrumento avaliativo
+[Descrição completa: prova, projeto, apresentação, etc.]
+
+### Critérios de avaliação (rúbrica)
+
+| Critério | Insuficiente (D) | Regular (C) | Bom (B) | Excelente (A) |
+|----------|------------------|-------------|---------|---------------|
+| [Critério 1] | [Descrição] | [Descrição] | [Descrição] | [Descrição] |
+| [Critério 2] | [Descrição] | [Descrição] | [Descrição] | [Descrição] |
+
+### Registro da avaliação
+[Como o professor documenta: lista de cotejo, anotações, etc.]
+
+## 8. MATERIAL DIDÁTICO
+
+### Para o professor
+- [Lista específica de materiais de preparo]
+- [Links, referências, respostas esperadas]
+
+### Para os alunos
+- [Lista específica de materiais de uso]
+- [Fichas, textos, links — anexos numerados]
+
+## 9. REFERÊNCIAS
+
+### Teóricas
+[Referências completas, formato ABNT]
+
+### Didáticas
+[Livro didático, sites, vídeos utilizados]
+
+### Fontes do caderno utilizadas
+[Citação específica de quais fontes e onde]
+
+## 10. REFLEXÃO PÓS-AULA (para preencher depois)
+
+### O que funcionou
+[Espaco para anotação]
+
+### O que precisa ajustar
+[Espaco para anotação]
+
+### Adaptações para próxima turma
+[Espaco para anotação]
+
+---
+ANEXOS
+- Anexo 1: [Ficha de trabalho]
+- Anexo 2: [Texto para leitura]
+- Anexo 3: [Avaliação]
+Checklist de Qualidade — Plano de Aula
+ Título específico (não "Aula de Matemática")
+ Contexto da turma descrito concretamente
+ Objetivos com verbos observáveis
+ Tempos realistas (soma = duração da aula)
+ Atividade principal descrita passo a passo
+ Estratégias de diferenciação presentes
+ Rúbrica de avaliação com critérios claros
+ Materiais listados especificamente
+ Referências das fontes do caderno citadas
+ Espaço para reflexão pós-aula
+----------------------------------------------------------------------------
+TIPO B: TAREFA / ATIVIDADE PARA CASA
+----------------------------------------------------------------------------
+Estrutura Profissional
+markdown
+# TAREFA: [Título específico e motivador]
+
+## PARA O ALUNO
+
+### 📋 O que você vai fazer
+[Descrição em linguagem do aluno, não técnica]
+
+### 🎯 Por que isso importa
+[Conexão com vida real, próximas aulas, ou interesse do adolescente]
+
+### ⏱️ Quanto tempo vai levar
+[Estimativa realista: "cerca de 30 minutos"]
+
+### 📚 Do que você precisa
+- [Material 1: específico]
+- [Material 2: específico]
+- [Acesso a: específico]
+
+### 📝 Passo a passo
+
+#### Passo 1: [Nome do passo] (X min)
+[Instrução clara, uma ação por passo]
+> 💡 Dica: [dica de estratégia, não de conteúdo]
+
+#### Passo 2: [Nome do passo] (X min)
+[Instrução clara]
+
+#### Passo 3: [Nome do passo] (X min)
+[Instrução clara]
+
+### ✅ Como saber se acertou
+[Autocorreção: critérios para aluno avaliar próprio trabalho]
+
+### 🤔 Se travar, tente:
+- [Estratégia 1: onde buscar ajuda]
+- [Estratégia 2: como simplificar]
+- [Estratégia 3: quem perguntar]
+
+### 🚀 Quer mais desafio?
+[Extensão opcional para alunos que terminarem rápido]
+
+---
+
+## PARA O PROFESSOR
+
+### Objetivo da tarefa
+[Conexão com objetivos da aula]
+
+### Resposta esperada / gabarito
+[Resposta modelo completa]
+
+### Erros comuns e como endereçar
+
+| Erro provável | Por que ocorre | Como corrigir |
+|---------------|----------------|---------------|
+| [Erro 1] | [Causa] | [Estratégia] |
+| [Erro 2] | [Causa] | [Estratégia] |
+
+### Critérios de correção (rúbrica)
+
+| Nível | Descrição | Nota equivalente |
+|-------|-----------|------------------|
+| [Nível 1] | [Descrição] | [X a Y] |
+| [Nível 2] | [Descrição] | [X a Y] |
+
+### Diferenciação
+
+- **Para alunos com dificuldade:** [adaptação]
+- **Para alunos avançados:** [enriquecimento]
+
+### Tempo estimado de correção
+[X minutos por aluno / X horas para turma]
+
+### Conexão com próxima aula
+[Como esta tarefa alimenta a próxima aula]
+Variações de Tarefa por Tipo
+Tipo  Estrutura específica  Quando usar
+Pesquisa  Pergunta norteadora + fontes confiáveis + síntese Quando há informação disponível
+Produção textual  Gênero + tema + estrutura + critérios Desenvolver escrita
+Resolução de problemas  Situação + dados + pergunta + espaço para estratégia  Matemática, ciências
+Experimento/Investigação  Pergunta + material + procedimento + registro Ciências
+Análise de fonte  Documento + questões de análise Humanidades
+Projeto Desafio + etapas + produto + critérios  Avaliação em etapas
+Estudo dirigido Leitura + questões de compreensão Preparação para aula
+Prática de habilidade Demonstração + exercícios graduados Línguas, artes
+----------------------------------------------------------------------------
+TIPO C: APRESENTAÇÃO / SLIDES
+----------------------------------------------------------------------------
+Estrutura Profissional
+markdown
+# APRESENTAÇÃO: [Título impactante]
+
+## METADADOS
+
+- **Público:** [Específico: "alunos do 9º ano com dificuldade em..."]
+- **Tempo de apresentação:** [X minutos]
+- **Número de slides:** [Y slides = tempo/2 min por slide]
+- **Recursos:** [Projetor, som, internet, etc.]
+- **Objetivo da apresentação:** [O que o público deve saber/fazer/sentir]
+
+---
+
+## ROTEIRO DETALHADO
+
+### SLIDE 1: CAPA
+**Conteúdo visual:**
+- Título: [Curto, impactante, não genérico]
+- Subtítulo: [Promessa de valor]
+- Imagem: [Descrição específica da imagem]
+- Créditos: [Autor, instituição, data]
+
+**Fala do apresentador:**
+[Texto completo do que dizer, não apenas tópicos]
+
+**Tempo:** [X segundos]
+
+---
+
+### SLIDE 2: GANCHO / PROBLEMA
+**Conteúdo visual:**
+- [Elemento visual que provoca: foto, dado, pergunta]
+
+**Fala do apresentador:**
+[Texto completo]
+
+**Transição:** [Como passar para o próximo slide]
+
+---
+
+### SLIDE 3: CONTEXTUALIZAÇÃO
+[... estrutura idêntica ...]
+
+---
+
+### SLIDE N: SÍNTESE
+**Conteúdo visual:**
+- 3 bullets máximo
+- Imagem de reforço
+
+**Fala do apresentador:**
+[Síntese elegante, não repetição]
+
+---
+
+### SLIDE N+1: CHAMADA PARA AÇÃO / FECHAMENTO
+**Conteúdo visual:**
+- Próximos passos claros
+- Contato/pergunta
+
+**Fala do apresentador:**
+[Encerramento memorável]
+
+---
+
+## NOTAS DE DESIGN
+
+### Paleta de cores
+- Primária: [#hex — para títulos e ênfase]
+- Secundária: [#hex — para subtítulos]
+- Fundo: [#hex — claro ou escuro]
+- Texto: [#hex — alto contraste]
+
+### Tipografia
+- Títulos: [Fonte, tamanho]
+- Corpo: [Fonte, tamanho]
+- Mínimo: 24pt para projeção
+
+### Princípios visuais
+- Máximo 6 elementos por slide
+- Uma ideia por slide
+- Imagens em alta resolução
+- Dados em gráficos, não tabelas
+
+---
+
+## NOTAS TÉCNICAS
+
+### Antes da apresentação
+- [ ] Testar projeção
+- [ ] Verificar links
+- [ ] Preparar backup offline
+
+### Contingências
+- Se internet falhar: [plano B]
+- Se tempo encurtar: [slides que podem pular]
+- Se público não responder: [estratégia de engajamento]
+Estruturas de Slide por Objetivo
+Objetivo  Estrutura recomendada
+Ensinar conceito  Problema → Explicação → Exemplo → Prática
+Convencer/Advocacy  Contexto → Problema → Solução → Benefícios → Chamada
+Relatar resultados  Contexto → Metodologia → Dados → Conclusões → Próximos passos
+Contar história Personagem → Conflito → Desenvolvimento → Clímax → Resolução
+Demonstrar processo Antes → Durante → Depois → Dicas
+----------------------------------------------------------------------------
+TIPO D: SEQUÊNCIA DIDÁTICA (MULTI-AULA)
+----------------------------------------------------------------------------
+markdown
+# SEQUÊNCIA DIDÁTICA: [Tema da unidade]
+
+## VISÃO GERAL
+
+| Aspecto | Descrição |
+|---------|-----------|
+| Duração total | [X aulas de Y minutos] |
+| Organização | [Blocos temáticos] |
+| Produto final | [O que os alunos produzem ao final] |
+| Avaliação somativa | [Como será avaliado] |
+
+## MAPA DA SEQUÊNCIA
+
+AULA 1: [Tema] ──► AULA 2: [Tema] ──► AULA 3: [Tema]
+│ │ │
+└──► [conceito] └──► [aplicação] └──► [síntese]
+
+yaml
+
+## AULA A AULA
+
+### AULA 1: [Título específico]
+
+[Plano de aula completo, formato acima]
+
+**Conexão com próxima aula:** [Como esta alimenta a próxima]
+
+---
+
+### AULA 2: [Título específico]
+
+[Plano de aula completo]
+
+---
+
+### AULA N: [Título específico]
+
+[Plano de aula completo]
+
+**Retomada da sequência:** [Como síntese de tudo]
+
+## AVALIAÇÃO INTEGRADA
+
+### Instrumento final
+[Descrição completa]
+
+### Rúbrica integradora
+
+| Dimensão | Peso | Critérios |
+|----------|------|-----------|
+| [Dimensão 1] | 30% | [Descrição] |
+| [Dimensão 2] | 40% | [Descrição] |
+| [Dimensão 3] | 30% | [Descrição] |
+
+## RECURSOS DA SEQUÊNCIA
+
+### Materiais permanentes
+[O que é usado em várias aulas]
+
+### Materiais por aula
+[Aula 1: lista]
+[Aula 2: lista]
+----------------------------------------------------------------------------
+TIPO E: PROJETO INTERDISCIPLINAR
+----------------------------------------------------------------------------
+markdown
+# PROJETO INTERDISCIPLINAR: [Título do projeto]
+
+## APRESENTAÇÃO DO PROJETO
+
+### Problema gerador
+[Questão real, relevante, sem resposta óbvia]
+
+### Por que este problema
+[Conexão com vida dos alunos, comunidade, atualidade]
+
+### Disciplinas envolvidas
+| Disciplina | Contribuição | Professor |
+|------------|--------------|-----------|
+| [Nome] | [O que traz] | [Nome] |
+| [Nome] | [O que traz] | [Nome] |
+
+### Produtos esperados
+- [Produto 1: específico]
+- [Produto 2: específico]
+
+### Público para o produto
+[Quem vai ver/usar o que os alunos produzem]
+
+## ESTRUTURA DO PROJETO
+
+### Fase 1: Investigação (X semanas)
+- Questões norteadoras
+- Atividades por disciplina
+- Produto parcial
+
+### Fase 2: Ação (X semanas)
+- Desenvolvimento do produto
+- Registro do processo
+
+### Fase 3: Socialização (X semanas)
+- Apresentação para público
+- Avaliação coletiva
+
+## AVALIAÇÃO
+
+### Indicadores por disciplina
+[O que cada disciplina avalia]
+
+### Indicadores transversais
+[Competências gerais]
+
+### Instrumentos
+- Lista de cotejo
+- Rúbrica de produto
+- Autoavaliação
+- Avaliação de pares
+============================================================================
+CAMADA 3: PERSONAS DE GERAÇÃO EDUCACIONAL
+============================================================================
+Persona: Planejador Experiente
+diff
+Você é um professor com 15+ anos de experiência, pós-graduado em 
+ensino da sua disciplina. Você planeja aulas que funcionam na 
+prática, não apenas na teoria.
+
+Seu estilo:
+- Específico, nunca genérico
+- Realista sobre tempos e recursos
+- Atento às diferenças entre alunos
+- Conectado com BNCC e avaliações externas
+- Reflexivo, sempre deixa espaço para ajustes
+
+Você NUNCA escreve:
+- "Faça uma pesquisa sobre..." sem orientação de fontes
+- Tempos irreais (50 min de atividade em aula de 45)
+- Objetivos com verbos não observáveis ("entender", "saber")
+- Atividades sem critérios de avaliação
+
+Você SEMPRE inclui:
+- Contexto específico da turma
+- Estratégias de diferenciação
+- Rúbrica de avaliação
+- Conexão com aulas anteriores e próximas
+Persona: Designer de Aprendizagem
+diff
+Você é especialista em Design Instrucional, com formação em 
+cognição e tecnologia educacional. Você cria experiências de 
+aprendizagem engajadoras e eficazes.
+
+Seu estilo:
+- Centrado no aluno, não no conteúdo
+- Visual e interativo quando possível
+- Gamificado quando apropriado
+- Baseado em problemas reais
+- Com feedback constante
+
+Você NUNCA cria:
+- Apresentações textuais densas
+- Atividades sem propósito claro
+- Avaliações apenas ao final
+
+Você SEMPRE inclui:
+- Ganchos emocionais e intelectuais
+- Oportunidades de escolha do aluno
+- Momentos de colaboração
+- Autocorreção e metacognição
+Persona: Especialista em Avaliação
+diff
+Você é avaliador educacional, conhece profundamente diferentes 
+instrumentos e sabe alinhar avaliação com objetivos.
+
+Seu estilo:
+- Preciso nos critérios
+- Variado nos instrumentos
+- Transparente com os alunos
+- Formativo e somativo
+
+Você NUNCA deixa:
+- Critérios vagos ("bom", "suficiente")
+- Apenas uma avaliação no final
+- Surpresas para os alunos
+
+Você SEMPRE inclui:
+- Rúbricas com descritores claros
+- Oportunidades de recuperação
+- Auto e heteroavaliação
+- Alinhamento com o que foi ensinado
+============================================================================
+CAMADA 4: PÓS-PROCESSAMENTO E QUALIDADE
+============================================================================
+Verificação Automática de Qualidade
+python
+def verificar_qualidade_plano(conteudo: str) -> dict:  
+    checks = {  
+        # Estrutura  
+        "tem_titulo_especifico": len(titulo) > 10 and "aula" not in titulo.lower(),  
+        "tem_contexto_turma": "perfil" in conteudo.lower() or "turma" in conteudo.lower(),  
+        "tem

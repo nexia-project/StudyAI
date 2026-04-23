@@ -77,9 +77,54 @@ interface Slides {
   >;
 }
 interface Overview {
-  summary: string;
+  summary?: string;
+  insightCentral?: string;
+  contexto?: string;
+  pilares?: Array<{ conceito: string; explicacao: string; conexaoEnem?: string }>;
+  aplicacaoPratica?: string;
+  questaoProvocadora?: string;
+  proximosPassos?: string;
   keyTopics: string[];
   faq: Array<{ q: string; a: string }>;
+}
+interface Briefing {
+  titulo: string;
+  problema: string;
+  pontosChave: Array<{ ponto: string; evidencia?: string }>;
+  conclusoes: string;
+  recomendacoes: Array<{ acao: string; justificativa?: string }>;
+  proximosPassos: string;
+  palavrasChave: string[];
+  conexoesEnem: string;
+}
+interface PlanoAula {
+  titulo: string;
+  turma: string;
+  duracao: string;
+  objetivos: string[];
+  prerequisitos: string;
+  desenvolvimento: Array<{ tempo: string; etapa: string; atividade: string; recursos: string; estrategia?: string }>;
+  tarefaCasa: string;
+  avaliacao: { criterios: string[]; instrumento: string };
+  adaptacoes: { turmaRapida: string; turmaDificuldade: string };
+  materialComplementar: string[];
+}
+interface DnaFontes {
+  temaPrincipal: string;
+  subtemas: string[];
+  tipoFonte: string;
+  dominio: string;
+  nivelComplexidade: string;
+  conceitosChave: Array<{ termo: string; importancia: number; definicao?: string; relacoes?: string[] }>;
+  pessoasImportantes: string[];
+  datasImportantes: string[];
+  prerequisitosSugeridos: string[];
+  lacunas: string[];
+  sugestoesFontes: string[];
+  relevanciaEnem: string;
+  competenciasEnem: string[];
+  aplicacoesPraticas: string[];
+  controversias: string[];
 }
 interface MindMap {
   subject: string;
@@ -92,33 +137,58 @@ interface Questao {
   alternativas: Record<string, string>;
   gabarito: string;
   explicacao: string;
+  bloomLevel?: string;
+  habilidade?: string;
+  dicaResolutora?: string;
 }
 interface StudyGuide {
   titulo: string;
-  introducao: string;
-  questoes: Array<{ tipo: string; pergunta: string; resposta: string; dicaEnem: string }>;
+  introducao?: string;
+  objetivoFinal?: string;
+  checklistCompetencias?: string[];
+  prerequisitos?: string;
+  quizDiagnostico?: Array<{ pergunta: string; dica?: string }>;
+  modulos?: Array<{
+    numero: number;
+    titulo: string;
+    tempoBruto?: string;
+    objetivo?: string;
+    conceitoCentral?: string;
+    aprofundamento?: string;
+    exemploResolvido?: string;
+    errosComuns?: string[];
+    checkpoint?: string[];
+  }>;
+  sintese?: string;
+  aplicacaoPratica?: string;
+  expansao?: { leituras?: string[]; conexoes?: string[] };
+  questoes?: Array<{ tipo: string; pergunta: string; resposta: string; dicaEnem: string }>;
   cronogramaSugerido: string[];
 }
 interface PodcastRoteiro {
   titulo: string;
   subtitulo: string;
   duracao: string;
-  roteiro: Array<{ speaker: "ANA" | "MARCOS"; fala: string }>;
+  gancho?: string;
+  roteiro: Array<{ speaker: "ANA" | "MARCOS" | "PEDRO"; fala: string }>;
   destaques: string[];
+  dicaEnem?: string;
 }
 
-type Tool = "overview" | "study-guide" | "flashcards" | "questoes" | "mapa-mental" | "podcast" | "tiagao" | "timeline" | "slides" | "infografico" | "tabela" | "relatorio";
+type Tool = "overview" | "study-guide" | "flashcards" | "questoes" | "mapa-mental" | "podcast" | "tiagao" | "timeline" | "briefing" | "plano-aula" | "slides" | "infografico" | "tabela" | "relatorio";
 
 const TOOL_CONFIG: Record<Tool, { label: string; icon: React.ElementType; color: string; desc: string; badge?: string }> = {
-  overview:      { label: "Visão Geral",      icon: Star,          color: "indigo",   desc: "Resumo + tópicos-chave + FAQ" },
-  "study-guide": { label: "Guia de Estudo",   icon: ClipboardList, color: "violet",   desc: "Q&A com cronograma ENEM" },
-  flashcards:    { label: "Flashcards",        icon: Layers,        color: "pink",     desc: "15 flashcards para memorizar" },
-  questoes:      { label: "Questões ENEM",     icon: GraduationCap, color: "amber",    desc: "5 questões estilo ENEM" },
-  "mapa-mental": { label: "Mapa Mental",       icon: Brain,         color: "green",    desc: "Mapa visual interativo" },
-  podcast:       { label: "Podcast",           icon: Mic,           color: "rose",     desc: "Conversa educativa sobre o doc" },
-  timeline:      { label: "Linha do Tempo",    icon: Clock,         color: "amber",    desc: "Cronologia didática (História!)", badge: "NOVO" },
-  slides:        { label: "Apresentação",      icon: Presentation,  color: "violet",   desc: "Slides profissionais prontos", badge: "NOVO" },
-  infografico:   { label: "Infográfico",        icon: Sparkles,      color: "fuchsia",  desc: "Pôster visual gerado por IA",   badge: "NOVO" },
+  overview:      { label: "Visão Geral",      icon: Star,          color: "indigo",   desc: "Insight central + pilares + FAQ" },
+  "study-guide": { label: "Guia de Estudo",   icon: ClipboardList, color: "violet",   desc: "Mapa de Jornada com módulos progressivos" },
+  flashcards:    { label: "Flashcards",        icon: Layers,        color: "pink",     desc: "Flashcards com macetes + SM-2" },
+  questoes:      { label: "Questões ENEM",     icon: GraduationCap, color: "amber",    desc: "Quiz com Taxonomia de Bloom" },
+  "mapa-mental": { label: "Mapa Mental",       icon: Brain,         color: "green",    desc: "Mapa hierárquico com conexões cruzadas" },
+  podcast:       { label: "Podcast",           icon: Mic,           color: "rose",     desc: "Episódio estilo Nerdcast / Flow", badge: "IA" },
+  briefing:      { label: "Briefing",          icon: FileText,      color: "slate",    desc: "Documento executivo compacto", badge: "NOVO" },
+  "plano-aula":  { label: "Plano de Aula",     icon: Presentation,  color: "violet",   desc: "Plano completo para professores", badge: "NOVO" },
+  timeline:      { label: "Linha do Tempo",    icon: Clock,         color: "amber",    desc: "Cronologia didática com causas" },
+  slides:        { label: "Apresentação",      icon: Presentation,  color: "violet",   desc: "Slides profissionais prontos" },
+  infografico:   { label: "Infográfico",       icon: Sparkles,      color: "fuchsia",  desc: "Pôster visual gerado por IA" },
   tabela:        { label: "Tabela de Dados",   icon: LayoutGrid,    color: "indigo",   desc: "Comparativo estruturado em tabela" },
   relatorio:     { label: "Relatório",         icon: FileText,      color: "slate",    desc: "Documento acadêmico, blog ou aula" },
   tiagao:        { label: "Tiagão na Lousa",   icon: Zap,           color: "blue",     desc: "Aula animada na lousa" },
@@ -1069,6 +1139,21 @@ export default function Notebook() {
   const [notebookView, setNotebookView] = useState<"home" | "workspace">("home");
   const [homeSearch, setHomeSearch] = useState("");
 
+  // Chat mode (Padrão, Estudo, Pesquisa, Revisão, Dúvidas)
+  const [chatMode, setChatMode] = useState<"padrao" | "estudo" | "pesquisa" | "revisao" | "duvidas">("padrao");
+  const CHAT_MODES = [
+    { key: "padrao",   label: "Padrão",   color: "text-slate-600",  active: "bg-slate-700 text-white" },
+    { key: "estudo",   label: "Estudo",   color: "text-indigo-600", active: "bg-indigo-600 text-white" },
+    { key: "pesquisa", label: "Pesquisa", color: "text-violet-600", active: "bg-violet-600 text-white" },
+    { key: "revisao",  label: "Revisão",  color: "text-amber-600",  active: "bg-amber-500 text-white" },
+    { key: "duvidas",  label: "Dúvidas",  color: "text-rose-600",   active: "bg-rose-500 text-white" },
+  ] as const;
+
+  // DNA das Fontes
+  const [dnaResult, setDnaResult] = useState<DnaFontes | null>(null);
+  const [dnaLoading, setDnaLoading] = useState(false);
+  const [showDna, setShowDna] = useState(false);
+
   // Artefatos salvos do doc atual
   type SavedArtifact = { id: number; kind: string; title: string; created_at: string };
   const [savedArtifacts, setSavedArtifacts] = useState<SavedArtifact[]>([]);
@@ -1525,6 +1610,7 @@ export default function Notebook() {
           pergunta: q,
           docIds: restrictToSelected && selectedDocIds.length ? selectedDocIds : null,
           cadernoId: activeCaderno?.id,
+          modo: chatMode,
         }),
       });
       if (!r.ok || !r.body) {
@@ -1611,6 +1697,8 @@ export default function Notebook() {
       questoes: "/api/notebook/questoes",
       "mapa-mental": "/api/notebook/mapa-mental",
       podcast: "/api/notebook/podcast",
+      briefing: "/api/notebook/briefing",
+      "plano-aula": "/api/notebook/plano-aula",
       timeline: "/api/notebook/timeline",
       slides: "/api/notebook/slides",
       infografico: "/api/notebook/infografico",
@@ -1638,6 +1726,22 @@ export default function Notebook() {
   }, [selectedDocIds, navigate]);
 
   const selectedDocs = docs.filter(d => selectedDocIds.includes(d.id));
+
+  // ─── DNA das Fontes ─────────────────────────────────────────────────────────
+  const fetchDna = useCallback(async (docId: number) => {
+    setDnaLoading(true);
+    setDnaResult(null);
+    setShowDna(true);
+    try {
+      const r = await fetch(`${BASE_URL}/api/notebook/dna`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify({ docId }),
+      });
+      const data = await r.json();
+      if (r.ok) setDnaResult(data);
+    } catch { /* silent */ }
+    finally { setDnaLoading(false); }
+  }, []);
 
   // ─── SOURCES PANEL ─────────────────────────────────────────────────────────
   const SourcesPanel = (
@@ -1907,6 +2011,11 @@ export default function Notebook() {
                     {Math.round(doc.content_length / 1000)}K chars
                   </p>
                 </div>
+                <button onClick={e => { e.stopPropagation(); fetchDna(doc.id); }}
+                  title="DNA das Fontes — análise IA profunda"
+                  className="flex-shrink-0 p-1 rounded-lg text-slate-300 hover:text-violet-600 hover:bg-violet-50 transition-colors">
+                  <Sparkles className="w-3 h-3" />
+                </button>
                 <button onClick={e => { e.stopPropagation(); handleDelete(doc.id); }}
                   className="flex-shrink-0 p-1 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors">
                   <Trash2 className="w-3 h-3" />
@@ -1916,6 +2025,72 @@ export default function Notebook() {
           })
         )}
       </div>
+
+      {/* DNA das Fontes Panel */}
+      {showDna && (
+        <div className="border-t border-violet-100 flex-shrink-0">
+          <div className="flex items-center justify-between px-3 py-2">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-violet-500" />
+              <p className="text-[10px] font-black text-violet-700 uppercase tracking-wider">DNA das Fontes</p>
+            </div>
+            <button onClick={() => setShowDna(false)} className="text-slate-300 hover:text-slate-500">
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+          {dnaLoading ? (
+            <div className="px-3 pb-3 flex items-center gap-2 text-xs text-slate-500">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-400" />
+              Analisando o DNA da fonte...
+            </div>
+          ) : dnaResult ? (
+            <div className="px-3 pb-3 space-y-2.5 max-h-72 overflow-y-auto text-[10px]">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2 py-0.5 bg-violet-100 text-violet-700 rounded-full font-bold capitalize">{dnaResult.nivelComplexidade}</span>
+                <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full font-bold">{dnaResult.dominio?.replace(/_/g," ")}</span>
+                <span className={`px-2 py-0.5 rounded-full font-bold ${dnaResult.relevanciaEnem === "Alta" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}>
+                  ENEM: {dnaResult.relevanciaEnem}
+                </span>
+              </div>
+              <p className="text-slate-700 font-medium leading-snug">{dnaResult.temaPrincipal}</p>
+              {dnaResult.conceitosChave?.length > 0 && (
+                <div>
+                  <p className="font-black text-slate-500 uppercase tracking-wider mb-1">Conceitos-Chave</p>
+                  <div className="space-y-1">
+                    {dnaResult.conceitosChave.slice(0, 5).map((c, i) => (
+                      <div key={i} className="flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-violet-400 flex-shrink-0" style={{ opacity: 0.4 + c.importancia * 0.6 }} />
+                        <span className="font-semibold text-slate-700">{c.termo}</span>
+                        {c.definicao && <span className="text-slate-500 truncate">{c.definicao.slice(0,60)}…</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {dnaResult.lacunas?.length > 0 && (
+                <div>
+                  <p className="font-black text-slate-500 uppercase tracking-wider mb-1">Lacunas Detectadas</p>
+                  {dnaResult.lacunas.slice(0,2).map((l, i) => (
+                    <p key={i} className="text-slate-600 flex items-start gap-1">
+                      <AlertCircle className="w-3 h-3 text-amber-400 flex-shrink-0 mt-0.5" />{l}
+                    </p>
+                  ))}
+                </div>
+              )}
+              {dnaResult.sugestoesFontes?.length > 0 && (
+                <div>
+                  <p className="font-black text-slate-500 uppercase tracking-wider mb-1">Fontes Sugeridas</p>
+                  {dnaResult.sugestoesFontes.slice(0,2).map((s, i) => (
+                    <p key={i} className="text-indigo-600 flex items-start gap-1">
+                      <BookOpen className="w-3 h-3 flex-shrink-0 mt-0.5" />{s}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : null}
+        </div>
+      )}
 
       {/* Fast Research */}
       <div className="border-t border-slate-100 flex-shrink-0">
@@ -2238,11 +2413,25 @@ export default function Notebook() {
         <div ref={chatEndRef} />
       </div>
 
-      <div className="flex-shrink-0 p-3 bg-white border-t border-slate-200">
-        <div className="flex gap-2">
+      <div className="flex-shrink-0 bg-white border-t border-slate-200">
+        {/* Chat modes selector */}
+        <div className="px-3 pt-2.5 pb-1.5 flex items-center gap-1 overflow-x-auto">
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider mr-1 flex-shrink-0">Modo:</span>
+          {CHAT_MODES.map(m => (
+            <button key={m.key} onClick={() => setChatMode(m.key as typeof chatMode)}
+              className={`flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold transition-all border ${
+                chatMode === m.key
+                  ? `${m.active} border-transparent shadow-sm`
+                  : `bg-white border-slate-200 ${m.color} hover:border-current`
+              }`}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2 px-3 pb-3">
           <input value={inputMsg} onChange={e => setInputMsg(e.target.value)}
             onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendMessage()}
-            placeholder={docs.length === 0 ? "Adicione um documento para começar..." : "Pergunte algo sobre seus documentos..."}
+            placeholder={docs.length === 0 ? "Adicione um documento para começar..." : `Modo ${CHAT_MODES.find(m => m.key === chatMode)?.label} • Pergunte algo...`}
             disabled={docs.length === 0 || chatLoading}
             className="flex-1 px-4 py-2.5 rounded-2xl border border-slate-200 focus:border-indigo-400 focus:outline-none text-sm text-slate-800 placeholder-slate-400 disabled:opacity-50" />
           <button onClick={sendMessage} disabled={!inputMsg.trim() || chatLoading || docs.length === 0}
@@ -2341,12 +2530,14 @@ export default function Notebook() {
           <div className="flex flex-col items-center justify-center h-40 gap-3">
             <TiagaoCharacter state="thinking" size={60} showLabel />
             <p className="text-xs text-slate-500 font-medium">
-              {activeTool === "podcast" ? "Preparando o episódio..." :
-               activeTool === "flashcards" ? "Criando flashcards..." :
-               activeTool === "questoes" ? "Gerando questões ENEM..." :
-               activeTool === "mapa-mental" ? "Desenhando o mapa..." :
+              {activeTool === "podcast" ? "Preparando o episódio estilo Nerdcast..." :
+               activeTool === "flashcards" ? "Criando flashcards com macetes..." :
+               activeTool === "questoes" ? "Gerando questões com Taxonomia de Bloom..." :
+               activeTool === "mapa-mental" ? "Desenhando o mapa com conexões cruzadas..." :
                activeTool === "tabela" ? "Montando a tabela comparativa..." :
                activeTool === "relatorio" ? "Redigindo o relatório..." :
+               activeTool === "briefing" ? "Gerando o briefing executivo..." :
+               activeTool === "plano-aula" ? "Preparando o plano de aula completo..." :
                "Gerando..."}
             </p>
           </div>
@@ -2376,21 +2567,73 @@ export default function Notebook() {
               const r = toolResult as Overview;
               return (
                 <div className="p-3 space-y-4">
+                  {/* Insight Central */}
+                  {r.insightCentral && (
+                    <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200">
+                      <p className="text-[9px] font-black text-indigo-500 uppercase tracking-wider mb-1">💡 Insight Central</p>
+                      <p className="text-xs font-bold text-indigo-900 leading-snug">{r.insightCentral}</p>
+                    </div>
+                  )}
+                  {r.summary && !r.insightCentral && (
+                    <div>
+                      <p className="text-[10px] font-black text-indigo-600 uppercase tracking-wider mb-1.5">Resumo</p>
+                      <p className="text-xs text-slate-700 leading-relaxed">{r.summary}</p>
+                    </div>
+                  )}
+                  {/* Contexto */}
+                  {r.contexto && (
+                    <div>
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Contexto</p>
+                      <p className="text-xs text-slate-600 leading-relaxed">{r.contexto}</p>
+                    </div>
+                  )}
+                  {/* Pilares */}
+                  {r.pilares && r.pilares.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-black text-violet-600 uppercase tracking-wider mb-1.5">Pilares</p>
+                      <div className="space-y-2">
+                        {r.pilares.map((p, i) => (
+                          <div key={i} className="rounded-lg border border-violet-100 bg-violet-50/50 p-2.5">
+                            <p className="text-[10px] font-black text-violet-700 mb-0.5">{p.conceito}</p>
+                            <p className="text-[10px] text-slate-600 leading-snug">{p.explicacao}</p>
+                            {p.conexaoEnem && (
+                              <div className="mt-1.5 flex items-start gap-1">
+                                <GraduationCap className="w-3 h-3 text-amber-500 flex-shrink-0 mt-0.5" />
+                                <p className="text-[9px] text-amber-700">{p.conexaoEnem}</p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Aplicação Prática */}
+                  {r.aplicacaoPratica && (
+                    <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200">
+                      <p className="text-[9px] font-black text-emerald-600 uppercase tracking-wider mb-1">Aplicação Prática</p>
+                      <p className="text-[10px] text-emerald-800 leading-snug">{r.aplicacaoPratica}</p>
+                    </div>
+                  )}
+                  {/* Questão Provocadora */}
+                  {r.questaoProvocadora && (
+                    <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200">
+                      <p className="text-[9px] font-black text-amber-600 uppercase tracking-wider mb-1">❓ Questão Provocadora</p>
+                      <p className="text-[10px] text-amber-800 font-medium leading-snug italic">"{r.questaoProvocadora}"</p>
+                    </div>
+                  )}
+                  {/* Tópicos-chave */}
                   <div>
-                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-wider mb-1.5">Resumo</p>
-                    <p className="text-xs text-slate-700 leading-relaxed">{r.summary}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-violet-600 uppercase tracking-wider mb-1.5">Tópicos-chave</p>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Tópicos-chave</p>
                     <div className="flex flex-wrap gap-1.5">
                       {r.keyTopics?.map((t, i) => (
-                        <span key={i} className="px-2 py-0.5 bg-violet-50 border border-violet-200 rounded-full text-[10px] font-medium text-violet-700">{t}</span>
+                        <span key={i} className="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded-full text-[10px] font-medium text-slate-700">{t}</span>
                       ))}
                     </div>
                   </div>
+                  {/* FAQ */}
                   <div>
                     <p className="text-[10px] font-black text-amber-600 uppercase tracking-wider mb-1.5">FAQ</p>
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       {r.faq?.map((item, i) => (
                         <details key={i} className="group">
                           <summary className="text-xs font-semibold text-slate-700 cursor-pointer list-none flex items-center gap-1.5 py-1">
@@ -2402,6 +2645,13 @@ export default function Notebook() {
                       ))}
                     </div>
                   </div>
+                  {/* Próximos Passos */}
+                  {r.proximosPassos && (
+                    <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider mb-1">→ Próximos Passos</p>
+                      <p className="text-[10px] text-slate-700 leading-snug">{r.proximosPassos}</p>
+                    </div>
+                  )}
                 </div>
               );
             })()}
@@ -2410,33 +2660,139 @@ export default function Notebook() {
               const r = toolResult as StudyGuide;
               return (
                 <div className="p-3 space-y-3">
-                  <p className="text-xs text-slate-600 italic leading-relaxed">{r.introducao}</p>
-                  <div className="space-y-2">
-                    {r.questoes?.map((q, i) => (
-                      <details key={i} className="group rounded-xl border border-slate-200 overflow-hidden">
-                        <summary className="px-3 py-2 cursor-pointer list-none bg-slate-50 flex items-center gap-2">
-                          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${
-                            q.tipo === "conceito" ? "bg-indigo-100 text-indigo-700" :
-                            q.tipo === "aplicacao" ? "bg-green-100 text-green-700" :
-                            "bg-amber-100 text-amber-700"
-                          }`}>{q.tipo}</span>
-                          <p className="text-xs font-semibold text-slate-700 flex-1 line-clamp-1">{q.pergunta}</p>
-                        </summary>
-                        <div className="px-3 py-2 space-y-2">
-                          <p className="text-xs text-slate-700 leading-relaxed">{q.resposta}</p>
-                          {q.dicaEnem && (
-                            <div className="flex items-start gap-1.5 p-2 bg-amber-50 rounded-lg">
-                              <GraduationCap className="w-3 h-3 text-amber-600 flex-shrink-0 mt-0.5" />
-                              <p className="text-[10px] text-amber-800">{q.dicaEnem}</p>
-                            </div>
-                          )}
-                        </div>
-                      </details>
-                    ))}
-                  </div>
+                  {/* Objetivo Final */}
+                  {r.objetivoFinal && (
+                    <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200">
+                      <p className="text-[9px] font-black text-indigo-500 uppercase tracking-wider mb-1">🎯 Ao Final, Você Será Capaz de</p>
+                      <p className="text-xs text-indigo-900 font-medium leading-snug">{r.objetivoFinal}</p>
+                    </div>
+                  )}
+                  {/* Checklist */}
+                  {r.checklistCompetencias?.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Competências</p>
+                      {r.checklistCompetencias.map((c, i) => (
+                        <p key={i} className="text-[10px] text-slate-600 flex items-center gap-1.5 mb-0.5">
+                          <CheckCircle className="w-3 h-3 text-emerald-400 flex-shrink-0" />{c}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  {/* Pré-requisitos */}
+                  {r.prerequisitos && (
+                    <div className="p-2 rounded-lg bg-blue-50 border border-blue-100 text-[10px] text-blue-800">
+                      <span className="font-black text-blue-600">Pré-requisitos: </span>{r.prerequisitos}
+                    </div>
+                  )}
+                  {/* Quiz Diagnóstico */}
+                  {r.quizDiagnostico?.length > 0 && (
+                    <details className="group">
+                      <summary className="text-[10px] font-black text-amber-600 cursor-pointer flex items-center gap-1 list-none">
+                        <HelpCircle className="w-3 h-3" /> Quiz Diagnóstico
+                        <ChevronDown className="w-3 h-3 group-open:rotate-180 transition-transform" />
+                      </summary>
+                      <div className="mt-1 space-y-1">
+                        {r.quizDiagnostico.map((q, i) => (
+                          <div key={i} className="p-2 rounded-lg bg-amber-50 border border-amber-100">
+                            <p className="text-[10px] font-semibold text-amber-800">{q.pergunta}</p>
+                            {q.dica && <p className="text-[9px] text-amber-600 mt-0.5">💡 {q.dica}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                  {/* Módulos (novo formato) */}
+                  {r.modulos?.length > 0 && (
+                    <div className="space-y-2">
+                      {r.modulos.map((mod, i) => (
+                        <details key={i} className="group rounded-xl border border-violet-200 overflow-hidden">
+                          <summary className="px-3 py-2 cursor-pointer list-none bg-violet-50 flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-violet-600 text-white text-[9px] font-black flex items-center justify-center flex-shrink-0">{mod.numero}</span>
+                            <p className="text-xs font-bold text-slate-800 flex-1 line-clamp-1">{mod.titulo}</p>
+                            {mod.tempoBruto && <span className="text-[9px] text-slate-400">{mod.tempoBruto}</span>}
+                          </summary>
+                          <div className="px-3 py-2.5 space-y-2">
+                            {mod.objetivo && <p className="text-[10px] text-violet-700 font-semibold">{mod.objetivo}</p>}
+                            {mod.conceitoCentral && (
+                              <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Conceito Central</p>
+                                <p className="text-[10px] text-slate-700 leading-snug">{mod.conceitoCentral}</p>
+                              </div>
+                            )}
+                            {mod.aprofundamento && (
+                              <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Aprofundamento</p>
+                                <p className="text-[10px] text-slate-600 leading-snug">{mod.aprofundamento}</p>
+                              </div>
+                            )}
+                            {mod.exemploResolvido && (
+                              <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-100">
+                                <p className="text-[9px] font-black text-emerald-600 uppercase tracking-wider mb-0.5">Exemplo Resolvido</p>
+                                <p className="text-[10px] text-emerald-800 leading-snug">{mod.exemploResolvido}</p>
+                              </div>
+                            )}
+                            {mod.errosComuns?.length > 0 && (
+                              <div>
+                                <p className="text-[9px] font-black text-red-500 uppercase tracking-wider mb-0.5">⚠️ Erros Comuns</p>
+                                {mod.errosComuns.map((e, j) => (
+                                  <p key={j} className="text-[9px] text-red-700 flex items-start gap-1">
+                                    <AlertCircle className="w-3 h-3 flex-shrink-0 mt-0.5" />{e}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                            {mod.checkpoint?.length > 0 && (
+                              <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Checkpoint</p>
+                                {mod.checkpoint.map((c, j) => (
+                                  <p key={j} className="text-[9px] text-slate-600 flex items-start gap-1">
+                                    <HelpCircle className="w-3 h-3 text-indigo-400 flex-shrink-0 mt-0.5" />{c}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </details>
+                      ))}
+                    </div>
+                  )}
+                  {/* Formato antigo (backward compat) */}
+                  {!r.modulos && r.questoes?.length > 0 && (
+                    <div className="space-y-2">
+                      {r.questoes.map((q, i) => (
+                        <details key={i} className="group rounded-xl border border-slate-200 overflow-hidden">
+                          <summary className="px-3 py-2 cursor-pointer list-none bg-slate-50 flex items-center gap-2">
+                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${
+                              q.tipo === "conceito" ? "bg-indigo-100 text-indigo-700" :
+                              q.tipo === "aplicacao" ? "bg-green-100 text-green-700" :
+                              "bg-amber-100 text-amber-700"
+                            }`}>{q.tipo}</span>
+                            <p className="text-xs font-semibold text-slate-700 flex-1 line-clamp-1">{q.pergunta}</p>
+                          </summary>
+                          <div className="px-3 py-2 space-y-2">
+                            <p className="text-xs text-slate-700 leading-relaxed">{q.resposta}</p>
+                            {q.dicaEnem && (
+                              <div className="flex items-start gap-1.5 p-2 bg-amber-50 rounded-lg">
+                                <GraduationCap className="w-3 h-3 text-amber-600 flex-shrink-0 mt-0.5" />
+                                <p className="text-[10px] text-amber-800">{q.dicaEnem}</p>
+                              </div>
+                            )}
+                          </div>
+                        </details>
+                      ))}
+                    </div>
+                  )}
+                  {/* Síntese e Expansão */}
+                  {r.sintese && (
+                    <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider mb-0.5">Síntese Integradora</p>
+                      <p className="text-[10px] text-slate-700 leading-snug">{r.sintese}</p>
+                    </div>
+                  )}
+                  {/* Cronograma */}
                   {r.cronogramaSugerido?.length > 0 && (
                     <div>
-                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Cronograma</p>
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">📅 Cronograma</p>
                       {r.cronogramaSugerido.map((d, i) => (
                         <p key={i} className="text-[10px] text-slate-600 py-0.5">• {d}</p>
                       ))}
@@ -2556,6 +2912,136 @@ export default function Notebook() {
                 );
               }
               return null;
+            })()}
+
+            {activeTool === "briefing" && (() => {
+              const r = toolResult as Briefing;
+              return (
+                <div className="p-3 space-y-3">
+                  <div className="p-3 rounded-xl bg-slate-800 text-white">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Contexto / Problema</p>
+                    <p className="text-xs leading-snug">{r.problema}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Pontos-Chave</p>
+                    <div className="space-y-1.5">
+                      {r.pontosChave?.map((p, i) => (
+                        <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200">
+                          <div className="w-5 h-5 rounded-full bg-slate-700 text-white flex items-center justify-center text-[9px] font-black flex-shrink-0">{i+1}</div>
+                          <div>
+                            <p className="text-[10px] font-bold text-slate-800">{p.ponto}</p>
+                            {p.evidencia && <p className="text-[9px] text-slate-500 mt-0.5">{p.evidencia}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200">
+                    <p className="text-[9px] font-black text-emerald-600 uppercase tracking-wider mb-1">Conclusões</p>
+                    <p className="text-[10px] text-emerald-800 leading-snug">{r.conclusoes}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-wider mb-1.5">Recomendações</p>
+                    <div className="space-y-1.5">
+                      {r.recomendacoes?.map((rec, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <CheckCircle className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-[10px] font-semibold text-slate-800">{rec.acao}</p>
+                            {rec.justificativa && <p className="text-[9px] text-slate-500">{rec.justificativa}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200">
+                    <p className="text-[9px] font-black text-amber-600 uppercase tracking-wider mb-1">→ Próximos Passos</p>
+                    <p className="text-[10px] text-amber-800 leading-snug">{r.proximosPassos}</p>
+                  </div>
+                  {r.palavrasChave?.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {r.palavrasChave.map((p, i) => (
+                        <span key={i} className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full text-[9px] font-medium">{p}</span>
+                      ))}
+                    </div>
+                  )}
+                  {r.conexoesEnem && (
+                    <div className="flex items-start gap-1.5 p-2 bg-amber-50 rounded-lg border border-amber-100">
+                      <GraduationCap className="w-3 h-3 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <p className="text-[9px] text-amber-700">{r.conexoesEnem}</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {activeTool === "plano-aula" && (() => {
+              const r = toolResult as PlanoAula;
+              return (
+                <div className="p-3 space-y-3">
+                  <div className="p-3 rounded-xl bg-violet-50 border border-violet-200">
+                    <p className="text-xs font-black text-violet-800">{r.titulo}</p>
+                    <div className="flex gap-2 mt-1 flex-wrap">
+                      <span className="text-[9px] font-bold text-violet-600">{r.turma}</span>
+                      <span className="text-[9px] text-violet-400">•</span>
+                      <span className="text-[9px] font-bold text-violet-600">{r.duracao}</span>
+                    </div>
+                  </div>
+                  {r.objetivos?.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Objetivos</p>
+                      {r.objetivos.map((o, i) => (
+                        <p key={i} className="text-[10px] text-slate-700 flex items-start gap-1.5 mb-0.5">
+                          <CheckCircle className="w-3 h-3 text-violet-400 flex-shrink-0 mt-0.5" />{o}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  {r.prerequisitos && (
+                    <div className="p-2 rounded-lg bg-blue-50 border border-blue-100">
+                      <p className="text-[9px] font-black text-blue-600 uppercase tracking-wider mb-0.5">Pré-requisitos</p>
+                      <p className="text-[9px] text-blue-800">{r.prerequisitos}</p>
+                    </div>
+                  )}
+                  {r.desenvolvimento?.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Desenvolvimento</p>
+                      <div className="space-y-1.5">
+                        {r.desenvolvimento.map((d, i) => (
+                          <div key={i} className="rounded-lg border border-slate-200 overflow-hidden">
+                            <div className="flex items-center gap-2 px-2.5 py-1.5 bg-slate-50">
+                              <span className="text-[9px] font-black text-slate-400 w-10 flex-shrink-0">{d.tempo}</span>
+                              <span className="text-[10px] font-bold text-slate-700">{d.etapa}</span>
+                            </div>
+                            <div className="px-2.5 py-1.5">
+                              <p className="text-[10px] text-slate-700">{d.atividade}</p>
+                              <p className="text-[9px] text-slate-400 mt-0.5">Recursos: {d.recursos}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {r.tarefaCasa && (
+                    <div className="p-2.5 rounded-lg bg-indigo-50 border border-indigo-100">
+                      <p className="text-[9px] font-black text-indigo-600 uppercase tracking-wider mb-0.5">Tarefa de Casa</p>
+                      <p className="text-[9px] text-indigo-800 leading-snug">{r.tarefaCasa}</p>
+                    </div>
+                  )}
+                  {r.adaptacoes && (
+                    <div className="space-y-1">
+                      <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-100">
+                        <p className="text-[9px] font-black text-emerald-600 mb-0.5">Para turmas rápidas:</p>
+                        <p className="text-[9px] text-emerald-800">{r.adaptacoes.turmaRapida}</p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-rose-50 border border-rose-100">
+                        <p className="text-[9px] font-black text-rose-600 mb-0.5">Para turmas com dificuldade:</p>
+                        <p className="text-[9px] text-rose-800">{r.adaptacoes.turmaDificuldade}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
             })()}
 
             {activeTool === "relatorio" && (() => {

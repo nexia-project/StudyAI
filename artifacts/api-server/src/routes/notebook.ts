@@ -734,9 +734,41 @@ router.post("/notebook/upload-image", upload.single("image"), async (req: Reques
   }
 });
 
+// ─── Chat mode system prompts ─────────────────────────────────────────────────
+const CHAT_MODE_PROMPTS: Record<string, string> = {
+  padrao: `Você é o Professor Tiagão, assistente de estudos especialista em preparação para ENEM e vestibulares brasileiros.
+Responda em português brasileiro, de forma clara, didática e objetiva.
+Use EXCLUSIVAMENTE as fontes abaixo para responder. Não invente informações.
+Cite as fontes usando [Fonte N] quando usar uma informação específica.
+Se a pergunta não puder ser respondida com base nas fontes, diga isso claramente.
+Ao final, se relevante, acrescente uma dica específica sobre como esse tema cai no ENEM.`,
+
+  estudo: `Você é o Professor Tiagão, tutor paciente e especialista em ENEM e vestibulares.
+Modo ESTUDO ativado: use analogias do cotidiano, exemplos práticos e verifique o entendimento do aluno.
+Ao responder, sempre: (1) explique o conceito central com uma analogia acessível, (2) aprofunde com exemplos das fontes, (3) pergunte "Faz sentido?" ou proponha um exercício mental.
+Use EXCLUSIVAMENTE as fontes abaixo. Cite com [Fonte N].`,
+
+  pesquisa: `Você é o Professor Tiagão em modo PESQUISA — análise acadêmica rigorosa.
+Tom: objetivo, técnico, baseado em evidências.
+Ao responder: cite metodologias e dados específicos das fontes, indique limitações e lacunas, diferencie fatos de interpretações.
+Limite-se estritamente às fontes disponíveis. Cite com [Fonte N].
+Ao final, aponte possíveis lacunas de conhecimento não cobertas pelas fontes.`,
+
+  revisao: `Você é o Professor Tiagão em modo REVISÃO — foco em fixação e prova.
+Ao responder: destaque os pontos-chave em formato de lista, sugira mnemônicos quando aplicável, conecte o tema ao padrão ENEM (competências e habilidades).
+Use linguagem direta e memorável. Inclua "O que CAI no ENEM:" ao final.
+Use EXCLUSIVAMENTE as fontes abaixo. Cite com [Fonte N].`,
+
+  duvidas: `Você é o Professor Tiagão em modo DÚVIDAS — acolhimento total, zero julgamento.
+Toda dúvida é válida e importante. Antes de responder, confirme: "Entendi, você quer saber..."
+Explique de forma extremamente simples, como se o aluno nunca tivesse visto o assunto antes.
+Use analogias do dia a dia. Evite jargões sem explicá-los primeiro.
+Use EXCLUSIVAMENTE as fontes abaixo. Cite com [Fonte N].`,
+};
+
 router.post("/notebook/chat", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
-  const { pergunta, docIds, cadernoId } = req.body as { pergunta: string; docIds?: number[]; cadernoId?: number };
+  const { pergunta, docIds, cadernoId, modo = "padrao" } = req.body as { pergunta: string; docIds?: number[]; cadernoId?: number; modo?: string };
   if (!pergunta?.trim()) { res.status(400).json({ erro: "Pergunta obrigatória" }); return; }
 
   try {
@@ -763,19 +795,16 @@ router.post("/notebook/chat", async (req: Request, res: Response) => {
       .map((c, i) => `[Fonte ${i + 1} — "${c.title}"]\n${c.text}`)
       .join("\n\n---\n\n");
 
+    const modePrompt = CHAT_MODE_PROMPTS[modo] ?? CHAT_MODE_PROMPTS.padrao;
+
     const completion = await gpt.chat.completions.create({
       model: "gpt-4o-mini",
-      temperature: 0.2,
-      max_tokens: 1500,
+      temperature: modo === "pesquisa" ? 0.1 : modo === "estudo" ? 0.4 : 0.2,
+      max_tokens: 1800,
       messages: [
         {
           role: "system",
-          content: `Você é o Professor Tiagão, assistente de estudos especialista em preparação para ENEM e vestibulares brasileiros.
-Responda em português brasileiro, de forma clara, didática e objetiva.
-Use EXCLUSIVAMENTE as fontes abaixo para responder. Não invente informações.
-Cite as fontes usando [Fonte N] quando usar uma informação específica.
-Se a pergunta não puder ser respondida com base nas fontes, diga isso claramente.
-Ao final, se relevante, acrescente uma dica específica sobre como esse tema cai no ENEM.${personaBlock}
+          content: `${modePrompt}${personaBlock}
 
 FONTES DISPONÍVEIS:
 ${context}`,
@@ -824,7 +853,7 @@ ${context}`,
 // ─── POST /api/notebook/chat-stream (SSE streaming) ──────────────────────────
 router.post("/notebook/chat-stream", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
-  const { pergunta, docIds, cadernoId } = req.body as { pergunta: string; docIds?: number[]; cadernoId?: number };
+  const { pergunta, docIds, cadernoId, modo = "padrao" } = req.body as { pergunta: string; docIds?: number[]; cadernoId?: number; modo?: string };
   if (!pergunta?.trim()) { res.status(400).json({ erro: "Pergunta obrigatória" }); return; }
 
   res.setHeader("Content-Type", "text/event-stream");
@@ -865,19 +894,16 @@ router.post("/notebook/chat-stream", async (req: Request, res: Response) => {
       trechoCompleto: c.text,
     })));
 
+    const modePrompt = CHAT_MODE_PROMPTS[modo] ?? CHAT_MODE_PROMPTS.padrao;
     const stream = await gpt.chat.completions.create({
       model: "gpt-4o-mini",
-      temperature: 0.2,
-      max_tokens: 1500,
+      temperature: modo === "pesquisa" ? 0.1 : modo === "estudo" ? 0.4 : 0.2,
+      max_tokens: 1800,
       stream: true,
       messages: [
         {
           role: "system",
-          content: `Você é o Professor Tiagão, assistente de estudos para ENEM e vestibulares brasileiros.
-Responda em português brasileiro, claro e didático.
-Use EXCLUSIVAMENTE as fontes abaixo. Não invente.
-Cite fontes com [Fonte N] sempre que usar uma informação específica.
-Se não puder responder com base nas fontes, diga claramente.${personaBlock}
+          content: `${modePrompt}${personaBlock}
 
 FONTES DISPONÍVEIS:
 ${context}`,
@@ -961,21 +987,28 @@ router.post("/notebook/overview", async (req: Request, res: Response) => {
 
     const completion = await gpt.chat.completions.create({
       model: "gpt-4o-mini",
-      temperature: 0.3,
-      max_tokens: 2000,
+      temperature: 0.4,
+      max_tokens: 2500,
       messages: [
         {
           role: "system",
-          content: `Analise o documento e retorne APENAS um JSON válido, sem markdown:
+          content: `Você é um jornalista de newsletter educacional. Analise o documento e retorne APENAS um JSON válido, sem markdown:
 {
-  "summary": "Resumo em 3-5 frases claras e didáticas do que o documento trata",
+  "insightCentral": "1 frase impactante que captura a essência do documento — direto ao ponto, sem 'Este texto fala sobre...'",
+  "contexto": "2-3 frases de por que este tema importa para o aluno de ENEM/vestibular",
+  "pilares": [
+    { "conceito": "nome do conceito", "explicacao": "explicação + conexão com o insight central", "conexaoEnem": "como isso cai no ENEM" }
+  ],
+  "aplicacaoPratica": "Onde/como esse conhecimento é usado na vida real",
+  "questaoProvocadora": "Pergunta reflexiva aberta que estimula pensamento crítico",
+  "proximosPassos": "O que estudar em seguida para aprofundar",
   "keyTopics": ["tópico 1", "tópico 2", "tópico 3", "tópico 4", "tópico 5", "tópico 6"],
   "faq": [
-    { "q": "Pergunta sobre o conteúdo?", "a": "Resposta concisa e direta" }
+    { "q": "Pergunta frequente sobre o conteúdo?", "a": "Resposta clara e direta baseada nas fontes" }
   ]
 }
-Gere 5-6 tópicos-chave e 5 perguntas frequentes relevantes para estudo.
-Foco em preparação para ENEM/vestibular.`,
+Gere 4-5 pilares, 5-6 tópicos-chave e 5 perguntas FAQ.
+NUNCA comece com "Este documento/texto fala sobre...". Vá direto ao insight.`,
         },
         { role: "user", content: `Título: "${row.title}"\n\nConteúdo:\n${row.content_text.slice(0, 14_000)}` },
       ],
@@ -1016,27 +1049,43 @@ router.post("/notebook/study-guide", async (req: Request, res: Response) => {
 
     const completion = await gpt.chat.completions.create({
       model: "gpt-4o-mini",
-      temperature: 0.4,
-      max_tokens: 3000,
+      temperature: 0.5,
+      max_tokens: 4000,
       messages: [
         {
           role: "system",
-          content: `Você é professor especialista em ENEM e vestibulares. Crie um guia de estudo completo.
+          content: `Você é um tutor experiente especializado em ENEM/vestibulares. Crie um guia de estudo completo no formato Mapa de Jornada.
 Retorne APENAS JSON válido, sem markdown:
 {
   "titulo": "Guia de Estudo: [assunto]",
-  "introducao": "Frase motivacional sobre o tema",
-  "questoes": [
+  "objetivoFinal": "Ao final deste guia, você será capaz de... [descrever competência concreta]",
+  "checklistCompetencias": ["competência 1", "competência 2", "competência 3"],
+  "prerequisitos": "O que o aluno precisa saber antes de começar",
+  "quizDiagnostico": [
+    { "pergunta": "Pergunta diagnóstica rápida?", "dica": "Pensa em..." }
+  ],
+  "modulos": [
     {
-      "tipo": "conceito|aplicacao|comparacao|analise",
-      "pergunta": "Pergunta de estudo profunda?",
-      "resposta": "Resposta detalhada com exemplos do mundo real",
-      "dicaEnem": "Como e com que frequência esse tema cai no ENEM"
+      "numero": 1,
+      "titulo": "Título do Módulo",
+      "tempoBruto": "15-20 min",
+      "objetivo": "Competência específica deste módulo",
+      "conceitoCentral": "Explicação com analogia do cotidiano",
+      "aprofundamento": "Detalhes técnicos e nuances",
+      "exemploResolvido": "Passo a passo de aplicação prática",
+      "errosComuns": ["Erro típico 1", "Erro típico 2"],
+      "checkpoint": ["Pergunta de autoavaliação 1", "Pergunta de autoavaliação 2"]
     }
   ],
+  "sintese": "Conexão integradora entre todos os módulos",
+  "aplicacaoPratica": "Caso real + exercício de transferência de conhecimento",
+  "expansao": {
+    "leituras": ["Sugestão 1", "Sugestão 2"],
+    "conexoes": ["Tema relacionado 1", "Tema relacionado 2"]
+  },
   "cronogramaSugerido": ["Dia 1: ...", "Dia 2: ...", "Dia 3: ..."]
 }
-Gere 8-10 questões variadas cobrindo todo o documento.`,
+Gere 3-4 módulos cobrindo progressivamente todo o documento. Quiz diagnóstico com 3 perguntas.`,
         },
         { role: "user", content: `Tema: "${row.title}"\n\nConteúdo:\n${row.content_text.slice(0, 14_000)}` },
       ],
@@ -1066,16 +1115,27 @@ router.post("/notebook/flashcards", async (req: Request, res: Response) => {
 
     const completion = await gpt.chat.completions.create({
       model: "gpt-4o-mini",
-      temperature: 0.5,
-      max_tokens: 3000,
+      temperature: 0.3,
+      max_tokens: 3500,
       messages: [
         {
           role: "system",
-          content: `Crie ${quantidade} flashcards de estudo de alta qualidade. Retorne APENAS JSON:
+          content: `Você é um designer de memória especializado em ENEM/vestibulares. Crie ${quantidade} flashcards de recuperação ativa.
+Cada card deve ser ATÔMICO (uma única ideia), usar linguagem de recuperação ativa (não "O que é X" mas "Por que X causa Y?").
+Retorne APENAS JSON:
 {"flashcards": [
-  {"frente": "Pergunta clara e específica", "verso": "Resposta completa com contexto e exemplos", "materia": "área do conhecimento", "dificuldade": "facil|medio|dificil"}
+  {
+    "frente": "Pergunta de recuperação ativa — específica, não genérica",
+    "verso": "Resposta completa com contexto + exemplo prático",
+    "mnemonico": "Dica ou macete de memorização (se aplicável, senão null)",
+    "materia": "área do conhecimento ENEM",
+    "dificuldade": "facil|medio|dificil",
+    "tipo": "fato|conceito|comparacao|aplicacao"
+  }
 ]}
-Varie a dificuldade (40% fácil, 40% médio, 20% difícil). Priorize o que cai no ENEM.`,
+Distribuição: 30% fácil (fatos diretos), 50% médio (conceitos e relações), 20% difícil (aplicação e análise).
+Tipos de card: fato (pergunta direta), conceito (diferencia X de Y), comparação (X vs Y em aspecto Z), aplicação (cenário real).
+PRIORIZE o que mais cai no ENEM.`,
         },
         { role: "user", content: `Tema: "${row.title}"\n\n${row.content_text.slice(0, 12_000)}` },
       ],
@@ -1105,20 +1165,26 @@ router.post("/notebook/questoes", async (req: Request, res: Response) => {
 
     const completion = await gpt.chat.completions.create({
       model: "gpt-4o-mini",
-      temperature: 0.6,
-      max_tokens: 3500,
+      temperature: 0.2,
+      max_tokens: 4000,
       messages: [
         {
           role: "system",
-          content: `Crie ${quantidade} questões no estilo exato do ENEM (5 alternativas A-E, contextualização prévia, linguagem formal). Retorne APENAS JSON:
+          content: `Você é um examinador experiente do ENEM, especialista em Taxonomia de Bloom aplicada à avaliação. Crie ${quantidade} questões no estilo exato do ENEM.
+Distribua os níveis de Bloom: 20% lembrar, 30% compreender, 30% aplicar, 20% analisar.
+Retorne APENAS JSON:
 {"questoes": [
   {
-    "enunciado": "Contexto + enunciado completo no estilo ENEM",
-    "alternativas": {"A": "texto", "B": "texto", "C": "texto", "D": "texto", "E": "texto"},
+    "enunciado": "Texto de contextualização (2-4 frases) + enunciado direto no estilo ENEM",
+    "alternativas": {"A": "texto completo", "B": "texto completo", "C": "texto completo", "D": "texto completo", "E": "texto completo"},
     "gabarito": "A",
-    "explicacao": "Explicação detalhada de por que a resposta é correta e por que as outras estão erradas"
+    "bloomLevel": "lembrar|compreender|aplicar|analisar|avaliar|criar",
+    "habilidade": "Habilidade ENEM avaliada (ex: H19, ou descrição)",
+    "explicacao": "Por que a alternativa correta está certa — e por que cada distrator está errado",
+    "dicaResolutora": "Estratégia para resolver essa categoria de questão no ENEM"
   }
-]}`,
+]}
+REGRAS: alternativas plausíveis (sem opções obviamente erradas), distractores baseados em erros conceituais reais, contexto sempre antes do enunciado.`,
         },
         { role: "user", content: `Tema: "${row.title}"\n\n${row.content_text.slice(0, 12_000)}` },
       ],
@@ -1153,32 +1219,40 @@ router.post("/notebook/mapa-mental", async (req: Request, res: Response) => {
       messages: [
         {
           role: "system",
-          content: `Você cria mapas mentais HIERÁRQUICOS de 4 níveis no estilo NotebookLM.
-Retorne APENAS JSON válido com esta estrutura:
+          content: `Você é um visual thinker especialista em síntese hierárquica para ENEM/vestibulares.
+Crie um mapa mental com estrutura limpa e conexões cruzadas entre ramos.
+Retorne APENAS JSON válido:
 {
-  "subject": "Tema central curto (max 4 palavras)",
+  "subject": "Tema central (max 4 palavras)",
+  "icone": "emoji representativo do tema",
   "categories": [
     {
-      "name": "Categoria nível 2 (max 4 palavras)",
+      "name": "Ramo principal (max 4 palavras)",
+      "icone": "emoji do ramo",
+      "cor": "#código-hex sugerido para o ramo",
       "topics": [
         {
-          "name": "Tópico nível 3 (max 5 palavras)",
+          "name": "Sub-ramo (max 5 palavras)",
           "subtopics": [
-            { "name": "Subtópico folha (max 6 palavras)", "detail": "1-2 frases explicando" }
+            { "name": "Detalhe folha (max 6 palavras)", "detail": "1-2 frases factuais do documento" }
           ]
         }
       ]
     }
-  ]
+  ],
+  "conexoesCruzadas": [
+    { "de": "Nome do Ramo A", "para": "Nome do Ramo B", "relacao": "Por que se conectam" }
+  ],
+  "conceitosChave": ["conceito 1", "conceito 2", "conceito 3"]
 }
-Regras OBRIGATÓRIAS:
-- 2 a 4 categorias principais
-- 2 a 5 tópicos por categoria
-- 3 a 6 subtópicos por tópico
-- Nomes CURTOS, sem pontuação final
-- Detail factual extraído do documento (sem inventar)
-- Estrutura limpa, hierárquica, sem repetição entre níveis
-- NÃO inclua cores (frontend define paleta)`,
+Regras:
+- 3 a 5 ramos principais (categorias)
+- 2 a 4 tópicos por ramo
+- 2 a 5 subtópicos por tópico
+- Nomes CURTOS (sem pontuação)
+- Details baseados no documento (não invente)
+- 2-3 conexões cruzadas entre ramos diferentes
+- Cores em hexadecimal (sugira paleta coerente com o tema)`,
         },
         { role: "user", content: `Documento: "${row.title}"\n\n${row.content_text.slice(0, 16_000)}` },
       ],
@@ -1220,29 +1294,39 @@ router.post("/notebook/podcast", async (req: Request, res: Response) => {
       messages: [
         {
           role: "system",
-          content: `Você vai criar um roteiro de podcast educativo em português brasileiro, estilo conversa natural entre dois apresentadores:
-- ANA: professora entusiasta, explica conceitos de forma clara e usa analogias
-- MARCOS: estudante curioso do ENEM, faz perguntas inteligentes, às vezes surpreso com descobertas
+          content: `Você é um roteirista de podcast educativo de alta qualidade. Crie um episódio estilo Flow Podcast / Nerdcast sobre o conteúdo.
+
+PERSONAGENS:
+- ANA (Host A — Especialista/Guia): tom curioso e acessível, introduz e explica. Frases-tipo: "Isso me lembra...", "O que é fascinante aqui é que..."
+- PEDRO (Host B — Aprendiz Questionador): inteligente mas não-especialista, representa as dúvidas do ouvinte. Frases-tipo: "Então quer dizer que...", "Espera, mas eu achava que..."
+
+ESTRUTURA DO ROTEIRO (5 etapas):
+1. INTRO (gancho surpresa + por que isso importa hoje)
+2. SEÇÃO 1 — Contexto + analogia central do cotidiano
+3. SEÇÃO 2 — Insights principais + tensão/debate interno
+4. SEÇÃO 3 — Aplicação prática e conexão com ENEM
+5. ENCERRAMENTO — Síntese + reflexão + dica de estudo
 
 Retorne APENAS JSON válido:
 {
-  "titulo": "Título do episódio (criativo e envolvente)",
-  "subtitulo": "Matéria | Nível: ENEM/Vestibular",
-  "duracao": "XX minutos (estimado)",
+  "titulo": "Título criativo do episódio (estilo podcast real, não genérico)",
+  "subtitulo": "Matéria | Nível ENEM",
+  "duracao": "~10-12 min estimado",
+  "gancho": "A frase de abertura mais impactante do roteiro",
   "roteiro": [
-    { "speaker": "ANA", "fala": "texto natural da fala" },
-    { "speaker": "MARCOS", "fala": "texto natural da fala" }
+    { "speaker": "ANA", "fala": "texto natural, como fala oral — não texto formal" },
+    { "speaker": "PEDRO", "fala": "texto natural com surpresa/dúvida genuína" }
   ],
-  "destaques": ["ponto chave 1", "ponto chave 2", "ponto chave 3"]
+  "destaques": ["Insight 1 que vai surpreender o ouvinte", "Insight 2", "Insight 3"],
+  "dicaEnem": "Como esse tema aparece no ENEM"
 }
 
-O roteiro deve:
-- Ter 12-18 falas alternando entre os dois
-- Começar com uma introdução cativante que desperta curiosidade
-- Cobrir os principais conceitos do documento de forma progressiva
-- Incluir perguntas retóricas, exemplos cotidianos e conexões com o ENEM
-- Terminar com um resumo dos pontos principais e dica de estudo
-- Usar linguagem natural, não formal — como um podcast real`,
+REGRAS:
+- 16-24 falas totais alternando naturalmente
+- NUNCA "Como dizia o texto..." — fale DIRETAMENTE do conteúdo
+- Inclua 1 fato surpreendente que vai fazer o ouvinte dizer "Nossa!"
+- Analogias do dia a dia (não academic)
+- Riso natural, pausas, interrupções (ex: "Espera—")`,
         },
         { role: "user", content: `Documento: "${row.title}"\n\n${row.content_text.slice(0, 15_000)}` },
       ],
@@ -1256,6 +1340,196 @@ O roteiro deve:
   } catch (e) {
     console.error("notebook podcast:", e);
     res.status(500).json({ erro: "Erro ao gerar podcast" });
+  }
+});
+
+// ─── POST /api/notebook/briefing ─────────────────────────────────────────────
+router.post("/notebook/briefing", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { docId } = req.body as { docId: number };
+  try {
+    const docs = await db.execute(sql`
+      SELECT content_text, title FROM knowledge_documents
+      WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
+    `);
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
+
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.3,
+      max_tokens: 2500,
+      messages: [
+        {
+          role: "system",
+          content: `Você é um analista estratégico criando um briefing executivo compacto para estudante de ENEM/vestibular.
+Retorne APENAS JSON válido:
+{
+  "titulo": "Briefing: [Tema]",
+  "problema": "Problema ou contexto central em 2-3 frases impactantes",
+  "pontosChave": [
+    { "ponto": "Bullet impactante e memorizável", "evidencia": "Base no documento" }
+  ],
+  "conclusoes": "Resumo executivo de 2-3 frases — o que o aluno precisa saber",
+  "recomendacoes": [
+    { "acao": "Ação concreta de estudo", "justificativa": "Por que isso é prioritário" }
+  ],
+  "proximosPassos": "Timeline de estudo sugerida (ex: Dia 1: conceitos X e Y, Dia 2: prática com questões)",
+  "palavrasChave": ["termo 1", "termo 2", "termo 3", "termo 4", "termo 5"],
+  "conexoesEnem": "Como esses tópicos aparecem no ENEM — competências e habilidades"
+}
+Gere 4-6 pontos-chave e 3-4 recomendações. Tom direto e executivo — sem rodeios.`,
+        },
+        { role: "user", content: `Tema: "${row.title}"\n\nConteúdo:\n${row.content_text.slice(0, 14_000)}` },
+      ],
+    });
+
+    const raw = completion.choices[0].message.content ?? "{}";
+    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    res.json(JSON.parse(clean));
+  } catch (e) {
+    console.error("notebook briefing:", e);
+    res.status(500).json({ erro: "Erro ao gerar briefing" });
+  }
+});
+
+// ─── POST /api/notebook/plano-aula ───────────────────────────────────────────
+router.post("/notebook/plano-aula", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { docId, duracao = 50, nivel = "Ensino Médio" } = req.body as { docId: number; duracao?: number; nivel?: string };
+  try {
+    const docs = await db.execute(sql`
+      SELECT content_text, title FROM knowledge_documents
+      WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
+    `);
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
+
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.5,
+      max_tokens: 4000,
+      messages: [
+        {
+          role: "system",
+          content: `Você é um pedagogo experiente criando um plano de aula completo e aplicável para ENEM/vestibular.
+Retorne APENAS JSON válido:
+{
+  "titulo": "Plano de Aula: [Tema]",
+  "turma": "${nivel}",
+  "duracao": "${duracao} minutos",
+  "objetivos": ["Objetivo de aprendizagem 1 (verbo de ação)", "Objetivo 2", "Objetivo 3"],
+  "prerequisitos": "O que os alunos já devem saber antes desta aula",
+  "desenvolvimento": [
+    {
+      "tempo": "10 min",
+      "etapa": "Abertura",
+      "atividade": "Gancho motivador ou provocação inicial",
+      "recursos": "Material/ferramenta necessária",
+      "estrategia": "Como o professor conduz"
+    },
+    {
+      "tempo": "${Math.round(duracao * 0.35)} min",
+      "etapa": "Desenvolvimento 1",
+      "atividade": "Conteúdo principal com explicação ativa",
+      "recursos": "Slides, exemplos, quadro",
+      "estrategia": "Exposição dialogada com perguntas"
+    },
+    {
+      "tempo": "${Math.round(duracao * 0.3)} min",
+      "etapa": "Desenvolvimento 2",
+      "atividade": "Atividade prática ou em grupo",
+      "recursos": "Exercícios, material do caderno",
+      "estrategia": "Aprendizagem ativa"
+    },
+    {
+      "tempo": "10 min",
+      "etapa": "Fechamento",
+      "atividade": "Síntese + avaliação formativa rápida",
+      "recursos": "Quiz oral ou escrito",
+      "estrategia": "Revisão e verificação de entendimento"
+    }
+  ],
+  "tarefaCasa": "Descrição da atividade + conexão com o conteúdo do caderno",
+  "avaliacao": {
+    "criterios": ["Critério 1", "Critério 2"],
+    "instrumento": "Como será avaliado"
+  },
+  "adaptacoes": {
+    "turmaRapida": "Extensão para alunos que avançaram",
+    "turmaDificuldade": "Simplificação para alunos com dificuldade"
+  },
+  "materialComplementar": ["Sugestão 1", "Sugestão 2"]
+}`,
+        },
+        { role: "user", content: `Tema: "${row.title}"\n\nConteúdo:\n${row.content_text.slice(0, 14_000)}` },
+      ],
+    });
+
+    const raw = completion.choices[0].message.content ?? "{}";
+    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    res.json(JSON.parse(clean));
+  } catch (e) {
+    console.error("notebook plano-aula:", e);
+    res.status(500).json({ erro: "Erro ao gerar plano de aula" });
+  }
+});
+
+// ─── POST /api/notebook/dna ───────────────────────────────────────────────────
+// DNA das Fontes: análise profunda IA do conteúdo do documento
+router.post("/notebook/dna", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { docId } = req.body as { docId: number };
+  try {
+    const docs = await db.execute(sql`
+      SELECT content_text, title FROM knowledge_documents
+      WHERE id = ${docId} AND uploaded_by = ${req.userId} LIMIT 1
+    `);
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
+
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.2,
+      max_tokens: 3000,
+      messages: [
+        {
+          role: "system",
+          content: `Você é um especialista em análise de conteúdo educacional. Faça o "DNA" completo deste documento.
+Retorne APENAS JSON válido:
+{
+  "temaPrincipal": "1 frase descrevendo o núcleo do documento",
+  "subtemas": ["subtema 1", "subtema 2", "subtema 3"],
+  "tipoFonte": "artigo_cientifico | livro | aula_gravada | pdf_academico | noticia | apostila | outro",
+  "dominio": "biologia | historia | literatura | matematica | quimica | fisica | geografia | filosofia | sociologia | lingua_portuguesa | interdisciplinar",
+  "nivelComplexidade": "basico | intermediario | avancado",
+  "extensao": "curto | medio | longo",
+  "conceitosChave": [
+    { "termo": "conceito", "importancia": 0.0, "definicao": "definição concisa", "relacoes": ["outro conceito relacionado"] }
+  ],
+  "pessoasImportantes": ["pessoa 1 e seu papel", "pessoa 2"],
+  "datasImportantes": ["data e evento", "data e evento"],
+  "tomOriginal": "formal_academico | divulgativo | tecnico | narrativo",
+  "prerequisitosSugeridos": ["O que o aluno precisa saber antes"],
+  "lacunas": ["Tópico não coberto que seria relevante"],
+  "sugestoesFontes": ["Fonte complementar sugerida 1", "Fonte sugerida 2"],
+  "relevanciaEnem": "Alta | Média | Baixa",
+  "competenciasEnem": ["Competência/área ENEM contemplada"],
+  "aplicacoesPraticas": ["Aplicação do conteúdo na vida real"],
+  "controversias": ["Debate ou polêmica relacionada ao tema"]
+}
+Gere 5-8 conceitos-chave com importância de 0.0 a 1.0.`,
+        },
+        { role: "user", content: `Documento: "${row.title}"\n\nConteúdo:\n${row.content_text.slice(0, 14_000)}` },
+      ],
+    });
+
+    const raw = completion.choices[0].message.content ?? "{}";
+    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    res.json(JSON.parse(clean));
+  } catch (e) {
+    console.error("notebook dna:", e);
+    res.status(500).json({ erro: "Erro ao analisar DNA das fontes" });
   }
 });
 

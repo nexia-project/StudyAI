@@ -1,0 +1,325 @@
+PROMPT ÚNICO (UNIFICADO) — STUDY.IA
+Notebook (RAG) estilo NotebookLM + Módulo Professor profissional + Admin (monitoramento + IA/custos)
++ Sistema de coleta de dados à prova de falhas (eventos + métricas consolidadas)
+
+========================================================
+INSTRUÇÕES GERAIS (CRÍTICAS)
+========================================================
+
+Você está trabalhando em um projeto EXISTENTE chamado Study.IA, já em produção.
+
+O sistema JÁ TEM:
+- Autenticação, dashboard e módulos: Estudante, Professor, Instituição, Governo e Admin
+- Sistema Premium
+- Diversas features (plano de estudos, simulado, redação, cronograma, etc.)
+- Um item “Notebook (RAG)” dentro do menu “Estudar”
+- Um painel Admin em /admin com tema dark e sidebar já definida
+
+INSTRUÇÃO CRÍTICA:
+1) NÃO QUEBRE nada que já funciona.
+2) NÃO troque stack, nem padrões de código, nem banco, nem estrutura do projeto.
+3) REUTILIZE os componentes de UI e serviços já existentes (botões, cards, inputs, modais, toasts, tabelas, tabs, gráficos etc.).
+4) Antes de codar: ANALISE a estrutura do projeto (pastas, rotas, estilo, design system, banco e serviços).
+5) Qualquer feature nova deve vir com:
+   - tracking (eventos), métrica consolidada (daily_metrics) quando aplicável,
+   - APIs de leitura robustas,
+   - estados de UI (loading / vazio / com dados),
+   - e testes manuais de ponta a ponta.
+
+========================================================
+0) ESPECIFICAÇÃO VISUAL — SEGUIR O DESIGN SYSTEM EXISTENTE
+========================================================
+
+ANTES DE QUALQUER COISA, extraia do projeto:
+- Paleta de cores (primária/secundária/background/textos/bordas/estados)
+- Tipografia (font-family, tamanhos, pesos)
+- Espaçamentos (paddings, margins, gaps)
+- Border radius e sombras
+- Biblioteca de ícones
+- Componentes existentes (Button, Card, Input, Modal, Drawer, Table, Tabs, Toast, Skeleton)
+- Layout responsivo (sidebar/header, breakpoints)
+
+Regra: tudo o que for criado deve ser indistinguível do resto do Study.IA.
+
+========================================================
+A) NOTEBOOK (RAG) — CLONE DO NOTEBOOKLM (INTEGRADO)
+========================================================
+
+Objetivo:
+- Cadernos (notebooks) com fontes (PDF, DOCX, links, YouTube, áudio, imagens etc.)
+- Chat que responde EXCLUSIVAMENTE com base nas fontes (RAG) com citações clicáveis
+- Studio com geração de conteúdo (resumos, flashcards, quizzes, mapa mental, podcast, etc.)
+- Histórico de conversas e persona por caderno
+
+A1) Tela inicial (listagem de cadernos)
+- Grid/lista de cadernos com: título, data, nº de fontes, última atualização
+- Buscar e ordenar
+- CTA “Criar novo caderno”
+
+A2) Página de um caderno (layout responsivo)
+Desktop: 3 painéis
+- Esquerda: Fontes
+- Centro: Chat
+- Direita: Studio
+Tablet: Studio pode virar drawer
+Mobile: tabs “Fontes | Chat | Studio”
+
+A3) Fontes (painel esquerdo)
+Suportar import/upload:
+- PDF, DOCX, TXT/MD
+- Links web (HTML → texto limpo)
+- YouTube (transcrição com timestamps)
+- Áudio (Whisper)
+- Imagens (OCR)
+- CSV/XLSX, PPTX, Google Docs/Sheets (link público), EPUB
+
+Cada fonte: status (processando/pronto/erro), preview, remover.
+Drag & drop, upload múltiplo.
+
+A4) Pipeline RAG (backend)
+Ao adicionar fonte:
+1) Extração de texto conforme tipo
+2) Chunking ~500 tokens overlap ~50 + metadados (sourceId, pageNumber/pos)
+3) Embeddings (preferir o padrão já usado no projeto; senão OpenAI text-embedding-3-small 1536)
+4) Armazenar com busca vetorial (pgvector ou equivalente do projeto)
+
+Ao perguntar:
+1) Embedding da pergunta
+2) Busca top 10–15 chunks relevantes no caderno
+3) Montar contexto com identificação da fonte/página
+4) Chamar modelo padrão do projeto (ou GPT-4o), com system prompt:
+   “Responda EXCLUSIVAMENTE com base no contexto; se não houver, diga que não encontrou; cite [1],[2]…”
+5) Resposta em streaming
+
+A5) Chat (painel central)
+- Markdown
+- Citações clicáveis [1],[2] abrindo tooltip/modal com trecho + fonte + página + “abrir fonte”
+- Histórico de conversas por caderno
+- “Nova conversa”
+- Sugestões iniciais
+
+A6) Persona do caderno
+Campo “Instrução personalizada” (até ~5000 chars) injetado no system prompt.
+
+A7) Studio (painel direito)
+Botões (em fases):
+- Resumo (fase 1/2)
+- Guia de estudo (fase 2)
+- Flashcards com repetição espaçada (fase 2)
+- Quiz (fase 2)
+- Mapa mental (fase 2/3)
+- Audio Overview (Podcast) (fase 3)
+- Timeline / Tabela / Slides / Relatório (fase 3/4)
+
+Audio Overview:
+- Gerar script com 2 hosts
+- TTS com duas vozes (ou provider existente)
+- Player: play/pause, barra, velocidade, pular 10s, download
+- Modo “participar”: pausa, usuário pergunta, hosts respondem em áudio
+
+A8) Banco de dados (RAG)
+Criar tabelas novas (sem duplicar User etc.; seguir naming do projeto, ex. prefixo rag_):
+- rag_notebooks, rag_sources, rag_chunks, rag_conversations, rag_messages
+- rag_flashcard_sets, rag_flashcards, rag_flashcard_reviews
+- rag_quizzes, rag_quiz_attempts
+- rag_studio_outputs, rag_notebook_shares, rag_deep_research_jobs
+Criar índices apropriados (incluindo índice vetorial).
+
+A9) Premium gating
+Features caras (Deep Research, Audio Overview etc.) podem ser Premium (usar sistema Premium já existente).
+
+========================================================
+B) MÓDULO PROFESSOR — COCKPIT PROFISSIONAL (COM RAG)
+========================================================
+
+Objetivo: professor consegue planejar, criar, aplicar, corrigir e acompanhar.
+
+B1) Dashboard do Professor
+- Cards “Minhas Turmas”: nome, série/ano, nº alunos, engajamento, próxima atividade
+- Alertas: alunos em risco, pendências de correção, provas próximas
+- Atalhos: plano de aula com IA, prova/quiz com IA, atividade, corrigir redações
+
+B2) Gestão de Turmas
+- Lista de turmas: filtrar, status, ações
+- Página da turma com abas:
+  1) Visão geral: gráficos e próximos itens
+  2) Alunos: lista com status risco/engajamento; perfil do aluno na turma
+  3) Aulas: planejadas/aplicadas; criar plano com IA
+  4) Atividades/Provas: entregas, notas, correção
+
+B3) Integração Professor + Notebook (RAG)
+- “Cadernos da Turma”: professor cria cadernos vinculados à turma
+- Caderno pode ser:
+  - privado do professor
+  - compartilhado com a turma (alunos consultam)
+- Criar plano de aula com base em um caderno (RAG restrito às fontes daquele caderno)
+- Criar prova/quiz com base em um caderno (questões citam fontes)
+
+B4) Planejamento de aula com IA
+Inputs: disciplina, série/ano, duração, objetivos, nível da turma, caderno base opcional.
+Output: plano profissional (roteiro, tempos, atividades, perguntas, dificuldades).
+Salvar, editar, duplicar e exportar PDF.
+
+B5) Provas/quizzes/atividades com IA
+- Banco de questões (criado por professor e IA)
+- Criar prova/quiz:
+  - Definir mix de tipos e dificuldade
+  - Gerar versão A/B
+  - Aplicar online ou exportar PDF/DOCX
+- Correção automática para objetivas; registro de métricas.
+
+B6) Correção assistida (discursiva/redação)
+- Rubricas configuráveis, justificativa por critério, feedback aluno
+- Professor ajusta e aprova
+- Guardar nota e feedback (visível ao aluno)
+
+B7) Acompanhamento e relatórios
+- Gráficos por turma e aluno
+- Alertas de risco
+- Exportar PDF/Excel
+
+========================================================
+C) ADMIN (/admin) — CENTRO DE COMANDO (MONITORAMENTO + IA/CUSTOS)
+========================================================
+
+Manter o tema dark e a sidebar já existente. Expandir para dados reais.
+
+C1) Visão Geral (Admin)
+- Usuários totais/ativos, novos cadastros, retenção, online agora
+- Logins (30 dias), heatmap por hora, últimos logins
+- Atividade em tempo real (feed)
+- Funcionalidades mais usadas
+- Saúde do sistema (status serviços, latência, erros)
+
+C2) Usuários (alunos/professores/instituições)
+- Tabelas robustas, filtros, paginação
+- Perfil detalhado: histórico, engajamento, consumo de IA por usuário
+- Cohort retention e funil de conversão
+
+C3) Financeiro
+- Receita hoje/mês, MRR/ARR, churn, ticket médio
+- Receita por plano
+- Assinaturas ativas/canceladas
+- Margem: Receita - Custo IA (alertas)
+
+C4) IA & Custos (SEÇÃO MAIS IMPORTANTE)
+Implementar logging completo por chamada de IA:
+- feature_name, model, tokens_in/out, custo, duração, userId, timestamp
+- sourceType: rag_internal | knowledge_base | ai_generative | hybrid | web
+- ragChunksUsed e score médio
+
+Dashboards:
+- Custo diário (barras empilhadas por feature/origem)
+- Custo por feature (tabela)
+- Custo por modelo
+- Origem da resposta (RAG vs generativa vs web) + evolução
+- “Perguntas sem match na base” (gaps de conteúdo)
+- Recomendações automáticas para reduzir custos:
+  - downgrade de modelo por feature
+  - cache por similaridade (embedding)
+  - redução de chunks/topK
+  - aumentar base curada para responder via RAG
+- Configurações de otimização:
+  - modelo padrão por feature
+  - cache TTL
+  - rate limit por plano
+  - fallback automático por orçamento
+
+C5) Conteúdos & Base de Conhecimento
+- Métricas: documentos, chunks, tamanho base, por tipo/tema
+- Base curada global do sistema (não só notebooks)
+- Estatística de uso por material
+- Gaps de conteúdo + botão “criar conteúdo com IA” (admin revisa e publica)
+
+C6) Integrações
+- Status OpenAI/Whisper/TTS/Busca web/Storage/Pagamentos/OAuth
+- Testar conexão, atualizar keys mascaradas
+
+C7) Logs & Segurança
+- Logs de IA, logs de auth, auditoria admin actions
+- Filtros e export
+- Rate limits e detecção de abuso
+
+========================================================
+D) SISTEMA DE COLETA DE DADOS À PROVA DE FALHAS (OBRIGATÓRIO)
+========================================================
+
+Problema: dashboards e gráficos vazios/inconsistentes.
+Solução: camada unificada de eventos + métricas consolidadas.
+
+D1) Tabela activity_events (event log)
+Campos:
+- userId, eventType, entityType, entityId, classId?, notebookId?, metadata JSON, createdAt
+Índices por (userId,eventType,createdAt), (classId,eventType,createdAt), etc.
+
+Registrar eventos para:
+- login/sessão
+- plano de estudos
+- quiz (start/answer/complete)
+- flashcards (review)
+- redação (submitted/corrected)
+- notebook RAG (source added/chat/studio)
+- ações do professor (aula criada, atividade atribuída, nota dada)
+
+D2) Serviço central trackEvent()
+- Validação: nunca evento incompleto
+- “Fire and forget”: falha não pode quebrar a UX
+- Logs de erro
+- Chamar em TODOS os fluxos relevantes
+
+D3) Tabela daily_metrics (consolidação diária, upsert)
+- Por userId + date (e classId opcional)
+- totalStudyMinutes, quizzesCompleted, quizzesAvgScore, flashcardsReviewed, topicsCompleted,
+  notebookChats, notebookSourcesAdded, essaysSubmitted, loginCount, lastActiveAt etc.
+- Job de atualização:
+  - por cron (15 min) ou debounced quando evento entra
+- Dashboards NUNCA fazem queries complexas direto nas tabelas brutas; lêem daily_metrics.
+
+D4) Tratamento de “sem dados”
+- APIs retornam objeto completo + hasData flag
+- Frontend tem 3 estados: loading / vazio / com dados
+- Nunca mostrar NaN/undefined/null; “—” para ausência de dados
+
+D5) Validação E2E + auto-correção
+- Scripts diários que comparam tabelas brutas (ex quizzes) vs eventos
+- Se divergência, logar alerta e (se possível) gerar eventos faltantes
+
+D6) Seed de dados para testar dashboards
+- Script que cria 3 turmas, 15–25 alunos, 30 dias de eventos
+- Perfis: engajados/medianos/em risco
+- Permite validar gráficos antes de dados reais
+
+========================================================
+E) PRIORIDADE (FASES)
+========================================================
+
+FASE 1 (FAZER AGORA, fim-a-fim)
+- Implementar activity_events + trackEvent + daily_metrics + job + seed
+- Notebook (RAG): listagem, caderno 3 painéis, upload básico (PDF/TXT/links), pipeline RAG, chat streaming, citações clicáveis, histórico
+- Professor: dashboard básico, lista+detalhe de turmas (Visão geral + Alunos), plano de aula com IA usando RAG opcional
+- Admin: visão geral com dados reais mínimos + IA & Custos com logging básico e dashboards de custo
+
+FASE 2
+- Mais tipos de fonte
+- Flashcards, quiz, guia de estudo
+- Banco de questões e aplicação online robusta
+- Correção assistida + rubricas
+- Admin: origem das respostas + gaps + recomendações
+
+FASE 3+
+- Audio Overview (podcast) + modo interativo
+- Deep research, discover
+- Relatórios avançados e automações de custo
+
+========================================================
+INSTRUÇÃO FINAL
+========================================================
+
+1) Analise o projeto existente.
+2) Planeje mudanças de banco com migrações seguras.
+3) Implemente FASE 1 completo, com tracking + métricas + UI robusta.
+4) Teste manualmente fluxos críticos e confirme que dados aparecem em:
+   - dashboard do aluno
+   - dashboard do professor
+   - admin (custos/uso)
+5) Só depois avance para fases seguintes.

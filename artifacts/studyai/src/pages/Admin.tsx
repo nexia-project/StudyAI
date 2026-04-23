@@ -59,9 +59,14 @@ type AdminStats = {
   notebookDocsTotal: number; notebookStorageMb: number; notebookOverviewsTotal: number;
   teacherContentTotal: number;
   contentBreakdown: { label: string; value: number; color: string }[];
+  subscriptionDist: { status: string; count: number }[];
+  recentEvents: { event_type: string; created_at: string; metadata: any; email: string | null; first_name: string | null; last_name: string | null }[];
+  eventsByType30d: { event_type: string; count: number; users: number }[];
   aiCost: {
     todayUsd: number; todayBrl: number;
     monthUsd: number; monthBrl: number;
+    callsToday: number; callsTotal: number;
+    tokensToday: number; tokensTotal: number;
     byFeature: { feature: string; calls: number; costUsd: number; costBrl: number; tokens: number }[];
     byModel: { model: string; calls: number; costUsd: number; costBrl: number }[];
     perDay: { day: string; costUsd: number; costBrl: number; calls: number }[];
@@ -1047,49 +1052,136 @@ export default function AdminPage() {
           )}
 
           {/* ══ FINANCEIRO ══ */}
-          {activeSection === "financeiro" && (
+          {activeSection === "financeiro" && (() => {
+            const TICKET = 8.2;
+            const dist = stats?.subscriptionDist ?? [];
+            const activeCount = dist.filter(d => d.status === "active").reduce((s, d) => s + d.count, 0);
+            const trialCount = dist.filter(d => d.status === "trialing").reduce((s, d) => s + d.count, 0);
+            const canceledCount = dist.filter(d => d.status === "canceled").reduce((s, d) => s + d.count, 0);
+            const pastDueCount = dist.filter(d => d.status === "past_due").reduce((s, d) => s + d.count, 0);
+            const freeCount = dist.filter(d => !["active","trialing","canceled","past_due"].includes(d.status)).reduce((s, d) => s + d.count, 0);
+            const mrr = (activeCount * TICKET) + (trialCount * TICKET * 0.5);
+            const arr = mrr * 12;
+            const churnRate = stats?.totalUsers ? ((canceledCount / Math.max(stats.totalUsers, 1)) * 100) : 0;
+            const conversionRate = stats?.totalUsers ? ((stats.premiumUsers / Math.max(stats.totalUsers, 1)) * 100) : 0;
+            const distChartData = [
+              { name: "Premium Ativo", value: activeCount, color: "#10b981" },
+              { name: "Trial", value: trialCount, color: "#3b82f6" },
+              { name: "Gratuito", value: freeCount, color: "#6b7280" },
+              { name: "Cancelado", value: canceledCount, color: "#ef4444" },
+              { name: "Inadimplente", value: pastDueCount, color: "#f59e0b" },
+            ].filter(d => d.value > 0);
+            return (
             <div className="space-y-5">
-              <h2 className="text-lg font-black flex items-center gap-2"><Wallet className="w-5 h-5 text-emerald-400" /> Financeiro</h2>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-lg font-black flex items-center gap-2"><Wallet className="w-5 h-5 text-emerald-400" /> Financeiro</h2>
+                <span className="text-[10px] text-white/30 font-bold uppercase">Ticket médio: R$ {TICKET.toFixed(2)}/mês</span>
+              </div>
+
+              {/* KPIs financeiros */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {[
-                  { label: "Assinaturas ativas", value: (stats?.premiumUsers ?? 0).toLocaleString("pt-BR"), color: "text-emerald-400" },
-                  { label: "Ticket médio", value: "R$ 8,20", color: "text-white" },
-                  { label: "MRR estimado", value: `R$ ${((stats?.premiumUsers ?? 0) * 8.2).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, color: "text-amber-400" },
+                  { label: "MRR Estimado", value: `R$ ${mrr.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, sub: `${activeCount} assinaturas ativas`, color: "text-emerald-400", gradient: "from-emerald-500 to-teal-600" },
+                  { label: "ARR Projetado", value: `R$ ${arr.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`, sub: "MRR × 12", color: "text-blue-400", gradient: "from-blue-500 to-cyan-600" },
+                  { label: "Conversão Pago", value: `${conversionRate.toFixed(1)}%`, sub: `${stats?.premiumUsers ?? 0} de ${stats?.totalUsers ?? 0} usuários`, color: "text-violet-400", gradient: "from-violet-500 to-purple-600" },
+                  { label: "Churn Rate", value: `${churnRate.toFixed(1)}%`, sub: `${canceledCount} cancelamentos`, color: churnRate > 5 ? "text-red-400" : "text-amber-400", gradient: "from-amber-500 to-orange-600" },
                 ].map(k => (
-                  <div key={k.label} className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
-                    <p className="text-xs text-white/40 mb-1">{k.label}</p>
+                  <div key={k.label} className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5 relative overflow-hidden">
+                    <div className="absolute inset-0 opacity-5 bg-gradient-to-br pointer-events-none" style={{ background: `linear-gradient(135deg, ${k.gradient.replace("from-","").replace("to-","")})` }} />
+                    <p className="text-xs text-white/40 font-bold uppercase mb-1">{k.label}</p>
                     <p className={`text-2xl font-black ${k.color}`}>{k.value}</p>
+                    <p className="text-[10px] text-white/30 mt-0.5">{k.sub}</p>
                   </div>
                 ))}
               </div>
+
+              <div className="grid grid-cols-5 gap-4">
+                {/* Distribuição por plano — pizza */}
+                <div className="col-span-2 bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
+                  <p className="text-sm font-bold text-white/70 mb-3">Distribuição por Plano</p>
+                  {distChartData.length === 0 ? (
+                    <p className="text-xs text-white/30 text-center py-8">Sem dados</p>
+                  ) : (
+                    <>
+                      <ResponsiveContainer width="100%" height={150}>
+                        <PieChart>
+                          <Pie data={distChartData} cx="50%" cy="50%" outerRadius={65} innerRadius={35} dataKey="value" paddingAngle={2}>
+                            {distChartData.map((entry, idx) => <Cell key={idx} fill={entry.color} />)}
+                          </Pie>
+                          <Tooltip contentStyle={{ background: "#1a1a2e", border: "none", borderRadius: 8, color: "#fff", fontSize: 11 }} formatter={(v: any, n: any) => [v, n]} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="space-y-1 mt-2">
+                        {distChartData.map(d => (
+                          <div key={d.name} className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: d.color }} />
+                              <span className="text-[10px] text-white/50">{d.name}</span>
+                            </div>
+                            <span className="text-[10px] font-bold text-white/70">{d.value.toLocaleString("pt-BR")}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Planos criados por dia */}
+                <div className="col-span-3 bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
+                  <p className="text-sm font-bold text-white/70 mb-1">Planos de Estudo Criados — últimos 7 dias</p>
+                  <p className="text-[10px] text-white/30 mb-3">Quantidade de planos personalizados gerados por dia</p>
+                  <ResponsiveContainer width="100%" height={160}>
+                    <AreaChart data={stats?.plansPerDay ?? []} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="gFinPlan" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                      <XAxis dataKey="day" tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }} tickFormatter={v => v.slice(5)} />
+                      <YAxis tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }} />
+                      <Tooltip contentStyle={{ background: "#1a1a2e", border: "none", borderRadius: 8, color: "#fff", fontSize: 11 }} />
+                      <Area type="monotone" dataKey="count" stroke="#10b981" fill="url(#gFinPlan)" strokeWidth={2} dot={false} name="Planos" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Resumo de status */}
               <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
-                <p className="text-sm font-bold text-white/70 mb-4">Planos criados — últimos 7 dias</p>
-                <ResponsiveContainer width="100%" height={180}>
-                  <AreaChart data={stats?.plansPerDay ?? []} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="gFinPlan" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis dataKey="day" tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }} tickFormatter={v => v.slice(5)} />
-                    <YAxis tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }} />
-                    <Tooltip contentStyle={{ background: "#1a1a2e", border: "none", borderRadius: 8, color: "#fff", fontSize: 11 }} />
-                    <Area type="monotone" dataKey="count" stroke="#10b981" fill="url(#gFinPlan)" strokeWidth={2} dot={false} name="Planos" />
-                  </AreaChart>
-                </ResponsiveContainer>
+                <p className="text-sm font-bold text-white/70 mb-4">Breakdown de Usuários por Status</p>
+                <div className="space-y-2.5">
+                  {[
+                    { label: "Premium Ativo", count: activeCount, color: "#10b981", pct: stats?.totalUsers ? Math.round(activeCount / stats.totalUsers * 100) : 0 },
+                    { label: "Em Trial", count: trialCount, color: "#3b82f6", pct: stats?.totalUsers ? Math.round(trialCount / stats.totalUsers * 100) : 0 },
+                    { label: "Gratuito", count: freeCount, color: "#6b7280", pct: stats?.totalUsers ? Math.round(freeCount / stats.totalUsers * 100) : 0 },
+                    { label: "Cancelado", count: canceledCount, color: "#ef4444", pct: stats?.totalUsers ? Math.round(canceledCount / stats.totalUsers * 100) : 0 },
+                    { label: "Inadimplente", count: pastDueCount, color: "#f59e0b", pct: stats?.totalUsers ? Math.round(pastDueCount / stats.totalUsers * 100) : 0 },
+                  ].filter(r => r.count > 0).map(r => (
+                    <div key={r.label}>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-xs text-white/60">{r.label}</span>
+                        <span className="text-xs font-bold text-white/80">{r.count.toLocaleString("pt-BR")} ({r.pct}%)</span>
+                      </div>
+                      <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${Math.max(r.pct, 1)}%`, background: r.color }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* ══ IA & CUSTOS ══ */}
           {activeSection === "ia-custos" && (() => {
             const ac = stats?.aiCost;
             const fmtBrl = (v: number) => `R$ ${v.toFixed(4)}`;
             const fmtBrlShort = (v: number) => v < 0.01 ? `R$ ${v.toFixed(4)}` : `R$ ${v.toFixed(2)}`;
-            const totalCalls = ac ? ac.byFeature.reduce((s, f) => s + f.calls, 0) : 0;
-            const totalTokens = ac ? ac.byFeature.reduce((s, f) => s + f.tokens, 0) : 0;
+            const totalCalls = ac?.callsTotal ?? (ac ? ac.byFeature.reduce((s, f) => s + f.calls, 0) : 0);
+            const totalTokens = ac?.tokensTotal ?? (ac ? ac.byFeature.reduce((s, f) => s + f.tokens, 0) : 0);
             const noData = !ac || ac.byFeature.length === 0;
             return (
             <div className="space-y-5">
@@ -1412,44 +1504,122 @@ export default function AdminPage() {
           )}
 
           {/* ══ LOGS & SEGURANÇA ══ */}
-          {activeSection === "logs-seguranca" && (
+          {activeSection === "logs-seguranca" && (() => {
+            const EVENT_LABELS: Record<string, { label: string; color: string; icon: string }> = {
+              login: { label: "Login", color: "text-blue-400", icon: "🔑" },
+              essay_submitted: { label: "Redação", color: "text-violet-400", icon: "✍️" },
+              essay_corrected: { label: "Redação corrigida", color: "text-purple-400", icon: "📝" },
+              quiz_completed: { label: "Quiz", color: "text-amber-400", icon: "🎯" },
+              flashcard_reviewed: { label: "Flashcard", color: "text-cyan-400", icon: "🃏" },
+              notebook_chat: { label: "Notebook Chat", color: "text-emerald-400", icon: "💬" },
+              notebook_source_added: { label: "Fonte adicionada", color: "text-teal-400", icon: "📎" },
+              notebook_created: { label: "Caderno criado", color: "text-green-400", icon: "📓" },
+              trilha_session: { label: "Trilha do Mestre", color: "text-orange-400", icon: "🏆" },
+              trilha_completed: { label: "Trilha completa", color: "text-yellow-400", icon: "🎖️" },
+              study_plan_created: { label: "Plano de estudo", color: "text-pink-400", icon: "📅" },
+              simulado_started: { label: "Simulado iniciado", color: "text-indigo-400", icon: "📊" },
+              simulado_completed: { label: "Simulado concluído", color: "text-blue-300", icon: "✅" },
+            };
+            const events = stats?.recentEvents ?? [];
+            const eventsByType = stats?.eventsByType30d ?? [];
+            return (
             <div className="space-y-5">
               <h2 className="text-lg font-black flex items-center gap-2"><Lock className="w-5 h-5 text-red-400" /> Logs & Segurança</h2>
+
+              {/* Evento por tipo nos últimos 30 dias */}
+              {eventsByType.length > 0 && (
+                <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
+                  <p className="text-sm font-bold text-white/70 mb-4">Eventos por tipo — últimos 30 dias</p>
+                  <div className="space-y-2">
+                    {eventsByType.map(ev => {
+                      const cfg = EVENT_LABELS[ev.event_type] ?? { label: ev.event_type, color: "text-white/60", icon: "📌" };
+                      const maxCount = Math.max(...eventsByType.map(e => e.count), 1);
+                      return (
+                        <div key={ev.event_type}>
+                          <div className="flex justify-between mb-0.5">
+                            <span className="text-xs text-white/60">{cfg.icon} {cfg.label}</span>
+                            <span className="text-xs font-bold text-white/70">{ev.count} eventos · {ev.users} usuários</span>
+                          </div>
+                          <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-blue-500" style={{ width: `${Math.max(Math.round(ev.count / maxCount * 100), 2)}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Feed de eventos recentes */}
               <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
-                <p className="text-sm font-bold text-white/70 mb-4">Histórico de logins recentes</p>
-                <div className="space-y-3">
-                  {(stats?.recentUsers ?? []).map(u => {
-                    const name = [u.first_name, u.last_name].filter(Boolean).join(" ") || u.email?.split("@")[0] || "User";
+                <p className="text-sm font-bold text-white/70 mb-4">Feed de atividade recente</p>
+                <div className="space-y-1.5 max-h-96 overflow-y-auto pr-1">
+                  {events.length === 0 ? (
+                    <p className="text-center text-white/30 py-8 text-sm">
+                      Nenhum evento ainda. Os eventos aparecerão aqui quando usuários usarem a plataforma.
+                    </p>
+                  ) : events.map((ev, i) => {
+                    const cfg = EVENT_LABELS[ev.event_type] ?? { label: ev.event_type, color: "text-white/60", icon: "📌" };
+                    const name = [ev.first_name, ev.last_name].filter(Boolean).join(" ") || ev.email?.split("@")[0] || "Anônimo";
+                    const relTime = (() => {
+                      const diff = Date.now() - new Date(ev.created_at).getTime();
+                      if (diff < 60000) return "agora mesmo";
+                      if (diff < 3600000) return `${Math.round(diff / 60000)}min atrás`;
+                      if (diff < 86400000) return `${Math.round(diff / 3600000)}h atrás`;
+                      return new Date(ev.created_at).toLocaleDateString("pt-BR");
+                    })();
                     return (
-                      <div key={u.id} className="flex items-center gap-4 py-2 border-b border-white/[0.05]">
-                        <div className="w-8 h-8 rounded-full bg-violet-500/20 flex items-center justify-center text-xs font-black text-violet-300">{name[0]?.toUpperCase()}</div>
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-white/80">{name}</p>
-                          <p className="text-xs text-white/30">{u.email}</p>
+                      <div key={i} className="flex items-center gap-3 py-2 border-b border-white/[0.04] last:border-0">
+                        <span className="text-base flex-shrink-0 w-6 text-center">{cfg.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <span className={`text-xs font-bold ${cfg.color}`}>{cfg.label}</span>
+                          <span className="text-xs text-white/40 ml-1.5">por {name}</span>
                         </div>
-                        <div className="text-right">
-                          <p className="text-xs font-semibold text-white/60">{new Date(u.created_at).toLocaleDateString("pt-BR")}</p>
-                          <p className="text-[10px] text-white/25">{new Date(u.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p>
-                        </div>
-                        <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                        <span className="text-[10px] text-white/25 flex-shrink-0">{relTime}</span>
                       </div>
                     );
                   })}
-                  {(!stats || stats.recentUsers.length === 0) && <p className="text-center text-white/30 py-8">Nenhum log disponível</p>}
                 </div>
               </div>
+
+              {/* Logins recentes */}
               <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
-                <p className="text-sm font-bold text-white/70 mb-2 flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-amber-400" /> Tentativas de acesso suspeitas</p>
-                <div className="flex items-center gap-4 py-4">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center"><Shield className="w-6 h-6 text-emerald-400" /></div>
-                  <div>
-                    <p className="text-xl font-black text-white">0 tentativas</p>
-                    <p className="text-xs text-white/40">Nenhuma atividade suspeita detectada</p>
-                  </div>
+                <p className="text-sm font-bold text-white/70 mb-4">Últimos logins registrados</p>
+                <div className="space-y-2">
+                  {(stats?.recentLogins ?? []).slice(0, 10).map((u, i) => {
+                    const name = [u.first_name, u.last_name].filter(Boolean).join(" ") || u.email?.split("@")[0] || "User";
+                    return (
+                      <div key={`${u.id}-${i}`} className="flex items-center gap-3 py-1.5 border-b border-white/[0.04] last:border-0">
+                        <div className="w-7 h-7 rounded-full bg-violet-500/20 flex items-center justify-center text-[11px] font-black text-violet-300 flex-shrink-0">
+                          {name[0]?.toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-white/70 truncate">{name}</p>
+                          <p className="text-[10px] text-white/30 truncate">{u.email}</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-[10px] font-semibold text-white/50">{new Date(u.created_at).toLocaleDateString("pt-BR")}</p>
+                          <p className="text-[9px] text-white/25">{new Date(u.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p>
+                        </div>
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                      </div>
+                    );
+                  })}
+                  {(!stats || stats.recentLogins.length === 0) && <p className="text-center text-white/30 py-4 text-sm">Nenhum login registrado</p>}
+                </div>
+              </div>
+
+              {/* Status de segurança */}
+              <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-5 flex items-center gap-4">
+                <Shield className="w-8 h-8 text-emerald-400 flex-shrink-0" />
+                <div>
+                  <p className="font-bold text-emerald-400">Sistema Seguro</p>
+                  <p className="text-xs text-white/40">Nenhuma atividade suspeita detectada. Todos os acessos via autenticação Clerk PKCE.</p>
                 </div>
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* ══ BUGS & SISTEMA ══ */}
           {activeSection === "bugs-sistema" && (

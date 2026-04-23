@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { logAiUsage } from "../lib/aiCostLogger";
+import { trackEvent } from "../lib/trackEvent";
 
 const router = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -176,6 +177,10 @@ router.post("/trilha/submit", requireAuth, async (req, res) => {
         updated_at = NOW()
     `);
 
+    trackEvent({ userId, eventType: "trilha_session", metadata: { subject, level: lv, score: sc, passed, newLevel } });
+    if (passed && newLevel >= 5) {
+      trackEvent({ userId, eventType: "trilha_completed", metadata: { subject, level: newLevel } });
+    }
     res.json({ passed, score: sc, total, newLevel, level: lv });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

@@ -66,7 +66,12 @@ StudyAI is built as a `pnpm` monorepo using TypeScript, Node.js 24, and Express 
 - **Government Module**: Provides aggregate educational metrics, weekly growth analysis, and tools for promoting user roles.
 
 **DB Tables (as of April 2026):**
-32 core tables. Includes `tiagao_memory`, `tiagao_conversations`, `trilha_mestre_progress`, `trilha_mestre_sessions`, `notebook_overviews`, `notebook_embeddings`, `knowledge_documents`, `professor_mindmaps`, `user_doc_mindmaps`, `caderno_notes`, `redacoes`.
+38+ core tables. Includes `tiagao_memory`, `tiagao_conversations`, `trilha_mestre_progress`, `trilha_mestre_sessions`, `notebook_overviews`, `notebook_embeddings`, `knowledge_documents`, `professor_mindmaps`, `user_doc_mindmaps`, `caderno_notes`, `redacoes`, `activity_events` (BIGSERIAL unified event log with user_id, event_type, entity_type, class_id, notebook_id, metadata jsonb), `daily_metrics` (unique on user_id+date+class_id, counters for study/quiz/flashcard/notebook/essay/trilha). `ai_cost_log` has `source_type`/`duration_ms`/`rag_chunks_used` columns.
+
+**Event Tracking System:**
+- `artifacts/api-server/src/lib/trackEvent.ts` — fire-and-forget event tracker. Never throws. Inserts to `activity_events` + upserts `daily_metrics`.
+- EventTypes: login, study_plan_created, quiz_started/completed, flashcard_reviewed, essay_submitted/corrected, notebook_chat/source_added/created, trilha_session/completed, simulado_started/completed
+- Instrumented routes: redacao.ts (essay_submitted), trilha.ts (trilha_session, trilha_completed), notebook.ts (notebook_created, notebook_chat)
 
 ### Cross-Surface Sync Rule (LOCKED)
 Every new AI feature added to ANY surface MUST also be reflected in:

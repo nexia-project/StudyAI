@@ -15,6 +15,7 @@ import { sql } from "drizzle-orm";
 import { validateFileUpload } from "../middlewares/security";
 import { generateImageBuffer } from "@workspace/integrations-openai-ai-server/image";
 import { logAiUsage } from "../lib/aiCostLogger";
+import { trackEvent } from "../lib/trackEvent";
 
 const _require = createRequire(import.meta.url);
 const router: IRouter = Router();
@@ -218,7 +219,9 @@ router.post("/notebook/cadernos", async (req: Request, res: Response) => {
               ${color ?? 'indigo'}, ${emoji ?? '📘'})
       RETURNING id, title, persona, goals, color, emoji, is_default, created_at, updated_at
     `);
-    res.json(r.rows[0]);
+    const created = r.rows[0] as any;
+    trackEvent({ userId: req.userId!, eventType: "notebook_created", notebookId: created?.id, metadata: { title: String(title).slice(0, 60) } });
+    res.json(created);
   } catch (e) {
     req.log?.error({ err: e }, "create caderno");
     res.status(500).json({ erro: "Erro ao criar caderno" });
@@ -810,6 +813,7 @@ ${context}`,
           trechoCompleto: c.text,
         }));
 
+    trackEvent({ userId: req.userId!, eventType: "notebook_chat", notebookId: cadernoId, metadata: { chunksUsed: chunks.length, fontesCitadas: fontesCitadas.size } });
     res.json({ resposta, fontes });
   } catch (e) {
     console.error("notebook chat:", e);

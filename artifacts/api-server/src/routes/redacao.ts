@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import { redacoesTable } from "@workspace/db/schema";
 import { checkFreeUsage } from "../lib/freeUsage";
 import { logAiUsage } from "../lib/aiCostLogger";
+import { trackEvent } from "../lib/trackEvent";
 
 const router = Router();
 const openai = new OpenAI();
@@ -83,6 +84,7 @@ router.post("/api/redacao", checkFreeUsage, async (req, res) => {
       } catch (dbErr) {
         console.warn("Redacao: failed to save to DB:", dbErr);
       }
+      trackEvent({ userId, eventType: "essay_submitted", metadata: { tema: tema ?? "Sem tema", score: result.notaTotal ?? 0 } });
     }
 
     return res.json(result);

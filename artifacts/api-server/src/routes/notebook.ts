@@ -71,13 +71,36 @@ async function ensureNotebooksSchema() {
       color VARCHAR(20) DEFAULT 'indigo',
       emoji VARCHAR(8) DEFAULT '📘',
       is_default BOOLEAN DEFAULT false,
-      created_at TIMESTAMP DEFAULT NOW(),
-      updated_at TIMESTAMP DEFAULT NOW()
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
-  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_notebooks_user ON notebooks(user_id)`);
+  // Add columns that may be missing from older table versions
+  await db.execute(sql`ALTER TABLE notebooks ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
+  await db.execute(sql`ALTER TABLE notebooks ADD COLUMN IF NOT EXISTS persona TEXT DEFAULT ''`);
+  await db.execute(sql`ALTER TABLE notebooks ADD COLUMN IF NOT EXISTS goals TEXT DEFAULT ''`);
+  await db.execute(sql`ALTER TABLE notebooks ADD COLUMN IF NOT EXISTS color VARCHAR(20) DEFAULT 'indigo'`);
+  await db.execute(sql`ALTER TABLE notebooks ADD COLUMN IF NOT EXISTS emoji VARCHAR(8) DEFAULT '📘'`);
+  await db.execute(sql`ALTER TABLE notebooks ADD COLUMN IF NOT EXISTS is_default BOOLEAN DEFAULT false`);
+
+  // Create indexes safely (avoids duplicate-key race conditions)
+  await db.execute(sql`
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_notebooks_user') THEN
+        CREATE INDEX idx_notebooks_user ON notebooks(user_id);
+      END IF;
+    END $$
+  `);
+
   await db.execute(sql`ALTER TABLE knowledge_documents ADD COLUMN IF NOT EXISTS notebook_id INTEGER`);
-  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_knowdocs_notebook ON knowledge_documents(notebook_id)`);
+
+  await db.execute(sql`
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_knowdocs_notebook') THEN
+        CREATE INDEX idx_knowdocs_notebook ON knowledge_documents(notebook_id);
+      END IF;
+    END $$
+  `);
 
   // Artefatos gerados (slides, podcast, infografico, timeline, mapa-mental, etc.)
   await db.execute(sql`
@@ -91,8 +114,16 @@ async function ensureNotebooksSchema() {
       created_at TIMESTAMP DEFAULT NOW()
     )
   `);
-  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_artifacts_user_doc ON notebook_artifacts(user_id, doc_id)`);
-  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_artifacts_kind ON notebook_artifacts(kind)`);
+  await db.execute(sql`
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_artifacts_user_doc') THEN
+        CREATE INDEX idx_artifacts_user_doc ON notebook_artifacts(user_id, doc_id);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_artifacts_kind') THEN
+        CREATE INDEX idx_artifacts_kind ON notebook_artifacts(kind);
+      END IF;
+    END $$
+  `);
   _schemaReady = true;
 }
 

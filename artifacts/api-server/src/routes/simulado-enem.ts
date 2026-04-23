@@ -106,13 +106,14 @@ Responda SOMENTE com JSON válido:
 RIGOR TÉCNICO: Toda questão deve ser tecnicamente irrefutável — fórmulas, datas, nomes, conceitos e definições devem ser exatos. Nenhuma margem para imprecisão acadêmica.${bnccSystemAddendum}`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: enemSystemPrompt },
         { role: "user", content: prompt },
       ],
       response_format: { type: "json_object" },
       temperature: 0.8,
+      max_tokens: 4000,
     });
 
     const raw = completion.choices[0]?.message?.content ?? "{}";

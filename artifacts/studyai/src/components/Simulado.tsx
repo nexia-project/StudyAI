@@ -118,59 +118,91 @@ const OPTION_COLORS: Record<string, { idle: string; selected: string; badge: str
 };
 
 function LoadingSimulado({ adaptativo }: { adaptativo?: boolean }) {
+  const [progress, setProgress] = useState(0);
   const [step, setStep] = useState(0);
+
   const steps = adaptativo
     ? [
-        { icon: "🔍", text: "Lendo seu histórico de simulados..." },
-        { icon: "📊", text: "Identificando seus pontos fracos..." },
-        { icon: "🎯", text: "Calibrando questões para suas lacunas..." },
-        { icon: "⚡", text: "Gerando simulado personalizado..." },
+        { icon: "🔍", text: "Analisando seu histórico de simulados...", at: 0 },
+        { icon: "📊", text: "Identificando pontos fracos...", at: 25 },
+        { icon: "🎯", text: "Calibrando questões para suas lacunas...", at: 55 },
+        { icon: "⚡", text: "Finalizando simulado adaptativo...", at: 80 },
       ]
     : [
-        { icon: "📖", text: "Analisando o conteúdo estudado..." },
-        { icon: "🧠", text: "Criando questões estratégicas..." },
-        { icon: "⚖️", text: "Calibrando a dificuldade..." },
-        { icon: "✅", text: "Finalizando o simulado..." },
+        { icon: "📖", text: "Analisando o conteúdo estudado...", at: 0 },
+        { icon: "🧠", text: "Gerando 10 questões estratégicas...", at: 25 },
+        { icon: "⚖️", text: "Calibrando dificuldade crescente...", at: 60 },
+        { icon: "✅", text: "Quase pronto...", at: 85 },
       ];
+
   useEffect(() => {
-    const id = setInterval(() => setStep((s) => (s + 1) % steps.length), 2000);
+    // Simulate progress based on expected ~8s completion time for gpt-4o-mini
+    const totalMs = adaptativo ? 10000 : 8000;
+    const tickMs = 80;
+    let elapsed = 0;
+
+    const id = setInterval(() => {
+      elapsed += tickMs;
+      // Easing: fast at start, slow approaching 95%
+      const ratio = elapsed / totalMs;
+      const eased = 1 - Math.pow(1 - Math.min(ratio, 0.98), 2);
+      const pct = Math.min(95, Math.round(eased * 100));
+      setProgress(pct);
+
+      // Update step based on progress (compatible with all browsers)
+      let newStep = 0;
+      for (let i = 0; i < steps.length; i++) { if (pct >= steps[i].at) newStep = i; }
+      setStep(newStep);
+    }, tickMs);
+
     return () => clearInterval(id);
-  }, []);
+  }, [adaptativo]);
+
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-8 p-10">
+    <div className="flex flex-col items-center justify-center h-full gap-6 p-8">
       <div className="relative">
-        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-2xl shadow-violet-200">
-          <Loader2 className="w-12 h-12 text-white animate-spin" />
+        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-2xl shadow-violet-200">
+          <Loader2 className="w-10 h-10 text-white animate-spin" />
         </div>
-        <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-white rounded-full border-2 border-violet-200 flex items-center justify-center text-lg">
+        <motion.div
+          key={step}
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="absolute -bottom-1 -right-1 w-8 h-8 bg-white rounded-full border-2 border-violet-200 flex items-center justify-center text-lg shadow-sm"
+        >
           {steps[step].icon}
-        </div>
+        </motion.div>
       </div>
-      <div className="text-center space-y-3">
-        <h3 className="text-2xl font-black text-slate-800">Gerando seu Simulado</h3>
+
+      <div className="text-center space-y-2 w-full max-w-xs">
+        <h3 className="text-xl font-black text-slate-800">
+          {adaptativo ? "Simulado Adaptativo" : "Gerando Simulado"}
+        </h3>
         <AnimatePresence mode="wait">
-          <motion.p
-            key={step}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.3 }}
-            className="text-slate-500 text-sm font-medium"
-          >
+          <motion.p key={step} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.25 }}
+            className="text-slate-500 text-sm font-medium">
             {steps[step].text}
           </motion.p>
         </AnimatePresence>
       </div>
-      <div className="flex gap-2">
-        {steps.map((_, i) => (
-          <div
-            key={i}
-            className={cn(
-              "h-1.5 rounded-full transition-all duration-500",
-              i === step ? "w-8 bg-violet-500" : i < step ? "w-3 bg-violet-300" : "w-3 bg-slate-200"
-            )}
+
+      {/* Progress bar */}
+      <div className="w-full max-w-xs">
+        <div className="flex justify-between text-[11px] font-bold text-slate-400 mb-1.5">
+          <span>Progresso</span>
+          <span>{progress}%</span>
+        </div>
+        <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full"
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.08, ease: "linear" }}
           />
-        ))}
+        </div>
+        <p className="text-[10px] text-slate-400 mt-1.5 text-center">
+          {adaptativo ? "⚡ Analisando seu histórico para personalizar" : "⚡ Geração acelerada com IA"}
+        </p>
       </div>
     </div>
   );

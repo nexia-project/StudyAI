@@ -5,39 +5,12 @@ import { simuladoResultsTable, studyPlansTable } from "@workspace/db/schema";
 import { eq, desc } from "drizzle-orm";
 
 const router = Router();
-// DeepSeek — muito mais barato que GPT-4o para geração de questões
-const openai = new OpenAI({
-  apiKey: process.env.DEEPSEEK_API_KEY ?? "",
-  baseURL: "https://api.deepseek.com",
-});
+// gpt-4o-mini: ~3x faster than DeepSeek for structured JSON generation
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const ADAPTIVE_SYSTEM_PROMPT = `Você é um professor especialista em aprendizado adaptativo, com foco em diagnóstico de lacunas de conhecimento.
-
-IDIOMA OBRIGATÓRIO: SEMPRE em português brasileiro (pt-BR). NUNCA use inglês ou outro idioma — nem uma palavra sequer. Esta regra é absoluta.
-
-Seu papel é criar um simulado CIRÚRGICO — não genérico. Com base no diagnóstico do histórico do aluno (taxa de acerto, padrões de erro, tópicos estudados), você vai gerar questões que intencionalmente testam as áreas onde o aluno COSTUMA ERRAR.
-
-RESPONDA APENAS com um JSON válido, sem markdown:
-{
-  "titulo": "Simulado Adaptativo — [Matéria]: Foco em [Áreas Fracas]",
-  "tempoMinutos": 25,
-  "perguntas": [
-    {
-      "id": 1,
-      "enunciado": "Questão focada na área fraca identificada",
-      "opcoes": { "A": "...", "B": "...", "C": "...", "D": "..." },
-      "correta": "B",
-      "explicacao": "Explicação que reforça o conceito onde o aluno falha, com dica mnemônica ou analogia para fixar."
-    }
-  ]
-}
-
-REGRAS ABSOLUTAS:
-- Foque nas áreas fracas identificadas no diagnóstico — não gere questões fáceis sobre o que o aluno já sabe
-- Distribua dificuldade: Q1-Q2 conceito base (para confirmar a lacuna), Q3-Q7 aplicação direta da área fraca, Q8-Q10 situação-problema integrada
-- Alternativas erradas devem ser plausíveis — reflitam erros típicos de quem tem essa lacuna
-- Explicações devem ser didáticas e diretas, focando NO POR QUÊ do erro comum
-- "correta" DEVE ser exatamente A, B, C ou D`;
+const ADAPTIVE_SYSTEM_PROMPT = `Professor criador de simulado adaptativo em pt-BR. Responda SOMENTE JSON puro:
+{"titulo":"Simulado Adaptativo — [Matéria]: Foco em [lacuna]","tempoMinutos":25,"perguntas":[{"id":1,"enunciado":"...","opcoes":{"A":"...","B":"...","C":"...","D":"..."},"correta":"B","explicacao":"Por que B. Dica para não errar de novo."}]}
+REGRAS: Foque nas lacunas do diagnóstico. Q1-2 conceito base, Q3-7 aplicação, Q8-10 situação-problema. "correta"=A/B/C/D exato. Explicações em 1-2 frases.`;
 
 function shuffleArray<T>(arr: T[]): T[] {
   return arr.map((v) => ({ v, sort: Math.random() })).sort((a, b) => a.sort - b.sort).map(({ v }) => v);
@@ -158,7 +131,7 @@ router.post("/simulado-adaptativo", async (req, res) => {
     }
 
     // ── Build adaptive prompt ──────────────────────────────────
-    const rawContent = (conteudoTexto || "").trim().slice(0, 3000);
+    const rawContent = (conteudoTexto || "").trim().slice(0, 2000); // Reduced from 3000 — saves ~250 input tokens
     const hasContent = rawContent.length > 100;
 
     const targetDistribution = shuffleArray(["A","B","C","D","A","B","C","D","A","B"]).slice(0, 10);
@@ -179,12 +152,12 @@ Escale dificuldade: Q1-Q2 fundamentos da lacuna, Q3-Q7 aplicação direta, Q8-Q1
 `.trim();
 
     const response = await openai.chat.completions.create({
-      model: "deepseek-chat",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: ADAPTIVE_SYSTEM_PROMPT },
         { role: "user", content: userContent },
       ],
-      max_tokens: 8000,
+      max_tokens: 3000,
       temperature: 0.9,
       response_format: { type: "json_object" },
     });

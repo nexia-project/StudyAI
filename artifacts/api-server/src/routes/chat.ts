@@ -224,21 +224,22 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
     ]);
 
     const isAdvanced = isAdvancedMatcher.includes(userProfile.role);
-    // If advanced user, fetch even more KB context
-    const extraKb = isAdvanced && lastUserMsg ? await getFullKbContext(lastUserMsg, contexto?.materia, 7).catch(() => "") : "";
-
-    const finalKb = extraKb || kbContext;
+    // Removed extra sequential KB call — saves ~300-600ms before streaming starts
+    const finalKb = kbContext;
     const systemPrompt = buildUniversalSystemPrompt(userProfile, contexto ?? {}) + (finalKb ? `\n\n${finalKb}` : "");
 
+    // gpt-4o-mini: ~3x faster first-token, sufficient quality for educational Q&A
+    // Use gpt-4o only for advanced professional users (teachers/gov) who need full depth
+    const chatModel = isAdvanced ? "gpt-4o" : "gpt-4o-mini";
     const stream = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: chatModel,
       stream: true,
       stream_options: { include_usage: true },
-      max_tokens: isAdvanced ? 1200 : 800,
-      temperature: isAdvanced ? 0.5 : 0.8,
+      max_tokens: isAdvanced ? 1000 : 700,
+      temperature: isAdvanced ? 0.4 : 0.75,
       messages: [
         { role: "system", content: systemPrompt },
-        ...messages.slice(-20),
+        ...messages.slice(-16),
       ],
     });
 
@@ -250,7 +251,7 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
       }
       if (chunk.usage) { usageIn = chunk.usage.prompt_tokens; usageOut = chunk.usage.completion_tokens; }
     }
-    logAiUsage({ feature: "tiagao", model: "gpt-4o", tokensIn: usageIn, tokensOut: usageOut, userId: (req as any).userId ?? null });
+    logAiUsage({ feature: "tiagao", model: chatModel, tokensIn: usageIn, tokensOut: usageOut, userId: (req as any).userId ?? null });
 
     res.write("data: [DONE]\n\n");
     res.end();

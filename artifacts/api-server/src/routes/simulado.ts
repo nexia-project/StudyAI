@@ -8,54 +8,21 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const SIMULADO_SYSTEM_PROMPT = `Você é um professor especialista em criar simulados variados e originais com base EXCLUSIVAMENTE no conteúdo real fornecido pelo aluno.
-
-IDIOMA OBRIGATÓRIO: SEMPRE em português brasileiro (pt-BR). NUNCA use inglês ou outro idioma — nem uma palavra sequer. Esta regra é absoluta.
-
-⚠️ REGRA ABSOLUTA: Todas as questões devem ser extraídas DIRETAMENTE do conteúdo real enviado pelo aluno (textos de livros, apostilas, cadernos, PDFs). NÃO invente tópicos externos. NÃO use conhecimento geral que não esteja presente no material. Se o material fala de personagens, datas, fórmulas, teoremas ou conceitos específicos, as questões DEVEM ser sobre esses elementos concretos do material.
-
-RESPONDA APENAS com um JSON válido, sem markdown. Estrutura EXATA:
-
-{
-  "titulo": "Simulado - [Nome exato do conteúdo identificado no material]",
-  "tempoMinutos": 25,
-  "perguntas": [
-    {
-      "id": 1,
-      "enunciado": "Enunciado completo e claro da questão, citando termos e conceitos que aparecem literalmente no material do aluno",
-      "opcoes": {
-        "A": "Alternativa A completa",
-        "B": "Alternativa B completa",
-        "C": "Alternativa C completa",
-        "D": "Alternativa D completa"
-      },
-      "correta": "B",
-      "explicacao": "Explicação detalhada: por que B é correta citando o trecho do material. Por que A, C e D estão erradas. Dica para não esquecer."
-    }
-  ]
-}
-
-REGRAS OBRIGATÓRIAS:
-- O campo "correta" DEVE ser exatamente uma letra: A, B, C ou D (sem ponto, sem parêntese, sem espaço)
-- Distribua respostas corretas: não repita a mesma letra mais de 4 vezes entre todas as questões
-- Adapte linguagem e complexidade ao nível escolar informado`;
+const SIMULADO_SYSTEM_PROMPT = `Professor criador de simulados em pt-BR. Responda SOMENTE JSON puro sem markdown:
+{"titulo":"Simulado - [tema]","tempoMinutos":25,"perguntas":[{"id":1,"enunciado":"...","opcoes":{"A":"...","B":"...","C":"...","D":"..."},"correta":"B","explicacao":"Por que B é certa (1 frase). Dica rápida."}]}
+REGRAS: "correta" = exatamente A/B/C/D. Distribua respostas corretas uniformemente. Explicações em 1-2 frases. Adapte nível escolar.`;
 
 const QUESTION_FORMATS = [
-  "definição direta: 'O que é / O que significa [termo do material]?'",
-  "aplicação: 'Dado o conceito de [X presente no material], o que acontece quando...?'",
-  "identificação de erro: 'Qual afirmação sobre [tópico] está INCORRETA segundo o material?'",
-  "cálculo ou resolução passo a passo com dados do material",
-  "comparação: 'Qual a diferença entre [X] e [Y] conforme o conteúdo estudado?'",
-  "causa e efeito extraído diretamente do material",
-  "completar lacuna com termo específico do material",
-  "cronologia ou sequência lógica de eventos/passos do conteúdo",
-  "interpretação de situação-problema usando regra/fórmula do material",
-  "exemplificação: qual dos exemplos abaixo ilustra corretamente o conceito [X] do material?",
-  "exceção à regra: qual caso NÃO se aplica ao princípio [X] descrito no material?",
-  "identificação do conceito: qual opção descreve corretamente [fenômeno/evento/personagem] do material?",
-  "relação entre conceitos presentes no mesmo material",
-  "questão de interpretação: de acordo com o trecho estudado, pode-se concluir que...",
-  "pergunta sobre processo/método descrito no material passo a passo",
+  "definição direta do material",
+  "aplicação prática do conceito",
+  "identificar afirmação INCORRETA",
+  "cálculo com dados do material",
+  "comparação entre conceitos",
+  "causa e efeito do material",
+  "completar lacuna com termo específico",
+  "interpretar situação-problema",
+  "relação entre conceitos",
+  "questão de interpretação/conclusão",
 ];
 
 function shuffleArray<T>(arr: T[]): T[] {
@@ -96,9 +63,9 @@ router.post("/simulado", async (req, res) => {
       maxCharsPerSource: 800,
     });
 
-    // Trim raw content to 4000 chars — enough for rich question generation,
-    // small enough to leave output tokens free for the full JSON response.
-    const rawContent = (conteudoTexto || "").trim().slice(0, 4000);
+    // Trim raw content to 2500 chars — enough context for 10 questions,
+    // reduced from 4000 to cut ~375 input tokens (faster model inference).
+    const rawContent = (conteudoTexto || "").trim().slice(0, 2500);
     const hasRealContent = rawContent.length > 100;
 
     let contentSection = "";
@@ -120,31 +87,20 @@ ${diasConteudo}`;
       ? SIMULADO_SYSTEM_PROMPT + knowledgeCtx.contextBlock
       : SIMULADO_SYSTEM_PROMPT;
 
-    const userContent = `Matéria: ${materia}
-Série: ${serie}
-Resumo: ${resumo}
-
+    const userContent = `Matéria: ${materia} | Série: ${serie} | Resumo: ${resumo}
 ${contentSection}
-
-SEMENTE: #${seed}
-
-DISTRIBUIÇÃO DAS RESPOSTAS CORRETAS:
-${targetDistribution.map((l, i) => `Q${i + 1}→${l}`).join(", ")}
-
-FORMATO DE CADA QUESTÃO (aplique na ordem):
-${shuffledFormats.map((f, i) => `Q${i + 1}: ${f}`).join("\n")}
-
-Gere EXATAMENTE 10 questões. Escalone dificuldade: Q1-Q3 fáceis, Q4-Q6 médias, Q7-Q9 difíceis, Q10 desafio.
-Explicações concisas (máx 2 frases). Enunciados nunca repetidos em formato.`;
+Distribuição: ${targetDistribution.map((l, i) => `Q${i + 1}→${l}`).join(", ")}
+Formatos: ${shuffledFormats.map((f, i) => `Q${i + 1}:${f}`).join(" | ")}
+Gere 10 questões. Dificuldade crescente: Q1-3 fácil, Q4-6 médio, Q7-9 difícil, Q10 desafio.`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: enrichedSystemPrompt },
         { role: "user", content: userContent },
       ],
-      max_tokens: 4500,
-      temperature: 1.05,
+      max_tokens: 3000,
+      temperature: 1.0,
       response_format: { type: "json_object" },
     });
 

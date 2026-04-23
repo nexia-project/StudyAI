@@ -737,18 +737,38 @@ INSTRUÇÕES DE AGENTE:
         });
       }
 
-      // Segunda chamada: resposta final com contexto dos resultados
-      const finalCall = await deepseek.chat.completions.create({
-        model: DS_MODEL,
-        messages: [...apiMessages, ...toolResults],
-        max_tokens: 280,
-        temperature: 0.9,
-      });
-      const text = finalCall.choices[0]?.message?.content?.trim() || "";
+      // ── Otimização: ações de navegação pura não precisam de segunda chamada ──
+      // Para ir/navegar/abrir_aula_ia, geramos resposta instantânea pré-definida
       const primaryAction = frontendActions.find(a => a.type !== "flashcards_criados") ??
                             frontendActions.find(a => a.type === "flashcards_criados") ??
                             null;
       const notifications = frontendActions.filter(a => a.type === "flashcards_criados");
+
+      const isInstantAction = primaryAction && ["ir", "navegar", "abrir_aula_ia"].includes(primaryAction.type);
+      if (isInstantAction) {
+        // Resposta instantânea — sem segunda chamada de LLM
+        const destMap: Record<string, string> = {
+          "/simulado": "simulado", "/flashcards": "flashcards", "/notebook": "notebook",
+          "/mapa": "mapa de estudos", "/ranking": "ranking", "/aula-ia": "aula",
+          "/app": "página inicial",
+        };
+        const dest = primaryAction.param || primaryAction.path || "";
+        const destName = destMap[dest] || dest.replace("/", "");
+        const quickReply = destName
+          ? `Abrindo o ${destName} pra você agora!`
+          : "Pronto, estou abrindo!";
+        res.json({ text: quickReply, action: primaryAction, notifications });
+        return;
+      }
+
+      // Segunda chamada: resposta final para ações que precisam de texto (ex: flashcards criados)
+      const finalCall = await openai.chat.completions.create({
+        model: "gpt-4o-mini", // ~3x mais rápido que deepseek para respostas curtas
+        messages: [...apiMessages, ...toolResults],
+        max_tokens: 200,
+        temperature: 0.85,
+      });
+      const text = finalCall.choices[0]?.message?.content?.trim() || "";
       res.json({ text, action: primaryAction, notifications });
     } else {
       // Sem tool calls — resposta direta

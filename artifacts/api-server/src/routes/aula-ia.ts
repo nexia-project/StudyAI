@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { requireAuth } from "../middlewares/requireAuth";
 import { logAiUsage } from "../lib/aiCostLogger";
+import { cacheGet, cacheSave } from "../lib/semanticCache";
 
 const router = Router();
 
@@ -192,7 +193,18 @@ router.post("/aula-ia/gerar", requireAuth, async (req: Request, res: Response) =
       return;
     }
 
+    // ── Nível 1-3: Verificar cache semântico antes de chamar IA ──────────────
+    const cacheKey = `${topico.trim()}|${estilo}|${nivel}`;
+    const cached = await cacheGet("aula-ia", cacheKey);
+    if (cached.hit) {
+      console.info(`[aula-ia] cache ${cached.level} (sim=${cached.similarity?.toFixed(3) ?? "exact"})`);
+      const aulaFromCache = JSON.parse(cached.response);
+      res.json({ ...aulaFromCache, _cacheLevel: cached.level });
+      return;
+    }
+
     let raw = "{}";
+    let modelUsed = "claude-sonnet-4-6";
     // Claude é primário: conteúdo educacional mais didático e rico.
     // gpt-4o-mini como fallback rápido caso Claude ultrapasse o timeout.
     try {
@@ -201,6 +213,7 @@ router.post("/aula-ia/gerar", requireAuth, async (req: Request, res: Response) =
       if (match) raw = match[0];
     } catch (claudeErr) {
       console.warn("[aula-ia] Claude falhou, usando gpt-4o-mini como fallback:", claudeErr);
+      modelUsed = "gpt-4o-mini";
       try {
         raw = await gerarAulaComOpenAI(topico, estilo, nivel);
       } catch (openaiErr) {
@@ -210,6 +223,10 @@ router.post("/aula-ia/gerar", requireAuth, async (req: Request, res: Response) =
     }
 
     const aula = JSON.parse(raw);
+
+    // ── Salvar no cache para próximas requisições similares ──────────────────
+    cacheSave("aula-ia", cacheKey, raw, modelUsed).catch(() => {});
+
     res.json(aula);
   } catch (err) {
     console.error("[aula-ia/gerar]", err);

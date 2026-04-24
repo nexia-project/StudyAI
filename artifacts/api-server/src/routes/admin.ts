@@ -3,6 +3,7 @@ import { db, usersTable } from "@workspace/db";
 import { roleRequestsTable } from "@workspace/db/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { isAdminUserAsync, getAdminDebugInfo } from "../lib/adminCheck";
+import { cacheStats } from "../lib/semanticCache";
 
 /** Runs a DB query and returns its rows; on failure returns [] and logs the error */
 async function safeQuery<T = any>(label: string, query: () => Promise<{ rows: T[] }>): Promise<T[]> {
@@ -413,6 +414,36 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
       perDay: aiCostPerDay.map((r: any) => ({ day: r.day, costUsd: r.cost_usd, costBrl: r.cost_usd * USD_TO_BRL, calls: r.calls })),
     },
   });
+});
+
+// ─── Cache Semântico — estatísticas ──────────────────────────────────────────
+router.get("/admin/cache/stats", async (req: Request, res: Response) => {
+  if (!await isAdminUserAsync(req)) {
+    res.status(403).json({ erro: "Acesso negado" });
+    return;
+  }
+  const stats = await cacheStats();
+  res.json(stats);
+});
+
+router.delete("/admin/cache/clear", async (req: Request, res: Response) => {
+  if (!await isAdminUserAsync(req)) {
+    res.status(403).json({ erro: "Acesso negado" });
+    return;
+  }
+  const { feature } = req.body as { feature?: string };
+  try {
+    const { pool } = await import("@workspace/db");
+    if (feature) {
+      await pool.query(`DELETE FROM ai_response_cache WHERE feature = $1`, [feature]);
+      res.json({ ok: true, mensagem: `Cache '${feature}' limpo.` });
+    } else {
+      await pool.query(`DELETE FROM ai_response_cache`);
+      res.json({ ok: true, mensagem: "Cache completo limpo." });
+    }
+  } catch (err) {
+    res.status(500).json({ erro: (err as Error).message });
+  }
 });
 
 export default router;

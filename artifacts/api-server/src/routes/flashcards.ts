@@ -7,7 +7,8 @@ import { logAiUsage } from "../lib/aiCostLogger";
 const router: IRouter = Router();
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? process.env.OPENAI_API_KEY ?? "dummy",
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
 });
 
 const FLASHCARD_PROMPT = `Você é um especialista em criar flashcards para estudo baseado no método de Active Recall e Spaced Repetition (Anki/Leitner).

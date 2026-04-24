@@ -1,0 +1,1401 @@
+# ============================================================================
+# ORQUESTRADOR DE COMUNICAÇÃO STUDY.IA
+# Automação Inteligente Multi-Canal: WhatsApp + Push + Email + SMS
+# ============================================================================
+# Arquivo: automacao_studyia_orquestrador_comunicacao.txt
+# Versão: 1.0 — Produção Ready
+# Objetivo: Comunicação certa, para pessoa certa, no momento certo
+# ============================================================================
+
+# ============================================================================
+# VISÃO GERAL DA ARQUITETURA
+# ============================================================================
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ FONTES DE DADOS (TRIGGERS) │
+│ │
+│ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────────┐ │
+│ │ ACADÊMICO │ │ COMPORTA- │ │ CALENDÁRIO │ │ PREDITIVO │ │
+│ │ │ │ MENTAL │ │ │ │ (IA) │ │
+│ │ • Notas │ │ • Acesso │ │ • Provas │ │ • Risco │ │
+│ │ (provas, │ │ • Tempo │ │ • Eventos │ │ evasão │ │
+│ │ trabalhos,│ │ tela │ │ • Férias │ │ • Queda │ │
+│ │ médias) │ │ • Engajam. │ │ • Reuniões │ │ desempenho │ │
+│ │ • Faltas │ │ • Interações│ │ │ │ • Burnout │ │
+│ │ • Atividades│ │ • Dificuldade││ │ │ professor │ │
+│ │ pendentes │ │ detectada│ │ │ │ │ │
+│ └──────┬──────┘ └──────┬──────┘ └──────┬──────┘ └────────┬────────┘ │
+│ │ │ │ │ │
+│ └────────────────┴────────────────┴──────────────────┘ │
+│ │ │
+│ ┌─────────┴─────────┐ │
+│ │ EVENT BUS │ │
+│ │ (Apache Kafka / │ │
+│ │ RabbitMQ) │ │
+│ │ │ │
+│ │ • Eventos em │ │
+│ │ tempo real │ │
+│ │ • Retry com │ │
+│ │ backoff │ │
+│ │ • Dead letter │ │
+│ │ queue │ │
+│ └─────────┬─────────┘ │
+│ │ │
+│ ┌───────────────────────────┼─────────────────────────────────────────┐│
+│ │ ▼ ││
+│ │ MOTOR DE REGRAS E CONTEXTUALIZAÇÃO ││
+│ │ ││
+│ │ ┌─────────────────────────────────────────────────────────────┐ ││
+│ │ │ REGRA: "Quando X acontecer para Y, enviar Z via W, │ ││
+│ │ │ mas somente se J, e preferencialmente às K horas" │ ││
+│ │ │ │ ││
+│ │ │ Exemplo real: │ ││
+│ │ │ "Quando aluno ficar 3 dias sem acessar, │ ││
+│ │ │ enviar mensagem motivacional via WhatsApp, │ ││
+│ │ │ mas somente se for dia de semana, │ ││
+│ │ │ e preferencialmente às 19h (horário de estudo típico)" │ ││
+│ │ └─────────────────────────────────────────────────────────────┘ ││
+│ │ ││
+│ │ Componentes: ││
+│ │ • Rule Engine (Drools / custom) ││
+│ │ • Context Enricher (dados do usuário, histórico, preferências) ││
+│ │ • Priority Calculator (urgência × importância × canal ótimo) ││
+│ │ • Timing Optimizer (melhor horário baseado em comportamento) ││
+│ │ ││
+│ └─────────────────────────────────────────────────────────────────────┘│
+│ │ │
+│ ┌───────────────────────────┼─────────────────────────────────────────┐│
+│ │ ▼ ││
+│ │ PERSONALIZADOR DE CONTEÚDO (IA GENERATIVA) ││
+│ │ ││
+│ │ Input: Tipo de mensagem + Dados do evento + Perfil do destinatário││
+│ │ Output: Mensagem única, personalizada, com tom adequado ││
+│ │ ││
+│ │ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ││
+│ │ │ TOM │ │ CONTEÚDO │ │ CHAMADA │ ││
+│ │ │ ADAPTATIVO │ │ DÍNAMICO │ │ AÇÃO │ ││
+│ │ │ │ │ │ │ │ ││
+│ │ │ • Formal/ │ │ • Dados │ │ • Link │ ││
+│ │ │ Informal │ │ reais │ │ direto │ ││
+│ │ │ • Motivador/│ │ • Contexto │ │ • Botão │ ││
+│ │ │ Alerta │ │ histórico │ │ WhatsApp │ ││
+│ │ │ • Breve/ │ │ • Previsão │ │ • QR code │ ││
+│ │ │ Detalhado │ │ personal. │ │ │ ││
+│ │ └─────────────┘ └─────────────┘ └─────────────┘ ││
+│ │ ││
+│ └─────────────────────────────────────────────────────────────────────┘│
+│ │ │
+│ ┌───────────────────────────┼─────────────────────────────────────────┐│
+│ │ ▼ ││
+│ │ ORQUESTRADOR DE CANAIS ││
+│ │ ││
+│ │ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌────────────┐ ││
+│ │ │ WHATSAPP │ │ PUSH │ │ EMAIL │ │ SMS │ ││
+│ │ │ BUSINESS │ │ (FCM/APNs) │ │ (SendGrid) │ │ (Twilio) │ ││
+│ │ │ API │ │ │ │ │ │ │ ││
+│ │ │ │ │ │ │ │ │ │ ││
+│ │ │ • Templates │ │ • Rich │ │ • HTML │ │ • Fallback │ ││
+│ │ │ aprovados │ │ notif. │ │ responsivo│ │ crítico │ ││
+│ │ │ • Buttons │ │ • Deep │ │ • Anexos │ │ • 160 char │ ││
+│ │ │ • Media │ │ links │ │ • Tracking │ │ │ ││
+│ │ │ • List │ │ • Actions │ │ │ │ │ ││
+│ │ │ messages │ │ │ │ │ │ │ ││
+│ │ └─────────────┘ └─────────────┘ └─────────────┘ └────────────┘ ││
+│ │ ││
+│ │ Estratégia de fallback: ││
+│ │ WhatsApp → Push → Email → SMS (baseado em disponibilidade e custo) ││
+│ │ ││
+│ └─────────────────────────────────────────────────────────────────────┘│
+│ │ │
+│ ┌───────────────────────────┼─────────────────────────────────────────┐│
+│ │ ▼ ││
+│ │ FEEDBACK LOOP E OTIMIZAÇÃO ││
+│ │ ││
+│ │ • Taxa de abertura por canal, horário, tipo de mensagem ││
+│ │ • Taxa de conversão (clicou → executou ação) ││
+│ │ • Sentimento de respostas (quando houver) ││
+│ │ • A/B testing automático de mensagens ││
+│ │ • Aprendizado contínuo de melhor horário por perfil ││
+│ │ ││
+│ └─────────────────────────────────────────────────────────────────────┘│
+│ │
+└─────────────────────────────────────────────────────────────────────────┘
+
+graphql
+
+# ============================================================================
+# SEÇÃO 1: TRIGGERS POR PERFIL — MATRIZ COMPLETA
+# ============================================================================
+
+## 1.1 ALUNO — Triggers Acadêmicos
+
+```json  
+{  
+  "aluno_triggers_academicos": {  
+    "notas_e_avaliacoes": {  
+      "prova_marcada_7_dias": {  
+        "condicao": "data_prova - hoje = 7 dias",  
+        "canais": ["whatsapp", "push"],  
+        "horario": "19:00",  
+        "mensagem_tipo": "lembrete_prova_com_plano",  
+        "conteudo_dinamico": {  
+          "materia": "{{prova.materia}}",  
+          "topicos_prioritarios": "{{ia.topicos_falhas_historicas}}",  
+          "tempo_estimado": "{{calculo.horas_necessarias}}",  
+          "link_plano_ajustado": "{{gerar_plano_emergencia}}"  
+        },  
+        "acao_esperada": "acessar_plano_revisao"  
+      },  
+
+      "prova_marcada_1_dia": {  
+        "condicao": "data_prova - hoje = 1 dia",  
+        "canais": ["whatsapp", "push", "email"],  
+        "horario": "08:00",  
+        "mensagem_tipo": "ultima_revisao_personalizada",  
+        "conteudo_dinamico": {  
+          "flashcards_urgentes": "{{gerar_5_flashcards_criticos}}",  
+          "simulado_rapido": "{{link_simulado_15_min}}",  
+          "mensagem_motivacional": "{{ia.gerar_pelo_perfil_aluno}}"  
+        }  
+      },  
+
+      "nota_lancada": {  
+        "condicao": "nota_disponivel_no_sistema",  
+        "canais": ["push", "whatsapp"],  
+        "horario": "imediato",  
+        "mensagem_tipo": "resultado_com_analise",  
+        "conteudo_dinamico": {  
+          "nota": "{{nota.valor}}",  
+          "comparativo_turma": "{{nota.percentil}}%",  
+          "evolucao_pessoal": "{{grafico_mini_evolucao}}",  
+          "recomendacao": "{{ia.analisar_erros_sugerir_acao}}"  
+        },  
+        "branching": {  
+          "se_nota >= 8": "mensagem_celebracao + proximo_desafio",  
+          "se_nota 6-7.9": "mensagem_encorajamento + reforco_sugerido",  
+          "se_nota < 6": "mensagem_acolhimento + plano_recuperacao"  
+        }  
+      },  
+
+      "media_baixa_previsao": {  
+        "condicao": "ia.prever_media_bimestral < 6 com 80% confianca",  
+        "canais": ["whatsapp", "email"],  
+        "horario": "18:00",  
+        "mensagem_tipo": "alerta_precoce_com_solucao",  
+        "conteudo_dinamico": {  
+          "materias_risco": "{{lista_materias}}",  
+          "pontos_perdidos": "{{analise.erros_recorrentes}}",  
+          "plano_resgate": "{{gerar_plano_intensivo_7_dias}}",  
+          "oferta_tutor": "{{link_agendamento_tiagao}}"  
+        },  
+        "notificar_responsavel": true  
+      }  
+    },  
+
+    "engajamento_e_presenca": {  
+      "falta_3_dias_sem_acessar": {  
+        "condicao": "ultimo_acesso > 72 horas",  
+        "canais": ["push", "whatsapp"],  
+        "horario": "19:30",  
+        "mensagem_tipo": "reengajamento_personalizado",  
+        "conteudo_dinamico": {  
+          "streak_perdido": "{{dias_streak_anteriores}}",  
+          "conteudo_favorito": "{{materia_mais_estudada}}",  
+          "convite_retorno": "{{link_continuar_onde_parou}}",  
+          "gamificacao": "{{mostrar_amigos_online}}"  
+        },  
+        "escalar_para": "responsavel_se_7_dias"  
+      },  
+
+      "meta_diaria_nao_atingida_21h": {  
+        "condicao": "meta_minutos > 0 AND hora_atual = 21:00",  
+        "canais": ["push"],  
+        "horario": "21:00",  
+        "mensagem_tipo": "encorajamento_rapido_meta",  
+        "conteudo_dinamico": {  
+          "minutos_faltantes": "{{meta.restante}}",  
+          "atividade_rapida": "{{sugestao_10_minutos}}",  
+          "beneficio": "{{ganho_streak_se_completar}}"  
+        }  
+      },  
+
+      "tempo_excessivo_sem_progresso": {  
+        "condicao": "30_min_na_mesma_questao_sem_acerto",  
+        "canais": ["push"],  
+        "horario": "imediato",  
+        "mensagem_tipo": "intervencao_ia_tiagao",  
+        "conteudo_dinamico": {  
+          "oferta_ajuda": "{{link_chat_tiagao}}",  
+          "dica_rapida": "{{ia.gerar_dica_contexto_questao}}",  
+          "sugestao_pausa": "{{tecnica_pomodoro_sugerida}}"  
+        }  
+      },  
+
+      "conclusao_grande_marco": {  
+        "condicao": "completou_unidade OR 100_questoes OR 7_dias_streak",  
+        "canais": ["whatsapp", "push"],  
+        "horario": "imediato",  
+        "mensagem_tipo": "celebracao_com_compartilhamento",  
+        "conteudo_dinamico": {  
+          "conquista": "{{badge_nome}}",  
+          "estatistica": "{{ranking_entre_amigos}}",  
+          "compartilhavel": "{{gerar_imagem_compartilhamento}}",  
+          "proximo_desafio": "{{sugestao_continuidade}}"  
+        }  
+      }  
+    },  
+
+    "atividades_e_prazos": {  
+      "tarefa_proxima_vencimento_24h": {  
+        "condicao": "prazo_tarefa - agora < 24h AND nao_entregue",  
+        "canais": ["push", "whatsapp"],  
+        "horario": "09:00, 18:00",  
+        "mensagem_tipo": "urgencia_com_ajuda",  
+        "conteudo_dinamico": {  
+          "tarefa": "{{tarefa.titulo}}",  
+          "tempo_restante": "{{contagem_regressiva}}",  
+          "progresso_atual": "{{porcentagem_feita}}",  
+          "recursos_ajuda": "{{links_materiais_relacionados}}"  
+        }  
+      },  
+
+      "lista_tarefas_acumulada": {  
+        "condicao": "tarefas_pendentes > 3",  
+        "canais": ["email", "whatsapp"],  
+        "horario": "domingo_20:00",  
+        "mensagem_tipo": "organizacao_semanal",  
+        "conteudo_dinamico": {  
+          "lista_priorizada": "{{ia.ordenar_por_urgencia_impacto}}",  
+          "estimativa_tempo_total": "{{soma_horas}}",  
+          "sugestao_divisao": "{{plano_distribuicao_dias}}",  
+          "oferta_tutor": "{{agendamento_tiagao_organizacao}}"  
+        }  
+      }  
+    }  
+  }  
+}  
+1.2 ALUNO — Triggers Comportamentais e Preditivos
+json
+{
+  "aluno_triggers_comportamentais": {
+    "risco_evasao_detectado": {
+      "condicao": "modelo_ml.risco_evasao > 0.7",
+      "fatores_considerados": [
+        "queda_acesso_semanal",
+        "aumento_tempo_inativo",
+        "reducao_engajamento_tarefas",
+        "notas_declinando",
+        "falta_interacao_social"
+      ],
+      "canais": ["whatsapp", "email"],
+      "horario": "18:00",
+      "mensagem_tipo": "intervencao_humana_acolhedora",
+      "conteudo_dinamico": {
+        "reconhecimento": "Percebemos que você tem aparecido menos...",
+        "preocupacao_genuina": "Queremos entender se tem algo acontecendo",
+        "oferta_conversa": "{{link_agendamento_orientador}}",
+        "flexibilidade": "Podemos ajustar seu plano, reduzir meta, mudar horário"
+      },
+      "escalonamento": {
+        "se_nao_responder_48h": "notificar_responsavel",
+        "se_responsavel_nao_responder_72h": "notificar_escola"
+      }
+    },
+
+    "padrao_estudo_ineficiente": {
+      "condicao": "ia.detectar_estrategia_ineficiente",
+      "exemplos": [
+        "reler_passivamente_sem_praticar",
+        "fazer_simulado_sem_revisar_erros",
+        "estudar_materia_facil_evitando_dificil"
+      ],
+      "canais": ["push"],
+      "horario": "apos_detectar",
+      "mensagem_tipo": "coaching_estrategia",
+      "conteudo_dinamico": {
+        "observacao": "Você tem dedicado tempo, mas...",
+        "tecnica_sugerida": "{{metodo_cientifico_para_conteudo}}",
+        "beneficio": "Com essa mudança, você pode economizar X horas",
+        "oferta_demo": "{{video_2min_tecnica}}"
+      }
+    },
+
+    "momento_otimo_intervencao": {
+      "condicao": "ia.prever_janela_motivacao_alta",
+      "baseado_em": [
+        "historico_horarios_acesso",
+        "dias_semana_mais_produtivos",
+        "ciclo_sono_se_disponivel",
+        "eventos_externos_calendario"
+      ],
+      "canais": ["push"],
+      "horario": "momento_previsto",
+      "mensagem_tipo": "convite_no_momento_certo",
+      "conteudo_dinamico": {
+        "contexto": "Parece um bom momento para...",
+        "sugestao_contextual": "{{atividade_adequada_horario}}",
+        "facilitador": "Está tudo pronto, só clicar"
+      }
+    }
+  }
+}
+1.3 PROFESSOR — Triggers Pedagógicos e Gerenciais
+json
+{
+  "professor_triggers_pedagogicos": {
+    "aluno_em_dificuldade_detectada": {
+      "condicao": "ia.identificar_aluno_com_queda_desempenho",
+      "criterios": [
+        "nota_abaixo_media_turma_2_avaliacoes",
+        "falta_engajamento_atividades",
+        "erros_indicantes_conceito_fundamental_faltante"
+      ],
+      "canais": ["whatsapp", "email", "push_app_professor"],
+      "horario": "18:00",
+      "mensagem_tipo": "alerta_pedagogico_com_acao",
+      "conteudo_dinamico": {
+        "aluno": "{{aluno.nome_anonimizado}}",
+        "indicadores": "{{grafico_evolucao}}",
+        "diagnostico_ia": "{{provavel_causa_dificuldade}}",
+        "acoes_sugeridas": [
+          "conversar_individual",
+          "adaptar_atividade",
+          "sugerir_reforco",
+          "notificar_responsavel"
+        ],
+        "material_pronto": "{{link_atividade_diferenciada_gerada}}"
+      }
+    },
+
+    "turma_desengajada_detectada": {
+      "condicao": "engajamento_turma < media_historica - 20%",
+      "canais": ["whatsapp", "email"],
+      "horario": "apos_aula",
+      "mensagem_tipo": "sugestao_reinvencao_aula",
+      "conteudo_dinamico": {
+        "dados_turma": "{{comparativo_semanas}}",
+        "possiveis_causas": "{{ia.analisar_conteudo_aula_recente}}",
+        "sugestoes_dinamicas": [
+          "{{aula_viva_sugestao}}",
+          "{{gamificacao_rapida}}",
+          "{{conexao_cultural_atual}}"
+        ],
+        "tempo_preparo": "15 minutos com nossa ajuda"
+      }
+    },
+
+    "correcao_pendente_acumulada": {
+      "condicao": "atividades_para_corrigir > 10 OR prazo_correcao < 48h",
+      "canais": ["push", "whatsapp"],
+      "horario": "17:00",
+      "mensagem_tipo": "apoio_correcao",
+      "conteudo_dinamico": {
+        "quantidade": "{{numero_atividades}}",
+        "tempo_estimado": "{{ia.calcular_tempo_correcao}}",
+        "oferta_ia": "{{link_correcao_automatizada_tiagao}}",
+        "priorizacao": "{{ordenar_por_impacto_nota}}"
+      }
+    },
+
+    "momento_feedback_alunos": {
+      "condicao": "apos_avaliacao_importante OR fim_bimestre",
+      "canais": ["email"],
+      "horario": "09:00",
+      "mensagem_tipo": "relatorio_feedback_gerado",
+      "conteudo_dinamico": {
+        "resumo_turma": "{{estatisticas_gerais}}",
+        "alunos_destaque_positivo": "{{lista_5}}",
+        "alunos_atencao": "{{lista_com_intervencao_sugerida}}",
+        "feedback_individual_gerado": "{{link_enviar_aos_alunos}}",
+        "sugestoes_melhoria_ensino": "{{ia.analisar_metodos_efetivos}}"
+      }
+    }
+  },
+
+  "professor_triggers_gerenciais": {
+    "conflito_horario_detectado": {
+      "condicao": "sobreposicao_compromissos_calendario",
+      "canais": ["whatsapp", "push"],
+      "horario": "imediato",
+      "mensagem_tipo": "alerta_conflito_com_solucoes",
+      "conteudo_dinamico": {
+        "conflito": "{{descricao_sobreposicao}}",
+        "opcoes": [
+          "remarcar_aula",
+          "substituto_sugerido",
+          "aula_assincrona_gerada"
+        ],
+        "acao_rapida": "{{botao_um_clique}}"
+      }
+    },
+
+    "material_aula_gerado_pronto": {
+      "condicao": "ia.finalizar_geracao_conteudo_solicitado",
+      "canais": ["push", "email"],
+      "horario": "imediato",
+      "mensagem_tipo": "material_pronto_revisao",
+      "conteudo_dinamico": {
+        "tipo_material": "{{plano_aula OR slides OR avaliacao}}",
+        "tempo_geracao": "{{minutos}}",
+        "preview": "{{link_visualizacao}}",
+        "acoes": ["usar_direto", "editar", "agendar_envio_turma"]
+      }
+    },
+
+    "reuniao_pais_agendada_lembrete": {
+      "condicao": "reuniao - agora em [24h, 2h, 15min]",
+      "canais": ["whatsapp", "push"],
+      "horario": "conforme_cronometro",
+      "mensagem_tipo": "preparacao_reuniao",
+      "conteudo_dinamico": {
+        "dados_alunos_reuniao": "{{resumo_individual_gerado}}",
+        "pauta_sugerida": "{{baseado_necessidades_detectadas}}",
+        "documentos_prontos": "{{boletins,graficos,evidencias}}",
+        "link_acesso": "{{sala_virtual_ou_endereco}}"
+      }
+    }
+  }
+}
+1.4 PAIS/RESPONSÁVEIS — Triggers de Acompanhamento
+json
+{
+  "responsavel_triggers_acompanhamento": {
+    "resumo_semanal_automatico": {
+      "condicao": "toda_sexta_18h",
+      "canais": ["whatsapp", "email"],
+      "frequencia": "semanal",
+      "mensagem_tipo": "newsletter_familia_personalizada",
+      "conteudo_dinamico": {
+        "titulo": "Como foi a semana de {{aluno.nome}}",
+        "destaques": [
+          "Horas de estudo: {{total}} ({{comparativo_semana_anterior}})",
+          "Matéria mais trabalhada: {{materia}}",
+          "Conquista da semana: {{badge_or_meta}}",
+          "Próximas provas: {{lista}}"
+        ],
+        "grafico_visual": "{{imagem_evolucao_semanal}}",
+        "acao_sugerida": "{{participar_celebracao OR incentivar_materia_dificil}}",
+        "link_dashboard": "{{acesso_tempo_real}}"
+      }
+    },
+
+    "alerta_queda_desempenho": {
+      "condicao": "nota < 6 OR falta > 3 OR evasao_detectada",
+      "canais": ["whatsapp", "ligacao_automatizada"],
+      "horario": "19:00",
+      "mensagem_tipo": "alerta_sensivel_com_solucao",
+      "tom": "acolhedor, nao punitivo",
+      "conteudo_dinamico": {
+        "contexto": "Queremos conversar sobre como apoiar {{aluno.nome}}",
+        "observacao_objetiva": "{{fato_sem_julgamento}}",
+        "provavel_causa": "{{ia.analise_possiveis_motivos}}",
+        "como_ajudar_em_casa": "{{dicas_personalizadas_familia}}",
+        "oferta_conversa": "{{agendamento_orientador_escola}}",
+        "recursos_disponiveis": "{{reforco,tutor,psicologia}}"
+      }
+    },
+
+    "celebracao_progresso": {
+      "condicao": "melhora_significativa OR conquista_especial",
+      "canais": ["whatsapp"],
+      "horario": "19:00",
+      "mensagem_tipo": "parabenizacao_familia",
+      "conteudo_dinamico": {
+        "conquista": "{{descricao_especifica}}",
+        "esforco_reconhecido": "{{dados_engajamento}}",
+        "sugestao_celebracao": "{{ideia_envolvendo_familia}}",
+        "continuidade": "como_manter_momentum"
+      }
+    },
+
+    "ausencia_comunicacao_escola": {
+      "condicao": "escola_tentou_contato_48h_sem_resposta",
+      "canais": ["whatsapp", "sms", "ligacao"],
+      "escalonamento": true,
+      "mensagem_tipo": "urgencia_canal_alternativo",
+      "conteudo_dinamico": {
+        "tentativas_anteriores": "{{resumo}}",
+        "assunto_importante": "{{motivo_contato}}",
+        "facilidade_resposta": "{{botao_resposta_rapida}}",
+        "consequencia_inercia": "{{explicacao_suave}}"
+      }
+    }
+  }
+}
+1.5 ESCOLA/INSTITUIÇÃO — Triggers Gerenciais e Estratégicos
+json
+{
+  "escola_triggers_gerenciais": {
+    "indicador_critico_geral": {
+      "condicao": "media_turma OR taxa_aprovacao OR evasao_atingir_limite",
+      "canais": ["email_direcao", "dashboard", "whatsapp_coordenacao"],
+      "urgencia": "alta",
+      "mensagem_tipo": "alerta_institucional_com_drill_down",
+      "conteudo_dinamico": {
+        "indicador": "{{nome_e_valor}}",
+        "comparativo": "{{vs_ano_anterior,vs_rede,vs_meta}}",
+        "desagregacao": "{{por_serie,por_turma,por_professor}}",
+        "provaveis_causas": "{{ia.analise_correlacional}}",
+        "intervencoes_sugeridas": "{{baseadas_evidencia}}",
+        "cronograma_acao": "{{prazos_e_responsaveis}}"
+      }
+    },
+
+    "professor_falta_nao_justificada": {
+      "condicao": "falta_professor_detectada AND sem_substituto",
+      "canais": ["whatsapp_direcao", "push_app_gestao"],
+      "horario": "imediato",
+      "mensagem_tipo": "crise_operacional_com_solucoes",
+      "conteudo_dinamico": {
+        "turma_afetada": "{{serie,turma,horario}}",
+        "professor": "{{nome}}",
+        "historico_faltas": "{{contexto}}",
+        "opcoes_imediatas": [
+          "ativar_substituto_lista",
+          "gerar_aula_assincrona",
+          "redistribuir_turmas"
+        ],
+        "comunicacao_pais": "{{mensagem_pronta_enviar}}"
+      }
+    },
+
+    "reclamacao_acumulada_turma": {
+      "condicao": "nps_turma < 5 OR reclamacoes > 3_em_7_dias",
+      "canais": ["email_coordenacao"],
+      "horario": "aggregado_diario_18h",
+      "mensagem_tipo": "analise_satisfacao_com_acao",
+      "conteudo_dinamico": {
+        "turma": "{{identificacao}}",
+        "temas_reclamacao": "{{ia.categorizar_sentimento}}",
+        "professor_envolvido": "{{se_aplicavel}}",
+        "sugestao_abordagem": "{{script_conversa}}",
+        "previsao_resolucao": "{{ia.estimar_tempo_melhora}}"
+      }
+    },
+
+    "oportunidade_melhoria_detectada": {
+      "condicao": "ia.identificar_boa_pratica_replicavel",
+      "canais": ["newsletter_interna", "whatsapp_direcao"],
+      "frequencia": "semanal",
+      "mensagem_tipo": "inteligencia_competitiva_interna",
+      "conteudo_dinamico": {
+        "descoberta": "{{turma_professor_pratica}}",
+        "resultado": "{{evidencia_melhora}}",
+        "fator_sucesso": "{{ia.identificar_elementos_chave}}",
+        "como_replicar": "{{guia_implementacao_outras_turmas}}",
+        "reconhecimento": "{{sugestao_valorizacao_professor}}"
+      }
+    }
+  },
+
+  "escola_triggers_estrategicos": {
+    "previsao_orcamento_inadimplencia": {
+      "condicao": "ia.prever_inadimplencia_futura > limite",
+      "canais": ["email_direcao_financeiro"],
+      "antecedencia": "60_dias",
+      "mensagem_tipo": "alerta_financeiro_preventivo",
+      "conteudo_dinamico": {
+        "projecao": "{{valor_e_percentual}}",
+        "familias_risco": "{{lista_priorizada}}",
+        "historico_familia": "{{contexto_pagamentos}}",
+        "acoes_preventivas": [
+          "negociacao_antecipada",
+          "bolsa_auxilio_verificar",
+          "plano_parcelamento"
+        ],
+        "script_abordagem": "{{tom_sensivel}}"
+      }
+    },
+
+    "tendencia_mercado_educacao": {
+      "condicao": "ia.detectar_tendencia_relevante",
+      "exemplos": [
+        "nova_tecnologia_educacional",
+        "mudanca_legislacao",
+        "tendencia_concorrencia_local"
+      ],
+      "canais": ["email_direcao", "reuniao_agendada"],
+      "mensagem_tipo": "inteligencia_estrategica",
+      "conteudo_dinamico": {
+        "tendencia": "{{descricao}}",
+        "relevancia_instituicao": "{{por_que_importa}}",
+        "oportunidade_ameaca": "{{analise_swot}}",
+        "acoes_sugeridas": "{{curto_medio_longo_prazo}}",
+        "benchmark": "{{o_que_outros_estao_fazendo}}"
+      }
+    }
+  }
+}
+============================================================================
+SEÇÃO 2: SISTEMA DE REGRAS — LINGUAGEM DECLARATIVA
+============================================================================
+2.1 Exemplos de Regras em "StudyIA Rule Language"
+yaml
+# regras/alerta_queda_desempenho_aluno.yaml
+
+regra:
+  id: "alerta-queda-desempenho-v1"
+  nome: "Alerta de Queda de Desempenho com Intervenção"
+  versao: "1.0"
+  ativa: true
+
+trigger:
+  tipo: "agregado"
+  condicoes:
+    - tipo: "nota"
+      operador: "media_ultimas_n"
+      n: 3
+      comparador: "<"
+      valor: 6.0
+      
+    - tipo: "tendencia"
+      direcao: "queda"
+      metrica: "media_movel_7d"
+      percentual: 15
+      
+    - tipo: "engajamento"
+      metrica: "tempo_semana"
+      comparador: "<"
+      valor: "meta_semanal * 0.5"
+
+  janela_tempo: "14_dias"
+
+contexto:
+  enriquecer_com:
+    - perfil_aluno
+    - historico_intervencoes
+    - disponibilidade_responsavel
+    - carga_horaria_professor
+
+condicoes_envio:
+  - canal: "whatsapp"
+    prioridade: 1
+    se: "responsavel.whatsapp_valido AND responsavel.prefere_whatsapp"
+    horario_otimo: "ia.preferencia_horario(responsavel, 'receber_noticias')"
+    
+  - canal: "email"
+    prioridade: 2
+    se: "true"
+    horario_otimo: "19:00"
+    
+  - canal: "sms"
+    prioridade: 3
+    se: "nao_abriu_24h"
+
+personalizacao:
+  tom:
+    baseado_em: "responsavel.perfil_comunicacao"
+    opcoes:
+      - se: "perfil == 'direto'"
+        tom: "factual, sem floreios, foco em acao"
+      - se: "perfil == 'acolhedor'"
+        tom: "empatico, preocupacao genuina, suporte oferecido"
+      - se: "perfil == 'formal'"
+        tom: "estruturado, dados, opcoes claras"
+
+  conteudo:
+    variaveis:
+      - nome_aluno
+      - materias_risco
+      - professor_referencia
+      - link_agendamento
+      
+    geracao: "ia.gerar_mensagem(template='alerta_queda', variaveis, tom)"
+
+acao:
+  imediata:
+    - enviar_mensagem
+    - registrar_intervencao
+    - notificar_professor
+    
+  follow_up:
+    - em: "48h"
+      se: "nao_respondido"
+      acao: "escalar_para_coordenacao"
+      
+    - em: "7_dias"
+      se: "respondeu_mas_nao_agendou"
+      acao: "reenviar_com_novo_angulo"
+
+metricas_sucesso:
+  - taxa_resposta: "> 40%"
+  - taxa_agendamento: "> 15%"
+  - melhora_desempenho_30d: "> 30%"
+
+experimentacao:
+  ativa: true
+  variacoes:
+    - id: "tom-urgente"
+      peso: 50
+    - id: "tom-colaborativo"
+      peso: 50
+2.2 Motor de Regras — Implementação
+python
+# rule_engine.py
+
+from dataclasses import dataclass
+from typing import List, Dict, Callable, Optional
+from datetime import datetime, timedelta
+import json
+
+@dataclass
+class Event:
+    tipo: str
+    origem: str
+    dados: Dict
+    timestamp: datetime
+    usuario_id: str
+
+@dataclass
+class Regra:
+    id: str
+    nome: str
+    trigger: Callable
+    condicoes: List[Callable]
+    acao: Callable
+    prioridade: int
+    ativa: bool = True
+
+class MotorRegras:
+    def __init__(self):
+        self.regras: List[Regra] = []
+        self.context_enricher = ContextEnricher()
+        self.canal_orquestrador = CanalOrquestrador()
+        self.ia_personalizador = IA_Personalizador()
+        
+    def registrar_regra(self, regra: Regra):
+        self.regras.append(regra)
+        self.regras.sort(key=lambda r: r.prioridade, reverse=True)
+        
+    def processar_evento(self, evento: Event):
+        # Enriquece contexto
+        contexto = self.context_enricher.enriquecer(
+            evento.usuario_id,
+            evento.dados
+        )
+        
+        # Avalia regras em ordem de prioridade
+        for regra in self.regras:
+            if not regra.ativa:
+                continue
+                
+            # Verifica trigger
+            if not regra.trigger(evento, contexto):
+                continue
+                
+            # Verifica condições adicionais
+            condicoes_atendidas = all(
+                cond(evento, contexto) for cond in regra.condicoes
+            )
+            
+            if not condicoes_atendidas:
+                continue
+                
+            # Executa ação
+            self.executar_acao(regra, evento, contexto)
+            
+            # Log para analytics
+            self.registrar_execucao(regra, evento, contexto)
+            
+            # Se regra consome evento, para
+            if getattr(regra, 'consome_evento', True):
+                break
+                
+    def executar_acao(self, regra: Regra, evento: Event, contexto: Dict):
+        # Determina canal ótimo
+        canal = self.canal_orquestrador.selecionar_canal(
+            usuario_id=evento.usuario_id,
+            tipo_mensagem=regra.nome,
+            contexto=contexto
+        )
+        
+        # Gera conteúdo personalizado
+        mensagem = self.ia_personalizador.gerar(
+            regra=regra,
+            evento=evento,
+            contexto=contexto,
+            canal=canal
+        )
+        
+        # Agenda envio no horário ótimo
+        horario_envio = self.calcular_horario_otimo(
+            usuario_id=evento.usuario_id,
+            urgencia=regra.prioridade
+        )
+        
+        self.canal_orquestrador.agendar(
+            canal=canal,
+            destinatario=evento.usuario_id,
+            mensagem=mensagem,
+            horario=horario_envio,
+            metadados={
+                'regra_id': regra.id,
+                'evento_id': evento.timestamp.isoformat(),
+                'contexto': contexto
+            }
+        )
+        
+    def calcular_horario_otimo(self, usuario_id: str, urgencia: int) -> datetime:
+        # Urgência alta = imediato
+        if urgencia >= 8:
+            return datetime.now() + timedelta(minutes=5)
+            
+        # Consulta padrão de comportamento do usuário
+        padrao = self.context_enricher.get_padrao_horario(usuario_id)
+        
+        # IA prevê janela de atenção
+        janela = self.ia_personalizador.prever_janela_atencao(
+            usuario_id=usuario_id,
+            padrao=padrao,
+            tipo_conteudo='notificacao'
+        )
+        
+        return janela.inicio
+============================================================================
+SEÇÃO 3: CANAIS DE ENVIO — IMPLEMENTAÇÃO TÉCNICA
+============================================================================
+3.1 WhatsApp Business API
+python
+# canais/whatsapp.py
+
+from typing import Optional, List, Dict
+import aiohttp
+import json
+from dataclasses import dataclass
+
+@dataclass
+class WhatsAppMessage:
+    to: str
+    type: str  # text, template, interactive, media
+    content: Dict
+    template_name: Optional[str] = None
+    language_code: str = "pt_BR"
+
+class WhatsAppBusinessAPI:
+    def __init__(self, api_key: str, phone_number_id: str):
+        self.api_key = api_key
+        self.phone_number_id = phone_number_id
+        self.base_url = f"https://graph.facebook.com/v18.0/{phone_number_id}"
+        
+    async def enviar(self, mensagem: WhatsAppMessage) -> Dict:
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = self._construir_payload(mensagem)
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{self.base_url}/messages",
+                headers=headers,
+                json=payload
+            ) as response:
+                result = await response.json()
+                
+                if response.status != 200:
+                    raise WhatsAppAPIError(result.get('error', {}))
+                    
+                return result
+                
+    def _construir_payload(self, msg: WhatsAppMessage) -> Dict:
+        base = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": msg.to
+        }
+        
+        if msg.type == "template":
+            # Templates pré-aprovados pela Meta
+            base["type"] = "template"
+            base["template"] = {
+                "name": msg.template_name,
+                "language": {"code": msg.language_code},
+                "components": msg.content.get("components", [])
+            }
+            
+        elif msg.type == "interactive":
+            # Botões, listas, respostas rápidas
+            base["type"] = "interactive"
+            base["interactive"] = {
+                "type": msg.content.get("interactive_type", "button"),
+                "header": msg.content.get("header"),
+                "body": {"text": msg.content["body"]},
+                "footer": msg.content.get("footer"),
+                "action": msg.content["action"]
+            }
+            
+        elif msg.type == "text":
+            base["type"] = "text"
+            base["text"] = {
+                "body": msg.content["body"],
+                "preview_url": msg.content.get("preview_url", False)
+            }
+            
+        return base
+
+    # Templates otimizados para educação
+    TEMPLATES_EDUCACAO = {
+        "alerta_nota_baixa": {
+            "name": "alerta_nota_baixa_v2",
+            "componentes": [
+                {
+                    "type": "header",
+                    "parameters": [
+                        {"type": "text", "text": "{{nome_aluno}}"},
+                        {"type": "text", "text": "{{materia}}"}
+                    ]
+                },
+                {
+                    "type": "body",
+                    "parameters": [
+                        {"type": "text", "text": "{{nota}}"},
+                        {"type": "text", "text": "{{media_turma}}"},
+                        {"type": "text", "text": "{{acao_sugerida}}"}
+                    ]
+                },
+                {
+                    "type": "button",
+                    "sub_type": "url",
+                    "index": 0,
+                    "parameters": [
+                        {"type": "text", "text": "{{link_dashboard}}"}
+                    ]
+                }
+            ]
+        },
+        
+        "lembrete_prova": {
+            "name": "lembrete_prova_v3",
+            "componentes": [
+                {
+                    "type": "header",
+                    "parameters": [
+                        {"type": "text", "text": "{{materia}}"},
+                        {"type": "text", "text": "{{dias_faltando}}"}
+                    ]
+                },
+                {
+                    "type": "body",
+                    "parameters": [
+                        {"type": "text", "text": "{{topicos_principais}}"},
+                        {"type": "text", "text": "{{tempo_sugerido}}"}
+                    ]
+                },
+                {
+                    "type": "button",
+                    "sub_type": "quick_reply",
+                    "index": 0,
+                    "parameters": [
+                        {"type": "payload", "payload": "iniciar_revisao"}
+                    ]
+                }
+            ]
+        }
+    }
+3.2 Push Notifications (Firebase + APNs)
+python
+# canais/push.py
+
+import firebase_admin
+from firebase_admin import messaging
+import aioapns
+
+class PushNotificationService:
+    def __init__(self):
+        # Firebase para Android
+        firebase_admin.initialize_app()
+        
+        # APNs para iOS
+        self.apns = aioapns.APNs(
+            client_cert="path/to/cert.pem",
+            use_sandbox=False
+        )
+        
+    async def enviar(
+        self,
+        user_id: str,
+        titulo: str,
+        corpo: str,
+        dados: Dict,
+        plataforma: str,  # 'android', 'ios', 'web'
+        prioridade: str = "normal"  # 'normal', 'high'
+    ):
+        tokens = await self.get_tokens(user_id, plataforma)
+        
+        if plataforma == 'android':
+            return await self._enviar_fcm(
+                tokens, titulo, corpo, dados, prioridade
+            )
+        elif plataforma == 'ios':
+            return await self._enviar_apns(
+                tokens, titulo, corpo, dados, prioridade
+            )
+        else:
+            return await self._enviar_web_push(
+                tokens, titulo, corpo, dados
+            )
+            
+    async def _enviar_fcm(
+        self, tokens, titulo, corpo, dados, prioridade
+    ):
+        message = messaging.MulticastMessage(
+            tokens=tokens,
+            android=messaging.AndroidConfig(
+                priority=prioridade,
+                notification=messaging.AndroidNotification(
+                    title=titulo,
+                    body=corpo,
+                    icon='ic_notification',
+                    color='#6366F1',
+                    click_action='OPEN_STUDYIA',
+                    channel_id='educacao_importante' if prioridade == 'high' else 'educacao_normal'
+                )
+            ),
+            data={k: str(v) for k, v in dados.items()},
+            apns=None  # Android only
+        )
+        
+        response = messaging.send_multicast(message)
+        return self._processar_resposta_fcm(response, tokens)
+        
+    async def _enviar_apns(self, tokens, titulo, corpo, dados, prioridade):
+        notifications = []
+        
+        for token in tokens:
+            notification = aioapns.Notification(
+                alert={
+                    "title": titulo,
+                    "body": corpo
+                },
+                badge=await self.get_badge_count(token),
+                sound="default" if prioridade == "high" else None,
+                custom=dados,
+                priority=10 if prioridade == "high" else 5
+            )
+            notifications.append((token, notification))
+            
+        results = await self.apns.send_bulk(notifications)
+        return self._processar_resposta_apns(results)
+3.3 Orquestrador de Canais com Fallback
+python
+# canais/orquestrador.py
+
+from enum import Enum
+from typing import List, Optional
+import asyncio
+
+class CanalPrioridade(Enum):
+    WHATSAPP = 1
+    PUSH = 2
+    EMAIL = 3
+    SMS = 4
+
+class CanalOrquestrador:
+    def __init__(self):
+        self.whatsapp = WhatsAppBusinessAPI(...)
+        self.push = PushNotificationService(...)
+        self.email = EmailService(...)
+        self.sms = TwilioService(...)
+        
+        self.custo_por_canal = {
+            CanalPrioridade.WHATSAPP: 0.05,
+            CanalPrioridade.PUSH: 0.001,
+            CanalPrioridade.EMAIL: 0.0001,
+            CanalPrioridade.SMS: 0.02
+        }
+        
+    async def enviar_com_fallback(
+        self,
+        usuario_id: str,
+        mensagem: Mensagem,
+        canais_tentar: List[CanalPrioridade] = None,
+        timeout_por_canal: int = 30
+    ) -> ResultadoEnvio:
+        
+        if canais_tentar is None:
+            canais_tentar = self._ordenar_canais_otimos(usuario_id)
+            
+        for canal in canais_tentar:
+            try:
+                resultado = await asyncio.wait_for(
+                    self._enviar_por_canal(canal, usuario_id, mensagem),
+                    timeout=timeout_por_canal
+                )
+                
+                if resultado.sucesso:
+                    self._registrar_sucesso(usuario_id, canal, mensagem)
+                    return ResultadoEnvio(
+                        sucesso=True,
+                        canal_usado=canal,
+                        custo=self.custo_por_canal[canal],
+                        latencia=resultado.latencia
+                    )
+                    
+            except asyncio.TimeoutError:
+                self._registrar_timeout(usuario_id, canal)
+            except Exception as e:
+                self._registrar_erro(usuario_id, canal, e)
+                
+        # Todos os canais falharam
+        self._escalar_falha_critica(usuario_id, mensagem)
+        return ResultadoEnvio(sucesso=False, canal_usado=None)
+        
+    def _ordenar_canais_otimos(
+        self,
+        usuario_id: str
+    ) -> List[CanalPrioridade]:
+        # Consulta preferências e histórico do usuário
+        perfil = self.get_perfil_comunicacao(usuario_id)
+        
+        # Ordena por: taxa_abertura / custo
+        score = {}
+        for canal in CanalPrioridade:
+            abertura = perfil.taxa_abertura[canal]
+            custo = self.custo_por_canal[canal]
+            score[canal] = (abertura * 100) / (custo * 1000)  # ROI
+            
+        return sorted(score.keys(), key=lambda c: score[c], reverse=True)
+============================================================================
+SEÇÃO 4: IA GENERATIVA PARA PERSONALIZAÇÃO
+============================================================================
+4.1 Gerador de Mensagens Contextuais
+python
+# ia_personalizador.py
+
+from openai import AsyncOpenAI
+from typing import Dict, List
+
+class IA_Personalizador:
+    def __init__(self):
+        self.client = AsyncOpenAI()
+        
+    async def gerar_mensagem(
+        self,
+        template_tipo: str,
+        variaveis: Dict,
+        contexto_usuario: Dict,
+        tom: str,
+        canal: str
+    ) -> str:
+        
+        # Constrói prompt rico com contexto
+        prompt = self._construir_prompt(
+            template_tipo,
+            variaveis,
+            contexto_usuario,
+            tom,
+            canal
+        )
+        
+        # Gera com GPT-4o
+        response = await self.client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "system",
+                    "content": self._get_system_prompt(tom, canal)
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.7,
+            max_tokens=500 if canal == "whatsapp" else 1000
+        )
+        
+        mensagem = response.choices[0].message.content
+        
+        # Pós-processamento
+        mensagem = self._otimizar_para_canal(mensagem, canal)
+        mensagem = self._inserir_variaveis_dinamicas(mensagem, variaveis)
+        
+        return mensagem
+        
+    def _get_system_prompt(self, tom: str, canal: str) -> str:
+        base = """Você é o assistente de comunicação do Study.IA, 
+        uma plataforma de educação inteligente.
+        
+        REGRAS ABSOLUTAS:
+        - Nunca use jargão técnico ou educacional excessivo
+        - Sempre seja específico, nunca genérico
+        - Inclua sempre uma chamada para ação clara
+        - Respeite o limite de caracteres do canal
+        """
+        
+        if tom == "acolhedor":
+            base += """
+            TOM: Empático, preocupado genuinamente, oferecendo apoio.
+            Evite: alarmismo, culpa, linguagem institucional fria.
+            """
+        elif tom == "direto":
+            base += """
+            TOM: Factual, objetivo, focado em solução.
+            Evite: floreios, justificativas longas, vagueza.
+            """
+        elif tom == "motivador":
+            base += """
+            TOM: Entusiasmado, celebrando progresso, inspirando continuidade.
+            Evite: paternalismo, comparações negativas, falsidade.
+            """
+            
+        if canal == "whatsapp":
+            base += """
+            FORMATO WHATSAPP:
+            - Máximo 2 parágrafos curtos
+            - Use emojis com moderação (máximo 3)
+            - Inclua link ou botão de ação
+            - Quebra de linha para legibilidade
+            """
+        elif canal == "push":
+            base += """
+            FORMATO PUSH NOTIFICATION:
+            - Título: máximo 40 caracteres
+            - Corpo: máximo 140 caracteres
+            - Urgência na primeira frase
+            """
+            
+        return base
+        
+    def _otimizar_para_canal(self, mensagem: str, canal: str) -> str:
+        if canal == "whatsapp":
+            # Garante quebra de linha a cada 2-3 frases
+            # Limita tamanho
+            # Adiciona CTA se faltar
+            pass  # implementação
+            
+        elif canal == "sms":
+            # Hard limit 160 chars
+            # Remove acentos se necessário
+            pass  # implementação
+            
+        return mensagem
+4.2 Previsão de Janela de Atenção
+python
+# ia_previsao_atencao.py
+
+from datetime import datetime, timedelta
+from typing import List, Tuple
+import numpy as np
+from sklearn.ensemble import GradientBoostingRegressor
+
+class PrevisorJanelaAtencao:
+    def __init__(self):
+        self.modelo = GradientBoostingRegressor()
+        
+    def treinar(self, dados_historicos: List[Dict]):
+        """
+        Dados: momento_envio, momento_abertura, 
+               tipo_conteudo, dia_semana, contexto
+        """
+        features = []
+        targets = []
+        
+        for dado in dados_historicos:
+            feat = self._extrair_features(dado)
+            # Target: tempo até abertura (quanto menor, melhor)
+            target = (dado['momento_abertura'] - dado['momento_envio']).seconds
+            
+            features.append(feat)
+            targets.append(target)
+            
+        self.modelo.fit(features, targets)
+        
+    def prever(
+        self,
+        usuario_id: str,
+        tipo_conteudo: str,
+        horizonte: timedelta = timedelta(days=2)
+    ) -> List[Tuple[datetime, float]]:
+        """
+        Retorna: [(momento, probabilidade_atencao), ...]
+        """
+        janelas = self._gerar_janelas_candidatas(horizonte)
+        resultados = []
+        
+        for janela in janelas:
+            features = self._extrair_features_previsao(
+                usuario_id, janela, tipo_conteudo
+            )
+            tempo_esperado = self.modelo.predict([features])[0]
+            
+            # Converte tempo esperado em probabilidade
+            prob = self._calcular_probabilidade(tempo_esperado)
+            resultados.append((janela, prob))
+            
+        # Retorna top 5 momentos
+        return sorted(resultados, key=lambda x: x[1], reverse=True)[:5]
+        
+    def _extrair_features(self, dado: Dict) -> List[float]:
+        return [
+            dado['momento_envio'].hour,
+            dado['momento_envio'].weekday(),
+            1 if dado['tipo_conteudo'] == 'urgente' else 0,
+            dado['historico_abertura_7d'],
+            dado['engajamento_recente'],
+            # ... mais features
+        ]
+============================================================================
+SEÇÃO 5: DASHBOARD E ANALYTICS
+============================================================================
+5.1 Métricas por Perfil
+yaml
+┌─────────────────────────────────────────────────────────────────┐
+│  DASHBOARD: EFETIVIDADE DA COMUNICAÇÃO                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ALUNOS                                                          │
+│  ──────                                                          │
+│  Taxa de abertura WhatsApp: 78% (meta: 75%) 🟢                  │
+│  Tempo médio até abertura: 23 minutos                           │
+│  Taxa de conversão (clicou → estudou): 34%                      │
+│  Melhor horário: 19h-21h                                        │
+│  Mensagem mais efetiva: "Seu streak vai quebrar amanhã"         │
+│                                                                  │
+│  PROFESSORES                                                     │
+│  ───────────                                                     │
+│  Taxa resposta em 24h: 89% 🟢                                   │
+│  Alertas de aluno em dificuldade: 45 enviados                   │
+│  Intervenções realizadas: 38 (84% efetividade)                  │
+│                                                                  │
+│  PAIS                                                            │
+│  ────                                                            │
+│  Abertura newsletter semanal: 62%                               │
+│  Taxa agendamento após alerta: 28%                              │
+│  Satisfação com comunicação: 4.2/5                              │
+│                                                                  │
+│  ESCOLA                                                          │
+│  ─────                                                           │
+│  Alertas críticos respondidos: 100% em < 4h                     │
+│  Economia com inadimplência preventiva: R$ 45.000/mês           │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+============================================================================
+CHECKLIST DE IMPLEMENTAÇÃO
+============================================================================
+Fase 1: Infraestrutura (Semana 1-2)
+ Configurar Event Bus (Kafka/RabbitMQ)
+ Setup Redis para cache e sessões
+ Integrações: WhatsApp Business API, FCM, SendGrid, Twilio
+ Estrutura de banco para histórico de comunicação
+Fase 2: Motor de Regras (Semana 3-4)
+ Implementar parser de regras YAML
+ Criar 20 regras iniciais (5 por perfil)
+ Sistema de priorização e timing
+ Testes unitários de regras
+Fase 3: IA de Personalização (Semana 5-6)
+ Integrar GPT-4o para geração de mensagens
+ Treinar modelo de previsão de janela de atenção
+ Sistema de A/B testing automático
+ Feedback loop de efetividade
+Fase 4: Canais e Fallback (Semana 7)
+ Implementar todos os 4 canais
+ Lógica de fallback inteligente
+ Retry com backoff exponencial
+ Dead letter queue para falhas
+Fase 5: Analytics e Otimização (Semana 8)
+ Dashboard de métricas em tempo real
+ Alertas de anomalias
+ Otimização automática de horários
+ Relatórios de ROI por canal

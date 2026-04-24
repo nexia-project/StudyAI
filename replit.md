@@ -65,6 +65,32 @@ StudyAI is built as a `pnpm` monorepo using TypeScript, Node.js 24, and Express 
 - **Institution Module**: Functionality for institutional oversight, managing teachers, and tracking aggregated data.
 - **Government Module**: Provides aggregate educational metrics, weekly growth analysis, and tools for promoting user roles.
 
+### Orquestrador de Comunicação (April 2026)
+Multi-channel automated communication system per document `automacao_studyia_orquestrador_comunicacao`.
+- **Email**: Resend (`RESEND_API_KEY`) — 10 templates (motivacional, informativo, urgente, celebratorio, alerta, reengajamento, resumo_semanal, alerta_prova, alerta_responsavel, boas_vindas)
+- **WhatsApp/Push/SMS**: simulados (prontos para integração futura com WhatsApp Business API / FCM / Twilio)
+- **Motor de Regras** (`POST /api/comunicacao/check-triggers`): 6 triggers ativos com cooldown inteligente:
+  - `falta_3_dias_sem_acessar` — reengajamento alunos inativos ≥ 3 dias
+  - `reengajamento_7_dias` — alunos inativos ≥ 7 dias (urgente)
+  - `streak_em_risco` — estudou ontem mas não hoje
+  - `conclusao_marco_7_dias` — 7 dias consecutivos de estudo
+  - `conclusao_marco_30_dias` — 30 dias consecutivos de estudo
+  - `resumo_semanal_aluno` — domingo: resumo semanal para alunos ativos
+- **DB Tables criadas automaticamente**: `communication_logs`, `communication_rules` (11 regras pré-configuradas), `user_notification_prefs`
+- **API Endpoints**:
+  - `GET /api/comunicacao/stats` — métricas reais do banco (disparos, canais, triggers, tendência 7 dias)
+  - `GET /api/comunicacao/logs` — histórico filtrável por canal/trigger/status
+  - `GET /api/comunicacao/regras` — lista regras configuradas
+  - `PATCH /api/comunicacao/regras/:trigger_id` — ativa/desativa regras, ajusta cooldown
+  - `GET/PUT /api/comunicacao/prefs/:user_id` — preferências de notificação por usuário
+  - `GET /api/comunicacao/templates` — lista templates disponíveis
+  - `POST /api/comunicacao/testar` — teste de email/WhatsApp
+  - `POST /api/comunicacao/disparar` — disparo direto (uso admin/professor)
+  - `POST /api/comunicacao/disparar-trigger` — dispara trigger específico para usuário
+- **Cooldown system**: Garante que cada usuário só recebe cada tipo de trigger respeitando janela de cooldown (20h-720h conforme prioridade)
+- **Perfis**: aluno, professor, responsavel, escola — cada um com templates e tom específicos
+- **Cron integration**: Endpoint `check-triggers` protegido por `x-cron-key` header para automação diária
+
 **DB Tables (as of April 2026):**
 38+ core tables. Includes `tiagao_memory`, `tiagao_conversations`, `trilha_mestre_progress`, `trilha_mestre_sessions`, `notebook_overviews`, `notebook_embeddings`, `knowledge_documents`, `professor_mindmaps`, `user_doc_mindmaps`, `caderno_notes`, `redacoes`, `activity_events` (BIGSERIAL unified event log with user_id, event_type, entity_type, class_id, notebook_id, metadata jsonb), `daily_metrics` (unique on user_id+date+class_id, counters for study/quiz/flashcard/notebook/essay/trilha). `ai_cost_log` has `source_type`/`duration_ms`/`rag_chunks_used` columns.
 

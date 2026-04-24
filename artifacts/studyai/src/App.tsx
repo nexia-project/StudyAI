@@ -2,6 +2,7 @@ import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { useEffect, useRef } from "react";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
+import { ptBR } from "@clerk/localizations";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Landing from "@/pages/Landing";
@@ -101,11 +102,31 @@ function ClerkQueryClientCacheInvalidator() {
 }
 
 // Sign-in page
-function SignInPage() {
-  // To update login providers, app branding, or OAuth settings use the Auth
-  // pane in the workspace toolbar. More information can be found in the Replit docs.
+function StudyIALogo() {
   return (
-    <div style={{ display: "flex", justifyContent: "center", marginTop: "4rem" }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "1rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        <div style={{
+          width: 44, height: 44, borderRadius: 12,
+          background: "linear-gradient(135deg, #4F46E5 0%, #6366F1 100%)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 4px 16px rgba(99,102,241,0.3)",
+        }}>
+          <span style={{ color: "white", fontWeight: 900, fontSize: 22, fontFamily: "Arial Black, sans-serif", letterSpacing: "-1px" }}>S</span>
+        </div>
+        <span style={{ fontWeight: 900, fontSize: 28, fontFamily: "Arial Black, sans-serif", color: "#1E1B4B", letterSpacing: "-1px" }}>
+          Study<span style={{ color: "#6366F1" }}>.IA</span>
+        </span>
+      </div>
+      <span style={{ fontSize: 12, color: "#64748B", marginTop: 4, letterSpacing: "0.5px" }}>Tutor inteligente para o ENEM</span>
+    </div>
+  );
+}
+
+function SignInPage() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: "3rem" }}>
+      <StudyIALogo />
       <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} afterSignInUrl={`${basePath}/app`} />
     </div>
   );
@@ -113,10 +134,9 @@ function SignInPage() {
 
 // Sign-up page
 function SignUpPage() {
-  // To update login providers, app branding, or OAuth settings use the Auth
-  // pane in the workspace toolbar. More information can be found in the Replit docs.
   return (
-    <div style={{ display: "flex", justifyContent: "center", marginTop: "4rem" }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: "3rem" }}>
+      <StudyIALogo />
       <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} afterSignUpUrl={`${basePath}/app`} />
     </div>
   );
@@ -282,6 +302,27 @@ function ClerkProviderWithRoutes() {
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
       afterSignInUrl={`${basePath}/app`}
       afterSignUpUrl={`${basePath}/app`}
+      localization={ptBR}
+      appearance={{
+        layout: {
+          logoPlacement: "none",
+        },
+        variables: {
+          colorPrimary: "#4F46E5",
+          colorBackground: "#ffffff",
+          fontFamily: "Inter, system-ui, sans-serif",
+          borderRadius: "0.75rem",
+        },
+        elements: {
+          logoBox: { display: "none" },
+          card: "shadow-xl rounded-2xl border border-slate-100",
+          headerTitle: "text-slate-900 font-black text-xl",
+          headerSubtitle: "text-slate-500 text-sm",
+          socialButtonsBlockButton: "border border-slate-200 rounded-xl font-semibold",
+          formButtonPrimary: "bg-indigo-600 hover:bg-indigo-700 rounded-xl font-bold",
+          footerActionLink: "text-indigo-600 font-semibold hover:text-indigo-700",
+        },
+      }}
     >
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>

@@ -21,6 +21,7 @@ import {
   BarChart3,
   ScrollText,
   CheckCircle2,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StudyPlan } from "@/hooks/use-study-plan";
@@ -101,20 +102,48 @@ function MessageBubble({ message }: { message: Message }) {
   );
 }
 
+const MAX_STORED_MESSAGES = 40;
+
 export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopicos, topicosAtual }: TutorChatProps) {
   const [, navigate] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [actionNotif, setActionNotif] = useState<ActionNotif | null>(null);
+  const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const notifTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Persistent conversation memory (survives page navigation) ───────────────
+  const storageKey = `tiagao_chat_${plan.materia?.replace(/\s+/g, "_").toLowerCase() ?? "geral"}`;
+
+  const [messages, setMessages] = useState<Message[]>(() => {
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored) as Message[];
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch { /* ignore */ }
+    return [];
+  });
+
+  // Save messages to localStorage whenever they change (throttled)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (messages.length === 0) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      try {
+        const toStore = messages.slice(-MAX_STORED_MESSAGES);
+        localStorage.setItem(storageKey, JSON.stringify(toStore));
+      } catch { /* quota exceeded — ignore */ }
+    }, 500);
+  }, [messages, storageKey]);
 
   const scrollToBottom = useCallback((smooth = true) => {
     messagesEndRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto" });
@@ -124,7 +153,7 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
     if (isOpen && messages.length === 0) {
       const greeting: Message = {
         role: "assistant",
-        content: `Olá, ${plan.aluno}! 👋 Sou seu Tutor IA — estou aqui para te ajudar a dominar **${plan.materia}** e arrasar na prova! 🎯\n\nPosso explicar qualquer conteúdo, criar flashcards, slides, provas, mapas mentais, plano de estudos e muito mais. O que preferes começar?`,
+        content: `Olá, ${plan.aluno}! 👋 Sou seu Tutor IA — estou aqui para te ajudar a dominar **${plan.materia}** e arrasar na prova! 🎯\n\nPosso explicar qualquer coisa, criar flashcards, slides, provas, mapas mentais, plano de estudos e muito mais. Lembro de tudo que conversamos! 🧠`,
       };
       setMessages([greeting]);
     }
@@ -133,6 +162,11 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
       setTimeout(() => inputRef.current?.focus(), 300);
     }
   }, [isOpen]);
+
+  const clearHistory = () => {
+    try { localStorage.removeItem(storageKey); } catch { /* ignore */ }
+    setMessages([]);
+  };
 
   useEffect(() => {
     if (isOpen) scrollToBottom();
@@ -448,9 +482,18 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
                 <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
                 <span className="text-white/80 text-xs">Online</span>
               </div>
+              {messages.length > 1 && (
+                <button
+                  onClick={clearHistory}
+                  title="Limpar conversa"
+                  className="p-1.5 rounded-full hover:bg-white/20 text-white/70 hover:text-white transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
               <button
                 onClick={() => setIsOpen(false)}
-                className="ml-2 p-1.5 rounded-full hover:bg-white/20 text-white transition-colors"
+                className="p-1.5 rounded-full hover:bg-white/20 text-white transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>

@@ -123,7 +123,7 @@ async function ensureNotebooksSchema() {
         CREATE INDEX idx_nb_emb_user_doc ON notebook_embeddings(user_id, doc_id);
       END IF;
       IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_nb_emb_chunk') THEN
-        CREATE INDEX idx_nb_emb_chunk USING gin(to_tsvector('portuguese', chunk_text)) ON notebook_embeddings;
+        CREATE INDEX idx_nb_emb_chunk ON notebook_embeddings USING gin(to_tsvector('portuguese', chunk_text));
       END IF;
     END $$
   `);

@@ -7,14 +7,18 @@ import { logAiUsage } from "../lib/aiCostLogger";
 const router = Router();
 
 // ─── Clientes de IA ───────────────────────────────────────────────────────────
-// Claude (Anthropic via Replit — sem chave própria necessária)
+// OpenAI via Replit AI Integrations (principal — rápido e confiável)
+const openai = new OpenAI({
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? process.env.OPENAI_API_KEY ?? "dummy",
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+});
+
+// Claude como alternativa de alta qualidade (com timeout para evitar lentidão)
 const claude = new Anthropic({
   apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY ?? "dummy",
   baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+  timeout: 20_000, // 20s max — evita travar a requisição
 });
-
-// OpenAI como fallback
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ─── Calibração de dificuldade conforme o estilo escolhido pelo aluno ─────────
 function difficultyProfile(estilo: string): {
@@ -133,7 +137,7 @@ RETORNE SOMENTE JSON VÁLIDO, sem texto extra, sem markdown:
   return block.type === "text" ? block.text : "{}";
 }
 
-// ─── Fallback: gerar aula com OpenAI ─────────────────────────────────────────
+// ─── Gerar aula com OpenAI gpt-4o-mini (primário — rápido e confiável) ────────
 async function gerarAulaComOpenAI(topico: string, estilo: string, nivel: string): Promise<string> {
   const prof = difficultyProfile(estilo);
   const systemPrompt = `Você é o Professor Tiagão, tutor educacional brasileiro especialista em ${estilo}.
@@ -160,17 +164,17 @@ Crie uma aula DETALHADA e DIDÁTICA em JSON. Retorne APENAS o JSON, sem texto ex
 Nível: ${nivel}. Máx 6 etapas, mín 4. Exemplos do contexto ${estilo}. RESPEITE rigorosamente o nível "${prof.nivelLabel}".`;
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: "gpt-4o-mini",
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: `Crie uma aula sobre: ${topico.trim()}` },
     ],
     temperature: 0.7,
     response_format: { type: "json_object" },
-    max_tokens: 2500,
+    max_tokens: 3000,
   });
 
-  logAiUsage({ feature: "lousa-aula", model: "gpt-4o", tokensIn: completion.usage?.prompt_tokens ?? 0, tokensOut: completion.usage?.completion_tokens ?? 0 });
+  logAiUsage({ feature: "lousa-aula", model: "gpt-4o-mini", tokensIn: completion.usage?.prompt_tokens ?? 0, tokensOut: completion.usage?.completion_tokens ?? 0 });
   return completion.choices[0].message.content ?? "{}";
 }
 
@@ -189,15 +193,20 @@ router.post("/aula-ia/gerar", requireAuth, async (req: Request, res: Response) =
     }
 
     let raw = "{}";
-    // Tenta Claude primeiro (qualidade superior), usa OpenAI como fallback
+    // Usa gpt-4o-mini como primário (rápido e confiável via Replit AI Integrations)
+    // Claude como fallback de qualidade superior (com timeout de 20s)
     try {
-      raw = await gerarAulaComClaude(topico, estilo, nivel);
-      // Claude retorna JSON dentro de possível texto — extrai JSON
-      const match = raw.match(/\{[\s\S]*\}/);
-      if (match) raw = match[0];
-    } catch (claudeErr) {
-      console.warn("[aula-ia] Claude falhou, usando OpenAI:", claudeErr);
       raw = await gerarAulaComOpenAI(topico, estilo, nivel);
+    } catch (openaiErr) {
+      console.warn("[aula-ia] OpenAI falhou, tentando Claude:", openaiErr);
+      try {
+        raw = await gerarAulaComClaude(topico, estilo, nivel);
+        const match = raw.match(/\{[\s\S]*\}/);
+        if (match) raw = match[0];
+      } catch (claudeErr) {
+        console.error("[aula-ia] Ambos falharam — Claude:", claudeErr);
+        throw openaiErr; // relança o erro original para o handler externo
+      }
     }
 
     const aula = JSON.parse(raw);

@@ -1312,7 +1312,12 @@ export default function Notebook() {
         const raw = await r.json();
         const data: Caderno[] = Array.isArray(raw) ? raw : [];
         setCadernos(data);
-        setActiveCaderno(prev => prev ? (data.find(c => c.id === prev.id) ?? data[0] ?? null) : (data[0] ?? null));
+        const firstCaderno = data[0] ?? null;
+        setActiveCaderno(prev => prev ? (data.find(c => c.id === prev.id) ?? firstCaderno) : firstCaderno);
+        // Auto-abre workspace se há apenas 1 caderno padrão — evita "página vazia"
+        if (data.length === 1 && data[0].is_default) {
+          setNotebookView("workspace");
+        }
       }
     } catch { /* silent */ }
   }, []);

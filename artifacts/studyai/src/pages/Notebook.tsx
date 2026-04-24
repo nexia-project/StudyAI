@@ -1257,6 +1257,8 @@ export default function Notebook() {
   // Artefatos salvos do doc atual
   type SavedArtifact = { id: number; kind: string; title: string; created_at: string };
   const [savedArtifacts, setSavedArtifacts] = useState<SavedArtifact[]>([]);
+  // Artefatos criados diretamente pelo Tiagão (doc_id = 0)
+  const [tiagaoArtifacts, setTiagaoArtifacts] = useState<SavedArtifact[]>([]);
   // Lightbox para ampliar infográfico
   const [infoFull, setInfoFull] = useState<string | null>(null);
 
@@ -1369,9 +1371,11 @@ export default function Notebook() {
       const kindToTool: Record<string, Tool> = {
         slides: "slides", podcast: "podcast", timeline: "timeline",
         infografico: "infografico", "mapa-mental": "mapa-mental",
+        mapa_mental: "mapa-mental",
         flashcards: "flashcards", questoes: "questoes", "study-guide": "study-guide",
         overview: "overview",
         prova: "questoes", plano_estudos: "study-guide",
+        resumo: "study-guide", plano: "study-guide",
       };
       const tool = kindToTool[a.kind];
       if (!tool) return;
@@ -1389,9 +1393,24 @@ export default function Notebook() {
     } catch { /* silent */ }
   }, []);
 
+  // ─── Load Tiagão-created artifacts (doc_id = 0) ──────────────────────────
+  const loadTiagaoArtifacts = useCallback(async () => {
+    try {
+      const r = await fetch(`${BASE_URL}/api/notebook/tiagao-artifacts`, { credentials: "include" });
+      if (r.ok) {
+        const data = await r.json();
+        const list: SavedArtifact[] = Array.isArray(data?.artifacts) ? data.artifacts : [];
+        setTiagaoArtifacts(list);
+      }
+    } catch { /* non-critical */ }
+  }, []);
+
+  useEffect(() => { loadTiagaoArtifacts(); }, [loadTiagaoArtifacts]);
+
   // ─── Auto-open Tiagão-created artifacts from localStorage ────────────────
   useEffect(() => {
     function applyTiagaoArtifacts() {
+      // Slides
       const slidesRaw = localStorage.getItem("tiagao_slides_criados");
       if (slidesRaw) {
         try {
@@ -1406,6 +1425,7 @@ export default function Notebook() {
         } catch { /* ignore */ }
         localStorage.removeItem("tiagao_slides_criados");
       }
+      // Prova
       const provaRaw = localStorage.getItem("tiagao_prova_criada");
       if (provaRaw) {
         try {
@@ -1425,13 +1445,57 @@ export default function Notebook() {
         } catch { /* ignore */ }
         localStorage.removeItem("tiagao_prova_criada");
       }
+      // Mapa mental
+      const mapaRaw = localStorage.getItem("tiagao_mapa_mental");
+      if (mapaRaw) {
+        try {
+          const mapaData = JSON.parse(mapaRaw);
+          if (mapaData?.categories?.length || mapaData?.subject) {
+            setActiveTool("mapa-mental");
+            setToolResult(mapaData);
+            setToolError(null);
+            setNotebookView("workspace");
+          }
+        } catch { /* ignore */ }
+        localStorage.removeItem("tiagao_mapa_mental");
+      }
+      // Infográfico
+      const infoRaw = localStorage.getItem("tiagao_infografico");
+      if (infoRaw) {
+        try {
+          const infoData = JSON.parse(infoRaw);
+          if (infoData) {
+            setActiveTool("infografico");
+            setToolResult(infoData);
+            setToolError(null);
+            setNotebookView("workspace");
+          }
+        } catch { /* ignore */ }
+        localStorage.removeItem("tiagao_infografico");
+      }
+      // Resumo
+      const resumoRaw = localStorage.getItem("tiagao_resumo");
+      if (resumoRaw) {
+        try {
+          const resumoData = JSON.parse(resumoRaw);
+          if (resumoData) {
+            setActiveTool("study-guide");
+            setToolResult(resumoData);
+            setToolError(null);
+            setNotebookView("workspace");
+          }
+        } catch { /* ignore */ }
+        localStorage.removeItem("tiagao_resumo");
+      }
+      // Refresh Tiagão artifacts list from DB
+      loadTiagaoArtifacts();
     }
 
     applyTiagaoArtifacts();
 
     // cross-tab: storage event
     const onStorage = (e: StorageEvent) => {
-      if (e.key === "tiagao_slides_criados" || e.key === "tiagao_prova_criada") {
+      if (e.key?.startsWith("tiagao_")) {
         setTimeout(applyTiagaoArtifacts, 50);
       }
     };
@@ -1443,7 +1507,7 @@ export default function Notebook() {
       window.removeEventListener("storage", onStorage);
       window.removeEventListener("tiagao_artifact", onTiagaoArtifact);
     };
-  }, []);
+  }, [loadTiagaoArtifacts]);
 
   // ─── Suggest questions ────────────────────────────────────────────────────
   useEffect(() => {
@@ -2655,6 +2719,45 @@ export default function Notebook() {
           </div>
           {selectedDocIds.length > 0 && <span className="text-[9px] font-bold text-slate-400">{selectedDocIds.length} doc</span>}
         </div>
+        {/* Artefatos criados pelo Tiagão (doc_id = 0) — visível sempre */}
+        {tiagaoArtifacts.length > 0 && (
+          <div className="mb-2 p-2 rounded-xl bg-violet-50 border border-violet-200">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Sparkles className="w-3 h-3 text-violet-600" />
+              <p className="text-[10px] font-black text-violet-800 uppercase tracking-wider">Criado pelo Tiagão ({tiagaoArtifacts.length})</p>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {tiagaoArtifacts.map(a => {
+                const kindMap: Record<string, string> = {
+                  slides: "📊", mapa_mental: "🗺️", "mapa-mental": "🗺️",
+                  infografico: "📈", resumo: "📄", questoes: "📝",
+                  prova: "📝", flashcards: "🃏", plano_estudos: "📅",
+                };
+                const emoji = kindMap[a.kind] ?? "✨";
+                return (
+                  <div key={a.id} className="group inline-flex items-center bg-white border border-violet-200 rounded-lg overflow-hidden hover:border-violet-400 transition-all">
+                    <button
+                      onClick={() => openSavedArtifact(a)}
+                      className="flex items-center gap-1 px-2 py-1 hover:bg-violet-50 text-[10px] font-bold text-slate-700"
+                      title={`Abrir: ${a.title}`}
+                    >
+                      <span>{emoji}</span>
+                      <span className="truncate max-w-[100px]">{a.title || a.kind}</span>
+                    </button>
+                    <button
+                      onClick={() => deleteSavedArtifact(a.id)}
+                      className="px-1 py-1 hover:bg-rose-50 text-rose-400 hover:text-rose-600"
+                      title="Remover artefato"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {selectedDocIds.length === 0 ? (
           <div className="rounded-lg bg-slate-50 border border-dashed border-slate-200 p-3 text-center">
             <FileText className="w-4 h-4 text-slate-300 mx-auto mb-1" />
@@ -2662,6 +2765,7 @@ export default function Notebook() {
           </div>
         ) : (
           <div className="space-y-1.5">
+
             {/* Artefatos já gerados — chips clicáveis para reabrir */}
             {savedArtifacts.length > 0 && (
               <div className="mb-2 p-2 rounded-xl bg-emerald-50 border border-emerald-200">

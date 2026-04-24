@@ -274,6 +274,7 @@ export function VoiceProfessor() {
       setTimeout(() => setActionNotif(null), 8000);
       if (action.prova) {
         localStorage.setItem("tiagao_prova_criada", JSON.stringify(action.prova));
+        window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_prova_criada" } }));
       }
     } else if (action.type === "criar_plano_estudos") {
       setActionNotif({ text: `📅 Plano "${action.titulo}" criado! Ver no Cronograma.`, path: "/cronograma" });

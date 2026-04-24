@@ -447,20 +447,22 @@ async function ragSearch(
     .filter(w => w.length > 2 && !stopWords.has(w))
     .slice(0, 6);
 
+  // Convert docIds array to PostgreSQL literal {1,2,3} to avoid drizzle param serialization bug
   const docArray = docIds && docIds.length > 0 ? docIds : null;
+  const pgDocArray = docArray ? `{${docArray.join(",")}}` : null;
 
   // Strategy 1: FTS (Portuguese full-text search) — fastest and most accurate
   let ftsResults: any[] = [];
   if (keywords.length > 0) {
     try {
       const ftsQuery = keywords.join(" | ");
-      const ftsRows = docArray
+      const ftsRows = pgDocArray
         ? await db.execute(sql`
             SELECT chunk_text, source_title,
               ts_rank(to_tsvector('portuguese', chunk_text), to_tsquery('portuguese', ${ftsQuery})) AS score
             FROM notebook_embeddings
             WHERE user_id = ${userId}
-              AND doc_id = ANY(${docArray}::int[])
+              AND doc_id = ANY(${pgDocArray}::int[])
               AND to_tsvector('portuguese', chunk_text) @@ to_tsquery('portuguese', ${ftsQuery})
             ORDER BY score DESC LIMIT ${topK * 2}
           `)
@@ -484,12 +486,12 @@ async function ragSearch(
     for (const kw of keywords.slice(0, 3)) {
       const pattern = `%${kw}%`;
       try {
-        const iRows = docArray
+        const iRows = pgDocArray
           ? await db.execute(sql`
               SELECT chunk_text, source_title, 1 AS score
               FROM notebook_embeddings
               WHERE user_id = ${userId}
-                AND doc_id = ANY(${docArray}::int[])
+                AND doc_id = ANY(${pgDocArray}::int[])
                 AND chunk_text ILIKE ${pattern}
               ORDER BY chunk_index ASC LIMIT ${topK}
             `)
@@ -508,11 +510,11 @@ async function ragSearch(
   // Strategy 3: first chunks fallback when no keywords
   let firstChunks: any[] = [];
   if (ftsResults.length === 0 && ilikeResults.length === 0) {
-    const fallbackRows = docArray
+    const fallbackRows = pgDocArray
       ? await db.execute(sql`
           SELECT chunk_text, source_title, 0 AS score
           FROM notebook_embeddings
-          WHERE user_id = ${userId} AND doc_id = ANY(${docArray}::int[])
+          WHERE user_id = ${userId} AND doc_id = ANY(${pgDocArray}::int[])
           ORDER BY chunk_index ASC LIMIT ${topK}
         `)
       : await db.execute(sql`
@@ -3278,6 +3280,26 @@ Style: clean modern flat design, sophisticated color palette matching the theme 
   } catch (e) {
     console.error("notebook slides:", e);
     res.status(500).json({ erro: "Erro ao gerar apresentação" });
+  }
+});
+
+// ─── GET /api/notebook/tiagao-artifacts ──────────────────────────────────────
+// Lista todos os artefatos criados pelo Tiagão (doc_id = 0) para o usuário atual
+router.get("/notebook/tiagao-artifacts", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  try {
+    await ensureNotebooksSchema();
+    const rows = await db.execute(sql`
+      SELECT id, kind, title, created_at
+        FROM notebook_artifacts
+       WHERE user_id = ${req.userId} AND doc_id = 0
+       ORDER BY created_at DESC
+       LIMIT 100
+    `);
+    res.json({ artifacts: rows.rows });
+  } catch (e) {
+    console.error("tiagao artifacts list:", e);
+    res.status(500).json({ erro: "Erro ao listar artefatos do Tiagão" });
   }
 });
 

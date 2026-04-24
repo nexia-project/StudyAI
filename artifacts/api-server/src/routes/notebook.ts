@@ -103,6 +103,31 @@ async function ensureNotebooksSchema() {
     END $$
   `);
 
+  // ─── Chunks de texto para RAG textual (sem embeddings vetoriais) ─────────────
+  // BUG FIX: Esta tabela nunca foi criada explicitamente — causava falha silenciosa
+  // em todos os uploads de PDF/doc e tornava toda busca RAG vazia.
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS notebook_embeddings (
+      id SERIAL PRIMARY KEY,
+      user_id VARCHAR NOT NULL,
+      doc_id INTEGER NOT NULL,
+      chunk_text TEXT NOT NULL,
+      chunk_index INTEGER NOT NULL DEFAULT 0,
+      source_title VARCHAR(255) DEFAULT '',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await db.execute(sql`
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_nb_emb_user_doc') THEN
+        CREATE INDEX idx_nb_emb_user_doc ON notebook_embeddings(user_id, doc_id);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_nb_emb_chunk') THEN
+        CREATE INDEX idx_nb_emb_chunk USING gin(to_tsvector('portuguese', chunk_text)) ON notebook_embeddings;
+      END IF;
+    END $$
+  `);
+
   // Artefatos gerados (slides, podcast, infografico, timeline, mapa-mental, etc.)
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS notebook_artifacts (
@@ -403,53 +428,108 @@ async function saveDocWithChunks(
   return docId;
 }
 
-// ─── RAG: keyword-based search ────────────────────────────────────────────────
+// ─── RAG: hybrid keyword + FTS search (safe parameterized SQL) ───────────────
 async function ragSearch(
   userId: string,
   docIds: number[] | null,
   query: string,
   topK = 8,
 ): Promise<Array<{ text: string; title: string }>> {
-  // Extract meaningful keywords
-  const stopWords = new Set(["o","a","os","as","um","uma","de","da","do","e","que","em","para","com","por","se","me","te","nos","isso","isto","esse","esta","este","como","qual","quais","quando","onde","quem","não","sim","mais","mas","ou","é","foi","ser","ter","há","já","este","nesta","nesse","qual","seu","sua"]);
+  await ensureNotebooksSchema(); // Garante que notebook_embeddings existe
+
+  // Extract keywords (stop-word filtered)
+  const stopWords = new Set(["o","a","os","as","um","uma","de","da","do","e","que","em","para","com","por","se","me","te","nos","isso","isto","esse","esta","este","como","qual","quais","quando","onde","quem","não","sim","mais","mas","ou","é","foi","ser","ter","há","já","nesta","nesse","seu","sua"]);
   const keywords = query
     .toLowerCase()
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9\s]/g, " ")
     .split(/\s+/)
     .filter(w => w.length > 2 && !stopWords.has(w))
-    .slice(0, 5);
+    .slice(0, 6);
 
-  const docFilter = docIds && docIds.length > 0 ? `AND doc_id = ANY(ARRAY[${docIds.join(",")}]::int[])` : "";
+  const docArray = docIds && docIds.length > 0 ? docIds : null;
 
-  let queryStr: string;
-  if (keywords.length === 0) {
-    // No keywords — return first topK chunks
-    queryStr = `
-      SELECT chunk_text, source_title FROM notebook_embeddings
-      WHERE user_id = $1 ${docFilter}
-      ORDER BY chunk_index ASC LIMIT ${topK}
-    `;
-  } else {
-    // Build ILIKE conditions for each keyword
-    const ilikeConditions = keywords.map(kw => `chunk_text ILIKE '%${kw.replace(/'/g, "''")}%'`).join(" OR ");
-    const scoreExpr = keywords.map(kw => `(CASE WHEN chunk_text ILIKE '%${kw.replace(/'/g, "''")}%' THEN 1 ELSE 0 END)`).join(" + ");
-    queryStr = `
-      SELECT chunk_text, source_title, (${scoreExpr}) as score
-      FROM notebook_embeddings
-      WHERE user_id = $1 ${docFilter} AND (${ilikeConditions})
-      ORDER BY score DESC, chunk_index ASC LIMIT ${topK * 2}
-    `;
+  // Strategy 1: FTS (Portuguese full-text search) — fastest and most accurate
+  let ftsResults: any[] = [];
+  if (keywords.length > 0) {
+    try {
+      const ftsQuery = keywords.join(" | ");
+      const ftsRows = docArray
+        ? await db.execute(sql`
+            SELECT chunk_text, source_title,
+              ts_rank(to_tsvector('portuguese', chunk_text), to_tsquery('portuguese', ${ftsQuery})) AS score
+            FROM notebook_embeddings
+            WHERE user_id = ${userId}
+              AND doc_id = ANY(${docArray}::int[])
+              AND to_tsvector('portuguese', chunk_text) @@ to_tsquery('portuguese', ${ftsQuery})
+            ORDER BY score DESC LIMIT ${topK * 2}
+          `)
+        : await db.execute(sql`
+            SELECT chunk_text, source_title,
+              ts_rank(to_tsvector('portuguese', chunk_text), to_tsquery('portuguese', ${ftsQuery})) AS score
+            FROM notebook_embeddings
+            WHERE user_id = ${userId}
+              AND to_tsvector('portuguese', chunk_text) @@ to_tsquery('portuguese', ${ftsQuery})
+            ORDER BY score DESC LIMIT ${topK * 2}
+          `);
+      ftsResults = ftsRows.rows as any[];
+    } catch {
+      // FTS can fail on complex queries — fall through to ILIKE
+    }
   }
 
-  const rows = await db.execute(sql.raw(queryStr.replace("$1", `'${userId.replace(/'/g, "''")}'`)));
-  const results = rows.rows as any[];
+  // Strategy 2: ILIKE fallback (keyword by keyword) — works when FTS fails
+  let ilikeResults: any[] = [];
+  if (ftsResults.length < topK && keywords.length > 0) {
+    for (const kw of keywords.slice(0, 3)) {
+      const pattern = `%${kw}%`;
+      try {
+        const iRows = docArray
+          ? await db.execute(sql`
+              SELECT chunk_text, source_title, 1 AS score
+              FROM notebook_embeddings
+              WHERE user_id = ${userId}
+                AND doc_id = ANY(${docArray}::int[])
+                AND chunk_text ILIKE ${pattern}
+              ORDER BY chunk_index ASC LIMIT ${topK}
+            `)
+          : await db.execute(sql`
+              SELECT chunk_text, source_title, 1 AS score
+              FROM notebook_embeddings
+              WHERE user_id = ${userId}
+                AND chunk_text ILIKE ${pattern}
+              ORDER BY chunk_index ASC LIMIT ${topK}
+            `);
+        ilikeResults.push(...(iRows.rows as any[]));
+      } catch { /* ignore */ }
+    }
+  }
 
-  // Deduplicate
+  // Strategy 3: first chunks fallback when no keywords
+  let firstChunks: any[] = [];
+  if (ftsResults.length === 0 && ilikeResults.length === 0) {
+    const fallbackRows = docArray
+      ? await db.execute(sql`
+          SELECT chunk_text, source_title, 0 AS score
+          FROM notebook_embeddings
+          WHERE user_id = ${userId} AND doc_id = ANY(${docArray}::int[])
+          ORDER BY chunk_index ASC LIMIT ${topK}
+        `)
+      : await db.execute(sql`
+          SELECT chunk_text, source_title, 0 AS score
+          FROM notebook_embeddings
+          WHERE user_id = ${userId}
+          ORDER BY chunk_index ASC LIMIT ${topK}
+        `);
+    firstChunks = fallbackRows.rows as any[];
+  }
+
+  // Merge, deduplicate, rank
+  const allResults = [...ftsResults, ...ilikeResults, ...firstChunks];
   const seen = new Set<string>();
-  return results
+  return allResults
     .filter(r => {
-      const key = String(r.chunk_text).slice(0, 100);
+      const key = String(r.chunk_text).slice(0, 120);
       if (seen.has(key)) return false;
       seen.add(key);
       return true;

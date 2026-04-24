@@ -1366,6 +1366,7 @@ export default function Notebook() {
         infografico: "infografico", "mapa-mental": "mapa-mental",
         flashcards: "flashcards", questoes: "questoes", "study-guide": "study-guide",
         overview: "overview",
+        prova: "questoes", plano_estudos: "study-guide",
       };
       const tool = kindToTool[a.kind];
       if (!tool) return;
@@ -1381,6 +1382,43 @@ export default function Notebook() {
       await fetch(`${BASE_URL}/api/notebook/artifacts/${id}`, { method: "DELETE", credentials: "include" });
       setSavedArtifacts(prev => prev.filter(a => a.id !== id));
     } catch { /* silent */ }
+  }, []);
+
+  // ─── Auto-open Tiagão-created artifacts from localStorage ────────────────
+  useEffect(() => {
+    const slidesRaw = localStorage.getItem("tiagao_slides_criados");
+    if (slidesRaw) {
+      try {
+        const slidesData = JSON.parse(slidesRaw);
+        if (slidesData?.slides?.length) {
+          setActiveTool("slides");
+          setToolResult({ apresentacao: slidesData });
+          setToolError(null);
+          setSlideIdx(0);
+          setNotebookView("workspace");
+        }
+      } catch { /* ignore */ }
+      localStorage.removeItem("tiagao_slides_criados");
+    }
+    const provaRaw = localStorage.getItem("tiagao_prova_criada");
+    if (provaRaw) {
+      try {
+        const provaData = JSON.parse(provaRaw);
+        if (provaData?.questoes?.length) {
+          const normalized = provaData.questoes.map((q: any) => ({
+            enunciado: q.enunciado,
+            alternativas: q.alternativas ?? {},
+            gabarito: q.resposta_correta ?? q.gabarito ?? "A",
+            explicacao: q.explicacao ?? q.criterios_avaliacao ?? "",
+          }));
+          setActiveTool("questoes");
+          setToolResult({ questoes: normalized });
+          setToolError(null);
+          setNotebookView("workspace");
+        }
+      } catch { /* ignore */ }
+      localStorage.removeItem("tiagao_prova_criada");
+    }
   }, []);
 
   // ─── Suggest questions ────────────────────────────────────────────────────

@@ -62,7 +62,7 @@ const TIAGAO_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         properties: {
           destino: {
             type: "string",
-            enum: ["home", "simulado", "flashcards", "redacao", "cronograma", "aula-ia", "trilha", "dashboard", "sala-estudos", "ranking"],
+            enum: ["home", "simulado", "flashcards", "redacao", "cronograma", "aula-ia", "trilha", "dashboard", "sala-estudos", "ranking", "notebook", "mapa-mental", "caderno", "perfil"],
             description: "Destino da navegação",
           },
         },
@@ -122,7 +122,116 @@ const TIAGAO_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       parameters: { type: "object", properties: {} },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "criar_slides",
+      description: "Cria uma apresentação de slides completa sobre qualquer tema educacional. Use quando o usuário pede para criar slides, apresentação, aula em slides, ou material visual sobre um assunto.",
+      parameters: {
+        type: "object",
+        properties: {
+          topico: { type: "string", description: "Tema da apresentação (ex: Revolução Industrial, Funções do 2º Grau)" },
+          materia: { type: "string", description: "Disciplina (ex: História, Matemática, Biologia)" },
+          quantidade_slides: { type: "number", description: "Número de slides desejado (padrão: 8)" },
+          estilo: { type: "string", enum: ["moderno", "academico", "colorido", "simples"], description: "Estilo visual" },
+        },
+        required: ["topico"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "criar_prova",
+      description: "Cria uma prova ou lista de exercícios com gabarito. Use quando o usuário pede para criar prova, lista de exercícios, avaliação, teste ou atividade sobre algum conteúdo.",
+      parameters: {
+        type: "object",
+        properties: {
+          assunto: { type: "string", description: "Conteúdo da prova (ex: Equações do 2º Grau, Segunda Guerra Mundial)" },
+          materia: { type: "string", description: "Disciplina" },
+          quantidade: { type: "number", description: "Número de questões (padrão: 5)" },
+          tipo: { type: "string", enum: ["multipla_escolha", "dissertativa", "mista"], description: "Tipo das questões" },
+          nivel: { type: "string", enum: ["facil", "medio", "dificil", "enem"], description: "Nível de dificuldade" },
+        },
+        required: ["assunto", "materia"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "criar_plano_estudos",
+      description: "Cria um plano de estudos personalizado. Use quando o usuário pede para criar um plano de estudos, cronograma de revisão, ou organização de estudos para uma matéria ou objetivo.",
+      parameters: {
+        type: "object",
+        properties: {
+          objetivo: { type: "string", description: "O que o usuário quer alcançar (ex: passar no ENEM, recuperar em Química)" },
+          materia: { type: "string", description: "Disciplina principal (opcional)" },
+          prazo_dias: { type: "number", description: "Prazo em dias (ex: 30 dias, 90 dias)" },
+          horas_dia: { type: "number", description: "Horas disponíveis por dia (padrão: 2)" },
+        },
+        required: ["objetivo"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "buscar_nos_meus_documentos",
+      description: "Busca informações nos documentos que o usuário enviou para o Notebook/Caderno. Use quando o usuário diz 'no meu material', 'no meu PDF', 'no documento que eu enviei', 'no meu arquivo', 'nos meus documentos' ou quando a pergunta parece ser sobre material pessoal do usuário.",
+      parameters: {
+        type: "object",
+        properties: {
+          consulta: { type: "string", description: "O que buscar nos documentos do usuário" },
+        },
+        required: ["consulta"],
+      },
+    },
+  },
 ];
+
+// ─── Search user's notebook documents ─────────────────────────────────────────
+async function searchUserNotebookDocs(userId: string, query: string): Promise<string> {
+  try {
+    // Use keyword-based FTS search via parameterized SQL
+    const stopWords = new Set(["o","a","os","as","um","uma","de","da","do","e","que","em","para","com","por","se","me","te","nos","isso","este","essa","qual","quando","onde","não","sim","mais","mas","ou","é","foi","ser"]);
+    const keywords = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w)).slice(0, 5);
+
+    if (!keywords.length) return "";
+
+    // Try FTS first
+    const ftsQuery = keywords.join(" | ");
+    let rows: any[] = [];
+    try {
+      const ftsRes = await db.execute(sql`
+        SELECT chunk_text, source_title,
+          ts_rank(to_tsvector('portuguese', chunk_text), to_tsquery('portuguese', ${ftsQuery})) AS score
+        FROM notebook_embeddings
+        WHERE user_id = ${userId}
+          AND to_tsvector('portuguese', chunk_text) @@ to_tsquery('portuguese', ${ftsQuery})
+        ORDER BY score DESC LIMIT 5
+      `);
+      rows = ftsRes.rows as any[];
+    } catch { /* FTS failed, try ILIKE */ }
+
+    // Fallback ILIKE
+    if (!rows.length) {
+      const pattern = `%${keywords[0]}%`;
+      const ilikeRes = await db.execute(sql`
+        SELECT chunk_text, source_title FROM notebook_embeddings
+        WHERE user_id = ${userId} AND chunk_text ILIKE ${pattern}
+        ORDER BY chunk_index ASC LIMIT 5
+      `);
+      rows = ilikeRes.rows as any[];
+    }
+
+    if (!rows.length) return "";
+    return rows.map((r: any) => `[${r.source_title ?? "Documento"}]: ${r.chunk_text}`).join("\n\n").slice(0, 3000);
+  } catch {
+    return "";
+  }
+}
 
 // ─── Execute tool call ─────────────────────────────────────────────────────────
 async function executeTiagaoTool(
@@ -135,6 +244,7 @@ async function executeTiagaoTool(
     "home": "/app", "simulado": "/simulado-enem", "flashcards": "/app",
     "redacao": "/redacao", "cronograma": "/cronograma", "aula-ia": "/aula-ia", "trilha": "/trilha",
     "dashboard": "/dashboard", "sala-estudos": "/sala-estudos", "ranking": "/ranking",
+    "notebook": "/notebook", "caderno": "/notebook", "mapa-mental": "/mapa-mental", "perfil": "/perfil",
   };
 
   switch (toolName) {
@@ -201,6 +311,176 @@ Perguntas claras, respostas curtas (máx 2 linhas). Retorne SOMENTE o JSON.`,
       } catch (err) {
         console.error("[tool:criar_flashcards]", err);
         return { result: "Erro ao criar flashcards." };
+      }
+    }
+
+    case "buscar_nos_meus_documentos": {
+      if (!userId) return { result: "Usuário não autenticado para buscar documentos." };
+      try {
+        const resultText = await searchUserNotebookDocs(userId, args.consulta ?? "");
+        if (!resultText) {
+          return {
+            result: "Não encontrei nada nos seus documentos sobre esse assunto. Você tem documentos enviados ao Notebook?",
+            action: { type: "info", message: "Nenhum documento encontrado" },
+          };
+        }
+        return {
+          result: `Encontrei nos seus documentos:\n\n${resultText}`,
+          action: { type: "busca_docs", conteudo: resultText.slice(0, 500) },
+        };
+      } catch (err) {
+        return { result: "Erro ao buscar nos seus documentos. Tente novamente." };
+      }
+    }
+
+    case "criar_slides": {
+      if (!userId) return { result: "Usuário não autenticado para criar slides." };
+      try {
+        const qtd = Math.min(Math.max(args.quantidade_slides ?? 8, 5), 15);
+        const gen = await deepseek.chat.completions.create({
+          model: DS_MODEL,
+          messages: [{
+            role: "system",
+            content: `Crie ${qtd} slides educacionais sobre "${args.topico}" ${args.materia ? "(" + args.materia + ")" : ""}.
+Retorne JSON com esta estrutura:
+{
+  "titulo": "string",
+  "subtitulo": "string opcional",
+  "tema": "indigo",
+  "slides": [
+    { "tipo": "capa", "titulo": "string", "subtitulo": "string" },
+    { "tipo": "conteudo", "titulo": "string", "bullets": ["bullet 1", "bullet 2", "bullet 3"], "destaque": "string opcional" },
+    { "tipo": "encerramento", "titulo": "string", "mensagem": "string", "dicaEnem": "string opcional" }
+  ]
+}
+Tipos de slide disponíveis: capa (1x no início), agenda, conteudo, comparacao, citacao, encerramento (1x no fim).
+Use bullet points claros, objetivos e alinhados ao ENEM. Retorne SOMENTE o JSON.`,
+          }],
+          response_format: { type: "json_object" },
+          max_tokens: 2500,
+          temperature: 0.7,
+        });
+        const slidesData = JSON.parse(gen.choices[0].message.content ?? "{}");
+        // Save to notebook_artifacts
+        const savedResult = await db.execute(sql`
+          INSERT INTO notebook_artifacts (user_id, doc_id, kind, title, payload)
+          VALUES (${userId}, 0, 'slides', ${slidesData.titulo ?? args.topico}, ${JSON.stringify(slidesData)}::jsonb)
+          RETURNING id
+        `).catch(() => null);
+        const artifactId = (savedResult?.rows[0] as any)?.id;
+        return {
+          result: `Apresentação "${slidesData.titulo ?? args.topico}" criada com ${slidesData.slides?.length ?? qtd} slides! Você pode ver no Notebook.`,
+          action: { type: "criar_slides", slides: slidesData, artifactId, titulo: slidesData.titulo ?? args.topico },
+        };
+      } catch (err) {
+        console.error("[tool:criar_slides]", err);
+        return { result: "Erro ao criar slides. Tente novamente." };
+      }
+    }
+
+    case "criar_prova": {
+      if (!userId) return { result: "Usuário não autenticado para criar prova." };
+      try {
+        const qtd = Math.min(Math.max(args.quantidade ?? 5, 3), 15);
+        const tipo = args.tipo ?? "multipla_escolha";
+        const nivel = args.nivel ?? "medio";
+        const gen = await deepseek.chat.completions.create({
+          model: DS_MODEL,
+          messages: [{
+            role: "system",
+            content: `Crie uma prova de ${qtd} questões sobre "${args.assunto}" (${args.materia}).
+Tipo: ${tipo === "multipla_escolha" ? "múltipla escolha (A,B,C,D)" : tipo === "dissertativa" ? "questões dissertativas" : "mista: 60% múltipla escolha + 40% dissertativa"}.
+Nível: ${nivel}.
+Retorne JSON:
+{
+  "titulo": "Prova: [assunto]",
+  "materia": "[materia]",
+  "nivel": "[nivel]",
+  "tempo_minutos": number,
+  "questoes": [
+    {
+      "numero": 1,
+      "enunciado": "string",
+      "tipo": "multipla_escolha",
+      "alternativas": { "A": "...", "B": "...", "C": "...", "D": "..." },
+      "resposta_correta": "A",
+      "explicacao": "string"
+    }
+  ]
+}
+Para dissertativas, omitir alternativas/resposta_correta e incluir "criterios_avaliacao": "string".
+Retorne SOMENTE o JSON.`,
+          }],
+          response_format: { type: "json_object" },
+          max_tokens: 2500,
+          temperature: 0.7,
+        });
+        const provaData = JSON.parse(gen.choices[0].message.content ?? "{}");
+        // Save to notebook_artifacts
+        await db.execute(sql`
+          INSERT INTO notebook_artifacts (user_id, doc_id, kind, title, payload)
+          VALUES (${userId}, 0, 'prova', ${provaData.titulo ?? "Prova de " + args.assunto}, ${JSON.stringify(provaData)}::jsonb)
+        `).catch(() => null);
+        return {
+          result: `Prova de ${args.materia} criada com ${provaData.questoes?.length ?? qtd} questões sobre "${args.assunto}"! Salva no seu Notebook.`,
+          action: { type: "criar_prova", prova: provaData, titulo: provaData.titulo },
+        };
+      } catch (err) {
+        console.error("[tool:criar_prova]", err);
+        return { result: "Erro ao criar prova. Tente novamente." };
+      }
+    }
+
+    case "criar_plano_estudos": {
+      if (!userId) return { result: "Usuário não autenticado para criar plano." };
+      try {
+        const prazo = args.prazo_dias ?? 30;
+        const horas = args.horas_dia ?? 2;
+        const gen = await deepseek.chat.completions.create({
+          model: DS_MODEL,
+          messages: [{
+            role: "system",
+            content: `Crie um plano de estudos para: "${args.objetivo}"${args.materia ? " — Foco em " + args.materia : ""}.
+Prazo: ${prazo} dias. Horas/dia: ${horas}h.
+Retorne JSON:
+{
+  "titulo": "Plano de Estudos: [objetivo]",
+  "objetivo": "[objetivo]",
+  "prazo_dias": ${prazo},
+  "horas_dia": ${horas},
+  "total_horas": number,
+  "semanas": [
+    {
+      "numero": 1,
+      "tema": "string",
+      "topicos": ["topico 1", "topico 2"],
+      "atividades": ["atividade 1", "atividade 2"],
+      "meta_semanal": "string",
+      "recursos": ["recurso 1"]
+    }
+  ],
+  "dicas_gerais": ["dica 1", "dica 2"],
+  "meta_final": "string"
+}
+Seja específico, realista e alinhado com o currículo ENEM/BNCC se aplicável. Retorne SOMENTE o JSON.`,
+          }],
+          response_format: { type: "json_object" },
+          max_tokens: 2000,
+          temperature: 0.6,
+        });
+        const planoData = JSON.parse(gen.choices[0].message.content ?? "{}");
+        // Save to notebook_artifacts
+        await db.execute(sql`
+          INSERT INTO notebook_artifacts (user_id, doc_id, kind, title, payload)
+          VALUES (${userId}, 0, 'plano_estudos', ${planoData.titulo ?? "Plano: " + args.objetivo}, ${JSON.stringify(planoData)}::jsonb)
+        `).catch(() => null);
+        return {
+          result: `Plano de estudos criado: "${planoData.titulo}"! ${planoData.semanas?.length ?? 4} semanas, ${horas}h/dia. Abra o Cronograma para ver.`,
+          action: { type: "criar_plano_estudos", plano: planoData, titulo: planoData.titulo },
+        };
+      } catch (err) {
+        console.error("[tool:criar_plano_estudos]", err);
+        return { result: "Erro ao criar plano de estudos. Tente novamente." };
       }
     }
 

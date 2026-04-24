@@ -1,0 +1,1336 @@
+🔍 DIAGNÓSTICO DOS PROBLEMAS
+Problema	Causa	Solução
+Lousa com Tiagão não encontra documentos	RAG não indexando ou consulta falhando	Corrigir pipeline de indexação + busca
+Notebook RAG: PDF sobe mas não lê	Processamento assíncrono falhando ou não iniciando	Fixar worker de processamento
+Telas pequenas sem interação	Componente de visualização genérico	Criar visualizadores específicos por tipo
+Tiagão não cria, só pesquisa	Falta de tools de criação no agente	Adicionar todas as ferramentas de geração
+📋 PLANO DE CORREÇÃO — PRESERVAR E EVOLUIR
+✅ PRINCÍPIO: NADA DO QUE FUNCIONA SERÁ ALTERADO
+java
+ESTADO ATUAL (funcionando)
+├── Áudio do Tiagão ✅
+├── Interface geral ✅  
+├── Navegação ✅
+├── Estudos criados (mas visualização ruim) ⚠️
+└── Upload de arquivos (mas não processa) ⚠️
+
+ADICIONAR (novo)
+├── Correção RAG/indexação
+├── Visualizadores ricos por tipo de conteúdo
+├── Tools completas para Tiagão criar tudo
+└── Integração total Tiagão ↔ Sistema
+1. CORREÇÃO: RAG E INDEXAÇÃO DE DOCUMENTOS
+Problema: PDF sobe mas não encontra
+typescript
+// src/services/rag/document-processor.ts
+// NOVO: Worker robusto de processamento
+
+import { createClient } from '@supabase/supabase-js';
+import { OpenAIEmbeddings } from '@langchain/openai';
+import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
+import pdfParse from 'pdf-parse';
+import * as cheerio from 'cheerio';
+
+interface ProcessingJob {
+  id: string;
+  userId: string;
+  filePath: string;
+  fileType: 'pdf' | 'docx' | 'txt' | 'url';
+  status: 'pending' | 'processing' | 'completed' | 'error';
+  metadata?: Record<string, any>;
+}
+
+class DocumentProcessor {
+  private supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
+  private embeddings = new OpenAIEmbeddings({
+    modelName: 'text-embedding-3-large',
+    dimensions: 3072
+  });
+
+  private splitter = new RecursiveCharacterTextSplitter({
+    chunkSize: 1000,
+    chunkOverlap: 200,
+    separators: ['\n\n', '\n', '. ', ' ', '']
+  });
+
+  // Processa fila de documentos pendentes
+  async processQueue(): Promise<void> {
+    const { data: jobs, error } = await this.supabase
+      .from('document_jobs')
+      .select('*')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true })
+      .limit(5);
+
+    if (error || !jobs) {
+      console.error('Erro ao buscar jobs:', error);
+      return;
+    }
+
+    for (const job of jobs) {
+      try {
+        await this.processDocument(job);
+      } catch (err) {
+        await this.markError(job.id, err.message);
+      }
+    }
+  }
+
+  private async processDocument(job: ProcessingJob): Promise<void> {
+    // 1. Marca como processando
+    await this.updateStatus(job.id, 'processing');
+
+    // 2. Baixa arquivo do storage
+    const { data: fileData, error: downloadError } = await this.supabase
+      .storage
+      .from('documents')
+      .download(job.filePath);
+
+    if (downloadError) throw new Error(`Download failed: ${downloadError.message}`);
+
+    // 3. Extrai texto conforme tipo
+    let rawText: string;
+    
+    switch (job.fileType) {
+      case 'pdf':
+        rawText = await this.extractPDF(fileData);
+        break;
+      case 'docx':
+        rawText = await this.extractDOCX(fileData);
+        break;
+      case 'txt':
+        rawText = await fileData.text();
+        break;
+      case 'url':
+        rawText = await this.scrapeURL(job.metadata!.url);
+        break;
+      default:
+        throw new Error(`Tipo não suportado: ${job.fileType}`);
+    }
+
+    // 4. Limpa e valida
+    const cleanText = this.sanitizeText(rawText);
+    
+    if (cleanText.length < 100) {
+      throw new Error('Documento muito curto ou vazio após processamento');
+    }
+
+    // 5. Divide em chunks inteligentes
+    const chunks = await this.splitter.splitText(cleanText);
+
+    // 6. Gera embeddings em batch (mais eficiente)
+    const embeddings = await this.embeddings.embedDocuments(chunks);
+
+    // 7. Salva no vector store
+    const records = chunks.map((chunk, i) => ({
+      user_id: job.userId,
+      document_id: job.id,
+      content: chunk,
+      embedding: embeddings[i],
+      metadata: {
+        chunk_index: i,
+        total_chunks: chunks.length,
+        source_type: job.fileType,
+        file_path: job.filePath,
+        processed_at: new Date().toISOString()
+      }
+    }));
+
+    const { error: insertError } = await this.supabase
+      .from('document_chunks')
+      .insert(records);
+
+    if (insertError) throw insertError;
+
+    // 8. Atualiza índice de documentos do usuário
+    await this.updateUserDocumentIndex(job.userId, job.id, {
+      title: job.metadata?.title || 'Documento sem título',
+      type: job.fileType,
+      chunks: chunks.length,
+      preview: cleanText.substring(0, 500)
+    });
+
+    // 9. Marca como completo
+    await this.updateStatus(job.id, 'completed');
+    
+    console.log(`✅ Documento ${job.id} processado: ${chunks.length} chunks`);
+  }
+
+  private async extractPDF(buffer: ArrayBuffer): Promise<string> {
+    const data = await pdfParse(Buffer.from(buffer));
+    return data.text;
+  }
+
+  private async extractDOCX(buffer: ArrayBuffer): Promise<string> {
+    // Usa mammoth ou similar
+    const result = await mammoth.extractRawText({ buffer: Buffer.from(buffer) });
+    return result.value;
+  }
+
+  private async scrapeURL(url: string): Promise<string> {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'StudyAI-Bot/1.0 (Educational Research)'
+      }
+    });
+    
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    
+    // Remove scripts, styles, nav
+    $('script, style, nav, footer, header, aside').remove();
+    
+    // Extrai conteúdo principal
+    const title = $('h1').first().text() || $('title').text();
+    const mainContent = $('article, main, .content, #content').first().text() 
+                      || $('body').text();
+    
+    return `${title}\n\n${mainContent}`;
+  }
+
+  private sanitizeText(text: string): string {
+    return text
+      .replace(/\s+/g, ' ')
+      .replace(/[^\x20-\x7EÀ-ÿ\n]/g, '') // Mantém caracteres válidos
+      .trim();
+  }
+
+  private async updateStatus(jobId: string, status: string): Promise<void> {
+    await this.supabase
+      .from('document_jobs')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', jobId);
+  }
+
+  private async markError(jobId: string, error: string): Promise<void> {
+    await this.supabase
+      .from('document_jobs')
+      .update({ 
+        status: 'error', 
+        error_message: error,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', jobId);
+  }
+
+  private async updateUserDocumentIndex(
+    userId: string, 
+    docId: string, 
+    metadata: any
+  ): Promise<void> {
+    // Atualiza cache Redis para busca rápida
+    const key = `user:${userId}:documents`;
+    await redis.hset(key, docId, JSON.stringify(metadata));
+  }
+}
+
+// Worker que roda a cada 10 segundos
+setInterval(() => {
+  const processor = new DocumentProcessor();
+  processor.processQueue();
+}, 10000);
+Correção na busca RAG
+typescript
+// src/services/rag/rag-search.ts
+
+interface SearchResult {
+  content: string;
+  source: string;
+  relevance: number;
+  metadata: any;
+}
+
+class RAGSearch {
+  private supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
+  private embeddings = new OpenAIEmbeddings({
+    modelName: 'text-embedding-3-large'
+  });
+
+  async search(
+    query: string,
+    userId: string,
+    options: {
+      topK?: number;
+      threshold?: number;
+      filterBySource?: string[];
+    } = {}
+  ): Promise<SearchResult[]> {
+    const { topK = 5, threshold = 0.7 } = options;
+
+    // 1. Gera embedding da query
+    const queryEmbedding = await this.embeddings.embedQuery(query);
+
+    // 2. Busca vetorial no Supabase (pgvector)
+    const { data: chunks, error } = await this.supabase.rpc(
+      'match_document_chunks',
+      {
+        query_embedding: queryEmbedding,
+        user_id_filter: userId,
+        match_threshold: threshold,
+        match_count: topK
+      }
+    );
+
+    if (error) {
+      console.error('Erro na busca vetorial:', error);
+      return [];
+    }
+
+    // 3. Re-ranking por relevância semântica
+    const ranked = this.rerankByRelevance(chunks, query);
+
+    // 4. Formata resultados
+    return ranked.map(chunk => ({
+      content: chunk.content,
+      source: chunk.metadata?.file_path || 'unknown',
+      relevance: chunk.similarity,
+      metadata: chunk.metadata
+    }));
+  }
+
+  private rerankByRelevance(chunks: any[], query: string): any[] {
+    // Implementa cross-encoder leve para re-ranking
+    // Ou usa heurísticas de cobertura de keywords
+    return chunks.sort((a, b) => b.similarity - a.similarity);
+  }
+
+  // Busca híbrida: vetorial + texto
+  async hybridSearch(
+    query: string,
+    userId: string
+  ): Promise<SearchResult[]> {
+    // Busca vetorial
+    const vectorResults = await this.search(query, userId, { topK: 5 });
+
+    // Busca textual (fallback)
+    const { data: textResults } = await this.supabase
+      .from('document_chunks')
+      .select('*')
+      .textSearch('content', query)
+      .eq('user_id', userId)
+      .limit(3);
+
+    // Merge e deduplica
+    const combined = [...vectorResults];
+    
+    for (const tr of textResults || []) {
+      if (!combined.find(vr => vr.metadata.chunk_index === tr.metadata.chunk_index)) {
+        combined.push({
+          content: tr.content,
+          source: tr.metadata?.file_path,
+          relevance: 0.5, // Score base para texto puro
+          metadata: tr.metadata
+        });
+      }
+    }
+
+    return combined.slice(0, 5);
+  }
+}
+2. VISUALIZADORES RICOS POR TIPO DE CONTEÚDO
+Problema: Telas pequenas sem interação
+typescript
+// src/components/viewers/ContentViewer.tsx
+// Componente principal que escolhe o visualizador correto
+
+import { useState } from 'react';
+import { PDFViewer } from './PDFViewer';
+import { SlideViewer } from './SlideViewer';
+import { NotebookViewer } from './NotebookViewer';
+import { StudyPlanViewer } from './StudyPlanViewer';
+import { DigitalNotebookViewer } from './DigitalNotebookViewer';
+
+interface ContentViewerProps {
+  contentId: string;
+  contentType: 'pdf' | 'slides' | 'notebook' | 'study_plan' | 'digital_notebook' | 'lousa';
+  data: any;
+  onUpdate?: (updates: any) => void;
+}
+
+export function ContentViewer({ contentType, data, onUpdate }: ContentViewerProps) {
+  const [mode, setMode] = useState<'view' | 'edit' | 'present'>('view');
+
+  const commonProps = {
+    data,
+    mode,
+    onModeChange: setMode,
+    onUpdate
+  };
+
+  switch (contentType) {
+    case 'pdf':
+      return <PDFViewer {...commonProps} />;
+    case 'slides':
+      return <SlideViewer {...commonProps} />;
+    case 'notebook':
+      return <NotebookViewer {...commonProps} />;
+    case 'study_plan':
+      return <StudyPlanViewer {...commonProps} />;
+    case 'digital_notebook':
+      return <DigitalNotebookViewer {...commonProps} />;
+    case 'lousa':
+      return <LousaViewer {...commonProps} />;
+    default:
+      return <GenericViewer {...commonProps} />;
+  }
+}
+Visualizador de Slides (exemplo completo)
+typescript
+// src/components/viewers/SlideViewer.tsx
+
+import { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Maximize2, 
+  Minimize2,
+  Download,
+  Edit3,
+  Presentation,
+  MessageSquare,
+  Highlighter
+} from 'lucide-react';
+
+interface Slide {
+  id: string;
+  title: string;
+  content: string;
+  notes?: string;
+  layout: 'title' | 'content' | 'two-column' | 'image-text';
+  background?: string;
+}
+
+interface SlideViewerProps {
+  data: {
+    title: string;
+    slides: Slide[];
+    theme: string;
+  };
+  mode: 'view' | 'edit' | 'present';
+  onModeChange: (mode: 'view' | 'edit' | 'present') => void;
+  onUpdate?: (updates: any) => void;
+}
+
+export function SlideViewer({ data, mode, onModeChange, onUpdate }: SlideViewerProps) {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+  const [annotations, setAnnotations] = useState<Record<string, any>>({});
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const slide = data.slides[currentSlide];
+
+  const goToSlide = (index: number) => {
+    if (index >= 0 && index < data.slides.length) {
+      setCurrentSlide(index);
+    }
+  };
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+
+  const downloadAsPDF = async () => {
+    // Gera PDF do slide deck
+    const response = await fetch('/api/slides/export-pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slides: data.slides, theme: data.theme })
+    });
+    
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${data.title}.pdf`;
+    a.click();
+  };
+
+  const addAnnotation = (slideId: string, annotation: any) => {
+    setAnnotations(prev => ({
+      ...prev,
+      [slideId]: [...(prev[slideId] || []), annotation]
+    }));
+  };
+
+  // Modo Apresentação: tela limpa, controles mínimos
+  if (mode === 'present') {
+    return (
+      <div 
+        ref={containerRef}
+        className="fixed inset-0 bg-black flex items-center justify-center"
+        onClick={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          if (x > rect.width * 0.7) goToSlide(currentSlide + 1);
+          else if (x < rect.width * 0.3) goToSlide(currentSlide - 1);
+        }}
+      >
+        <SlideContent slide={slide} theme={data.theme} />
+        
+        {/* Controles invisíveis (aparecem no hover) */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 opacity-0 hover:opacity-100 transition-opacity bg-black/50 px-4 py-2 rounded-full text-white text-sm">
+          {currentSlide + 1} / {data.slides.length}
+        </div>
+        
+        <button 
+          onClick={() => onModeChange('view')}
+          className="absolute top-4 right-4 text-white/50 hover:text-white"
+        >
+          <Minimize2 size={24} />
+        </button>
+      </div>
+    );
+  }
+
+  // Modo Visualização/Edição: interface completa
+  return (
+    <div className="flex h-screen bg-gray-50">
+      {/* Sidebar: Miniaturas */}
+      <div className="w-64 bg-white border-r overflow-y-auto p-4">
+        <h3 className="font-semibold text-gray-700 mb-4">{data.title}</h3>
+        
+        <div className="space-y-2">
+          {data.slides.map((s, i) => (
+            <button
+              key={s.id}
+              onClick={() => setCurrentSlide(i)}
+              className={`w-full aspect-video rounded border-2 text-left p-2 text-xs transition-all ${
+                i === currentSlide 
+                  ? 'border-indigo-500 bg-indigo-50' 
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <div className="font-medium truncate">{s.title}</div>
+              <div className="text-gray-500 truncate">{s.content.substring(0, 50)}...</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Área Principal */}
+      <div className="flex-1 flex flex-col">
+        {/* Toolbar */}
+        <div className="h-14 bg-white border-b flex items-center justify-between px-4">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => goToSlide(currentSlide - 1)}
+              disabled={currentSlide === 0}
+              className="p-2 hover:bg-gray-100 rounded disabled:opacity-30"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            
+            <span className="text-sm text-gray-600">
+              {currentSlide + 1} / {data.slides.length}
+            </span>
+            
+            <button
+              onClick={() => goToSlide(currentSlide + 1)}
+              disabled={currentSlide === data.slides.length - 1}
+              className="p-2 hover:bg-gray-100 rounded disabled:opacity-30"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowNotes(!showNotes)}
+              className={`p-2 rounded ${showNotes ? 'bg-indigo-100 text-indigo-600' : 'hover:bg-gray-100'}`}
+              title="Notas do apresentador"
+            >
+              <MessageSquare size={20} />
+            </button>
+            
+            <button
+              onClick={() => onModeChange('present')}
+              className="p-2 hover:bg-gray-100 rounded text-green-600"
+              title="Modo Apresentação"
+            >
+              <Presentation size={20} />
+            </button>
+            
+            <button
+              onClick={toggleFullscreen}
+              className="p-2 hover:bg-gray-100 rounded"
+              title="Tela Cheia"
+            >
+              <Maximize2 size={20} />
+            </button>
+            
+            <button
+              onClick={downloadAsPDF}
+              className="p-2 hover:bg-gray-100 rounded"
+              title="Download PDF"
+            >
+              <Download size={20} />
+            </button>
+            
+            <button
+              onClick={() => onModeChange('edit')}
+              className="p-2 hover:bg-gray-100 rounded text-indigo-600"
+              title="Editar"
+            >
+              <Edit3 size={20} />
+            </button>
+          </div>
+        </div>
+
+        {/* Slide + Notas */}
+        <div className="flex-1 flex overflow-hidden">
+          <div className="flex-1 flex items-center justify-center p-8 bg-gray-100">
+            <div className="w-full max-w-4xl aspect-video bg-white rounded-lg shadow-lg overflow-hidden">
+              <SlideContent 
+                slide={slide} 
+                theme={data.theme}
+                annotations={annotations[slide.id]}
+              />
+            </div>
+          </div>
+
+          {/* Painel de Notas */}
+          <AnimatePresence>
+            {showNotes && (
+              <motion.div
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: 300, opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                className="bg-yellow-50 border-l p-4 overflow-y-auto"
+              >
+                <h4 className="font-medium text-yellow-800 mb-2">Notas do Apresentador</h4>
+                <textarea
+                  value={slide.notes || ''}
+                  onChange={(e) => onUpdate?.({
+                    slideId: slide.id,
+                    notes: e.target.value
+                  })}
+                  placeholder="Adicione notas para este slide..."
+                  className="w-full h-64 p-3 rounded border resize-none focus:ring-2 focus:ring-yellow-400"
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Componente de renderização do slide
+function SlideContent({ 
+  slide, 
+  theme,
+  annotations 
+}: { 
+  slide: Slide; 
+  theme: string;
+  annotations?: any[];
+}) {
+  const themeStyles = {
+    modern: 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white',
+    minimal: 'bg-white text-gray-900',
+    dark: 'bg-gray-900 text-white',
+    colorful: 'bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 text-white'
+  };
+
+  return (
+    <div className={`w-full h-full p-12 ${themeStyles[theme as keyof typeof themeStyles] || themeStyles.modern}`}>
+      <h1 className="text-4xl font-bold mb-6">{slide.title}</h1>
+      
+      <div className="prose prose-lg max-w-none">
+        {slide.content.split('\n').map((paragraph, i) => (
+          <p key={i} className="mb-4">{paragraph}</p>
+        ))}
+      </div>
+
+      {/* Anotações em overlay */}
+      {annotations?.map((ann, i) => (
+        <div
+          key={i}
+          className="absolute bg-yellow-200/80 p-2 rounded text-sm"
+          style={{ left: ann.x, top: ann.y }}
+        >
+          {ann.text}
+        </div>
+      ))}
+    </div>
+  );
+}
+Visualizador de Caderno Digital (outro exemplo)
+typescript
+// src/components/viewers/DigitalNotebookViewer.tsx
+
+import { useState } from 'react';
+import { 
+  BookOpen, 
+  PenTool, 
+  StickyNote, 
+  Image as ImageIcon,
+  Calculator,
+  Share2,
+  Printer
+} from 'lucide-react';
+
+interface NotebookPage {
+  id: string;
+  title: string;
+  content: string;
+  type: 'text' | 'exercise' | 'summary' | 'diagram';
+  attachments?: Array<{
+    type: 'image' | 'pdf' | 'link';
+    url: string;
+    caption?: string;
+  }>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function DigitalNotebookViewer({ data, onUpdate }: any) {
+  const [activePage, setActivePage] = useState(0);
+  const [isEditing, setIsEditing] = useState(false);
+  const [zoom, setZoom] = useState(100);
+
+  const page = data.pages[activePage];
+
+  return (
+    <div className="flex h-screen bg-amber-50">
+      {/* Estante de páginas (visual de caderno) */}
+      <div className="w-80 bg-amber-100 border-r-4 border-amber-200 p-4 overflow-y-auto">
+        <div className="flex items-center gap-2 mb-4 text-amber-800">
+          <BookOpen size={24} />
+          <h2 className="font-bold text-lg">{data.title}</h2>
+        </div>
+
+        <div className="space-y-2">
+          {data.pages.map((p: NotebookPage, i: number) => (
+            <button
+              key={p.id}
+              onClick={() => setActivePage(i)}
+              className={`w-full text-left p-3 rounded-lg transition-all ${
+                i === activePage
+                  ? 'bg-white shadow-md border-l-4 border-indigo-500'
+                  : 'hover:bg-amber-200/50'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">Pág. {i + 1}</span>
+                {p.type === 'exercise' && <Calculator size={14} />}
+                {p.type === 'summary' && <StickyNote size={14} />}
+              </div>
+              <div className="font-medium truncate">{p.title}</div>
+              <div className="text-xs text-gray-500 truncate">
+                {p.content.substring(0, 60)}...
+              </div>
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={() => onUpdate?.({ action: 'add_page' })}
+          className="w-full mt-4 p-3 border-2 border-dashed border-amber-300 rounded-lg text-amber-600 hover:bg-amber-200/50"
+        >
+          + Nova Página
+        </button>
+      </div>
+
+      {/* Página aberta */}
+      <div className="flex-1 flex flex-col">
+        {/* Ferramentas */}
+        <div className="h-14 bg-white border-b flex items-center justify-between px-4">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setZoom(z => Math.max(50, z - 10))}
+              className="p-2 hover:bg-gray-100 rounded"
+            >-</button>
+            <span className="text-sm w-16 text-center">{zoom}%</span>
+            <button
+              onClick={() => setZoom(z => Math.min(200, z + 10))}
+              className="p-2 hover:bg-gray-100 rounded"
+            >+</button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsEditing(!isEditing)}
+              className={`flex items-center gap-2 px-4 py-2 rounded ${
+                isEditing ? 'bg-indigo-100 text-indigo-600' : 'hover:bg-gray-100'
+              }`}
+            >
+              <PenTool size={18} />
+              {isEditing ? 'Editando' : 'Editar'}
+            </button>
+            
+            <button className="p-2 hover:bg-gray-100 rounded" title="Inserir imagem">
+              <ImageIcon size={20} />
+            </button>
+            
+            <button className="p-2 hover:bg-gray-100 rounded" title="Compartilhar">
+              <Share2 size={20} />
+            </button>
+            
+            <button className="p-2 hover:bg-gray-100 rounded" title="Imprimir">
+              <Printer size={20} />
+            </button>
+          </div>
+        </div>
+
+        {/* Área de conteúdo (visual de folha) */}
+        <div className="flex-1 overflow-auto p-8 bg-gray-200">
+          <div 
+            className="max-w-3xl mx-auto bg-white shadow-lg min-h-[800px] p-12"
+            style={{ 
+              transform: `scale(${zoom / 100})`,
+              transformOrigin: 'top center'
+            }}
+          >
+            {/* Linhas do caderno */}
+            <div className="relative">
+              <div className="absolute left-12 top-0 bottom-0 w-px bg-red-200" />
+              
+              {isEditing ? (
+                <textarea
+                  value={page.content}
+                  onChange={(e) => onUpdate?.({
+                    pageId: page.id,
+                    content: e.target.value
+                  })}
+                  className="w-full min-h-[600px] resize-none focus:outline-none leading-8"
+                  style={{ 
+                    backgroundImage: 'linear-gradient(transparent 95%, #e5e7eb 95%)',
+                    backgroundSize: '100% 32px',
+                    lineHeight: '32px',
+                    paddingLeft: '48px'
+                  }}
+                />
+              ) : (
+                <div 
+                  className="pro prose-lg max-w-none leading-8"
+                  style={{ 
+                    backgroundImage: 'linear-gradient(transparent 95%, #e5e7eb 95%)',
+                    backgroundSize: '100% 32px',
+                    paddingLeft: '48px'
+                  }}
+                >
+                  <h1 className="text-2xl font-bold mb-6">{page.title}</h1>
+                  {page.content.split('\n').map((para, i) => (
+                    <p key={i} className="mb-4 min-h-[32px]">{para}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Anexos */}
+            {page.attachments && (
+              <div className="mt-8 grid grid-cols-2 gap-4">
+                {page.attachments.map((att, i) => (
+                  <div key={i} className="border rounded-lg p-4 bg-gray-50">
+                    {att.type === 'image' && (
+                      <img src={att.url} alt={att.caption} className="w-full h-32 object-cover rounded" />
+                    )}
+                    <p className="text-sm text-gray-600 mt-2">{att.caption}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+3. TIAGÃO COM PODERES TOTAIS — SISTEMA DE TOOLS
+Problema: Tiagão só pesquisa, não cria
+typescript
+// src/services/tiagao/tools/index.ts
+// Todas as ferramentas que Tiagão pode usar
+
+import { createSlideTool } from './create-slides';
+import { createStudyPlanTool } from './create-study-plan';
+import { createNotebookTool } from './create-notebook';
+import { createLousaTool } from './create-lousa';
+import { createDigitalNotebookTool } from './create-digital-notebook';
+import { createExamTool } from './create-exam';
+import { createSimulationTool } from './create-simulation';
+import { searchRAGTool } from './search-rag';
+import { generateImageTool } from './generate-image';
+import { analyzeDocumentTool } from './analyze-document';
+import { navigateTool } from './navigate';
+
+export const TIAGAO_TOOLS = [
+  // CRIAÇÃO DE CONTEÚDO
+  {
+    name: 'create_slides',
+    description: 'Cria uma apresentação de slides completa sobre qualquer tema',
+    parameters: {
+      type: 'object',
+      properties: {
+        topic: { type: 'string', description: 'Tema da apresentação' },
+        audience: { type: 'string', enum: ['children', 'teenagers', 'adults', 'experts'] },
+        slide_count: { type: 'number', default: 10 },
+        style: { type: 'string', enum: ['modern', 'minimal', 'colorful', 'professional'] },
+        include_images: { type: 'boolean', default: true },
+        language: { type: 'string', default: 'pt-BR' }
+      },
+      required: ['topic']
+    },
+    execute: createSlideTool
+  },
+
+  {
+    name: 'create_study_plan',
+    description: 'Cria um plano de estudos personalizado',
+    parameters: {
+      type: 'object',
+      properties: {
+        subject: { type: 'string' },
+        goal: { type: 'string' },
+        deadline: { type: 'string', format: 'date' },
+        hours_per_day: { type: 'number', default: 2 },
+        user_level: { type: 'string', enum: ['beginner', 'intermediate', 'advanced'] }
+      },
+      required: ['subject', 'goal']
+    },
+    execute: createStudyPlanTool
+  },
+
+  {
+    name: 'create_notebook_rag',
+    description: 'Cria um notebook de estudo com fontes pesquisadas',
+    parameters: {
+      type: 'object',
+      properties: {
+        topic: { type: 'string' },
+        sources: { type: 'array', items: { type: 'string' } },
+        depth: { type: 'string', enum: ['overview', 'detailed', 'academic'] },
+        output_format: { type: 'string', enum: ['summary', 'detailed', 'flashcards'] }
+      },
+      required: ['topic']
+    },
+    execute: createNotebookTool
+  },
+
+  {
+    name: 'create_lousa',
+    description: 'Cria uma lousa interativa com o Professor Tiagão',
+    parameters: {
+      type: 'object',
+      properties: {
+        topic: { type: 'string' },
+        lesson_type: { type: 'string', enum: ['explanation', 'exercise', 'review'] },
+        interaction_level: { type: 'string', enum: ['high', 'medium', 'low'] },
+        duration_minutes: { type: 'number', default: 30 }
+      },
+      required: ['topic']
+    },
+    execute: createLousaTool
+  },
+
+  {
+    name: 'create_digital_notebook',
+    description: 'Cria um caderno digital completo',
+    parameters: {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        subject: { type: 'string' },
+        pages: { type: 'array', items: { type: 'string' } },
+        include_exercises: { type: 'boolean', default: true }
+      },
+      required: ['title', 'subject']
+    },
+    execute: createDigitalNotebookTool
+  },
+
+  // FERRAMENTAS PARA PROFESSORES
+  {
+    name: 'create_exam',
+    description: 'Cria uma prova completa com gabarito',
+    parameters: {
+      type: 'object',
+      properties: {
+        subject: { type: 'string' },
+        grade_level: { type: 'string' },
+        question_count: { type: 'number', default: 10 },
+        question_types: { 
+          type: 'array', 
+          items: { enum: ['multiple_choice', 'essay', 'true_false', 'fill_blank'] }
+        },
+        difficulty_distribution: { 
+          type: 'object',
+          properties: {
+            easy: { type: 'number' },
+            medium: { type: 'number' },
+            hard: { type: 'number' }
+          }
+        }
+      },
+      required: ['subject', 'grade_level']
+    },
+    execute: createExamTool
+  },
+
+  {
+    name: 'create_simulation',
+    description: 'Cria um simulado de prova (ENEM, vestibular, etc)',
+    parameters: {
+      type: 'object',
+      properties: {
+        exam_type: { type: 'string', enum: ['ENEM', 'FUVEST', 'UNICAMP', 'custom'] },
+        subjects: { type: 'array', items: { type: 'string' } },
+        duration_minutes: { type: 'number' },
+        include_timer: { type: 'boolean', default: true }
+      },
+      required: ['exam_type']
+    },
+    execute: createSimulationTool
+  },
+
+  // FERRAMENTAS DE PESQUISA E ANÁLISE
+  {
+    name: 'search_documents',
+    description: 'Pesquisa nos documentos do usuário (RAG)',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string' },
+        filters: { type: 'object' }
+      },
+      required: ['query']
+    },
+    execute: searchRAGTool
+  },
+
+  {
+    name: 'analyze_document',
+    description: 'Analisa um documento específico em profundidade',
+    parameters: {
+      type: 'object',
+      properties: {
+        document_id: { type: 'string' },
+        analysis_type: { type: 'string', enum: ['summary', 'key_points', 'questions', 'full'] }
+      },
+      required: ['document_id']
+    },
+    execute: analyzeDocumentTool
+  },
+
+  // FERRAMENTAS DE GERAÇÃO DE MÍDIA
+  {
+    name: 'generate_image',
+    description: 'Gera imagens para ilustrar conteúdo',
+    parameters: {
+      type: 'object',
+      properties: {
+        prompt: { type: 'string' },
+        style: { type: 'string', enum: ['realistic', 'illustration', 'diagram', 'infographic'] },
+        size: { type: 'string', enum: ['1024x1024', '1792x1024', '1024x1792'] }
+      },
+      required: ['prompt']
+    },
+    execute: generateImageTool
+  },
+
+  // NAVEGAÇÃO
+  {
+    name: 'navigate',
+    description: 'Navega para outra parte do sistema',
+    parameters: {
+      type: 'object',
+      properties: {
+        destination: { 
+          type: 'string',
+          enum: ['dashboard', 'study_plan', 'notebook', 'lousa', 'digital_notebook', 'exam', 'profile']
+        },
+        params: { type: 'object' }
+      },
+      required: ['destination']
+    },
+    execute: navigateTool
+  }
+];
+
+// Implementação da tool de slides (exemplo completo)
+export async function createSlideTool(params: any, context: TiagaoContext) {
+  // 1. Valida parâmetros
+  const { topic, audience = 'adults', slide_count = 10, style = 'modern' } = params;
+
+  // 2. Notifica usuário que está criando
+  await context.tiagao.speak(
+    `Estou criando uma apresentação sobre ${topic}. ` +
+    `Serão ${slide_count} slides no estilo ${style}. ` +
+    `Isso leva cerca de 20 segundos.`
+  );
+
+  // 3. Gera conteúdo com LLM estruturado
+  const outline = await context.llm.generateJSON({
+    model: 'gpt-4o',
+    messages: [{
+      role: 'system',
+      content: `Você é um especialista em criar apresentações educacionais. 
+      Crie um outline detalhado para ${slide_count} slides sobre "${topic}".
+      Público-alvo: ${audience}.
+      Cada slide deve ter: título, conteúdo em bullet points, e notas do apresentador.`
+    }, {
+      role: 'user',
+      content: `Crie o outline completo em formato JSON.`
+    }],
+    response_format: {
+      type: 'json_schema',
+      schema: {
+        type: 'object',
+        properties: {
+          title: { type: 'string' },
+          slides: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                title: { type: 'string' },
+                content: { type: 'string' },
+                layout: { type: 'string', enum: ['title', 'content', 'two-column', 'image-text'] },
+                notes: { type: 'string' }
+              },
+              required: ['title', 'content', 'layout']
+            }
+          }
+        },
+        required: ['title', 'slides']
+      }
+    }
+  });
+
+  // 4. Gera imagens se solicitado
+  if (params.include_images) {
+    await context.tiagao.speak('Estou gerando imagens para ilustrar...');
+    
+    for (let i = 0; i < outline.slides.length; i += 3) { // A cada 3 slides
+      const imagePrompt = await context.llm.generate(
+        `Crie um prompt em inglês para gerar uma imagem que ilustre o slide: "${outline.slides[i].title}"`
+      );
+      
+      outline.slides[i].imageUrl = await context.imageGenerator.generate(imagePrompt);
+    }
+  }
+
+  // 5. Salva no banco de dados
+  const slideDeck = await context.db.slides.create({
+    user_id: context.user.id,
+    title: outline.title,
+    slides: outline.slides,
+    theme: style,
+    created_at: new Date()
+  });
+
+  // 6. Abre automaticamente no visualizador
+  await context.tiagao.speak(
+    `Pronto! Criei "${outline.title}" com ${outline.slides.length} slides. ` +
+    `Estou abrindo para você visualizar.`
+  );
+
+  await context.navigate('slides', { id: slideDeck.id });
+
+  // 7. Retorna confirmação
+  return {
+    success: true,
+    slide_id: slideDeck.id,
+    title: outline.title,
+    slide_count: outline.slides.length,
+    message: `Apresentação "${outline.title}" criada com sucesso!`
+  };
+}
+Orquestrador do Tiagão
+typescript
+// src/services/tiagao/orchestrator.ts
+
+import { TIAGAO_TOOLS } from './tools';
+import { OpenAI } from 'openai';
+
+interface TiagaoSession {
+  userId: string;
+  context: Record<string, any>;
+  history: Array<{ role: 'user' | 'assistant'; content: string }>;
+}
+
+export class TiagaoOrchestrator {
+  private openai = new OpenAI();
+  private sessions = new Map<string, TiagaoSession>();
+
+  async processVoiceCommand(
+    audioBuffer: ArrayBuffer,
+    userId: string,
+    currentContext: any
+  ): Promise<void> {
+    // 1. Transcreve áudio
+    const transcription = await this.openai.audio.transcriptions.create({
+      file: new File([audioBuffer], 'audio.webm', { type: 'audio/webm' }),
+      model: 'whisper-1',
+      language: 'pt'
+    });
+
+    await this.processTextCommand(transcription.text, userId, currentContext);
+  }
+
+  async processTextCommand(
+    text: string,
+    userId: string,
+    currentContext: any
+  ): Promise<void> {
+    // 2. Recupera ou cria sessão
+    let session = this.sessions.get(userId);
+    if (!session) {
+      session = { userId, context: {}, history: [] };
+      this.sessions.set(userId, session);
+    }
+
+    // 3. Adiciona ao histórico
+    session.history.push({ role: 'user', content: text });
+
+    // 4. Chama LLM com tools
+    const response = await this.openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: `Você é o Professor Tiagão, assistente de voz do Study.IA.
+          
+          VOCÊ PODE CRIAR QUALQUER CONTEÚDO EDUCACIONAL:
+          - Slides e apresentações
+          - Planos de estudo
+          - Notebooks de pesquisa
+          - Lousas interativas
+          - Cadernos digitais
+          - Provas e simulados
+          - Imagens e diagramas
+          
+          Quando o usuário pedir para criar algo, USE SEMPRE a ferramenta apropriada.
+          Nunca diga que não pode criar. Você TEM o poder de criar tudo.
+          
+          Contexto atual do usuário: ${JSON.stringify(currentContext)}`
+        },
+        ...session.history.slice(-10) // Últimas 10 mensagens
+      ],
+      tools: TIAGAO_TOOLS.map(t => ({
+        type: 'function',
+        function: {
+          name: t.name,
+          description: t.description,
+          parameters: t.parameters
+        }
+      })),
+      tool_choice: 'auto'
+    });
+
+    const message = response.choices[0].message;
+
+    // 5. Se tem tool calls, executa
+    if (message.tool_calls) {
+      for (const toolCall of message.tool_calls) {
+        const tool = TIAGAO_TOOLS.find(t => t.name === toolCall.function.name);
+        
+        if (tool) {
+          const params = JSON.parse(toolCall.function.arguments);
+          const result = await tool.execute(params, {
+            user: { id: userId },
+            tiagao: this.tiagaoInterface,
+            llm: this.llmInterface,
+            db: this.dbInterface,
+            navigate: this.navigateInterface
+          });
+
+          // Adiciona resultado ao histórico
+          session.history.push({
+            role: 'assistant',
+            content: `Usei ${tool.name}: ${JSON.stringify(result)}`
+          });
+        }
+      }
+    } else {
+      // Resposta direta
+      await this.tiagaoInterface.speak(message.content);
+      session.history.push({ role: 'assistant', content: message.content });
+    }
+  }
+}
+4. INTEGRAÇÃO NO SISTEMA EXISTENTE
+Sem alterar o que funciona
+typescript
+// src/integration/tiagao-integration.ts
+// Adiciona Tiagão ao sistema existente sem quebrar nada
+
+export function integrateTiagaoV3(existingSystem: any) {
+  // PRESERVA tudo que existe
+  const preserved = {
+    audioSystem: existingSystem.audio,      // ✅ Mantém áudio funcionando
+    uiComponents: existingSystem.components, // ✅ Mantém UI
+    navigation: existingSystem.router,       // ✅ Mantém navegação
+    dataLayer: existingSystem.db             // ✅ Mantém dados
+  };
+
+  // ADICIONA novas capacidades
+  return {
+    ...preserved,
+    
+    // NOVO: Processamento de documentos corrigido
+    documentProcessor: new DocumentProcessor(),
+    
+    // NOVO: Busca RAG funcional
+    ragSearch: new RAGSearch(),
+    
+    // NOVO: Visualizadores ricos
+    viewers: {
+      slides: SlideViewer,
+      notebook: NotebookViewer,
+      digitalNotebook: DigitalNotebookViewer,
+      studyPlan: StudyPlanViewer,
+      lousa: LousaViewer
+    },
+    
+    // NOVO: Tiagão com poderes totais
+    tiagao: new TiagaoOrchestrator({
+      tools: TIAGAO_TOOLS,
+      audio: preserved.audioSystem,
+      navigate: preserved.navigation
+    }),
+    
+    // Método de upgrade suave
+    async upgradeContentViewer(contentId: string, type: string) {
+      // Busca conteúdo antigo
+      const oldContent = await preserved.dataLayer.get(contentId);
+      
+      // Renderiza com novo visualizador
+      const Viewer = this.viewers[type] || GenericViewer;
+      
+      return {
+        component: Viewer,
+        props: { data: oldContent }
+      };
+    }
+  };
+}
+📋 CHECKLIST DE IMPLEMENTAÇÃO
+Fase 1: Correção RAG (URGENTE)
+ Deploy do DocumentProcessor worker
+ Correção da função match_document_chunks no PostgreSQL
+ Teste: upload PDF → processamento → busca funcional
+Fase 2: Visualizadores (Semana 1)
+ SlideViewer com modo apresentação
+ DigitalNotebookViewer com visual de caderno
+ StudyPlanViewer com timeline interativa
+ LousaViewer com sincronismo Tiagão
+Fase 3: Tiagão Creator (Semana 2)
+ Deploy das 12 tools de criação
+ Teste: "Crie slides sobre Bitcoin" → cria e abre
+ Teste: "Crie prova de Matemática" → cria e abre
+ Teste: "Crie caderno de Biologia" → cria e abre
+Fase 4: Integração (Semana 3)
+ Tiagão acessa todos os módulos por voz
+ Criação em uma área abre na área correta
+ Testes end-to-end com usuários reais

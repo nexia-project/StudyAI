@@ -261,6 +261,25 @@ export function VoiceProfessor() {
     } else if (action.type === "flashcards_criados") {
       setActionNotif({ text: `✅ ${action.quantidade} flashcards criados sobre "${action.topico}"`, path: "/app" });
       setTimeout(() => setActionNotif(null), 6000);
+    } else if (action.type === "criar_slides") {
+      setActionNotif({ text: `🎨 Slides "${action.titulo}" criados! Abrindo Notebook...`, path: "/notebook" });
+      setTimeout(() => setActionNotif(null), 8000);
+      if (action.slides) {
+        localStorage.setItem("tiagao_slides_criados", JSON.stringify(action.slides));
+        setTimeout(() => navigate("/notebook"), 1500);
+      }
+    } else if (action.type === "criar_prova") {
+      setActionNotif({ text: `📝 Prova "${action.titulo}" criada! Salva no Notebook.`, path: "/notebook" });
+      setTimeout(() => setActionNotif(null), 8000);
+      if (action.prova) {
+        localStorage.setItem("tiagao_prova_criada", JSON.stringify(action.prova));
+      }
+    } else if (action.type === "criar_plano_estudos") {
+      setActionNotif({ text: `📅 Plano "${action.titulo}" criado! Ver no Cronograma.`, path: "/cronograma" });
+      setTimeout(() => setActionNotif(null), 8000);
+    } else if (action.type === "busca_docs") {
+      setActionNotif({ text: `🔍 Encontrado nos seus documentos.`, path: "/notebook" });
+      setTimeout(() => setActionNotif(null), 5000);
     }
     for (const notif of notifications) {
       if (notif.type === "flashcards_criados") {

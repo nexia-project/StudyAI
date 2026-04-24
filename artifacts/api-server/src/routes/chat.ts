@@ -189,6 +189,58 @@ REGRAS:
 const router: IRouter = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// ─── Detecção de intenção de slides ──────────────────────────────────────────
+const SLIDES_INTENT_RE = /\b(cria[r]?\s+(um[a]?\s+)?(apresenta[çc][aã]o|slides?|slide\s+deck)|fa[çz][a-z]*\s+(um[a]?\s+)?(apresenta[çc][aã]o|slides?)|monta[r]?\s+(um[a]?\s+)?(apresenta[çc][aã]o|slides?)|ger[ae][r]?\s+(um[a]?\s+)?(apresenta[çc][aã]o|slides?))\b/i;
+
+function extractSlideTopic(msg: string): string | null {
+  const m = msg.match(/(?:sobre|de|a respeito de|com o tema|sobre o tema)\s+["']?(.+?)["']?\s*(?:\.|!|\?|$)/i);
+  if (m) return m[1].trim().slice(0, 80);
+  // fallback: tudo depois do verbo
+  const m2 = msg.match(/(?:slides?|apresenta[çc][aã]o)\s+(?:sobre\s+)?(.+)/i);
+  if (m2) return m2[1].trim().slice(0, 80);
+  return null;
+}
+
+async function generateSlidesForChat(
+  topico: string,
+  materia: string,
+  gpt: OpenAI
+): Promise<Record<string, any> | null> {
+  try {
+    const completion = await gpt.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.4,
+      max_tokens: 3000,
+      messages: [
+        {
+          role: "system",
+          content: `Você cria apresentações educacionais profissionais em português brasileiro.
+Retorne APENAS JSON com a estrutura:
+{
+  "titulo": "Título da apresentação",
+  "subtitulo": "Matéria | Nível",
+  "tema": "indigo",
+  "slides": [
+    { "tipo": "capa", "titulo": "...", "subtitulo": "..." },
+    { "tipo": "conteudo", "titulo": "...", "bullets": ["item 1","item 2","item 3"], "destaque": "..." },
+    { "tipo": "encerramento", "titulo": "...", "mensagem": "...", "dicaEnem": "..." }
+  ]
+}
+Tipos válidos: capa (1x início), agenda, conteudo, comparacao, citacao, encerramento (1x fim).
+Gere 8 a 10 slides. Conteúdo curricular brasileiro alinhado ao ENEM.`,
+        },
+        { role: "user", content: `Crie uma apresentação sobre "${topico}"${materia && materia !== "Geral" ? ` da matéria ${materia}` : ""}.` },
+      ],
+    });
+    const raw = completion.choices[0].message.content ?? "{}";
+    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    return JSON.parse(clean);
+  } catch (e) {
+    console.error("[chat:slides]", e);
+    return null;
+  }
+}
+
 router.post("/chat", checkFreeUsage, async (req, res) => {
   try {
     const {
@@ -208,6 +260,45 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
       return;
     }
 
+    const lastUserMsg = messages.filter(m => m.role === "user").slice(-1)[0]?.content ?? "";
+
+    // ─── Detecção de intenção: criar slides ──────────────────────────────────
+    if (SLIDES_INTENT_RE.test(lastUserMsg)) {
+      const topico = extractSlideTopic(lastUserMsg) ?? lastUserMsg.slice(0, 60);
+      const materia = contexto?.materia ?? "Geral";
+
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.flushHeaders();
+
+      // Informa o usuário que está gerando
+      res.write(`data: ${JSON.stringify({ text: `📊 Criando sua apresentação sobre **${topico}**... Aguarde alguns segundos!` })}\n\n`);
+
+      const slidesData = await generateSlidesForChat(topico, materia, openai);
+
+      if (slidesData?.slides?.length) {
+        // Salva no notebook_artifacts se autenticado
+        if (req.userId) {
+          try {
+            const { pool } = await import("@workspace/db");
+            await pool.query(
+              `INSERT INTO notebook_artifacts (user_id, doc_id, kind, title, payload)
+               VALUES ($1, 0, 'slides', $2, $3::jsonb)`,
+              [req.userId, slidesData.titulo ?? topico, JSON.stringify(slidesData)]
+            );
+          } catch { /* ignora erro de DB — slides ainda aparecem via ação */ }
+        }
+        res.write(`data: ${JSON.stringify({ action: { type: "criar_slides", slides: slidesData, titulo: slidesData.titulo ?? topico } })}\n\n`);
+      } else {
+        res.write(`data: ${JSON.stringify({ text: " Tive um problema ao gerar os slides. Tente novamente ou acesse o Estúdio IA para criar manualmente." })}\n\n`);
+      }
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
@@ -215,7 +306,6 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
     res.flushHeaders();
 
     // Fetch user profile + knowledge base in parallel
-    const lastUserMsg = messages.filter(m => m.role === "user").slice(-1)[0]?.content ?? "";
     const isAdvancedMatcher = ["teacher", "institution_admin", "government", "admin"];
 
     const [userProfile, kbContext] = await Promise.all([

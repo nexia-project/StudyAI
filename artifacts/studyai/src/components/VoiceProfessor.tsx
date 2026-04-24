@@ -266,6 +266,7 @@ export function VoiceProfessor() {
       setTimeout(() => setActionNotif(null), 8000);
       if (action.slides) {
         localStorage.setItem("tiagao_slides_criados", JSON.stringify(action.slides));
+        window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_slides_criados" } }));
         setTimeout(() => navigate("/notebook"), 1500);
       }
     } else if (action.type === "criar_prova") {

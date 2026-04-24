@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLocation } from "wouter";
 import { 
   MessageCircle, 
   X, 
@@ -11,7 +12,9 @@ import {
   Zap,
   Brain,
   Trophy,
-  ChevronDown
+  ChevronDown,
+  Presentation,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StudyPlan } from "@/hooks/use-study-plan";
@@ -84,12 +87,14 @@ function MessageBubble({ message }: { message: Message }) {
 }
 
 export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopicos, topicosAtual }: TutorChatProps) {
+  const [, navigate] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [slideNotif, setSlideNotif] = useState<{ titulo: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -191,6 +196,13 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
               });
               scrollToBottom();
             }
+            if (parsed.action?.type === "criar_slides" && parsed.action.slides) {
+              const { slides, titulo } = parsed.action;
+              localStorage.setItem("tiagao_slides_criados", JSON.stringify(slides));
+              window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_slides_criados" } }));
+              setSlideNotif({ titulo: titulo ?? "Apresentação" });
+              setTimeout(() => setSlideNotif(null), 9000);
+            }
           } catch {}
         }
       }
@@ -243,6 +255,31 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
           />
         )}
       </motion.button>
+
+      {/* Slide creation notification */}
+      <AnimatePresence>
+        {slideNotif && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="fixed bottom-28 right-6 z-[60] flex items-center gap-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-2xl px-4 py-3 shadow-2xl max-w-[320px]"
+          >
+            <Presentation className="w-5 h-5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold leading-tight">Apresentação criada!</p>
+              <p className="text-white/80 text-xs truncate">"{slideNotif.titulo}"</p>
+            </div>
+            <button
+              onClick={() => { setSlideNotif(null); navigate("/notebook"); }}
+              className="flex items-center gap-1 text-xs font-bold bg-white/20 hover:bg-white/30 rounded-xl px-3 py-1.5 transition-colors flex-shrink-0"
+            >
+              <ExternalLink className="w-3 h-3" />
+              Ver
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Chat panel */}
       <AnimatePresence>

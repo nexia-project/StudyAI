@@ -1391,39 +1391,58 @@ export default function Notebook() {
 
   // ─── Auto-open Tiagão-created artifacts from localStorage ────────────────
   useEffect(() => {
-    const slidesRaw = localStorage.getItem("tiagao_slides_criados");
-    if (slidesRaw) {
-      try {
-        const slidesData = JSON.parse(slidesRaw);
-        if (slidesData?.slides?.length) {
-          setActiveTool("slides");
-          setToolResult({ apresentacao: slidesData });
-          setToolError(null);
-          setSlideIdx(0);
-          setNotebookView("workspace");
-        }
-      } catch { /* ignore */ }
-      localStorage.removeItem("tiagao_slides_criados");
+    function applyTiagaoArtifacts() {
+      const slidesRaw = localStorage.getItem("tiagao_slides_criados");
+      if (slidesRaw) {
+        try {
+          const slidesData = JSON.parse(slidesRaw);
+          if (slidesData?.slides?.length) {
+            setActiveTool("slides");
+            setToolResult({ apresentacao: slidesData });
+            setToolError(null);
+            setSlideIdx(0);
+            setNotebookView("workspace");
+          }
+        } catch { /* ignore */ }
+        localStorage.removeItem("tiagao_slides_criados");
+      }
+      const provaRaw = localStorage.getItem("tiagao_prova_criada");
+      if (provaRaw) {
+        try {
+          const provaData = JSON.parse(provaRaw);
+          if (provaData?.questoes?.length) {
+            const normalized = provaData.questoes.map((q: any) => ({
+              enunciado: q.enunciado,
+              alternativas: q.alternativas ?? {},
+              gabarito: q.resposta_correta ?? q.gabarito ?? "A",
+              explicacao: q.explicacao ?? q.criterios_avaliacao ?? "",
+            }));
+            setActiveTool("questoes");
+            setToolResult({ questoes: normalized });
+            setToolError(null);
+            setNotebookView("workspace");
+          }
+        } catch { /* ignore */ }
+        localStorage.removeItem("tiagao_prova_criada");
+      }
     }
-    const provaRaw = localStorage.getItem("tiagao_prova_criada");
-    if (provaRaw) {
-      try {
-        const provaData = JSON.parse(provaRaw);
-        if (provaData?.questoes?.length) {
-          const normalized = provaData.questoes.map((q: any) => ({
-            enunciado: q.enunciado,
-            alternativas: q.alternativas ?? {},
-            gabarito: q.resposta_correta ?? q.gabarito ?? "A",
-            explicacao: q.explicacao ?? q.criterios_avaliacao ?? "",
-          }));
-          setActiveTool("questoes");
-          setToolResult({ questoes: normalized });
-          setToolError(null);
-          setNotebookView("workspace");
-        }
-      } catch { /* ignore */ }
-      localStorage.removeItem("tiagao_prova_criada");
-    }
+
+    applyTiagaoArtifacts();
+
+    // cross-tab: storage event
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "tiagao_slides_criados" || e.key === "tiagao_prova_criada") {
+        setTimeout(applyTiagaoArtifacts, 50);
+      }
+    };
+    // same-tab: custom event
+    const onTiagaoArtifact = () => setTimeout(applyTiagaoArtifacts, 50);
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("tiagao_artifact", onTiagaoArtifact);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("tiagao_artifact", onTiagaoArtifact);
+    };
   }, []);
 
   // ─── Suggest questions ────────────────────────────────────────────────────

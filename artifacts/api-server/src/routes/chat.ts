@@ -7,6 +7,11 @@ import { checkFreeUsage } from "../lib/freeUsage";
 import { searchKnowledge } from "./knowledge";
 import { getBnccContext } from "../data/bncc-data";
 import { logAiUsage } from "../lib/aiCostLogger";
+import {
+  TIAGAO_TOOLS,
+  executeTiagaoTool,
+  loadUserMemories,
+} from "../lib/tiagao-agent";
 
 type UserRole = "student" | "teacher" | "institution_admin" | "government" | "admin" | "researcher";
 
@@ -80,6 +85,19 @@ Você é o assistente de IA completo do StudyAI — atende TODOS os perfis: alun
 • ACESSO AOS DADOS REAIS do usuário dependendo do perfil
 • Pode criar qualquer conteúdo: aulas, provas, artigos, relatórios, análises, estratégias
 • Conhece profundamente: ENEM, BNCC, SAEB, vestibulares, concursos públicos, pós-graduação, políticas educacionais
+
+USO DE FERRAMENTAS (function calling):
+Você tem acesso a ferramentas poderosas. Use-as PROATIVAMENTE quando o usuário pedir:
+- Criar slides/apresentação → usar criar_slides
+- Criar flashcards/cartões de estudo → usar criar_flashcards
+- Criar prova/teste/avaliação → usar criar_prova
+- Criar plano de estudos/cronograma → usar criar_plano_estudos
+- Criar mapa mental → usar criar_mapa_mental
+- Criar infográfico → usar criar_infografico
+- Criar resumo/síntese → usar criar_resumo
+- Abrir/iniciar aula interativa → usar abrir_aula_ia
+- Ir para uma página/seção → usar navegar
+- Buscar nos documentos do aluno → usar buscar_nos_docs
 
 NUNCA diga que não consegue ver dados ou não tem acesso. Você tem acesso total. Use tudo que está disponível.`;
 
@@ -187,58 +205,16 @@ REGRAS:
 }
 
 const router: IRouter = Router();
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// ─── Detecção de intenção de slides ──────────────────────────────────────────
-const SLIDES_INTENT_RE = /\b(cria[r]?\s+(um[a]?\s+)?(apresenta[çc][aã]o|slides?|slide\s+deck)|fa[çz][a-z]*\s+(um[a]?\s+)?(apresenta[çc][aã]o|slides?)|monta[r]?\s+(um[a]?\s+)?(apresenta[çc][aã]o|slides?)|ger[ae][r]?\s+(um[a]?\s+)?(apresenta[çc][aã]o|slides?))\b/i;
-
-function extractSlideTopic(msg: string): string | null {
-  const m = msg.match(/(?:sobre|de|a respeito de|com o tema|sobre o tema)\s+["']?(.+?)["']?\s*(?:\.|!|\?|$)/i);
-  if (m) return m[1].trim().slice(0, 80);
-  // fallback: tudo depois do verbo
-  const m2 = msg.match(/(?:slides?|apresenta[çc][aã]o)\s+(?:sobre\s+)?(.+)/i);
-  if (m2) return m2[1].trim().slice(0, 80);
-  return null;
-}
-
-async function generateSlidesForChat(
-  topico: string,
-  materia: string,
-  gpt: OpenAI
-): Promise<Record<string, any> | null> {
-  try {
-    const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0.4,
-      max_tokens: 3000,
-      messages: [
-        {
-          role: "system",
-          content: `Você cria apresentações educacionais profissionais em português brasileiro.
-Retorne APENAS JSON com a estrutura:
-{
-  "titulo": "Título da apresentação",
-  "subtitulo": "Matéria | Nível",
-  "tema": "indigo",
-  "slides": [
-    { "tipo": "capa", "titulo": "...", "subtitulo": "..." },
-    { "tipo": "conteudo", "titulo": "...", "bullets": ["item 1","item 2","item 3"], "destaque": "..." },
-    { "tipo": "encerramento", "titulo": "...", "mensagem": "...", "dicaEnem": "..." }
-  ]
-}
-Tipos válidos: capa (1x início), agenda, conteudo, comparacao, citacao, encerramento (1x fim).
-Gere 8 a 10 slides. Conteúdo curricular brasileiro alinhado ao ENEM.`,
-        },
-        { role: "user", content: `Crie uma apresentação sobre "${topico}"${materia && materia !== "Geral" ? ` da matéria ${materia}` : ""}.` },
-      ],
+let _openai: OpenAI | null = null;
+function getOpenAI() {
+  if (!_openai) {
+    _openai = new OpenAI({
+      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? process.env.OPENAI_API_KEY ?? "dummy",
+      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
     });
-    const raw = completion.choices[0].message.content ?? "{}";
-    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    return JSON.parse(clean);
-  } catch (e) {
-    console.error("[chat:slides]", e);
-    return null;
   }
+  return _openai;
 }
 
 router.post("/chat", checkFreeUsage, async (req, res) => {
@@ -261,90 +237,142 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
     }
 
     const lastUserMsg = messages.filter(m => m.role === "user").slice(-1)[0]?.content ?? "";
+    const openai = getOpenAI();
+    const isAdvancedMatcher = ["teacher", "institution_admin", "government", "admin"];
 
-    // ─── Detecção de intenção: criar slides ──────────────────────────────────
-    if (SLIDES_INTENT_RE.test(lastUserMsg)) {
-      const topico = extractSlideTopic(lastUserMsg) ?? lastUserMsg.slice(0, 60);
-      const materia = contexto?.materia ?? "Geral";
-
-      res.setHeader("Content-Type", "text/event-stream");
-      res.setHeader("Cache-Control", "no-cache");
-      res.setHeader("Connection", "keep-alive");
-      res.setHeader("Access-Control-Allow-Origin", "*");
-      res.flushHeaders();
-
-      // Informa o usuário que está gerando
-      res.write(`data: ${JSON.stringify({ text: `📊 Criando sua apresentação sobre **${topico}**... Aguarde alguns segundos!` })}\n\n`);
-
-      const slidesData = await generateSlidesForChat(topico, materia, openai);
-
-      if (slidesData?.slides?.length) {
-        // Salva no notebook_artifacts se autenticado
-        if (req.userId) {
-          try {
-            const { pool } = await import("@workspace/db");
-            await pool.query(
-              `INSERT INTO notebook_artifacts (user_id, doc_id, kind, title, payload)
-               VALUES ($1, 0, 'slides', $2, $3::jsonb)`,
-              [req.userId, slidesData.titulo ?? topico, JSON.stringify(slidesData)]
-            );
-          } catch { /* ignora erro de DB — slides ainda aparecem via ação */ }
-        }
-        res.write(`data: ${JSON.stringify({ action: { type: "criar_slides", slides: slidesData, titulo: slidesData.titulo ?? topico } })}\n\n`);
-      } else {
-        res.write(`data: ${JSON.stringify({ text: " Tive um problema ao gerar os slides. Tente novamente ou acesse o Estúdio IA para criar manualmente." })}\n\n`);
-      }
-      res.write("data: [DONE]\n\n");
-      res.end();
-      return;
-    }
-
+    // ── Setup SSE ─────────────────────────────────────────────────────────────
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.flushHeaders();
 
-    // Fetch user profile + knowledge base in parallel
-    const isAdvancedMatcher = ["teacher", "institution_admin", "government", "admin"];
-
-    const [userProfile, kbContext] = await Promise.all([
+    // ── Fetch user context in parallel ────────────────────────────────────────
+    const [userProfile, kbContext, memCtx] = await Promise.all([
       req.userId ? fetchUserProfile(req.userId) : Promise.resolve({ role: "student" as UserRole, name: contexto?.aluno || "Aluno" }),
       getFullKbContext(lastUserMsg, contexto?.materia, 5),
+      req.userId ? loadUserMemories(req.userId) : Promise.resolve(""),
     ]);
 
     const isAdvanced = isAdvancedMatcher.includes(userProfile.role);
-    // Removed extra sequential KB call — saves ~300-600ms before streaming starts
-    const finalKb = kbContext;
-    const systemPrompt = buildUniversalSystemPrompt(userProfile, contexto ?? {}) + (finalKb ? `\n\n${finalKb}` : "");
+    const systemPrompt = buildUniversalSystemPrompt(userProfile, contexto ?? {})
+      + (kbContext ? `\n\n${kbContext}` : "")
+      + (memCtx ? `\n\n${memCtx}` : "");
 
-    // gpt-4o-mini: ~3x faster first-token, sufficient quality for educational Q&A
-    // Use gpt-4o only for advanced professional users (teachers/gov) who need full depth
     const chatModel = isAdvanced ? "gpt-4o" : "gpt-4o-mini";
-    const stream = await openai.chat.completions.create({
+    const maxCtxMessages = messages.slice(-16);
+
+    // ── 1st call: tool-calling (non-streaming) ────────────────────────────────
+    const firstCall = await openai.chat.completions.create({
       model: chatModel,
-      stream: true,
-      stream_options: { include_usage: true },
-      max_tokens: isAdvanced ? 1000 : 700,
-      temperature: isAdvanced ? 0.4 : 0.75,
+      stream: false,
+      max_tokens: isAdvanced ? 1200 : 900,
+      temperature: 0.4,
+      tools: TIAGAO_TOOLS,
+      tool_choice: "auto",
       messages: [
         { role: "system", content: systemPrompt },
-        ...messages.slice(-16),
+        ...maxCtxMessages,
       ],
     });
 
-    let usageIn = 0; let usageOut = 0;
-    for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta?.content;
-      if (delta) {
-        res.write(`data: ${JSON.stringify({ text: delta })}\n\n`);
+    const firstMsg = firstCall.choices[0].message;
+    const frontendActions: Record<string, any>[] = [];
+
+    // ── Execute tool calls if any ─────────────────────────────────────────────
+    if (firstMsg.tool_calls && firstMsg.tool_calls.length > 0) {
+      const toolResults: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+        { role: "assistant", ...firstMsg } as any,
+      ];
+
+      for (const toolCall of firstMsg.tool_calls) {
+        let args: Record<string, any> = {};
+        try { args = JSON.parse(toolCall.function.arguments); } catch { /* ignore */ }
+
+        const { result, action } = await executeTiagaoTool(
+          toolCall.function.name, args, req.userId
+        );
+        if (action) frontendActions.push(action);
+        toolResults.push({
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: result,
+        });
       }
-      if (chunk.usage) { usageIn = chunk.usage.prompt_tokens; usageOut = chunk.usage.completion_tokens; }
+
+      // ── Emit action events immediately ────────────────────────────────────
+      for (const a of frontendActions) {
+        res.write(`data: ${JSON.stringify({ action: a })}\n\n`);
+      }
+
+      // ── Instant response for pure navigation actions ───────────────────────
+      const primaryAction = frontendActions[0] ?? null;
+      const isInstantNav = primaryAction && ["ir", "navegar", "abrir_aula_ia"].includes(primaryAction.type);
+
+      if (isInstantNav) {
+        const navMsg = primaryAction.type === "abrir_aula_ia"
+          ? `🎯 Abrindo a aula sobre **${primaryAction.topico}**...`
+          : `➡️ Te levando para lá...`;
+        res.write(`data: ${JSON.stringify({ text: navMsg })}\n\n`);
+        res.write("data: [DONE]\n\n");
+        res.end();
+        return;
+      }
+
+      // ── 2nd call: generate follow-up text (streaming) ─────────────────────
+      const stream = await openai.chat.completions.create({
+        model: chatModel,
+        stream: true,
+        stream_options: { include_usage: true },
+        max_tokens: isAdvanced ? 700 : 500,
+        temperature: isAdvanced ? 0.4 : 0.75,
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...maxCtxMessages,
+          ...toolResults,
+        ],
+      });
+
+      let usageIn = 0; let usageOut = 0;
+      for await (const chunk of stream) {
+        const delta = chunk.choices[0]?.delta?.content;
+        if (delta) res.write(`data: ${JSON.stringify({ text: delta })}\n\n`);
+        if (chunk.usage) { usageIn = chunk.usage.prompt_tokens; usageOut = chunk.usage.completion_tokens; }
+      }
+      logAiUsage({ feature: "tiagao-chat", model: chatModel, tokensIn: usageIn, tokensOut: usageOut, userId: req.userId ?? null });
+
+    } else {
+      // ── No tools called: direct streaming response ────────────────────────
+      const directContent = firstMsg.content ?? "";
+      if (directContent) {
+        res.write(`data: ${JSON.stringify({ text: directContent })}\n\n`);
+      } else {
+        // Fallback: stream via a second call
+        const stream = await openai.chat.completions.create({
+          model: chatModel,
+          stream: true,
+          stream_options: { include_usage: true },
+          max_tokens: isAdvanced ? 1000 : 700,
+          temperature: isAdvanced ? 0.4 : 0.75,
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...maxCtxMessages,
+          ],
+        });
+
+        let usageIn = 0; let usageOut = 0;
+        for await (const chunk of stream) {
+          const delta = chunk.choices[0]?.delta?.content;
+          if (delta) res.write(`data: ${JSON.stringify({ text: delta })}\n\n`);
+          if (chunk.usage) { usageIn = chunk.usage.prompt_tokens; usageOut = chunk.usage.completion_tokens; }
+        }
+        logAiUsage({ feature: "tiagao-chat", model: chatModel, tokensIn: usageIn, tokensOut: usageOut, userId: req.userId ?? null });
+      }
     }
-    logAiUsage({ feature: "tiagao", model: chatModel, tokensIn: usageIn, tokensOut: usageOut, userId: (req as any).userId ?? null });
 
     res.write("data: [DONE]\n\n");
     res.end();
+
   } catch (error) {
     req.log.error({ error }, "Erro no chat");
     if (!res.headersSent) {

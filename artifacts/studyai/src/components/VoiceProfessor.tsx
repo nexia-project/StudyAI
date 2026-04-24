@@ -278,6 +278,27 @@ export function VoiceProfessor() {
     } else if (action.type === "criar_plano_estudos") {
       setActionNotif({ text: `📅 Plano "${action.titulo}" criado! Ver no Cronograma.`, path: "/cronograma" });
       setTimeout(() => setActionNotif(null), 8000);
+    } else if (action.type === "criar_mapa_mental") {
+      if (action.mapa) {
+        localStorage.setItem("tiagao_mapa_mental", JSON.stringify(action.mapa));
+        window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_mapa_mental" } }));
+      }
+      setActionNotif({ text: `🗺️ Mapa mental "${action.titulo}" criado! Ver no Notebook.`, path: "/notebook" });
+      setTimeout(() => setActionNotif(null), 8000);
+    } else if (action.type === "criar_infografico") {
+      if (action.infografico) {
+        localStorage.setItem("tiagao_infografico", JSON.stringify(action.infografico));
+        window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_infografico" } }));
+      }
+      setActionNotif({ text: `📊 Infográfico "${action.titulo}" criado! Ver no Notebook.`, path: "/notebook" });
+      setTimeout(() => setActionNotif(null), 8000);
+    } else if (action.type === "criar_resumo") {
+      if (action.resumo) {
+        localStorage.setItem("tiagao_resumo", JSON.stringify(action.resumo));
+        window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_resumo" } }));
+      }
+      setActionNotif({ text: `📄 Resumo "${action.titulo}" criado! Ver no Notebook.`, path: "/notebook" });
+      setTimeout(() => setActionNotif(null), 8000);
     } else if (action.type === "busca_docs") {
       setActionNotif({ text: `🔍 Encontrado nos seus documentos.`, path: "/notebook" });
       setTimeout(() => setActionNotif(null), 5000);

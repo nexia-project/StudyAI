@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
-import { 
-  MessageCircle, 
-  X, 
-  Send, 
+import {
+  MessageCircle,
+  X,
+  Send,
   Bot,
   User,
   Sparkles,
@@ -15,6 +15,12 @@ import {
   ChevronDown,
   Presentation,
   ExternalLink,
+  FileText,
+  CalendarDays,
+  Network,
+  BarChart3,
+  ScrollText,
+  CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StudyPlan } from "@/hooks/use-study-plan";
@@ -22,6 +28,13 @@ import { StudyPlan } from "@/hooks/use-study-plan";
 interface Message {
   role: "user" | "assistant";
   content: string;
+}
+
+interface ActionNotif {
+  icon: React.ReactNode;
+  text: string;
+  sub?: string;
+  path?: string;
 }
 
 interface TutorChatProps {
@@ -36,7 +49,9 @@ interface TutorChatProps {
 const QUICK_ACTIONS = [
   { label: "Me explica o conteúdo de hoje", icon: BookOpen },
   { label: "Me faz uma questão de prova", icon: Zap },
-  { label: "Revisar com flashcards", icon: Brain },
+  { label: "Cria flashcards para revisar", icon: Brain },
+  { label: "Cria slides do que estudei", icon: Presentation },
+  { label: "Monta um plano de estudos", icon: CalendarDays },
   { label: "Simular prova rápida", icon: Trophy },
 ];
 
@@ -94,11 +109,12 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
   const [isStreaming, setIsStreaming] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
-  const [slideNotif, setSlideNotif] = useState<{ titulo: string } | null>(null);
+  const [actionNotif, setActionNotif] = useState<ActionNotif | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const notifTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const scrollToBottom = useCallback((smooth = true) => {
     messagesEndRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto" });
@@ -108,7 +124,7 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
     if (isOpen && messages.length === 0) {
       const greeting: Message = {
         role: "assistant",
-        content: `Olá, ${plan.aluno}! 👋 Sou seu Tutor IA — estou aqui para te ajudar a dominar **${plan.materia}** e arrasares na prova! 🎯\n\nPosso te explicar qualquer coisa, te fazer questões, simular uma prova ou revisar com você. O que preferes começar?`,
+        content: `Olá, ${plan.aluno}! 👋 Sou seu Tutor IA — estou aqui para te ajudar a dominar **${plan.materia}** e arrasar na prova! 🎯\n\nPosso explicar qualquer conteúdo, criar flashcards, slides, provas, mapas mentais, plano de estudos e muito mais. O que preferes começar?`,
       };
       setMessages([greeting]);
     }
@@ -130,6 +146,128 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
     if (!el) return;
     setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 80);
   };
+
+  const showNotif = (notif: ActionNotif, durationMs = 9000) => {
+    if (notifTimerRef.current) clearTimeout(notifTimerRef.current);
+    setActionNotif(notif);
+    notifTimerRef.current = setTimeout(() => setActionNotif(null), durationMs);
+  };
+
+  const handleAction = useCallback((action: Record<string, any>) => {
+    if (!action?.type) return;
+
+    switch (action.type) {
+      case "ir":
+        setTimeout(() => navigate(action.param ?? "/app"), 600);
+        break;
+
+      case "navegar":
+        setTimeout(() => navigate(action.path ?? "/app"), 700);
+        break;
+
+      case "abrir_aula_ia":
+        localStorage.setItem("tiagao_aula_topico", action.topico ?? "");
+        localStorage.setItem("tiagao_aula_estilo", action.estilo ?? "ENEM");
+        window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_aula_topico" } }));
+        setTimeout(() => navigate("/aula-ia"), 700);
+        break;
+
+      case "flashcards_criados":
+        showNotif({
+          icon: <Brain className="w-5 h-5 flex-shrink-0" />,
+          text: `✅ ${action.quantidade ?? ""} flashcards criados`,
+          sub: action.topico ? `"${action.topico}"` : undefined,
+          path: "/app",
+        });
+        break;
+
+      case "criar_slides":
+        if (action.slides) {
+          localStorage.setItem("tiagao_slides_criados", JSON.stringify(action.slides));
+          window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_slides_criados" } }));
+        }
+        showNotif({
+          icon: <Presentation className="w-5 h-5 flex-shrink-0" />,
+          text: `🎨 Apresentação criada!`,
+          sub: action.titulo ? `"${action.titulo}"` : undefined,
+          path: "/notebook",
+        });
+        setTimeout(() => navigate("/notebook"), 2000);
+        break;
+
+      case "criar_prova":
+        if (action.prova) {
+          localStorage.setItem("tiagao_prova_criada", JSON.stringify(action.prova));
+          window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_prova_criada" } }));
+        }
+        showNotif({
+          icon: <FileText className="w-5 h-5 flex-shrink-0" />,
+          text: `📝 Prova criada e salva!`,
+          sub: action.titulo ? `"${action.titulo}"` : undefined,
+          path: "/notebook",
+        });
+        break;
+
+      case "criar_plano_estudos":
+        showNotif({
+          icon: <CalendarDays className="w-5 h-5 flex-shrink-0" />,
+          text: `📅 Plano de estudos criado!`,
+          sub: action.titulo ? `"${action.titulo}"` : undefined,
+          path: "/cronograma",
+        });
+        break;
+
+      case "criar_mapa_mental":
+        if (action.mapa) {
+          localStorage.setItem("tiagao_mapa_mental", JSON.stringify(action.mapa));
+          window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_mapa_mental" } }));
+        }
+        showNotif({
+          icon: <Network className="w-5 h-5 flex-shrink-0" />,
+          text: `🗺️ Mapa mental criado!`,
+          sub: action.titulo ? `"${action.titulo}"` : undefined,
+          path: "/notebook",
+        });
+        break;
+
+      case "criar_infografico":
+        if (action.infografico) {
+          localStorage.setItem("tiagao_infografico", JSON.stringify(action.infografico));
+          window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_infografico" } }));
+        }
+        showNotif({
+          icon: <BarChart3 className="w-5 h-5 flex-shrink-0" />,
+          text: `📊 Infográfico criado!`,
+          sub: action.titulo ? `"${action.titulo}"` : undefined,
+          path: "/notebook",
+        });
+        break;
+
+      case "criar_resumo":
+        if (action.resumo) {
+          localStorage.setItem("tiagao_resumo", JSON.stringify(action.resumo));
+          window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_resumo" } }));
+        }
+        showNotif({
+          icon: <ScrollText className="w-5 h-5 flex-shrink-0" />,
+          text: `📄 Resumo criado!`,
+          sub: action.titulo ? `"${action.titulo}"` : undefined,
+          path: "/notebook",
+        });
+        break;
+
+      case "busca_docs":
+        showNotif({
+          icon: <CheckCircle2 className="w-5 h-5 flex-shrink-0" />,
+          text: `🔍 Busca concluída`,
+          sub: action.encontrados ? `${action.encontrados} resultado(s) encontrado(s)` : undefined,
+        });
+        break;
+
+      default:
+        break;
+    }
+  }, [navigate]);
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || isStreaming) return;
@@ -196,12 +334,8 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
               });
               scrollToBottom();
             }
-            if (parsed.action?.type === "criar_slides" && parsed.action.slides) {
-              const { slides, titulo } = parsed.action;
-              localStorage.setItem("tiagao_slides_criados", JSON.stringify(slides));
-              window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_slides_criados" } }));
-              setSlideNotif({ titulo: titulo ?? "Apresentação" });
-              setTimeout(() => setSlideNotif(null), 9000);
+            if (parsed.action) {
+              handleAction(parsed.action);
             }
           } catch {}
         }
@@ -256,26 +390,36 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
         )}
       </motion.button>
 
-      {/* Slide creation notification */}
+      {/* Action notification banner */}
       <AnimatePresence>
-        {slideNotif && (
+        {actionNotif && (
           <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             className="fixed bottom-28 right-6 z-[60] flex items-center gap-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-2xl px-4 py-3 shadow-2xl max-w-[320px]"
           >
-            <Presentation className="w-5 h-5 flex-shrink-0" />
+            {actionNotif.icon}
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold leading-tight">Apresentação criada!</p>
-              <p className="text-white/80 text-xs truncate">"{slideNotif.titulo}"</p>
+              <p className="text-xs font-bold leading-tight">{actionNotif.text}</p>
+              {actionNotif.sub && (
+                <p className="text-white/80 text-xs truncate">{actionNotif.sub}</p>
+              )}
             </div>
+            {actionNotif.path && (
+              <button
+                onClick={() => { setActionNotif(null); navigate(actionNotif.path!); }}
+                className="flex items-center gap-1 text-xs font-bold bg-white/20 hover:bg-white/30 rounded-xl px-3 py-1.5 transition-colors flex-shrink-0"
+              >
+                <ExternalLink className="w-3 h-3" />
+                Ver
+              </button>
+            )}
             <button
-              onClick={() => { setSlideNotif(null); navigate("/notebook"); }}
-              className="flex items-center gap-1 text-xs font-bold bg-white/20 hover:bg-white/30 rounded-xl px-3 py-1.5 transition-colors flex-shrink-0"
+              onClick={() => setActionNotif(null)}
+              className="p-1 rounded-full hover:bg-white/20 transition-colors flex-shrink-0"
             >
-              <ExternalLink className="w-3 h-3" />
-              Ver
+              <X className="w-3.5 h-3.5" />
             </button>
           </motion.div>
         )}
@@ -289,7 +433,7 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 60, scale: 0.95 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed bottom-6 right-6 z-50 w-[380px] max-w-[calc(100vw-24px)] h-[580px] max-h-[80vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-border bg-[#f8f8fc]"
+            className="fixed bottom-6 right-6 z-50 w-[380px] max-w-[calc(100vw-24px)] h-[600px] max-h-[82vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-border bg-[#f8f8fc]"
           >
             {/* Header */}
             <div className="bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-4 flex items-center gap-3">
@@ -397,7 +541,7 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
                     e.target.style.height = Math.min(e.target.scrollHeight, 100) + "px";
                   }}
                   onKeyDown={handleKeyDown}
-                  placeholder="Pergunte qualquer coisa..."
+                  placeholder="Pergunte ou peça qualquer coisa..."
                   disabled={isStreaming}
                   className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground resize-none outline-none leading-relaxed py-1 max-h-[100px] disabled:opacity-50"
                   style={{ height: "auto" }}

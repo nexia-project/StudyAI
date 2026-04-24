@@ -3,10 +3,14 @@ import OpenAI from "openai";
 import { db } from "@workspace/db";
 import { simuladoResultsTable, studyPlansTable } from "@workspace/db/schema";
 import { eq, desc } from "drizzle-orm";
+import { logAiUsage } from "../lib/aiCostLogger";
+import { isMathScienceSubject } from "../lib/modelRouter";
 
 const router = Router();
-// gpt-4o-mini: ~3x faster than DeepSeek for structured JSON generation
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI({
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? process.env.OPENAI_API_KEY ?? "dummy",
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+});
 
 const ADAPTIVE_SYSTEM_PROMPT = `Professor criador de simulado adaptativo em pt-BR. Responda SOMENTE JSON puro:
 {"titulo":"Simulado Adaptativo — [Matéria]: Foco em [lacuna]","tempoMinutos":25,"perguntas":[{"id":1,"enunciado":"...","opcoes":{"A":"...","B":"...","C":"...","D":"..."},"correta":"B","explicacao":"Por que B. Dica para não errar de novo."}]}
@@ -151,16 +155,38 @@ Gere EXATAMENTE 10 questões ADAPTATIVAS focadas nas lacunas identificadas no di
 Escale dificuldade: Q1-Q2 fundamentos da lacuna, Q3-Q7 aplicação direta, Q8-Q10 integração e desafio.
 `.trim();
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: ADAPTIVE_SYSTEM_PROMPT },
-        { role: "user", content: userContent },
-      ],
-      max_tokens: 3000,
-      temperature: 0.9,
-      response_format: { type: "json_object" },
-    });
+    // Exatas → o1-mini (raciocínio matemático simbólico); demais → gpt-4o-mini
+    const useMathModel = isMathScienceSubject(materia);
+    const chosenModel = useMathModel ? "o1-mini" : "gpt-4o-mini";
+
+    let response: Awaited<ReturnType<typeof openai.chat.completions.create>>;
+
+    if (useMathModel) {
+      // o1-mini: sem system role, sem temperature, sem response_format
+      response = await openai.chat.completions.create({
+        model: "o1-mini",
+        messages: [
+          {
+            role: "user",
+            content: `${ADAPTIVE_SYSTEM_PROMPT}\n\n${userContent}\n\nRetorne SOMENTE JSON válido sem markdown.`,
+          },
+        ],
+        max_completion_tokens: 3000,
+      } as Parameters<typeof openai.chat.completions.create>[0]);
+    } else {
+      response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: ADAPTIVE_SYSTEM_PROMPT },
+          { role: "user", content: userContent },
+        ],
+        max_tokens: 3000,
+        temperature: 0.9,
+        response_format: { type: "json_object" },
+      });
+    }
+
+    logAiUsage({ feature: "simulado-adaptativo", model: chosenModel, tokensIn: response.usage?.prompt_tokens ?? 0, tokensOut: response.usage?.completion_tokens ?? 0 });
 
     const choice = response.choices[0];
     if (choice.finish_reason === "length") {
@@ -172,7 +198,8 @@ Escale dificuldade: Q1-Q2 fundamentos da lacuna, Q3-Q7 aplicação direta, Q8-Q1
 
     let simulado: unknown;
     try {
-      simulado = JSON.parse(content);
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      simulado = JSON.parse(jsonMatch ? jsonMatch[0] : content);
     } catch {
       return res.status(500).json({ erro: "Formato inválido da IA. Tente novamente." });
     }

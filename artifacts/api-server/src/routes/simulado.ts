@@ -1,11 +1,14 @@
 import { Router, type IRouter } from "express";
 import OpenAI from "openai";
 import { getKnowledgeContext } from "../utils/knowledge-context";
+import { logAiUsage } from "../lib/aiCostLogger";
+import { isMathScienceSubject } from "../lib/modelRouter";
 
 const router: IRouter = Router();
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? process.env.OPENAI_API_KEY ?? "dummy",
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
 });
 
 const SIMULADO_SYSTEM_PROMPT = `Professor criador de simulados em pt-BR. Responda SOMENTE JSON puro sem markdown:
@@ -93,20 +96,43 @@ Distribuição: ${targetDistribution.map((l, i) => `Q${i + 1}→${l}`).join(", "
 Formatos: ${shuffledFormats.map((f, i) => `Q${i + 1}:${f}`).join(" | ")}
 Gere 10 questões. Dificuldade crescente: Q1-3 fácil, Q4-6 médio, Q7-9 difícil, Q10 desafio.`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: enrichedSystemPrompt },
-        { role: "user", content: userContent },
-      ],
-      max_tokens: 3000,
-      temperature: 1.0,
-      response_format: { type: "json_object" },
-    });
+    // Exatas → o1-mini (raciocínio simbólico/matemático); demais → gpt-4o-mini
+    const useMathModel = isMathScienceSubject(materia);
+    const chosenModel = useMathModel ? "o1-mini" : "gpt-4o-mini";
+
+    let response: Awaited<ReturnType<typeof openai.chat.completions.create>>;
+
+    if (useMathModel) {
+      // o1-mini não suporta: system role, temperature, response_format
+      // Combina system prompt + user content em uma única mensagem user
+      response = await openai.chat.completions.create({
+        model: "o1-mini",
+        messages: [
+          {
+            role: "user",
+            content: `${enrichedSystemPrompt}\n\n${userContent}\n\nRetorne SOMENTE JSON válido sem markdown.`,
+          },
+        ],
+        max_completion_tokens: 3000,
+      } as Parameters<typeof openai.chat.completions.create>[0]);
+    } else {
+      response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: enrichedSystemPrompt },
+          { role: "user", content: userContent },
+        ],
+        max_tokens: 3000,
+        temperature: 1.0,
+        response_format: { type: "json_object" },
+      });
+    }
+
+    logAiUsage({ feature: "simulado", model: chosenModel, tokensIn: response.usage?.prompt_tokens ?? 0, tokensOut: response.usage?.completion_tokens ?? 0 });
 
     const choice = response.choices[0];
 
-    // If GPT was cut off mid-response, fail fast with a clear message
+    // If model was cut off mid-response, fail fast with a clear message
     if (choice.finish_reason === "length") {
       res.status(500).json({ erro: "O simulado gerado foi muito longo. Tente novamente — cada geração usa semente diferente." });
       return;
@@ -120,7 +146,8 @@ Gere 10 questões. Dificuldade crescente: Q1-3 fácil, Q4-6 médio, Q7-9 difíci
 
     let simulado: unknown;
     try {
-      simulado = JSON.parse(content);
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      simulado = JSON.parse(jsonMatch ? jsonMatch[0] : content);
     } catch {
       req.log.error({ contentLength: content.length, finish_reason: choice.finish_reason }, "JSON inválido na resposta do simulado");
       res.status(500).json({ erro: "A IA retornou um formato inválido. Tente novamente — cada tentativa gera variações diferentes." });

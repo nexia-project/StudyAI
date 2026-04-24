@@ -13,11 +13,11 @@ const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
 });
 
-// Claude como alternativa de alta qualidade (com timeout para evitar lentidão)
+// Claude: primário para geração de conteúdo educacional (mais didático e criativo)
 const claude = new Anthropic({
   apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY ?? "dummy",
   baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
-  timeout: 20_000, // 20s max — evita travar a requisição
+  timeout: 45_000, // 45s — suficiente para aula completa com max_tokens reduzido
 });
 
 // ─── Calibração de dificuldade conforme o estilo escolhido pelo aluno ─────────
@@ -123,7 +123,7 @@ RETORNE SOMENTE JSON VÁLIDO, sem texto extra, sem markdown:
 
   const message = await claude.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 4096,
+    max_tokens: 2500,
     messages: [
       {
         role: "user",
@@ -193,19 +193,19 @@ router.post("/aula-ia/gerar", requireAuth, async (req: Request, res: Response) =
     }
 
     let raw = "{}";
-    // Usa gpt-4o-mini como primário (rápido e confiável via Replit AI Integrations)
-    // Claude como fallback de qualidade superior (com timeout de 20s)
+    // Claude é primário: conteúdo educacional mais didático e rico.
+    // gpt-4o-mini como fallback rápido caso Claude ultrapasse o timeout.
     try {
-      raw = await gerarAulaComOpenAI(topico, estilo, nivel);
-    } catch (openaiErr) {
-      console.warn("[aula-ia] OpenAI falhou, tentando Claude:", openaiErr);
+      raw = await gerarAulaComClaude(topico, estilo, nivel);
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (match) raw = match[0];
+    } catch (claudeErr) {
+      console.warn("[aula-ia] Claude falhou, usando gpt-4o-mini como fallback:", claudeErr);
       try {
-        raw = await gerarAulaComClaude(topico, estilo, nivel);
-        const match = raw.match(/\{[\s\S]*\}/);
-        if (match) raw = match[0];
-      } catch (claudeErr) {
-        console.error("[aula-ia] Ambos falharam — Claude:", claudeErr);
-        throw openaiErr; // relança o erro original para o handler externo
+        raw = await gerarAulaComOpenAI(topico, estilo, nivel);
+      } catch (openaiErr) {
+        console.error("[aula-ia] Ambos falharam — OpenAI:", openaiErr);
+        throw openaiErr;
       }
     }
 

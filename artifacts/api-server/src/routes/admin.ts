@@ -418,7 +418,7 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
 
 // ─── Cache Semântico — estatísticas ──────────────────────────────────────────
 router.get("/admin/cache/stats", async (req: Request, res: Response) => {
-  if (!await isAdminUserAsync(req)) {
+  if (!await isAdminUserAsync(req.userId)) {
     res.status(403).json({ erro: "Acesso negado" });
     return;
   }
@@ -427,7 +427,7 @@ router.get("/admin/cache/stats", async (req: Request, res: Response) => {
 });
 
 router.delete("/admin/cache/clear", async (req: Request, res: Response) => {
-  if (!await isAdminUserAsync(req)) {
+  if (!await isAdminUserAsync(req.userId)) {
     res.status(403).json({ erro: "Acesso negado" });
     return;
   }

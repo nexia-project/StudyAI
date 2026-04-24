@@ -16,6 +16,7 @@
 
 import { searchBncc, getBnccContext } from "../data/bncc-data";
 import { searchWikipedia, fetchWikiSummary } from "../routes/wikipedia";
+import { cacheGet, cacheSave } from "../lib/semanticCache";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface KnowledgeContextOptions {
@@ -80,66 +81,112 @@ export async function getKnowledgeContext(
   const bnccCodes: string[] = [];
   let wikiTitle: string | undefined;
 
-  // Run all sources in parallel for speed
-  const [bnccResult, wikiResult, localResult] = await Promise.allSettled([
-    // ── 1. BNCC ────────────────────────────────────────────────────────────────
-    includeBncc ? (async () => {
-      const habilidades = searchBncc(query, materia, undefined);
-      if (!habilidades.length) return "";
-      const top5 = habilidades.slice(0, 5);
-      const lines = top5.map(h =>
-        `• [${h.codigo}] ${h.componente}${h.unidade ? " — " + h.unidade : ""}: ${h.descricao.slice(0, 200)}`
-      );
-      return { text: lines.join("\n"), codes: top5.map(h => h.codigo) };
-    })() : Promise.resolve(""),
+  // ── Cache check: BNCC + Wikipedia (fontes públicas, iguais para todos) ──────
+  // A base local do aluno é sempre consultada fresca (é pessoal e muda).
+  const publicCacheKey = `${query.slice(0, 100)}:${materia ?? ""}:${serie ?? ""}`;
+  const publicCached = (includeBncc || includeWikipedia)
+    ? await cacheGet("knowledge-ctx", publicCacheKey)
+    : { hit: false as const, level: "miss" as const };
 
-    // ── 2. Wikipedia PT ────────────────────────────────────────────────────────
-    includeWikipedia ? (async () => {
-      const searchQuery = materia ? `${query} ${materia}` : query;
-      const results = await searchWikipedia(searchQuery, 3);
-      if (!results.length) return null;
-      const best = results[0];
-      const summary = await fetchWikiSummary(best.title);
-      if (!summary?.extract) return null;
-      return {
-        title: summary.title,
-        description: summary.description || "",
-        extract: summary.extract.slice(0, maxCharsPerSource),
-        url: summary.url,
-      };
-    })() : Promise.resolve(null),
+  let localResult: PromiseSettledResult<string>;
 
-    // ── 3. Local Knowledge Base ────────────────────────────────────────────────
-    (includeLocal && userId) ? (async () => {
+  if (publicCached.hit) {
+    // ── Cache HIT: pula BNCC + Wikipedia, usa bloco público salvo ──────────
+    const cached = JSON.parse(publicCached.response) as {
+      bnccBlock?: string;
+      wikiBlock?: string;
+      bnccCodes: string[];
+      wikiTitle?: string;
+    };
+
+    if (cached.bnccBlock) parts.push(cached.bnccBlock);
+    if (cached.wikiBlock) parts.push(cached.wikiBlock);
+    bnccCodes.push(...cached.bnccCodes);
+    wikiTitle = cached.wikiTitle;
+
+    // Consulta local do aluno (sempre fresca)
+    const [_localRes] = await Promise.allSettled([(includeLocal && userId) ? (async () => {
       const { searchKnowledge } = await import("../routes/knowledge");
       return await searchKnowledge(query, materia, 3);
-    })() : Promise.resolve(""),
-  ]);
+    })() : Promise.resolve("")]);
+    localResult = _localRes;
 
-  // ── Assemble BNCC block ────────────────────────────────────────────────────
-  if (bnccResult.status === "fulfilled" && bnccResult.value) {
-    const val = bnccResult.value as { text: string; codes: string[] } | string;
-    if (typeof val === "object" && val.text) {
-      parts.push(
-        `━━━ BNCC — BASE NACIONAL COMUM CURRICULAR (MEC) ━━━\n` +
-        `Habilidades relacionadas ao conteúdo (use para fundamentar e alinhar):\n${val.text}`
-      );
-      bnccCodes.push(...val.codes);
+  } else {
+    // ── Cache MISS: consulta tudo em paralelo ────────────────────────────────
+    const [bnccResult, wikiResult, localRes] = await Promise.allSettled([
+      // ── 1. BNCC ────────────────────────────────────────────────────────────
+      includeBncc ? (async () => {
+        const habilidades = searchBncc(query, materia, undefined);
+        if (!habilidades.length) return "";
+        const top5 = habilidades.slice(0, 5);
+        const lines = top5.map(h =>
+          `• [${h.codigo}] ${h.componente}${h.unidade ? " — " + h.unidade : ""}: ${h.descricao.slice(0, 200)}`
+        );
+        return { text: lines.join("\n"), codes: top5.map(h => h.codigo) };
+      })() : Promise.resolve(""),
+
+      // ── 2. Wikipedia PT ────────────────────────────────────────────────────
+      includeWikipedia ? (async () => {
+        const searchQuery = materia ? `${query} ${materia}` : query;
+        const results = await searchWikipedia(searchQuery, 3);
+        if (!results.length) return null;
+        const best = results[0];
+        const summary = await fetchWikiSummary(best.title);
+        if (!summary?.extract) return null;
+        return {
+          title: summary.title,
+          description: summary.description || "",
+          extract: summary.extract.slice(0, maxCharsPerSource),
+          url: summary.url,
+        };
+      })() : Promise.resolve(null),
+
+      // ── 3. Local Knowledge Base ────────────────────────────────────────────
+      (includeLocal && userId) ? (async () => {
+        const { searchKnowledge } = await import("../routes/knowledge");
+        return await searchKnowledge(query, materia, 3);
+      })() : Promise.resolve(""),
+    ]);
+
+    localResult = localRes;
+
+    // Monta blocos BNCC e Wikipedia e salva no cache público
+    let bnccBlock: string | undefined;
+    let wikiBlock: string | undefined;
+
+    if (bnccResult.status === "fulfilled" && bnccResult.value) {
+      const val = bnccResult.value as { text: string; codes: string[] } | string;
+      if (typeof val === "object" && val.text) {
+        bnccBlock =
+          `━━━ BNCC — BASE NACIONAL COMUM CURRICULAR (MEC) ━━━\n` +
+          `Habilidades relacionadas ao conteúdo (use para fundamentar e alinhar):\n${val.text}`;
+        parts.push(bnccBlock);
+        bnccCodes.push(...val.codes);
+      }
     }
-  }
 
-  // ── Assemble Wikipedia block ───────────────────────────────────────────────
-  if (wikiResult.status === "fulfilled" && wikiResult.value) {
-    const wiki = wikiResult.value as { title: string; description: string; extract: string; url: string } | null;
-    if (wiki) {
-      wikiTitle = wiki.title;
-      const wikiBlock = [
-        `━━━ WIKIPEDIA PT — ${wiki.title.toUpperCase()} ━━━`,
-        wiki.description ? `Definição: ${wiki.description}` : "",
-        wiki.extract,
-        `Fonte: ${wiki.url}`,
-      ].filter(Boolean).join("\n");
-      parts.push(wikiBlock);
+    if (wikiResult.status === "fulfilled" && wikiResult.value) {
+      const wiki = wikiResult.value as { title: string; description: string; extract: string; url: string } | null;
+      if (wiki) {
+        wikiTitle = wiki.title;
+        wikiBlock = [
+          `━━━ WIKIPEDIA PT — ${wiki.title.toUpperCase()} ━━━`,
+          wiki.description ? `Definição: ${wiki.description}` : "",
+          wiki.extract,
+          `Fonte: ${wiki.url}`,
+        ].filter(Boolean).join("\n");
+        parts.push(wikiBlock);
+      }
+    }
+
+    // Salva BNCC + Wikipedia no cache para futuras requisições similares
+    if (bnccBlock || wikiBlock) {
+      cacheSave(
+        "knowledge-ctx",
+        publicCacheKey,
+        JSON.stringify({ bnccBlock, wikiBlock, bnccCodes, wikiTitle }),
+        "bncc+wikipedia"
+      ).catch(() => {});
     }
   }
 

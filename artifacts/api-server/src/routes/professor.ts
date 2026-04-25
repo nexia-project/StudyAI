@@ -518,7 +518,7 @@ INSTRUÇÕES DE AGENTE:
       messages: apiMessages,
       tools: TIAGAO_TOOLS,
       tool_choice: "auto",
-      max_tokens: 500,
+      max_tokens: 1200,
       temperature: 0.9,
     });
 

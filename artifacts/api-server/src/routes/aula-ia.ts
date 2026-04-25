@@ -67,6 +67,49 @@ function difficultyProfile(estilo: string): {
   };
 }
 
+// ─── Utilitário: tenta extrair JSON válido de uma string ──────────────────────
+function extractJson(raw: string): string | null {
+  if (!raw || raw.trim() === "") return null;
+  // Tenta extrair o maior bloco {...} da resposta
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  const candidate = match[0];
+  try {
+    JSON.parse(candidate);
+    return candidate;
+  } catch {
+    // JSON truncado — tenta fechar arrays/objetos abertos
+    return tryRepairJson(candidate);
+  }
+}
+
+function tryRepairJson(s: string): string | null {
+  // Rastreia a pilha de abre-brackets para fechar na ordem correta
+  const stack: string[] = [];
+  let inString = false;
+  let escape = false;
+  for (const ch of s) {
+    if (escape) { escape = false; continue; }
+    if (ch === "\\" && inString) { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === "{") stack.push("}");
+    else if (ch === "[") stack.push("]");
+    else if (ch === "}" || ch === "]") stack.pop();
+  }
+  if (stack.length === 0) return null; // Balanceado — parse já deveria ter funcionado
+  let repaired = s;
+  if (inString) repaired += '"'; // Fecha string aberta
+  // Fecha na ordem inversa da pilha
+  while (stack.length) repaired += stack.pop();
+  try {
+    JSON.parse(repaired);
+    return repaired;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Gerar aula com Claude (melhor qualidade educacional) ─────────────────────
 async function gerarAulaComClaude(topico: string, estilo: string, nivel: string): Promise<string> {
   const prof = difficultyProfile(estilo);
@@ -78,44 +121,33 @@ async function gerarAulaComClaude(topico: string, estilo: string, nivel: string)
 🧪 TIPO DE EXEMPLO: ${prof.exemplos}
 🗣️ VOCABULÁRIO: ${prof.vocabulario}
 
-Crie uma aula DETALHADA e DIDÁTICA respeitando RIGOROSAMENTE o nível acima — o aluno escolheu este nível, então a aula DEVE soar diferente conforme a escolha. Cada etapa é escrita letra por letra na lousa — o aluno lê no ritmo da escrita, então use textos completos e explicativos.
+Crie uma aula DETALHADA e DIDÁTICA respeitando RIGOROSAMENTE o nível acima.
+Cada etapa é escrita letra por letra na lousa — use textos completos e explicativos.
 
 ESTRUTURA DE CADA ETAPA:
-1. "narracao": O que Tiagão FALA enquanto escreve (4-6 frases, coloquial PT-BR, animado, explica cada detalhe)
+1. "narracao": O que Tiagão FALA enquanto escreve (4-6 frases, coloquial PT-BR, animado)
 2. "elementos": O que aparece escrito na lousa (textos ricos, exemplos concretos)
 
-REGRAS DA LOUSA:
-- "titulo": nome/conceito principal da etapa (texto curto e claro)
-- "texto": explicação completa em 1-2 frases (não seja vago, explique de verdade)
-- "formula": só para fórmulas matemáticas/científicas reais
-- "destaque": conceito-chave que o aluno DEVE memorizar
-- "seta": item de lista/passo de um processo
-- "exemplo": situação real ou exercício do ${estilo}
-- "separador": divisão visual entre seções
-- Use 4-7 elementos por etapa para uma lousa rica
+TIPOS DE ELEMENTO: titulo, texto, formula, destaque, seta, exemplo, separador
+Use 4-7 elementos por etapa. Mínimo 4 etapas, máximo 5.
 
 REGRAS DE QUALIDADE:
-- Narração: professor EXPLICA enquanto escreve, não só lê o que está na lousa
-- Exemplos: sempre do contexto ${estilo} (ENEM 2023, vestibulares, situação do dia a dia)
-- Linguagem: "Olha só...", "Repara que...", "Aqui está o pulo do gato:", "Isso cai muito no ENEM!"
-- Máximo 6 etapas por aula, mínimo 4
-- Nível adicional: ${nivel}
-- IMPORTANTE: a aula DEVE refletir o nível "${prof.nivelLabel}" — se for Simples, NADA de questão de prova; se for Vestibular/Concurso, exija profundidade.
+- Narração: professor EXPLICA, não só lê o que está na lousa
+- Linguagem: "Olha só...", "Repara que...", "Isso cai muito no ENEM!"
+- Nível: ${nivel}. IMPORTANTE: reflita rigorosamente "${prof.nivelLabel}".
 
-RETORNE SOMENTE JSON VÁLIDO, sem texto extra, sem markdown:
+RETORNE SOMENTE JSON VÁLIDO, sem texto extra, sem markdown, sem blocos de código:
 {
   "titulo": "string",
   "subtitulo": "string",
   "etapas": [
     {
       "id": 1,
-      "narracao": "string — 4-6 frases explicativas em PT-BR coloquial e animado",
+      "narracao": "4-6 frases em PT-BR coloquial",
       "elementos": [
         { "tipo": "titulo", "texto": "string" },
         { "tipo": "texto", "texto": "string" },
-        { "tipo": "destaque", "texto": "string" },
-        { "tipo": "seta", "texto": "string" },
-        { "tipo": "exemplo", "texto": "string" }
+        { "tipo": "destaque", "texto": "string" }
       ],
       "duracao": 30
     }
@@ -123,19 +155,17 @@ RETORNE SOMENTE JSON VÁLIDO, sem texto extra, sem markdown:
 }`;
 
   const message = await claude.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 2500,
-    messages: [
-      {
-        role: "user",
-        content: `${systemPrompt}\n\nCrie uma aula sobre: ${topico.trim()}`,
-      },
-    ],
+    model: "claude-sonnet-4-5",
+    max_tokens: 4096,
+    messages: [{ role: "user", content: `${systemPrompt}\n\nCrie uma aula sobre: ${topico.trim()}` }],
   });
 
   const block = message.content[0];
-  logAiUsage({ feature: "lousa-aula", model: "claude-sonnet-4-6", tokensIn: message.usage?.input_tokens ?? 0, tokensOut: message.usage?.output_tokens ?? 0 });
-  return block.type === "text" ? block.text : "{}";
+  logAiUsage({ feature: "lousa-aula", model: "claude-sonnet-4-5", tokensIn: message.usage?.input_tokens ?? 0, tokensOut: message.usage?.output_tokens ?? 0 });
+  if (block.type !== "text") throw new Error("Claude retornou bloco não-texto");
+  const extracted = extractJson(block.text);
+  if (!extracted) throw new Error("Claude retornou JSON inválido ou vazio");
+  return extracted;
 }
 
 // ─── Gerar aula com OpenAI gpt-4o-mini (primário — rápido e confiável) ────────
@@ -203,29 +233,59 @@ router.post("/aula-ia/gerar", requireAuth, async (req: Request, res: Response) =
       return;
     }
 
-    let raw = "{}";
-    let modelUsed = "claude-sonnet-4-6";
-    // Claude é primário: conteúdo educacional mais didático e rico.
-    // gpt-4o-mini como fallback rápido caso Claude ultrapasse o timeout.
+    let raw = "";
+    let modelUsed = "claude-sonnet-4-5";
+
+    // ── Tentativa 1: Claude (maior qualidade didática) ────────────────────────
     try {
       raw = await gerarAulaComClaude(topico, estilo, nivel);
-      const match = raw.match(/\{[\s\S]*\}/);
-      if (match) raw = match[0];
     } catch (claudeErr) {
-      console.warn("[aula-ia] Claude falhou, usando gpt-4o-mini como fallback:", claudeErr);
+      console.warn("[aula-ia] Claude falhou:", (claudeErr as Error).message);
+      raw = "";
+    }
+
+    // ── Tentativa 2: GPT-4o-mini (fallback confiável com json_object garantido)
+    if (!raw) {
+      console.info("[aula-ia] Usando GPT-4o-mini como fallback");
       modelUsed = "gpt-4o-mini";
       try {
         raw = await gerarAulaComOpenAI(topico, estilo, nivel);
       } catch (openaiErr) {
-        console.error("[aula-ia] Ambos falharam — OpenAI:", openaiErr);
+        console.error("[aula-ia] GPT-4o-mini também falhou:", openaiErr);
         throw openaiErr;
       }
     }
 
-    const aula = JSON.parse(raw);
+    // ── Parse robusto — nunca crasha, sempre tenta recuperar ─────────────────
+    let aula: Record<string, any>;
+    try {
+      aula = JSON.parse(raw);
+    } catch {
+      // Tenta extrair/reparar JSON truncado
+      const repaired = extractJson(raw);
+      if (repaired) {
+        console.warn("[aula-ia] JSON reparado com sucesso");
+        aula = JSON.parse(repaired);
+      } else {
+        // Último recurso: tenta GPT-4o-mini mesmo que o anterior já tenha rodado
+        if (modelUsed !== "gpt-4o-mini") {
+          console.warn("[aula-ia] Fallback final para GPT-4o-mini após JSON inválido");
+          const fallback = await gerarAulaComOpenAI(topico, estilo, nivel);
+          aula = JSON.parse(fallback);
+        } else {
+          throw new Error("JSON inválido após todas as tentativas");
+        }
+      }
+    }
 
-    // ── Salvar no cache para próximas requisições similares ──────────────────
-    cacheSave("aula-ia", cacheKey, raw, modelUsed).catch(() => {});
+    // ── Valida estrutura mínima ───────────────────────────────────────────────
+    if (!aula.titulo || !Array.isArray(aula.etapas) || aula.etapas.length === 0) {
+      throw new Error("Estrutura de aula inválida — sem titulo ou etapas");
+    }
+
+    // ── Salvar no cache (usa JSON válido final) ───────────────────────────────
+    const finalJson = JSON.stringify(aula);
+    cacheSave("aula-ia", cacheKey, finalJson, modelUsed).catch(() => {});
 
     res.json(aula);
   } catch (err) {

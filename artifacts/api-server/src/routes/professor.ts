@@ -19,14 +19,15 @@ import {
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 
 const router: IRouter = Router();
+// Cliente OpenAI direto — apenas para TTS (tts-1) e Whisper (não disponíveis no proxy)
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// DeepSeek — primário para chat/geração (mais barato, qualidade equivalente ao GPT-4o)
-const deepseek = new OpenAI({
-  apiKey: process.env.DEEPSEEK_API_KEY ?? "",
-  baseURL: "https://api.deepseek.com",
+// Cliente via proxy Replit — para chat completions (baixa latência, sem rota internacional)
+const gptChat = new OpenAI({
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? process.env.OPENAI_API_KEY ?? "dummy",
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
 });
-const DS_MODEL = "deepseek-chat";
+const CHAT_MODEL = "gpt-4o-mini";
 
 // ─── Search knowledge base + Wikipedia — ACESSO TOTAL ────────────────────────
 async function searchKnowledgeBase(query: string, topK = 5): Promise<string> {
@@ -512,8 +513,8 @@ INSTRUÇÕES DE AGENTE:
       ...cleanMessages,
     ];
 
-    const firstCall = await deepseek.chat.completions.create({
-      model: DS_MODEL,
+    const firstCall = await gptChat.chat.completions.create({
+      model: CHAT_MODEL,
       messages: apiMessages,
       tools: TIAGAO_TOOLS,
       tool_choice: "auto",
@@ -645,8 +646,8 @@ ${richContext}`;
       ? `Última coisa que eu disse: "${context.ultimaMensagem}"`
       : "Primeira vez falando com o aluno nesta sessão.";
 
-    const completion = await deepseek.chat.completions.create({
-      model: DS_MODEL,
+    const completion = await gptChat.chat.completions.create({
+      model: CHAT_MODEL,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: lastMsg },

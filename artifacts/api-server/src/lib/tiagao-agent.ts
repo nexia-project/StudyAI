@@ -10,18 +10,7 @@ import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 
 // ─── Clients ──────────────────────────────────────────────────────────────────
-let _deepseek: OpenAI | null = null;
-function getDeepseek() {
-  if (!_deepseek) {
-    _deepseek = new OpenAI({
-      apiKey: process.env.DEEPSEEK_API_KEY ?? "",
-      baseURL: "https://api.deepseek.com",
-    });
-  }
-  return _deepseek;
-}
-const DS_MODEL = "deepseek-chat";
-
+// Usamos GPT-4o-mini via proxy Replit para todas as ferramentas (baixa latência)
 let _gpt: OpenAI | null = null;
 function getGpt() {
   if (!_gpt) {
@@ -32,6 +21,7 @@ function getGpt() {
   }
   return _gpt;
 }
+const CONTENT_MODEL = "gpt-4o-mini";
 
 // ─── Memory helpers ───────────────────────────────────────────────────────────
 export async function loadUserMemories(userId: string): Promise<string> {
@@ -304,7 +294,7 @@ export async function executeTiagaoTool(
   args: Record<string, any>,
   userId: string | undefined
 ): Promise<ToolResult> {
-  const ds = getDeepseek();
+  const gpt = getGpt();
 
   const DEST_MAP: Record<string, string> = {
     "home": "/app", "simulado": "/simulado-enem", "flashcards": "/app",
@@ -350,8 +340,8 @@ export async function executeTiagaoTool(
       if (!userId) return { result: "Login necessário para criar flashcards." };
       try {
         const qtd = Math.min(Math.max(args.quantidade ?? 8, 4), 12);
-        const gen = await ds.chat.completions.create({
-          model: DS_MODEL,
+        const gen = await gpt.chat.completions.create({
+          model: CONTENT_MODEL,
           messages: [{
             role: "system",
             content: `Crie ${qtd} flashcards em JSON sobre "${args.topico}" (${args.materia ?? "Geral"}).
@@ -388,8 +378,8 @@ Perguntas claras, respostas diretas (máx 2 linhas). APENAS JSON.`,
       if (!userId) return { result: "Login necessário para criar slides." };
       try {
         const qtd = Math.min(Math.max(args.quantidade_slides ?? 8, 5), 15);
-        const gen = await ds.chat.completions.create({
-          model: DS_MODEL,
+        const gen = await gpt.chat.completions.create({
+          model: CONTENT_MODEL,
           messages: [{
             role: "system",
             content: `Crie ${qtd} slides educacionais sobre "${args.topico}" ${args.materia ? "(" + args.materia + ")" : ""}.
@@ -429,8 +419,8 @@ Tipos: capa (1x início), agenda, conteudo, comparacao, citacao, encerramento (1
     case "criar_mapa_mental": {
       if (!userId) return { result: "Login necessário para criar mapa mental." };
       try {
-        const gen = await ds.chat.completions.create({
-          model: DS_MODEL,
+        const gen = await gpt.chat.completions.create({
+          model: CONTENT_MODEL,
           messages: [{
             role: "system",
             content: `Crie um mapa mental hierárquico de 4 níveis sobre "${args.topico}" ${args.materia ? "(" + args.materia + ")" : ""}.
@@ -479,8 +469,8 @@ Retorne JSON:
     case "criar_infografico": {
       if (!userId) return { result: "Login necessário para criar infográfico." };
       try {
-        const gen = await ds.chat.completions.create({
-          model: DS_MODEL,
+        const gen = await gpt.chat.completions.create({
+          model: CONTENT_MODEL,
           messages: [{
             role: "system",
             content: `Crie um briefing para infográfico educacional sobre "${args.topico}" ${args.materia ? "(" + args.materia + ")" : ""}.
@@ -520,8 +510,8 @@ Retorne JSON:
     case "criar_resumo": {
       try {
         const nivel = args.nivel ?? "intermediario";
-        const gen = await ds.chat.completions.create({
-          model: DS_MODEL,
+        const gen = await gpt.chat.completions.create({
+          model: CONTENT_MODEL,
           messages: [{
             role: "system",
             content: `Você é um especialista em ${args.materia ?? "educação"}. Crie um resumo de estudo completo sobre "${args.topico}" para nível ${nivel}.
@@ -573,8 +563,8 @@ Retorne JSON:
         const qtd = Math.min(Math.max(args.quantidade ?? 5, 3), 15);
         const tipo = args.tipo ?? "multipla_escolha";
         const nivel = args.nivel ?? "medio";
-        const gen = await ds.chat.completions.create({
-          model: DS_MODEL,
+        const gen = await gpt.chat.completions.create({
+          model: CONTENT_MODEL,
           messages: [{
             role: "system",
             content: `Crie uma prova de ${qtd} questões sobre "${args.assunto}" (${args.materia}).
@@ -624,8 +614,8 @@ Para dissertativas: omita alternativas, inclua "criterios_avaliacao". APENAS JSO
       try {
         const prazo = args.prazo_dias ?? 30;
         const horas = args.horas_dia ?? 2;
-        const gen = await ds.chat.completions.create({
-          model: DS_MODEL,
+        const gen = await gpt.chat.completions.create({
+          model: CONTENT_MODEL,
           messages: [{
             role: "system",
             content: `Crie um plano de estudos para: "${args.objetivo}"${args.materia ? " — Foco em " + args.materia : ""}.

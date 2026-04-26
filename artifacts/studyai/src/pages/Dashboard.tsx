@@ -2,7 +2,8 @@ import { useEffect, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
-import { AppNav } from "@/components/AppNav";
+import { Layout } from "@/components/Layout";
+import { DashboardSkeleton } from "@/components/DashboardSkeleton";
 import {
   AreaChart, Area, BarChart, Bar, RadarChart, Radar, PolarGrid, PolarAngleAxis,
   PolarRadiusAxis, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -250,9 +251,8 @@ export default function Dashboard() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-indigo-50">
-        <AppNav />
-        <div className="flex flex-col items-center justify-center gap-6 p-8 pt-28">
+      <Layout>
+        <div className="flex flex-col items-center justify-center gap-6 p-8 pt-16">
           <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-violet-200">
             <BarChart2 className="w-10 h-10 text-white" />
           </div>
@@ -261,25 +261,22 @@ export default function Dashboard() {
             <p className="text-slate-500">Entre para ver seu desempenho, evolução e histórico completo.</p>
           </div>
           <button onClick={login}
-            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-600 text-white font-black shadow-lg hover:opacity-90 transition-opacity">
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-600 text-white font-black shadow-lg hover:opacity-90 active:scale-95 transition-all">
             <LogIn className="w-5 h-5" /> Entrar para ver o Dashboard
           </button>
         </div>
-      </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50 pb-24">
+    <Layout>
       {/* Background blobs */}
       <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
         <div className="absolute top-[-5%] right-[-5%] w-[35%] h-[35%] bg-violet-200/20 rounded-full blur-[80px]" />
         <div className="absolute bottom-[-5%] left-[-5%] w-[35%] h-[35%] bg-indigo-200/20 rounded-full blur-[80px]" />
         <div className="absolute top-[40%] left-[30%] w-[20%] h-[20%] bg-emerald-100/20 rounded-full blur-[60px]" />
       </div>
-
-      {/* ── Shared App Navigation ── */}
-      <AppNav />
 
       {/* ── Sub-header: title + XP + streak ── */}
       <div className="sticky top-[53px] z-20 bg-white/80 backdrop-blur-xl border-b border-slate-100">
@@ -324,9 +321,7 @@ export default function Dashboard() {
       <div className="max-w-6xl mx-auto px-4 pt-6 space-y-6">
 
         {loading ? (
-          <div className="flex items-center justify-center py-32">
-            <div className="w-10 h-10 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-          </div>
+          <DashboardSkeleton />
         ) : (
           <AnimatePresence mode="wait">
 
@@ -592,7 +587,7 @@ export default function Dashboard() {
                     <p className="font-semibold">Nenhuma atividade registrada ainda</p>
                     <p className="text-sm mt-1">Faça um simulado ou sessão de flashcard para ver seu desempenho</p>
                     <button onClick={() => navigate("/app")}
-                      className="mt-4 px-5 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-500">
+                      className="mt-4 px-5 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-500 active:scale-95 transition-all shadow-md hover:shadow-violet-200">
                       Começar a estudar
                     </button>
                   </div>
@@ -611,6 +606,8 @@ export default function Dashboard() {
                   <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
                     <h3 className="font-black text-slate-800 mb-1">Acertos por Matéria</h3>
                     <p className="text-xs text-slate-400 mb-4">Média de acertos nos simulados</p>
+                    <div className="overflow-x-auto">
+                    <div style={{ minWidth: Math.max(400, materiaData.length * 55) }}>
                     <ResponsiveContainer width="100%" height={220}>
                       <BarChart data={materiaData} layout="vertical">
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
@@ -622,6 +619,8 @@ export default function Dashboard() {
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
+                    </div>
+                    </div>
                   </div>
                 )}
 
@@ -629,7 +628,7 @@ export default function Dashboard() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {materiaData.map((m, i) => (
                     <motion.div key={m.materia} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
-                      className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 hover:shadow-md transition-shadow">
+                      className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 hover:shadow-lg hover:-translate-y-0.5 hover:border-slate-200 transition-all cursor-default">
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
                           <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: m.color }} />
@@ -722,7 +721,7 @@ export default function Dashboard() {
                         const color = getMateriaColor(sim.materia);
                         return (
                           <motion.div key={sim.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
-                            className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-shadow">
+                            className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-lg hover:-translate-y-0.5 hover:border-slate-200 transition-all cursor-default">
                             <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-black text-sm flex-shrink-0"
                               style={{ backgroundColor: pct >= 80 ? "#10b981" : pct >= 60 ? "#3b82f6" : pct >= 40 ? "#f59e0b" : "#ef4444" }}>
                               {pct}%
@@ -828,6 +827,6 @@ export default function Dashboard() {
           </AnimatePresence>
         )}
       </div>
-    </div>
+    </Layout>
   );
 }

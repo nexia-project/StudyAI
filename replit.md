@@ -33,7 +33,7 @@ StudyAI is built as a `pnpm` monorepo using TypeScript, Node.js 24, and Express 
     - **OpenAI text-embedding-3-small**: RAG embeddings.
 - **Adaptive Learning**: Tailors content based on student performance.
 - **Role-Based Access Control**: Flexible role system (`student`, `teacher`, `institution_admin`, `government`, `admin`) for feature access.
-- **UI/UX**: Features like Voice Professor, onboarding wizard, dynamic mind maps, premium gates, and free usage counters. Consistent navigation with `AppNav` and `LandingDropdown`.
+- **UI/UX**: Features like Voice Professor, onboarding wizard, dynamic mind maps, premium gates, and free usage counters. Consistent navigation with `AppNav` and `LandingDropdown`. Reusable layout system: `Layout`, `PageHeader`, `ContentArea`, `ScrollableTable` in `components/Layout.tsx`. Skeleton loading states via `DashboardSkeleton` component. Responsive design with `overflow-x-auto` charts and `active:scale-95` / `hover:-translate-y-0.5` button/card feedback.
 - **Real-time Communication**: Voice chat uses `SpeechRecognition` and `SpeechSynthesis` for interactive tutor experiences.
 - **Knowledge Base Integration**: AI tutors access an internal knowledge base for accurate responses.
 - **AI Cost Monitoring**: Dedicated `ai_cost_log` table and `logAiUsage()` helper for tracking AI expenditures across features and models.

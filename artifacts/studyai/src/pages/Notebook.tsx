@@ -1402,6 +1402,109 @@ export default function Notebook() {
     } catch { /* silent */ }
   }, []);
 
+  // ─── Helpers de download ──────────────────────────────────────────────────
+  const extractTextFromPayload = (payload: unknown, depth = 0): string => {
+    if (depth > 6) return "";
+    if (typeof payload === "string") return payload;
+    if (typeof payload === "number" || typeof payload === "boolean") return String(payload);
+    if (Array.isArray(payload)) return payload.map(v => extractTextFromPayload(v, depth + 1)).filter(Boolean).join("\n");
+    if (payload && typeof payload === "object") {
+      const skipKeys = new Set(["icon", "color", "image", "emoji", "id", "url"]);
+      return Object.entries(payload as Record<string, unknown>)
+        .filter(([k]) => !skipKeys.has(k))
+        .map(([, v]) => extractTextFromPayload(v, depth + 1))
+        .filter(Boolean).join("\n");
+    }
+    return "";
+  };
+
+  const downloadArtifactAsPDF = useCallback(async (a: SavedArtifact) => {
+    try {
+      const r = await fetch(`${BASE_URL}/api/notebook/artifacts/${a.id}`, { credentials: "include" });
+      if (!r.ok) return;
+      const data = await r.json();
+      const payload = data?.payload ?? data;
+      const cfg = TOOL_CONFIG[(a.kind as Tool)];
+      const title = a.title || cfg?.label || a.kind;
+
+      // Build printable HTML and open in new window
+      const lines = extractTextFromPayload(payload)
+        .split("\n")
+        .map(l => l.trim())
+        .filter(Boolean);
+      const bodyHtml = lines.map(l => `<p style="margin:0 0 6px;font-size:13px;line-height:1.6">${l.replace(/</g,"&lt;")}</p>`).join("");
+
+      const win = window.open("", "_blank");
+      if (!win) return;
+      win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+        <title>${title}</title>
+        <style>
+          body{font-family:system-ui,sans-serif;max-width:780px;margin:40px auto;padding:0 20px;color:#1e293b}
+          h1{font-size:22px;font-weight:800;margin-bottom:24px;color:#312e81;border-bottom:2px solid #e2e8f0;padding-bottom:12px}
+          p{margin:0 0 8px;font-size:13px;line-height:1.65}
+          @media print{body{margin:20px}}
+        </style>
+      </head><body>
+        <h1>${title}</h1>
+        ${bodyHtml}
+        <script>window.onload=function(){window.print();}<\/script>
+      </body></html>`);
+      win.document.close();
+    } catch { /* silent */ }
+  }, []);
+
+  const downloadArtifactAsPPTX = useCallback(async (a: SavedArtifact) => {
+    try {
+      const r = await fetch(`${BASE_URL}/api/notebook/artifacts/${a.id}`, { credentials: "include" });
+      if (!r.ok) return;
+      const data = await r.json();
+      const payload = data?.payload ?? data;
+      const cfg = TOOL_CONFIG[(a.kind as Tool)];
+      const title = a.title || cfg?.label || a.kind;
+
+      const pptxgen = (await import("pptxgenjs")).default;
+      const prs = new pptxgen();
+      prs.layout = "LAYOUT_WIDE";
+      prs.title = title;
+
+      // ── Title slide ──────────────────────────────────────────────────────
+      const titleSlide = prs.addSlide();
+      titleSlide.background = { color: "312e81" };
+      titleSlide.addText(title, { x: 0.5, y: 2.2, w: "90%", h: 1.5, fontSize: 36, bold: true, color: "FFFFFF", align: "center" });
+      titleSlide.addText("StudyAI · studyai.com.br", { x: 0.5, y: 4.2, w: "90%", h: 0.5, fontSize: 14, color: "a5b4fc", align: "center" });
+
+      // ── Content slides ───────────────────────────────────────────────────
+      // If payload is array of slides, render each; otherwise chunk lines
+      const isSlideArray = Array.isArray(payload) && payload[0]?.titulo !== undefined;
+
+      if (isSlideArray) {
+        (payload as Array<{ titulo?: string; conteudo?: string; pontos?: string[]; texto?: string }>).forEach(s => {
+          const slide = prs.addSlide();
+          slide.background = { color: "FFFFFF" };
+          if (s.titulo) {
+            slide.addText(s.titulo, { x: 0.5, y: 0.4, w: "90%", h: 0.8, fontSize: 22, bold: true, color: "312e81" });
+          }
+          const body = s.pontos?.join("\n") ?? s.conteudo ?? s.texto ?? "";
+          if (body) {
+            slide.addText(body, { x: 0.5, y: 1.4, w: "90%", h: 4, fontSize: 14, color: "334155", valign: "top" });
+          }
+        });
+      } else {
+        const allLines = extractTextFromPayload(payload).split("\n").map(l => l.trim()).filter(Boolean);
+        const chunkSize = 14;
+        for (let i = 0; i < allLines.length; i += chunkSize) {
+          const chunk = allLines.slice(i, i + chunkSize);
+          const slide = prs.addSlide();
+          slide.background = { color: "FFFFFF" };
+          slide.addText(chunk.join("\n"), { x: 0.5, y: 0.5, w: "90%", h: 5.5, fontSize: 13, color: "334155", valign: "top" });
+          slide.addText(title, { x: 0.5, y: 6.8, w: "90%", h: 0.35, fontSize: 9, color: "94a3b8", align: "right" });
+        }
+      }
+
+      await prs.writeFile({ fileName: `${title.replace(/[^a-z0-9]/gi, "_")}.pptx` });
+    } catch (e) { console.error("PPTX export:", e); }
+  }, []);
+
   // ─── Load Tiagão-created artifacts (doc_id = 0) ──────────────────────────
   const loadTiagaoArtifacts = useCallback(async () => {
     try {
@@ -2865,17 +2968,30 @@ export default function Notebook() {
                             <MoreVertical className="w-3.5 h-3.5" />
                           </button>
                           {isMenuOpen && (
-                            <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden py-1">
-                              <button onClick={() => { openSavedArtifact(a); setOpenArtifactMenu(null); }}
-                                className="w-full flex items-center gap-2.5 px-3 py-2 text-[11px] text-slate-700 hover:bg-slate-50 text-left">
-                                <ExternalLink className="w-3.5 h-3.5 text-slate-400" /> Abrir / Rever
-                              </button>
-                              <div className="h-px bg-slate-100 my-1" />
-                              <button onClick={() => { deleteSavedArtifact(a.id); setOpenArtifactMenu(null); }}
-                                className="w-full flex items-center gap-2.5 px-3 py-2 text-[11px] text-rose-600 hover:bg-rose-50 text-left">
-                                <Trash2 className="w-3.5 h-3.5" /> Excluir
-                              </button>
-                            </div>
+                            <>
+                              <div className="fixed inset-0 z-40" onClick={() => setOpenArtifactMenu(null)} />
+                              <div className="absolute right-0 top-full mt-1 w-52 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden py-1">
+                                <button onClick={() => { openSavedArtifact(a); setOpenArtifactMenu(null); }}
+                                  className="w-full flex items-center gap-2.5 px-3 py-2 text-[11px] text-slate-700 hover:bg-slate-50 text-left">
+                                  <ExternalLink className="w-3.5 h-3.5 text-slate-400" /> Abrir / Rever
+                                </button>
+                                <div className="h-px bg-slate-100 my-1" />
+                                <p className="px-3 py-1 text-[9px] font-black text-slate-400 uppercase tracking-wider">Exportar</p>
+                                <button onClick={() => { downloadArtifactAsPDF(a); setOpenArtifactMenu(null); }}
+                                  className="w-full flex items-center gap-2.5 px-3 py-2 text-[11px] text-slate-700 hover:bg-slate-50 text-left">
+                                  <Download className="w-3.5 h-3.5 text-rose-500" /> Baixar como PDF
+                                </button>
+                                <button onClick={() => { downloadArtifactAsPPTX(a); setOpenArtifactMenu(null); }}
+                                  className="w-full flex items-center gap-2.5 px-3 py-2 text-[11px] text-slate-700 hover:bg-slate-50 text-left">
+                                  <Download className="w-3.5 h-3.5 text-orange-500" /> Baixar como PowerPoint
+                                </button>
+                                <div className="h-px bg-slate-100 my-1" />
+                                <button onClick={() => { deleteSavedArtifact(a.id); setOpenArtifactMenu(null); }}
+                                  className="w-full flex items-center gap-2.5 px-3 py-2 text-[11px] text-rose-600 hover:bg-rose-50 text-left">
+                                  <Trash2 className="w-3.5 h-3.5" /> Excluir
+                                </button>
+                              </div>
+                            </>
                           )}
                         </div>
                       </div>

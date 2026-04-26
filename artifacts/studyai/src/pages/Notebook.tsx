@@ -17,6 +17,7 @@ import {
   Volume2, Users, Clock, Presentation, Lock, Unlock, Quote, Printer,
   Sparkles, Download, Youtube, Image as ImageIcon, Maximize2, Minimize2, Archive,
   Search, Pencil, Calendar, LayoutGrid, Tv, Music, Shuffle, Film,
+  MoreVertical, Check, ChevronsUpDown,
 } from "lucide-react";
 import { TiagaoCharacter } from "@/components/TiagaoCharacter";
 import { AppNav } from "@/components/AppNav";
@@ -277,6 +278,9 @@ const TOOL_CONFIG: Record<Tool, { label: string; icon: React.ElementType; color:
   relatorio:            { label: "Relatório",              icon: FileText,      color: "slate",    desc: "Documento acadêmico, blog ou aula" },
   tiagao:               { label: "Tiagão na Lousa",        icon: Zap,           color: "blue",     desc: "Aula animada na lousa" },
 };
+
+// Ferramentas que aparecem como cards grandes no Studio (estilo NotebookLM)
+const FEATURED_STUDIO_TOOLS: Tool[] = ["mapa-mental", "study-guide", "podcast"];
 
 const COLOR_MAP: Record<string, string> = {
   indigo:  "bg-indigo-50/60  border-indigo-200  text-indigo-700",
@@ -1304,6 +1308,11 @@ export default function Notebook() {
   // Aula Viva sub-formatos (/tools/aula_viva/*.py)
   const [aulaVivaFormato, setAulaVivaFormato] = useState<"jornal" | "chef" | "investigacao" | "talk-show">("jornal");
 
+  // Notebook header menu + Studio "Mais ferramentas"
+  const [notebookMenuOpen, setNotebookMenuOpen] = useState(false);
+  const [showMoreTools, setShowMoreTools] = useState(false);
+  const [openArtifactMenu, setOpenArtifactMenu] = useState<number | null>(null);
+
   // Avaliação por Voz tab
   const [vozTab, setVozTab] = useState<"podcast" | "entrevista" | "debate">("podcast");
 
@@ -2036,8 +2045,31 @@ export default function Notebook() {
         )}
       </div>
       <div className="px-4 py-2.5 border-b border-slate-100 flex-shrink-0">
-        <p className="text-xs font-black text-slate-800 uppercase tracking-wider">Fontes</p>
-        <p className="text-[10px] text-slate-400 mt-0.5">Selecione para usar no chat e ferramentas</p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-black text-slate-800 uppercase tracking-wider">Fontes</p>
+          {docs.length > 0 && (
+            <button
+              onClick={() => {
+                if (selectedDocIds.length === docs.length) {
+                  setSelectedDocIds([]);
+                } else {
+                  setSelectedDocIds(docs.map(d => d.id));
+                }
+              }}
+              className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
+            >
+              {selectedDocIds.length === docs.length
+                ? <><X className="w-3 h-3" /> Limpar</>
+                : <><Check className="w-3 h-3" /> Todas</>
+              }
+            </button>
+          )}
+        </div>
+        <p className="text-[10px] text-slate-400 mt-0.5">
+          {docs.length > 0
+            ? `${selectedDocIds.length} de ${docs.length} selecionada${docs.length !== 1 ? "s" : ""}`
+            : "Adicione fontes para começar"}
+        </p>
       </div>
 
       {/* Upload buttons */}
@@ -2759,41 +2791,93 @@ export default function Notebook() {
         )}
 
         {selectedDocIds.length === 0 ? (
-          <div className="rounded-lg bg-slate-50 border border-dashed border-slate-200 p-3 text-center">
-            <FileText className="w-4 h-4 text-slate-300 mx-auto mb-1" />
-            <p className="text-[10px] text-slate-500 font-medium">Selecione uma fonte para liberar as ferramentas IA</p>
+          <div className="rounded-xl bg-slate-50 border border-dashed border-slate-200 p-4 text-center">
+            <Sparkles className="w-5 h-5 text-slate-300 mx-auto mb-2" />
+            <p className="text-xs font-semibold text-slate-500">Selecione uma fonte</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">para liberar as ferramentas IA</p>
           </div>
         ) : (
-          <div className="space-y-1.5">
+          <div className="space-y-3">
 
-            {/* Artefatos já gerados — chips clicáveis para reabrir */}
+            {/* ── 3 Ferramentas em destaque (estilo NotebookLM Studio) ── */}
+            <div>
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Gerar com IA</p>
+              <div className="space-y-2">
+                {FEATURED_STUDIO_TOOLS.map(key => {
+                  const cfg = TOOL_CONFIG[key];
+                  const Icon = cfg.icon;
+                  const isActive = activeTool === key;
+                  const isLoading = toolLoading && isActive;
+                  const tintClass = ICON_TINT[cfg.color] ?? "text-slate-500 bg-slate-100";
+                  return (
+                    <button key={key}
+                      onClick={() => runTool(key, selectedDocIds[0])}
+                      disabled={toolLoading}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all disabled:opacity-60 active:scale-[0.98] ${
+                        isActive
+                          ? `${COLOR_MAP[cfg.color]} shadow-sm`
+                          : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm"
+                      }`}>
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isActive ? "bg-white/60" : tintClass}`}>
+                        <Icon className="w-4.5 h-4.5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-[12px] font-bold text-slate-800">{cfg.label}</p>
+                          {cfg.badge && (
+                            <span className={`text-[8px] font-black px-1 py-0.5 rounded ${cfg.badge === "NOVO" ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"}`}>{cfg.badge}</span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-400 leading-snug">{cfg.desc}</p>
+                      </div>
+                      {isLoading
+                        ? <Loader2 className="w-4 h-4 animate-spin text-slate-400 flex-shrink-0" />
+                        : <ChevronRight className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── Artefatos gerados — lista com 3-pontos (estilo NotebookLM) ── */}
             {savedArtifacts.length > 0 && (
-              <div className="mb-2 p-2 rounded-xl bg-emerald-50 border border-emerald-200">
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <Archive className="w-3 h-3 text-emerald-600" />
-                  <p className="text-[10px] font-black text-emerald-800 uppercase tracking-wider">Já gerados ({savedArtifacts.length})</p>
-                </div>
-                <div className="flex flex-wrap gap-1">
+              <div>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Conteúdo gerado</p>
+                <div className="space-y-1">
                   {savedArtifacts.map(a => {
                     const cfg = TOOL_CONFIG[(a.kind as Tool)];
                     const Icon = cfg?.icon ?? FileText;
+                    const isMenuOpen = openArtifactMenu === a.id;
                     return (
-                      <div key={a.id} className="group inline-flex items-center bg-white border border-emerald-200 rounded-lg overflow-hidden hover:border-emerald-400 transition-all">
-                        <button
-                          onClick={() => openSavedArtifact(a)}
-                          className="flex items-center gap-1 px-2 py-1 hover:bg-emerald-50 text-[10px] font-bold text-slate-700"
-                          title={`Reabrir ${cfg?.label ?? a.kind} — ${a.title}`}
-                        >
-                          <Icon className="w-3 h-3 text-emerald-600" />
-                          <span className="truncate max-w-[100px]">{cfg?.label ?? a.kind}</span>
+                      <div key={a.id} className="relative group flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-100 hover:border-slate-200 hover:shadow-sm transition-all">
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${ICON_TINT[cfg?.color ?? "slate"]}`}>
+                          <Icon className="w-3.5 h-3.5" />
+                        </div>
+                        <button onClick={() => openSavedArtifact(a)} className="flex-1 min-w-0 text-left">
+                          <p className="text-[11px] font-semibold text-slate-800 truncate">{a.title || cfg?.label || a.kind}</p>
+                          <p className="text-[9px] text-slate-400">{cfg?.label ?? a.kind}</p>
                         </button>
-                        <button
-                          onClick={() => deleteSavedArtifact(a.id)}
-                          className="px-1 py-1 hover:bg-rose-50 text-rose-400 hover:text-rose-600"
-                          title="Remover artefato"
-                        >
-                          <X className="w-2.5 h-2.5" />
-                        </button>
+                        <div className="relative flex-shrink-0">
+                          <button
+                            onClick={() => setOpenArtifactMenu(isMenuOpen ? null : a.id)}
+                            className="p-1 rounded-lg text-slate-300 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                          >
+                            <MoreVertical className="w-3.5 h-3.5" />
+                          </button>
+                          {isMenuOpen && (
+                            <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden py-1">
+                              <button onClick={() => { openSavedArtifact(a); setOpenArtifactMenu(null); }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-[11px] text-slate-700 hover:bg-slate-50 text-left">
+                                <ExternalLink className="w-3.5 h-3.5 text-slate-400" /> Abrir / Rever
+                              </button>
+                              <div className="h-px bg-slate-100 my-1" />
+                              <button onClick={() => { deleteSavedArtifact(a.id); setOpenArtifactMenu(null); }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-[11px] text-rose-600 hover:bg-rose-50 text-left">
+                                <Trash2 className="w-3.5 h-3.5" /> Excluir
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -2801,63 +2885,76 @@ export default function Notebook() {
               </div>
             )}
 
-            {/* ─── Seletor de Persona (/personas/*.py) ──────────────────── */}
-            <div className="mb-2 p-2 bg-slate-50 border border-slate-200 rounded-xl">
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1.5">🎭 Persona do Professor</p>
-              <select
-                value={selectedPersona}
-                onChange={e => setSelectedPersona(e.target.value)}
-                className="w-full text-[11px] bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700 font-medium focus:outline-none focus:border-violet-400"
-              >
-                {PERSONAS_OPTIONS.map(p => (
-                  <option key={p.key} value={p.key}>{p.label}</option>
-                ))}
-              </select>
-              <p className="text-[10px] text-slate-400 mt-1">
-                {PERSONAS_OPTIONS.find(p => p.key === selectedPersona)?.desc}
-              </p>
+            {/* ── Mais ferramentas (expandável) ── */}
+            <div>
+              <button onClick={() => setShowMoreTools(v => !v)}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-slate-200 text-left text-[11px] font-bold text-slate-500 hover:border-slate-300 hover:bg-slate-50 transition-all">
+                <ChevronsUpDown className="w-3.5 h-3.5" />
+                <span>Mais ferramentas</span>
+                <span className="ml-auto text-[10px] font-normal text-slate-400">
+                  {Object.keys(TOOL_CONFIG).length - FEATURED_STUDIO_TOOLS.length} disponíveis
+                </span>
+              </button>
+
+              {showMoreTools && (
+                <div className="mt-2 space-y-1">
+                  {/* Persona selector */}
+                  <div className="p-2 bg-slate-50 border border-slate-200 rounded-xl mb-2">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1.5">🎭 Persona do Professor</p>
+                    <select
+                      value={selectedPersona}
+                      onChange={e => setSelectedPersona(e.target.value)}
+                      className="w-full text-[11px] bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700 font-medium focus:outline-none focus:border-violet-400"
+                    >
+                      {PERSONAS_OPTIONS.map(p => (
+                        <option key={p.key} value={p.key}>{p.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {/* Aula Viva format */}
+                  <div className="p-2 bg-orange-50 border border-orange-200 rounded-xl mb-2">
+                    <p className="text-[9px] font-black text-orange-400 uppercase tracking-wider mb-1.5">📺 Formato Aula Viva</p>
+                    <div className="grid grid-cols-2 gap-1">
+                      {([["jornal","📰 Jornal"],["chef","👨‍🍳 Chef"],["investigacao","🔍 Investigação"],["talk-show","🎤 Talk Show"]] as const).map(([f, label]) => (
+                        <button key={f} onClick={() => setAulaVivaFormato(f as any)}
+                          className={`text-[10px] font-bold py-1 px-1.5 rounded-lg border transition-all ${aulaVivaFormato === f ? "bg-orange-500 text-white border-orange-500" : "bg-white text-orange-700 border-orange-200 hover:border-orange-400"}`}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* All non-featured tools */}
+                  {(Object.entries(TOOL_CONFIG) as [Tool, typeof TOOL_CONFIG[Tool]][])
+                    .filter(([key]) => !FEATURED_STUDIO_TOOLS.includes(key))
+                    .map(([key, cfg]) => {
+                      const Icon = cfg.icon;
+                      const isActive = activeTool === key;
+                      const isLoading = toolLoading && isActive;
+                      return (
+                        <button key={key}
+                          onClick={() => runTool(key, selectedDocIds[0])}
+                          disabled={toolLoading}
+                          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border text-left transition-all disabled:opacity-60 ${
+                            isActive ? `${COLOR_MAP[cfg.color]} border-current` : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                          }`}>
+                          <Icon className="w-4 h-4 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-xs font-bold text-slate-800 truncate">{cfg.label}</p>
+                              {cfg.badge && (
+                                <span className={`text-[9px] font-black px-1 py-0.5 rounded-md ${cfg.badge === "NOVO" ? "bg-emerald-500 text-white" : cfg.badge === "v2" ? "bg-violet-600 text-white" : "bg-rose-500 text-white"}`}>{cfg.badge}</span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-slate-400">{cfg.desc}</p>
+                          </div>
+                          {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400 flex-shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />}
+                        </button>
+                      );
+                  })}
+                </div>
+              )}
             </div>
 
-            {/* ─── Seletor de Formato Aula Viva (/tools/aula_viva/*.py) ─── */}
-            {(activeTool === "aula-viva-formato" || true) && (
-              <div className="mb-2 p-2 bg-orange-50 border border-orange-200 rounded-xl">
-                <p className="text-[9px] font-black text-orange-400 uppercase tracking-wider mb-1.5">📺 Formato Aula Viva</p>
-                <div className="grid grid-cols-2 gap-1">
-                  {([["jornal","📰 Jornal"],["chef","👨‍🍳 Chef"],["investigacao","🔍 Investigação"],["talk-show","🎤 Talk Show"]] as const).map(([f, label]) => (
-                    <button key={f} onClick={() => setAulaVivaFormato(f as any)}
-                      className={`text-[10px] font-bold py-1 px-1.5 rounded-lg border transition-all ${aulaVivaFormato === f ? "bg-orange-500 text-white border-orange-500" : "bg-white text-orange-700 border-orange-200 hover:border-orange-400"}`}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {(Object.entries(TOOL_CONFIG) as [Tool, typeof TOOL_CONFIG[Tool]][]).map(([key, cfg]) => {
-              const Icon = cfg.icon;
-              const isActive = activeTool === key;
-              const isLoading = toolLoading && isActive;
-              return (
-                <button key={key}
-                  onClick={() => runTool(key, selectedDocIds[0])}
-                  disabled={toolLoading}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border text-left transition-all disabled:opacity-60 ${
-                    isActive ? `${COLOR_MAP[cfg.color]} border-current` : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
-                  }`}>
-                  <Icon className="w-4 h-4 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-xs font-bold text-slate-800 truncate">{cfg.label}</p>
-                      {cfg.badge && (
-                        <span className={`text-[9px] font-black px-1 py-0.5 rounded-md ${cfg.badge === "NOVO" ? "bg-emerald-500 text-white" : cfg.badge === "v2" ? "bg-violet-600 text-white" : "bg-rose-500 text-white"}`}>{cfg.badge}</span>
-                      )}
-                    </div>
-                    <p className="text-[10px] text-slate-400">{cfg.desc}</p>
-                  </div>
-                  {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400 flex-shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />}
-                </button>
-              );
-            })}
           </div>
         )}
       </div>
@@ -5341,6 +5438,44 @@ export default function Notebook() {
             {shareLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ExternalLink className="w-3.5 h-3.5" />}
             Compartilhar
           </button>
+
+          {/* 3-dot notebook actions menu */}
+          <div className="relative">
+            <button
+              onClick={() => setNotebookMenuOpen(v => !v)}
+              className="p-1.5 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300 transition-all"
+              title="Ações do caderno"
+            >
+              <MoreVertical className="w-4 h-4" />
+            </button>
+            {notebookMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setNotebookMenuOpen(false)} />
+                <div className="absolute right-0 top-full mt-1.5 w-52 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden py-1.5">
+                  <button
+                    onClick={() => { openEditCaderno(); setNotebookMenuOpen(false); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left"
+                  >
+                    <Pencil className="w-4 h-4 text-slate-400" /> Renomear caderno
+                  </button>
+                  <button
+                    onClick={() => { setShowShareModal(true); if (!shareToken) generateShareLink(); setNotebookMenuOpen(false); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left"
+                  >
+                    <ExternalLink className="w-4 h-4 text-slate-400" /> Compartilhar caderno
+                  </button>
+                  <div className="h-px bg-slate-100 mx-3 my-1" />
+                  <button
+                    onClick={() => { if (activeCaderno) { if (confirm("Excluir este caderno?")) { deleteCaderno(activeCaderno.id); setNotebookMenuOpen(false); } } }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 text-left"
+                  >
+                    <Trash2 className="w-4 h-4" /> Excluir caderno
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
           <div className="lg:hidden flex bg-slate-100 rounded-xl p-0.5 gap-0.5">
             {(["sources", "chat", "tools"] as const).map(p => (
               <button key={p} onClick={() => setMobilePanel(p)}

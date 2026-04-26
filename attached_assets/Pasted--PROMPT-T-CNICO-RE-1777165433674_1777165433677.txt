@@ -1,0 +1,855 @@
+# ============================================================================
+# PROMPT TÉCNICO: REPLICAÇÃO INTERFACE NOTEBOOK LM → STUDY.IA
+# Objetivo: Feature parity visual e funcional com Notebook LM
+# Baseado em análise de screenshots fornecidas
+# ============================================================================
+
+# ============================================================================
+# 1. ANÁLISE VISUAL DO NOTEBOOK LM (DAS IMAGENS)
+# ============================================================================
+
+## 1.1 Estrutura de Layout (3 Colunas)
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ HEADER GLOBAL (Study.IA Logo + Notebook Title + Actions) │
+├─────────────────┬──────────────────────────┬────────────────────────────┤
+│ │ │ │
+│ SOURCES │ CHAT / NOTEBOOK │ STUDIO │
+│ (Fontes) │ (Conversa) │ (Geração) │
+│ │ │ │
+│ ┌───────────┐ │ ┌────────────────────┐ │ ┌──────────────────────┐ │
+│ │ + Add │ │ │ 🤖 Tiagão │ │ │ 📊 Mind Map │ │
+│ │ Source │ │ │ │ │ │ [Visualização │ │
+│ │ │ │ │ "Vamos explorar │ │ │ em árvore] │ │
+│ │ 📄 PDF │ │ │ divisão celular..."│ │ │ │ │
+│ │ 📄 PDF │ │ │ │ │ │ ┌─── Centro │ │
+│ │ 🌐 Link │ │ │ 👤 User │ │ │ │ ├── Ramo 1 │ │
+│ │ 📝 Text │ │ │ "Explique mitose" │ │ │ │ ├── Ramo 2 │ │
+│ │ │ │ │ │ │ │ │ └── Ramo 3 │ │
+│ │ [Lista │ │ │ [Input box │ │ │ │ │
+│ │ vertical]│ │ │ com sugestões] │ │ │ [Alternar: │ │
+│ │ │ │ │ │ │ │ Mapa | Fluxograma | │ │
+│ │ │ │ │ │ │ │ Resumo | FAQ | │ │
+│ │ │ │ │ │ │ │ Cronograma] │ │
+│ │ │ │ │ │ │ │ │ │
+│ └───────────┘ │ └────────────────────┘ │ │ [Botão: │ │
+│ │ │ │ "Abrir em │ │
+│ [Collapse ◀] │ │ │ tela cheia" ] │ │
+│ │ │ │ │ │
+│ │ │ └──────────────────────┘ │
+│ │ │ │
+│ │ │ ┌──────────────────────┐ │
+│ │ │ │ 📑 Study Guide │ │
+│ │ │ │ [Cards clicáveis │ │
+│ │ │ │ horizontalmente] │ │
+│ │ │ │ │ │
+│ │ │ │ [←] [Card 1] [Card 2]│ │
+│ │ │ │ [Card 3] [Card 4] [→]│ │
+│ │ │ │ │ │
+│ │ │ └──────────────────────┘ │
+│ │ │ │
+│ │ │ ┌──────────────────────┐ │
+│ │ │ │ 🎙️ Audio Overview │ │
+│ │ │ │ [Player de podcast │ │
+│ │ │ │ gerado] │ │
+│ │ │ │ ▶️ Divisão Celular │ │
+│ │ │ │ em 5 min │ │
+│ │ │ │ [▶️] [⏸️] [──●────] │ │
+│ │ │ │ │ │
+│ │ │ └──────────────────────┘ │
+│ │ │ │
+└─────────────────┴──────────────────────────┴────────────────────────────┘
+
+css
+
+## 1.2 Menu Dropdown (3 dots ⋮) — Ações do Notebook
+
+┌─────────────────────────┐
+│ ⋮ [clicado] │
+├─────────────────────────┤
+│ ✏️ Rename │ ← Renomear notebook
+│ 📄 Download PDF │ ← Baixar como PDF
+│ 📊 Download PowerPoint │ ← Baixar como PPT
+│ 🎬 Start Slides │ ← Iniciar apresentação
+│ 🔄 Review │ ← Revisar/Atualizar
+│ 🗑️ Delete │ ← Excluir notebook
+└─────────────────────────┘
+
+shell
+
+## 1.3 Visualização de Mind Map (Segunda Imagem)
+
+CARACTERÍSTICAS IDENTIFICADAS:
+───────────────────────────────
+• Estrutura em ÁRVORE (não radial)
+• Nó central grande e destacado
+• Ramos em HIERARQUIA VERTICAL
+• Cores por nível (gradiente)
+• Linhas conectando nós
+• ZOOM e PAN habilitados
+• CLIQUE em nó = expandir/colapsar
+• CLIQUE DUPL = focar naquele ramo
+
+ESTRUTURA VISUAL:
+┌─────────────────┐
+│ NÓ CENTRAL │ ← Maior, cor primária
+│ "Divisão │
+│ Celular" │
+└────────┬────────┘
+│
+┌────────────────────┼────────────────────┐
+│ │ │
+┌────┴────┐ ┌────┴────┐ ┌────┴────┐
+│ MITOSE │ │ MEIOSE │ │ MENDEL │ ← Nível 1
+│ [cor │ │ [cor │ │ [cor │
+│ A] │ │ B] │ │ C] │
+└────┬────┘ └────┬────┘ └────┬────┘
+│ │ │
+┌────┼────┐ │ ┌────┼────┐
+│ │ │ │ │ │ │
+┌──┴┐ ┌─┴─┐ ┌┴──┐ ... ┌┴┐ ┌─┴─┐ ┌┴──┐
+│Def│ │Fun│ │Eta│ ← Nível 2
+│ │ │ │ │ │ (menores)
+└───┘ └───┘ └───┘
+
+csharp
+
+# ============================================================================
+# 2. PROMPT DE IMPLEMENTAÇÃO FRONTEND
+# ============================================================================
+
+## 2.1 Stack Tecnológico Recomendado
+
+```typescript  
+// TECNOLOGIAS PARA REPLICAR NOTEBOOK LM  
+
+{  
+  "framework": "Next.js 14 (App Router)",  
+  "styling": "Tailwind CSS + shadcn/ui",  
+  "state": "Zustand + React Query",  
+  
+  "visualizacoes": {  
+    "mindMap": "React Flow" // ou "D3.js" para controle total  
+                         // ou "xyflow/react" (usado pelo Notebook LM)  
+  },  
+  
+  "pdfGeneration": {  
+    "pdf": "html2pdf.js + jspdf",  
+    "powerpoint": "pptxgenjs"  
+  },  
+  
+  "audio": {  
+    "player": "react-h5-audio-player",  
+    "waveform": "wavesurfer.js"  
+  },  
+  
+  "dragDrop": "@dnd-kit/core",  
+  "icons": "Lucide React",  
+  "animations": "Framer Motion"  
+}  
+2.2 Componente Principal — NotebookLayout
+typescript
+// app/notebook/[id]/page.tsx
+'use client';
+
+import { useState } from 'react';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { SourcesPanel } from '@/components/notebook/SourcesPanel';
+import { ChatPanel } from '@/components/notebook/ChatPanel';
+import { StudioPanel } from '@/components/notebook/StudioPanel';
+import { NotebookHeader } from '@/components/notebook/NotebookHeader';
+
+export default function NotebookPage({ params }: { params: { id: string } }) {
+  const [activeView, setActiveView] = useState<'mindmap' | 'guide' | 'audio'>('mindmap');
+  
+  return (
+    <div className="h-screen flex flex-col bg-white">
+      {/* Header com título e menu de ações */}
+      <NotebookHeader notebookId={params.id} />
+      
+      {/* Layout de 3 painéis redimensionáveis */}
+      <PanelGroup direction="horizontal" className="flex-1">
+        
+        {/* PAINEL ESQUERDO: Sources */}
+        <Panel defaultSize={20} minSize={15} maxSize={35}>
+          <SourcesPanel notebookId={params.id} />
+        </Panel>
+        
+        <PanelResizeHandle className="w-1 bg-gray-200 hover:bg-blue-500 transition-colors" />
+        
+        {/* PAINEL CENTRAL: Chat */}
+        <Panel defaultSize={45} minSize={30}>
+          <ChatPanel notebookId={params.id} />
+        </Panel>
+        
+        <PanelResizeHandle className="w-1 bg-gray-200 hover:bg-blue-500 transition-colors" />
+        
+        {/* PAINEL DIREITO: Studio */}
+        <Panel defaultSize={35} minSize={25}>
+          <StudioPanel 
+            notebookId={params.id}
+            activeView={activeView}
+            onChangeView={setActiveView}
+          />
+        </Panel>
+        
+      </PanelGroup>
+    </div>
+  );
+}
+2.3 Menu de Ações (Dropdown ⋮)
+typescript
+// components/notebook/NotebookActions.tsx
+'use client';
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import {
+  MoreVertical,
+  Pencil,
+  FileText,
+  Presentation,
+  Play,
+  RefreshCw,
+  Trash2,
+  Download,
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
+interface NotebookActionsProps {
+  notebookId: string;
+  notebookTitle: string;
+  onRename: () => void;
+}
+
+export function NotebookActions({ notebookId, notebookTitle, onRename }: NotebookActionsProps) {
+  const { toast } = useToast();
+  
+  const handleDownloadPDF = async () => {
+    toast({ title: 'Gerando PDF...', description: 'Aguarde alguns segundos' });
+    
+    // Gera PDF a partir do conteúdo do notebook
+    const response = await fetch(`/api/notebook/${notebookId}/export/pdf`, {
+      method: 'POST',
+    });
+    
+    if (response.ok) {
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${notebookTitle}.pdf`;
+      a.click();
+      
+      toast({ title: 'PDF baixado com sucesso!' });
+    }
+  };
+  
+  const handleDownloadPowerPoint = async () => {
+    toast({ title: 'Gerando PowerPoint...', description: 'Aguarde alguns segundos' });
+    
+    const response = await fetch(`/api/notebook/${notebookId}/export/pptx`, {
+      method: 'POST',
+    });
+    
+    if (response.ok) {
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${notebookTitle}.pptx`;
+      a.click();
+      
+      toast({ title: 'PowerPoint baixado com sucesso!' });
+    }
+  };
+  
+  const handleStartSlides = () => {
+    // Abre modo apresentação fullscreen
+    window.open(`/notebook/${notebookId}/slides`, '_blank');
+  };
+  
+  const handleReview = async () => {
+    toast({ title: 'Revisando conteúdo...' });
+    
+    // Chama API para regenerar análises com base nas fontes
+    await fetch(`/api/notebook/${notebookId}/review`, { method: 'POST' });
+    
+    toast({ title: 'Revisão concluída!', description: 'Conteúdo atualizado' });
+  };
+  
+  const handleDelete = async () => {
+    if (!confirm('Tem certeza que deseja excluir este notebook?')) return;
+    
+    await fetch(`/api/notebook/${notebookId}`, { method: 'DELETE' });
+    
+    // Redireciona para lista
+    window.location.href = '/dashboard';
+  };
+  
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon">
+          <MoreVertical className="h-5 w-5" />
+        </Button>
+      </DropdownMenuTrigger>
+      
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuItem onClick={onRename}>
+          <Pencil className="mr-2 h-4 w-4" />
+          Renomear
+        </DropdownMenuItem>
+        
+        <DropdownMenuSeparator />
+        
+        <DropdownMenuItem onClick={handleDownloadPDF}>
+          <FileText className="mr-2 h-4 w-4" />
+          Download PDF
+        </DropdownMenuItem>
+        
+        <DropdownMenuItem onClick={handleDownloadPowerPoint}>
+          <Presentation className="mr-2 h-4 w-4" />
+          Download PowerPoint
+        </DropdownMenuItem>
+        
+        <DropdownMenuSeparator />
+        
+        <DropdownMenuItem onClick={handleStartSlides}>
+          <Play className="mr-2 h-4 w-4" />
+          Iniciar Slides
+        </DropdownMenuItem>
+        
+        <DropdownMenuItem onClick={handleReview}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Revisar / Atualizar
+        </DropdownMenuItem>
+        
+        <DropdownMenuSeparator />
+        
+        <DropdownMenuItem 
+          onClick={handleDelete}
+          className="text-red-600 focus:text-red-600"
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          Excluir
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+2.4 Visualização de Mind Map (React Flow)
+typescript
+// components/notebook/MindMapView.tsx
+'use client';
+
+import { useCallback, useState } from 'react';
+import ReactFlow, {
+  Node,
+  Edge,
+  addEdge,
+  Background,
+  Controls,
+  MiniMap,
+  useNodesState,
+  useEdgesState,
+  Connection,
+  Panel,
+} from 'reactflow';
+import 'reactflow/dist/style.css';
+import { MindMapNode } from './MindMapNode';
+import { Fullscreen, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+// Tipos de nó customizados
+const nodeTypes = {
+  mindmap: MindMapNode,
+};
+
+interface MindMapData {
+  id: string;
+  label: string;
+  level: number;
+  description?: string;
+  children?: MindMapData[];
+}
+
+interface MindMapViewProps {
+  data: MindMapData;
+  onNodeClick?: (node: MindMapData) => void;
+}
+
+export function MindMapView({ data, onNodeClick }: MindMapViewProps) {
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  
+  // Converte dados hierárquicos para nodes/edges do React Flow
+  const convertToFlowElements = useCallback((rootData: MindMapData) => {
+    const nodes: Node[] = [];
+    const edges: Edge[] = [];
+    
+    const traverse = (
+      item: MindMapData,
+      parentId: string | null = null,
+      x: number = 0,
+      y: number = 0,
+      level: number = 0
+    ) => {
+      const nodeId = item.id || `node-${nodes.length}`;
+      
+      // Cores por nível (igual Notebook LM)
+      const colors = [
+        '#6366F1', // Nível 0: Indigo
+        '#8B5CF6', // Nível 1: Violet
+        '#A78BFA', // Nível 2: Light Violet
+        '#C4B5FD', // Nível 3: Lighter
+      ];
+      
+      nodes.push({
+        id: nodeId,
+        type: 'mindmap',
+        position: { x, y },
+        data: {
+          label: item.label,
+          description: item.description,
+          level: level,
+          color: colors[Math.min(level, colors.length - 1)],
+          isRoot: level === 0,
+        },
+        style: {
+          width: level === 0 ? 200 : level === 1 ? 160 : 120,
+        },
+      });
+      
+      if (parentId) {
+        edges.push({
+          id: `edge-${parentId}-${nodeId}`,
+          source: parentId,
+          target: nodeId,
+          type: 'smoothstep',
+          animated: false,
+          style: { stroke: colors[level], strokeWidth: 2 },
+        });
+      }
+      
+      // Posiciona filhos em árvore horizontal
+      if (item.children && item.children.length > 0) {
+        const childWidth = 220;
+        const childHeight = 100;
+        const totalWidth = item.children.length * childWidth;
+        const startX = x - totalWidth / 2 + childWidth / 2;
+        
+        item.children.forEach((child, index) => {
+          traverse(
+            child,
+            nodeId,
+            startX + index * childWidth,
+            y + childHeight + (level === 0 ? 50 : 80),
+            level + 1
+          );
+        });
+      }
+    };
+    
+    traverse(rootData, null, 400, 50, 0);
+    
+    return { nodes, edges };
+  }, []);
+  
+  // Inicializa com dados
+  useState(() => {
+    const { nodes: initialNodes, edges: initialEdges } = convertToFlowElements(data);
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+  });
+  
+  const onConnect = useCallback(
+    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
+    [setEdges]
+  );
+  
+  const handleNodeClick = useCallback((_: React.MouseNodeEvent, node: Node) => {
+    onNodeClick?.(node.data);
+  }, [onNodeClick]);
+  
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+  
+  return (
+    <div className={`relative ${isFullscreen ? 'fixed inset-0 z-50' : 'h-full'}`}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        onNodeClick={handleNodeClick}
+        nodeTypes={nodeTypes}
+        fitView
+        attributionPosition="bottom-left"
+        minZoom={0.1}
+        maxZoom={2}
+      >
+        <Background color="#E5E7EB" gap={20} size={1} />
+        <Controls />
+        <MiniMap 
+          nodeStrokeWidth={3}
+          zoomable
+          pannable
+        />
+        
+        {/* Botão de fullscreen */}
+        <Panel position="top-right">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={toggleFullscreen}
+            className="shadow-md"
+          >
+            {isFullscreen ? (
+              <><ZoomOut className="mr-2 h-4 w-4" /> Sair tela cheia</>
+            ) : (
+              <><Maximize2 className="mr-2 h-4 w-4" /> Abrir em tela cheia</>
+            )}
+          </Button>
+        </Panel>
+      </ReactFlow>
+    </div>
+  );
+}
+
+// Componente de nó customizado
+function MindMapNode({ data }: { data: any }) {
+  const [isExpanded, setIsExpanded] = useState(true);
+  
+  return (
+    <div
+      className={`
+        rounded-lg border-2 p-4 shadow-md transition-all cursor-pointer
+        hover:shadow-lg hover:scale-105
+        ${data.isRoot ? 'text-lg font-bold' : 'text-sm'}
+      `}
+      style={{
+        backgroundColor: `${data.color}15`, // 15 = 10% opacity
+        borderColor: data.color,
+        minWidth: data.isRoot ? 200 : 140,
+      }}
+      onClick={() => setIsExpanded(!isExpanded)}
+    >
+      <div 
+        className="font-semibold text-gray-900"
+        style={{ color: data.color }}
+      >
+        {data.label}
+      </div>
+      
+      {data.description && isExpanded && (
+        <div className="mt-2 text-xs text-gray-600 line-clamp-3">
+          {data.description}
+        </div>
+      )}
+      
+      {data.children && data.children.length > 0 && (
+        <div className="mt-2 flex justify-center">
+          <div 
+            className="w-6 h-6 rounded-full flex items-center justify-center text-xs"
+            style={{ backgroundColor: data.color, color: 'white' }}
+          >
+            {isExpanded ? '−' : '+'}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+2.5 Study Guide (Cards Horizontais)
+typescript
+// components/notebook/StudyGuideView.tsx
+'use client';
+
+import { useRef } from 'react';
+import { motion } from 'framer-motion';
+import { ChevronLeft, ChevronRight, BookOpen, Lightbulb, HelpCircle, Calendar } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+
+interface StudyCard {
+  id: string;
+  type: 'summary' | 'key-point' | 'question' | 'timeline';
+  title: string;
+  content: string;
+  icon?: string;
+}
+
+interface StudyGuideViewProps {
+  cards: StudyCard[];
+  onCardClick?: (card: StudyCard) => void;
+}
+
+export function StudyGuideView({ cards, onCardClick }: StudyGuideViewProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollRef.current) {
+      const scrollAmount = 320;
+      scrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      });
+    }
+  };
+  
+  const getIcon = (type: string) => {
+    switch (type) {
+      case 'summary': return <BookOpen className="h-5 w-5" />;
+      case 'key-point': return <Lightbulb className="h-5 w-5" />;
+      case 'question': return <HelpCircle className="h-5 w-5" />;
+      case 'timeline': return <Calendar className="h-5 w-5" />;
+      default: return <BookOpen className="h-5 w-5" />;
+    }
+  };
+  
+  const getColor = (type: string) => {
+    switch (type) {
+      case 'summary': return 'bg-blue-50 border-blue-200 text-blue-900';
+      case 'key-point': return 'bg-amber-50 border-amber-200 text-amber-900';
+      case 'question': return 'bg-purple-50 border-purple-200 text-purple-900';
+      case 'timeline': return 'bg-green-50 border-green-200 text-green-900';
+      default: return 'bg-gray-50 border-gray-200';
+    }
+  };
+  
+  return (
+    <div className="relative">
+      {/* Botões de navegação */}
+      <Button
+        variant="outline"
+        size="icon"
+        className="absolute left-0 top-1/2 -translate-y-1/2 z-10 rounded-full shadow-md"
+        onClick={() => scroll('left')}
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+      
+      <Button
+        variant="outline"
+        size="icon"
+        className="absolute right-0 top-1/2 -translate-y-1/2 z-10 rounded-full shadow-md"
+        onClick={() => scroll('right')}
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+      
+      {/* Cards horizontais */}
+      <ScrollArea className="w-full whitespace-nowrap" ref={scrollRef}>
+        <div className="flex gap-4 px-12 py-4">
+          {cards.map((card, index) => (
+            <motion.div
+              key={card.id}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.1 }}
+              onClick={() => onCardClick?.(card)}
+              className={`
+                flex-shrink-0 w-72 p-5 rounded-xl border-2 cursor-pointer
+                transition-all hover:shadow-lg hover:scale-[1.02]
+                ${getColor(card.type)}
+              `}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-2 rounded-lg bg-white/50">
+                  {getIcon(card.type)}
+                </div>
+                <span className="text-xs font-medium uppercase tracking-wider opacity-70">
+                  {card.type.replace('-', ' ')}
+                </span>
+              </div>
+              
+              <h3 className="font-semibold text-lg mb-2 line-clamp-2">
+                {card.title}
+              </h3>
+              
+              <p className="text-sm opacity-80 line-clamp-4 whitespace-normal">
+                {card.content}
+              </p>
+            </motion.div>
+          ))}
+        </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
+    </div>
+  );
+}
+2.6 API de Exportação (PDF e PowerPoint)
+typescript
+// app/api/notebook/[id]/export/pdf/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import puppeteer from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const notebookId = params.id;
+    
+    // Busca dados do notebook
+    const notebook = await getNotebookData(notebookId);
+    
+    // Gera HTML otimizado para PDF
+    const html = generateNotebookHTML(notebook);
+    
+    // Inicia Puppeteer com Chromium otimizado
+    const browser = await puppeteer.launch({
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+    });
+    
+    const page = await browser.newPage();
+    
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    
+    // Gera PDF
+    const pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: {
+        top: '20mm',
+        right: '20mm',
+        bottom: '20mm',
+        left: '20mm',
+      },
+    });
+    
+    await browser.close();
+    
+    return new NextResponse(pdf, {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${notebook.title}.pdf"`,
+      },
+    });
+    
+  } catch (error) {
+    console.error('Erro ao gerar PDF:', error);
+    return NextResponse.json(
+      { error: 'Falha ao gerar PDF' },
+      { status: 500 }
+    );
+  }
+}
+
+// app/api/notebook/[id]/export/pptx/route.ts
+import PptxGenJS from 'pptxgenjs';
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const notebookId = params.id;
+    const notebook = await getNotebookData(notebookId);
+    
+    const pptx = new PptxGenJS();
+    
+    // Configuração do tema
+    pptx.layout = 'LAYOUT_16x9';
+    pptx.theme = { bodyFontFace: 'Arial' };
+    
+    // Slide de título
+    const slideTitle = pptx.addSlide();
+    slideTitle.addText(notebook.title, {
+      x: 1, y: 2, w: '80%', h: 1,
+      fontSize: 44, bold: true, color: '363636',
+      align: 'center',
+    });
+    slideTitle.addText(`Gerado por Study.IA • ${new Date().toLocaleDateString()}`, {
+      x: 1, y: 4, w: '80%',
+      fontSize: 14, color: '666666', align: 'center',
+    });
+    
+    // Slides de conteúdo
+    notebook.sections.forEach((section: any) => {
+      const slide = pptx.addSlide();
+      
+      // Título da seção
+      slide.addText(section.title, {
+        x: 0.5, y: 0.5, w: '90%',
+        fontSize: 32, bold: true, color: '6366F1',
+      });
+      
+      // Conteúdo
+      slide.addText(section.content, {
+        x: 0.5, y: 1.5, w: '90%', h: 4,
+        fontSize: 18, color: '333333',
+        bullet: true,
+        lineSpacing: 28,
+      });
+      
+      // Adiciona imagem se houver
+      if (section.imageUrl) {
+        try {
+          slide.addImage({
+            path: section.imageUrl,
+            x: 6, y: 1.5, w: 3, h: 3,
+          });
+        } catch (e) {
+          // Ignora erro de imagem
+        }
+      }
+    });
+    
+    // Gera buffer
+    const buffer = await pptx.write({ outputType: 'nodebuffer' });
+    
+    return new NextResponse(buffer, {
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'Content-Disposition': `attachment; filename="${notebook.title}.pptx"`,
+      },
+    });
+    
+  } catch (error) {
+    console.error('Erro ao gerar PowerPoint:', error);
+    return NextResponse.json(
+      { error: 'Falha ao gerar PowerPoint' },
+      { status: 500 }
+    );
+  }
+}
+============================================================================
+3. CHECKLIST DE IMPLEMENTAÇÃO
+============================================================================
+Fase 1: Estrutura Base (2 dias)
+ Layout de 3 painéis redimensionáveis
+ Header com título editável e menu ⋮
+ Integração com dados existentes do Study.IA
+Fase 2: Menu de Ações (1 dia)
+ Dropdown com: Renomear, Download PDF, Download PPT, Slides, Revisar, Excluir
+ APIs de exportação PDF e PowerPoint
+ Modo apresentação fullscreen
+Fase 3: Visualizações Studio (3 dias)
+ Mind Map com React Flow (árvore horizontal)
+ Study Guide com cards horizontais scrolláveis
+ Audio Overview com player de podcast
+ Alternador de visualizações (tabs)
+Fase 4: Polimento (2 dias)
+ Animações e transições (Framer Motion)
+ Responsividade mobile
+ Testes de usabilidade

@@ -226,7 +226,7 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
           sub: action.titulo ? `"${action.titulo}"` : undefined,
           path: "/notebook",
         });
-        setTimeout(() => navigate("/notebook"), 2000);
+        setTimeout(() => navigate("/notebook"), 800);
         break;
 
       case "criar_prova":
@@ -240,6 +240,7 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
           sub: action.titulo ? `"${action.titulo}"` : undefined,
           path: "/notebook",
         });
+        setTimeout(() => navigate("/notebook"), 800);
         break;
 
       case "criar_plano_estudos":
@@ -262,20 +263,24 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
           sub: action.titulo ? `"${action.titulo}"` : undefined,
           path: "/notebook",
         });
+        setTimeout(() => navigate("/notebook"), 800);
         break;
 
-      case "criar_infografico":
-        if (action.infografico) {
-          localStorage.setItem("tiagao_infografico", JSON.stringify(action.infografico));
+      case "criar_infografico": {
+        const infoPayload = action.infografico ?? action.brief;
+        if (infoPayload) {
+          localStorage.setItem("tiagao_infografico", JSON.stringify(infoPayload));
           window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_infografico" } }));
         }
         showNotif({
           icon: <BarChart3 className="w-5 h-5 flex-shrink-0" />,
           text: `📊 Infográfico criado!`,
-          sub: action.titulo ? `"${action.titulo}"` : undefined,
+          sub: action.topico ? `"${action.topico}"` : undefined,
           path: "/notebook",
         });
+        setTimeout(() => navigate("/notebook"), 800);
         break;
+      }
 
       case "criar_resumo":
         if (action.resumo) {
@@ -285,9 +290,10 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
         showNotif({
           icon: <ScrollText className="w-5 h-5 flex-shrink-0" />,
           text: `📄 Resumo criado!`,
-          sub: action.titulo ? `"${action.titulo}"` : undefined,
+          sub: action.topico ?? action.titulo ? `"${action.topico ?? action.titulo}"` : undefined,
           path: "/notebook",
         });
+        setTimeout(() => navigate("/notebook"), 800);
         break;
 
       case "busca_docs":

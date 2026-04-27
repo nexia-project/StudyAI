@@ -1766,6 +1766,7 @@ export default function Notebook() {
   // ─── Auto-open Tiagão-created artifacts from localStorage ────────────────
   useEffect(() => {
     function applyTiagaoArtifacts() {
+      let opened = false;
       // Slides
       const slidesRaw = localStorage.getItem("tiagao_slides_criados");
       if (slidesRaw) {
@@ -1777,71 +1778,88 @@ export default function Notebook() {
             setToolError(null);
             setSlideIdx(0);
             setNotebookView("workspace");
+            setMobilePanel("tools");
+            opened = true;
           }
         } catch { /* ignore */ }
         localStorage.removeItem("tiagao_slides_criados");
       }
       // Prova
-      const provaRaw = localStorage.getItem("tiagao_prova_criada");
-      if (provaRaw) {
-        try {
-          const provaData = JSON.parse(provaRaw);
-          if (provaData?.questoes?.length) {
-            const normalized = provaData.questoes.map((q: any) => ({
-              enunciado: q.enunciado,
-              alternativas: q.alternativas ?? {},
-              gabarito: q.resposta_correta ?? q.gabarito ?? "A",
-              explicacao: q.explicacao ?? q.criterios_avaliacao ?? "",
-            }));
-            setActiveTool("questoes");
-            setToolResult({ questoes: normalized });
-            setToolError(null);
-            setNotebookView("workspace");
-          }
-        } catch { /* ignore */ }
-        localStorage.removeItem("tiagao_prova_criada");
+      if (!opened) {
+        const provaRaw = localStorage.getItem("tiagao_prova_criada");
+        if (provaRaw) {
+          try {
+            const provaData = JSON.parse(provaRaw);
+            if (provaData?.questoes?.length) {
+              const normalized = provaData.questoes.map((q: any) => ({
+                enunciado: q.enunciado,
+                alternativas: q.alternativas ?? {},
+                gabarito: q.resposta_correta ?? q.gabarito ?? "A",
+                explicacao: q.explicacao ?? q.criterios_avaliacao ?? "",
+              }));
+              setActiveTool("questoes");
+              setToolResult({ questoes: normalized });
+              setToolError(null);
+              setNotebookView("workspace");
+              setMobilePanel("tools");
+              opened = true;
+            }
+          } catch { /* ignore */ }
+          localStorage.removeItem("tiagao_prova_criada");
+        }
       }
       // Mapa mental
-      const mapaRaw = localStorage.getItem("tiagao_mapa_mental");
-      if (mapaRaw) {
-        try {
-          const mapaData = JSON.parse(mapaRaw);
-          if (mapaData?.categories?.length || mapaData?.subject) {
-            setActiveTool("mapa-mental");
-            setToolResult(mapaData);
-            setToolError(null);
-            setNotebookView("workspace");
-          }
-        } catch { /* ignore */ }
-        localStorage.removeItem("tiagao_mapa_mental");
+      if (!opened) {
+        const mapaRaw = localStorage.getItem("tiagao_mapa_mental");
+        if (mapaRaw) {
+          try {
+            const mapaData = JSON.parse(mapaRaw);
+            if (mapaData?.categories?.length || mapaData?.subject) {
+              setActiveTool("mapa-mental");
+              setToolResult(mapaData);
+              setToolError(null);
+              setNotebookView("workspace");
+              setMobilePanel("tools");
+              opened = true;
+            }
+          } catch { /* ignore */ }
+          localStorage.removeItem("tiagao_mapa_mental");
+        }
       }
       // Infográfico
-      const infoRaw = localStorage.getItem("tiagao_infografico");
-      if (infoRaw) {
-        try {
-          const infoData = JSON.parse(infoRaw);
-          if (infoData) {
-            setActiveTool("infografico");
-            setToolResult(infoData);
-            setToolError(null);
-            setNotebookView("workspace");
-          }
-        } catch { /* ignore */ }
-        localStorage.removeItem("tiagao_infografico");
+      if (!opened) {
+        const infoRaw = localStorage.getItem("tiagao_infografico");
+        if (infoRaw) {
+          try {
+            const infoData = JSON.parse(infoRaw);
+            if (infoData && typeof infoData === "object") {
+              setActiveTool("infografico");
+              setToolResult(infoData);
+              setToolError(null);
+              setNotebookView("workspace");
+              setMobilePanel("tools");
+              opened = true;
+            }
+          } catch { /* ignore */ }
+          localStorage.removeItem("tiagao_infografico");
+        }
       }
       // Resumo
-      const resumoRaw = localStorage.getItem("tiagao_resumo");
-      if (resumoRaw) {
-        try {
-          const resumoData = JSON.parse(resumoRaw);
-          if (resumoData) {
-            setActiveTool("study-guide");
-            setToolResult(resumoData);
-            setToolError(null);
-            setNotebookView("workspace");
-          }
-        } catch { /* ignore */ }
-        localStorage.removeItem("tiagao_resumo");
+      if (!opened) {
+        const resumoRaw = localStorage.getItem("tiagao_resumo");
+        if (resumoRaw) {
+          try {
+            const resumoData = JSON.parse(resumoRaw);
+            if (resumoData && typeof resumoData === "object") {
+              setActiveTool("study-guide");
+              setToolResult(resumoData);
+              setToolError(null);
+              setNotebookView("workspace");
+              setMobilePanel("tools");
+            }
+          } catch { /* ignore */ }
+          localStorage.removeItem("tiagao_resumo");
+        }
       }
       // Refresh Tiagão artifacts list from DB
       loadTiagaoArtifacts();

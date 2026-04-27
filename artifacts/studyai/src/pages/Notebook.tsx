@@ -1622,22 +1622,29 @@ export default function Notebook() {
         overview: "overview",
         prova: "questoes", plano_estudos: "study-guide",
         resumo: "study-guide", plano: "study-guide",
+        briefing: "briefing", relatorio: "relatorio",
+        tabela: "tabela", infografico_texto: "infografico",
       };
       const tool = kindToTool[a.kind];
       if (!tool) return;
       setActiveTool(tool);
       setToolResult(payload);
       setToolError(null);
+      // Navigate to workspace and tools panel so the result is visible
+      setNotebookView("workspace");
+      setMobilePanel("tools");
+      if (tool === "slides") setSlideIdx(0);
     } catch { /* silent */ }
-  }, []);
+  }, []); // eslint-disable-line
 
   const deleteSavedArtifact = useCallback(async (id: number) => {
     if (!confirm("Remover este artefato salvo?")) return;
     try {
       await fetch(`${BASE_URL}/api/notebook/artifacts/${id}`, { method: "DELETE", credentials: "include" });
       setSavedArtifacts(prev => prev.filter(a => a.id !== id));
+      setTiagaoArtifacts(prev => prev.filter(a => a.id !== id));
     } catch { /* silent */ }
-  }, []);
+  }, []); // eslint-disable-line
 
   // ─── Helpers de download ──────────────────────────────────────────────────
   const extractTextFromPayload = (payload: unknown, depth = 0): string => {

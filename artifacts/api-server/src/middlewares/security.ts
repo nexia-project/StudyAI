@@ -122,8 +122,8 @@ export function sanitizeInputs(req: Request, _res: Response, next: NextFunction)
       if (typeof value === "string") {
         // Strip null bytes (can break postgres TEXT columns)
         let sanitized = value.replace(/\0/g, "");
-        // Enforce field-specific length limits
-        const maxLen = MAX_FIELD_LENGTHS[key];
+        // Enforce field-specific length limits (use hasOwn to avoid prototype pollution)
+        const maxLen = Object.hasOwn(MAX_FIELD_LENGTHS, key) ? MAX_FIELD_LENGTHS[key as keyof typeof MAX_FIELD_LENGTHS] : undefined;
         if (maxLen && sanitized.length > maxLen) {
           sanitized = sanitized.slice(0, maxLen);
         }

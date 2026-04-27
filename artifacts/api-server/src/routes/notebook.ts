@@ -1130,46 +1130,54 @@ router.post("/notebook/study-guide", async (req: Request, res: Response) => {
     if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       temperature: 0.5,
-      max_tokens: 4000,
+      max_tokens: 6000,
       messages: [
         {
           role: "system",
-          content: `Você é um tutor experiente especializado em ENEM/vestibulares. Crie um guia de estudo completo no formato Mapa de Jornada.
+          content: `Você é um tutor mestre especializado em ENEM/vestibulares, com domínio em pedagogia ativa e neurociência da aprendizagem. Crie um guia de estudo COMPLETO, RICO e PROFISSIONAL no formato Mapa de Jornada.
 Retorne APENAS JSON válido, sem markdown:
 {
-  "titulo": "Guia de Estudo: [assunto]",
-  "objetivoFinal": "Ao final deste guia, você será capaz de... [descrever competência concreta]",
-  "checklistCompetencias": ["competência 1", "competência 2", "competência 3"],
-  "prerequisitos": "O que o aluno precisa saber antes de começar",
+  "titulo": "Guia de Estudo: [assunto específico]",
+  "objetivoFinal": "Ao final deste guia, você será capaz de... [descrever 2-3 competências concretas e mensuráveis]",
+  "checklistCompetencias": ["competência 1 detalhada", "competência 2 detalhada", "competência 3", "competência 4", "competência 5"],
+  "prerequisitos": "Parágrafo explicando o que o aluno precisa saber antes — cite conceitos específicos",
   "quizDiagnostico": [
-    { "pergunta": "Pergunta diagnóstica rápida?", "dica": "Pensa em..." }
+    { "pergunta": "Pergunta diagnóstica desafiadora e específica do tema?", "dica": "Pensa em [conceito concreto]..." }
   ],
   "modulos": [
     {
       "numero": 1,
-      "titulo": "Título do Módulo",
-      "tempoBruto": "15-20 min",
-      "objetivo": "Competência específica deste módulo",
-      "conceitoCentral": "Explicação com analogia do cotidiano",
-      "aprofundamento": "Detalhes técnicos e nuances",
-      "exemploResolvido": "Passo a passo de aplicação prática",
-      "errosComuns": ["Erro típico 1", "Erro típico 2"],
-      "checkpoint": ["Pergunta de autoavaliação 1", "Pergunta de autoavaliação 2"]
+      "titulo": "Título Descritivo e Instigante do Módulo",
+      "tempoBruto": "20-30 min",
+      "objetivo": "Competência específica e mensurável deste módulo",
+      "conceitoCentral": "Parágrafo de 3-5 frases explicando o conceito central com analogia do cotidiano, contexto histórico/científico e por que ele é fundamental para entender o tema.",
+      "aprofundamento": "Parágrafo de 4-6 frases com detalhes técnicos, dados quantitativos, nuances e contradições. Inclua fatos específicos do documento com datas, nomes, números quando disponíveis.",
+      "exemploResolvido": "Resolução passo-a-passo detalhada: Passo 1: [ação concreta]. Passo 2: [raciocínio]. Passo 3: [cálculo/aplicação]. Passo 4: [resultado e interpretação]. Relacione com questão real do ENEM.",
+      "curiosidade": "Um fato surpreendente e memorável sobre este conceito que o aluno vai contar para os amigos",
+      "errosComuns": ["Erro específico e frequente 1 — explique por que ocorre", "Erro 2", "Erro 3", "Erro 4"],
+      "checkpoint": ["Pergunta de autoavaliação aprofundada 1?", "Pergunta 2 que exige síntese?", "Pergunta 3 de aplicação?"]
     }
   ],
-  "sintese": "Conexão integradora entre todos os módulos",
-  "aplicacaoPratica": "Caso real + exercício de transferência de conhecimento",
+  "sintese": "Parágrafo de 4-6 frases conectando todos os módulos, mostrando como os conceitos se relacionam e formam um todo coerente",
+  "aplicacaoPratica": "Descrição de um caso real e atual + exercício desafiador de transferência de conhecimento com orientação de resolução",
   "expansao": {
-    "leituras": ["Sugestão 1", "Sugestão 2"],
-    "conexoes": ["Tema relacionado 1", "Tema relacionado 2"]
+    "leituras": ["Sugestão 1 com descrição do que vai aprender", "Sugestão 2", "Sugestão 3"],
+    "conexoes": ["Tema relacionado 1 — por que se conecta", "Tema relacionado 2", "Tema relacionado 3"]
   },
-  "cronogramaSugerido": ["Dia 1: ...", "Dia 2: ...", "Dia 3: ..."]
+  "cronogramaSugerido": ["Dia 1: ...", "Dia 2: ...", "Dia 3: ...", "Dia 4: ...", "Dia 5: revisão e prática"]
 }
-Gere 3-4 módulos cobrindo progressivamente todo o documento. Quiz diagnóstico com 3 perguntas.`,
+REGRAS OBRIGATÓRIAS:
+- Gere 5-6 módulos cobrindo PROGRESSIVAMENTE todo o documento — do básico ao avançado
+- Quiz diagnóstico com 4 perguntas desafiadoras
+- Cada conceitoCentral: MÍNIMO 3 frases completas com analogia e contexto
+- Cada aprofundamento: MÍNIMO 4 frases com dados específicos do documento
+- Cada exemploResolvido: MÍNIMO 4 passos detalhados
+- Use dados, datas, nomes e números reais do documento
+- Linguagem envolvente: como um professor apaixonado explicaria para um aluno`,
         },
-        { role: "user", content: `Tema: "${row.title}"\n\nConteúdo:\n${row.content_text.slice(0, 14_000)}` },
+        { role: "user", content: `Tema: "${row.title}"\n\nConteúdo:\n${row.content_text.slice(0, 18_000)}` },
       ],
     });
 
@@ -1185,7 +1193,7 @@ Gere 3-4 módulos cobrindo progressivamente todo o documento. Quiz diagnóstico 
 // ─── POST /api/notebook/flashcards ───────────────────────────────────────────
 router.post("/notebook/flashcards", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
-  const { docId, quantidade = 15 } = req.body as { docId: number; quantidade?: number };
+  const { docId, quantidade = 20 } = req.body as { docId: number; quantidade?: number };
 
   try {
     const docs = await db.execute(sql`
@@ -1198,28 +1206,33 @@ router.post("/notebook/flashcards", async (req: Request, res: Response) => {
     const completion = await gpt.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0.3,
-      max_tokens: 3500,
+      max_tokens: 5500,
       messages: [
         {
           role: "system",
-          content: `Você é um designer de memória especializado em ENEM/vestibulares. Crie ${quantidade} flashcards de recuperação ativa.
-Cada card deve ser ATÔMICO (uma única ideia), usar linguagem de recuperação ativa (não "O que é X" mas "Por que X causa Y?").
+          content: `Você é um designer de memória especializado em ENEM/vestibulares, especialista em spaced repetition e técnicas de memorização ativa. Crie ${quantidade} flashcards de ALTA QUALIDADE para recuperação ativa.
+Cada card deve ser ATÔMICO (uma única ideia), específico (não genérico) e baseado nos dados reais do documento.
 Retorne APENAS JSON:
 {"flashcards": [
   {
-    "frente": "Pergunta de recuperação ativa — específica, não genérica",
-    "verso": "Resposta completa com contexto + exemplo prático",
-    "mnemonico": "Dica ou macete de memorização (se aplicável, senão null)",
-    "materia": "área do conhecimento ENEM",
+    "frente": "Pergunta de recuperação ativa instigante — específica e não-óbvia. Use formas como: Por que X causa Y? Como Z se diferencia de W? O que acontece quando...? Qual é a relação entre...?",
+    "verso": "Resposta completa em 3-5 frases: (1) resposta direta e clara, (2) contexto explicativo com dados/datas/nomes do documento, (3) exemplo prático concreto do cotidiano ou do ENEM, (4) conexão com outros conceitos.",
+    "mnemonico": "Macete, acrônimo, analogia ou história memorável que facilita lembrar. Seja criativo e específico — ex: 'COMES = Camadas da Terra de fora para dentro: Crosta, Oceano, Manto, Externa, Sólido'",
+    "materia": "área do conhecimento ENEM (Ciências da Natureza / Ciências Humanas / Linguagens / Matemática)",
     "dificuldade": "facil|medio|dificil",
-    "tipo": "fato|conceito|comparacao|aplicacao"
+    "tipo": "fato|conceito|comparacao|aplicacao",
+    "dicaEnem": "Como este conceito costuma aparecer no ENEM — que tipo de questão, qual a pegadinha mais comum"
   }
 ]}
-Distribuição: 30% fácil (fatos diretos), 50% médio (conceitos e relações), 20% difícil (aplicação e análise).
-Tipos de card: fato (pergunta direta), conceito (diferencia X de Y), comparação (X vs Y em aspecto Z), aplicação (cenário real).
-PRIORIZE o que mais cai no ENEM.`,
+DISTRIBUIÇÃO OBRIGATÓRIA: 25% fácil, 50% médio, 25% difícil.
+TIPOS: fato (dado direto), conceito (definição+importância), comparação (X vs Y em dimensão Z), aplicação (cenário real ou questão ENEM).
+REGRAS:
+- Verso: MÍNIMO 3 frases com dados específicos do documento (nomes, datas, números)
+- Mnemônico: SEMPRE preenchido — nunca null — seja criativo
+- Cubra TODOS os conceitos importantes do documento
+- Priorize o que mais cai no ENEM`,
         },
-        { role: "user", content: `Tema: "${row.title}"\n\n${row.content_text.slice(0, 12_000)}` },
+        { role: "user", content: `Tema: "${row.title}"\n\n${row.content_text.slice(0, 15_000)}` },
       ],
     });
 
@@ -1295,48 +1308,51 @@ router.post("/notebook/mapa-mental", async (req: Request, res: Response) => {
     if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0.2,
-      max_tokens: 3500,
+      model: "gpt-4o",
+      temperature: 0.3,
+      max_tokens: 5000,
       messages: [
         {
           role: "system",
-          content: `Você é um visual thinker especialista em síntese hierárquica para ENEM/vestibulares.
-Crie um mapa mental com estrutura limpa e conexões cruzadas entre ramos.
+          content: `Você é um especialista em síntese visual e pedagogia para ENEM/vestibulares. Crie um mapa mental RICO e COMPLETO.
 Retorne APENAS JSON válido:
 {
-  "subject": "Tema central (max 4 palavras)",
+  "subject": "Tema central (max 5 palavras)",
   "icone": "emoji representativo do tema",
   "categories": [
     {
-      "name": "Ramo principal (max 4 palavras)",
-      "icone": "emoji do ramo",
-      "cor": "#código-hex sugerido para o ramo",
+      "name": "Ramo Principal (max 5 palavras)",
+      "icone": "emoji específico do ramo",
+      "cor": "#código-hex (paleta coerente com o tema)",
       "topics": [
         {
-          "name": "Sub-ramo (max 5 palavras)",
+          "name": "Sub-tópico (max 6 palavras)",
           "subtopics": [
-            { "name": "Detalhe folha (max 6 palavras)", "detail": "1-2 frases factuais do documento" }
+            {
+              "name": "Conceito específico (max 7 palavras)",
+              "detail": "Explicação completa em 2-4 frases: o que é, por que importa, exemplo concreto do cotidiano e como cai no ENEM."
+            }
           ]
         }
       ]
     }
   ],
   "conexoesCruzadas": [
-    { "de": "Nome do Ramo A", "para": "Nome do Ramo B", "relacao": "Por que se conectam" }
+    { "de": "Nome do Ramo A", "para": "Nome do Ramo B", "relacao": "Explicação da conexão em 1 frase" }
   ],
-  "conceitosChave": ["conceito 1", "conceito 2", "conceito 3"]
+  "conceitosChave": ["conceito 1 com breve definição", "conceito 2", "conceito 3", "conceito 4", "conceito 5"]
 }
-Regras:
-- 3 a 5 ramos principais (categorias)
-- 2 a 4 tópicos por ramo
-- 2 a 5 subtópicos por tópico
-- Nomes CURTOS (sem pontuação)
-- Details baseados no documento (não invente)
-- 2-3 conexões cruzadas entre ramos diferentes
-- Cores em hexadecimal (sugira paleta coerente com o tema)`,
+REGRAS OBRIGATÓRIAS:
+- 4 a 6 ramos principais (categories), cada um com cor HEX única e vibrante
+- 3 a 5 tópicos por ramo
+- 3 a 5 subtópicos por tópico, cada um com detail LONGO e RICO (2-4 frases com exemplos)
+- Nomes curtos e objetivos (sem pontuação final)
+- Details baseados EXCLUSIVAMENTE no documento fornecido — cite dados, datas, nomes quando existirem
+- 3-4 conexões cruzadas entre ramos diferentes com explicação clara
+- 5-6 conceitos-chave com definições resumidas
+- Paleta de cores: use tons saturados e distintos entre os ramos`,
         },
-        { role: "user", content: `Documento: "${row.title}"\n\n${row.content_text.slice(0, 16_000)}` },
+        { role: "user", content: `Documento: "${row.title}"\n\n${row.content_text.slice(0, 20_000)}` },
       ],
     });
 
@@ -1344,8 +1360,18 @@ Regras:
     const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     const parsed = JSON.parse(clean);
 
-    // Backward-compat: se vier no formato antigo (topics direto), envelopa em uma categoria
-    if (parsed.topics && !parsed.categories) {
+    // Flatten categories into topics array for frontend compatibility
+    if (parsed.categories) {
+      parsed.topics = parsed.categories.flatMap((cat: any) =>
+        cat.topics.map((t: any) => ({
+          ...t,
+          color: cat.cor ?? "#6366f1",
+          category: cat.name,
+          categoryIcon: cat.icone ?? "",
+        }))
+      );
+    } else if (parsed.topics && !parsed.categories) {
+      // backward compat: old format
       parsed.categories = [{ name: parsed.subject, topics: parsed.topics }];
     }
     res.json(parsed);

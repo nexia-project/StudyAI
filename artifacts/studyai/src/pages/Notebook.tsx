@@ -230,6 +230,7 @@ interface StudyGuide {
     conceitoCentral?: string;
     aprofundamento?: string;
     exemploResolvido?: string;
+    curiosidade?: string;
     errosComuns?: string[];
     checkpoint?: string[];
   }>;
@@ -314,96 +315,229 @@ const ICON_TINT: Record<string, string> = {
 
 // ─── Mind Map Renderer ─────────────────────────────────────────────────────
 function MindMapView({ map }: { map: MindMap }) {
-  const [expandedTopics, setExpandedTopics] = useState<Set<number>>(
-    new Set((map.topics ?? []).map((_, i) => i))
-  );
+  const mapAny = map as any;
+  const categories: Array<{ name: string; icone?: string; cor?: string; topics: Array<{ name: string; subtopics: Array<{ name: string; detail: string }> }> }> =
+    mapAny.categories ?? [];
+  const flatTopics = map.topics ?? [];
+  const conexoesCruzadas: Array<{ de: string; para: string; relacao: string }> = mapAny.conexoesCruzadas ?? [];
+  const conceitosChave: string[] = mapAny.conceitosChave ?? [];
+  const rootIcone: string = mapAny.icone ?? "🧠";
 
-  const toggle = (i: number) =>
-    setExpandedTopics(s => { const ns = new Set(s); ns.has(i) ? ns.delete(i) : ns.add(i); return ns; });
+  // Decide whether to render with categories (new format) or flat topics (old format)
+  const hasCategories = categories.length > 0;
 
-  const rootColor = map.color || "#6366f1";
-  const topics = map.topics ?? [];
+  // All topic rows we'll render: each row = { topic, color, catName, catIcon }
+  type TopicRow = { name: string; color: string; catName: string; catIcon: string; subtopics: Array<{ name: string; detail: string }> };
+  const rows: TopicRow[] = hasCategories
+    ? categories.flatMap(cat =>
+        (cat.topics ?? []).map(t => ({
+          name: t.name,
+          color: cat.cor ?? "#6366f1",
+          catName: cat.name,
+          catIcon: cat.icone ?? "",
+          subtopics: t.subtopics ?? [],
+        }))
+      )
+    : flatTopics.map((t: any) => ({
+        name: t.name,
+        color: t.color ?? map.color ?? "#6366f1",
+        catName: t.category ?? "",
+        catIcon: t.categoryIcon ?? "",
+        subtopics: t.subtopics ?? [],
+      }));
+
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set(rows.map((_, i) => i)));
+  const [expandedSub, setExpandedSub] = useState<string | null>(null);
+
+  const toggleRow = (i: number) =>
+    setExpandedRows(s => { const ns = new Set(s); ns.has(i) ? ns.delete(i) : ns.add(i); return ns; });
+
+  const rootColor = (hasCategories ? categories[0]?.cor : map.color) ?? "#6366f1";
+
+  // Group rows by catName for visual separators
+  const grouped: Array<{ catName: string; catIcon: string; color: string; rowIndexes: number[] }> = [];
+  if (hasCategories) {
+    let cur = "";
+    rows.forEach((r, i) => {
+      if (r.catName !== cur) {
+        cur = r.catName;
+        grouped.push({ catName: r.catName, catIcon: r.catIcon, color: r.color, rowIndexes: [i] });
+      } else {
+        grouped[grouped.length - 1].rowIndexes.push(i);
+      }
+    });
+  }
 
   return (
-    <div className="w-full overflow-x-auto overflow-y-auto p-4 bg-slate-50">
-      {/* Horizontal tree: Root ──── Topics ──── Subtopics */}
-      <div className="inline-flex items-center gap-0 min-h-[200px]" style={{ minWidth: "max-content" }}>
+    <div className="w-full h-full flex flex-col overflow-hidden bg-gradient-to-br from-slate-50 to-white">
+      {/* Conceitos-chave header */}
+      {conceitosChave.length > 0 && (
+        <div className="flex-shrink-0 flex flex-wrap gap-1.5 px-4 pt-3 pb-2 border-b border-slate-100">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider self-center mr-1">Conceitos:</span>
+          {conceitosChave.map((c, i) => (
+            <span key={i} className="text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-full">{c}</span>
+          ))}
+        </div>
+      )}
 
-        {/* ── Root node ── */}
-        <div className="flex flex-col items-center self-stretch justify-center">
-          <div
-            className="px-5 py-3 rounded-2xl font-black text-white text-sm shadow-xl whitespace-nowrap select-none cursor-default"
-            style={{ backgroundColor: rootColor }}
-          >
-            {map.subject}
+      {/* Horizontal tree */}
+      <div className="flex-1 overflow-auto p-4">
+        <div className="inline-flex items-start gap-0" style={{ minWidth: "max-content", minHeight: "100%" }}>
+
+          {/* ── Root node ── */}
+          <div className="flex flex-col items-center self-center">
+            <div
+              className="px-5 py-3.5 rounded-2xl font-black text-white text-sm shadow-2xl whitespace-nowrap select-none cursor-default text-center"
+              style={{ background: `linear-gradient(135deg, ${rootColor}, ${rootColor}cc)` }}
+            >
+              <div className="text-2xl mb-1">{rootIcone}</div>
+              <div className="leading-tight">{map.subject}</div>
+            </div>
+          </div>
+
+          {/* Root → branches connector */}
+          <div className="self-center w-8 h-0.5 flex-shrink-0" style={{ backgroundColor: rootColor + "60" }} />
+
+          {/* ── Categories / Topics column ── */}
+          <div className="flex flex-col gap-2 self-center">
+            {hasCategories ? (
+              // Render by category groups
+              grouped.map((grp, gi) => (
+                <div key={gi} className="flex items-start gap-0">
+                  {/* Category node */}
+                  <div className="flex flex-col items-center self-stretch justify-center">
+                    <div
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-black text-xs text-white shadow-lg whitespace-nowrap"
+                      style={{ backgroundColor: grp.color }}
+                    >
+                      {grp.catIcon && <span className="text-base">{grp.catIcon}</span>}
+                      {grp.catName}
+                    </div>
+                  </div>
+
+                  {/* Category → topics connector */}
+                  <div className="self-center w-5 h-0.5 flex-shrink-0" style={{ backgroundColor: grp.color + "60" }} />
+
+                  {/* Topics of this category */}
+                  <div className="flex flex-col gap-1.5">
+                    {grp.rowIndexes.map(ri => {
+                      const row = rows[ri];
+                      const isOpen = expandedRows.has(ri);
+                      return (
+                        <div key={ri} className="flex items-center gap-0">
+                          {/* Topic node */}
+                          <button
+                            onClick={() => toggleRow(ri)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold text-xs shadow-md whitespace-nowrap hover:opacity-90 active:scale-[0.97] transition-all border"
+                            style={{ backgroundColor: row.color + "15", borderColor: row.color + "40", color: row.color }}
+                          >
+                            {row.name}
+                            {row.subtopics.length > 0 && (
+                              <span className="text-[9px] font-black opacity-60">{isOpen ? "−" : `+${row.subtopics.length}`}</span>
+                            )}
+                          </button>
+
+                          {/* Topic → Subtopics */}
+                          {isOpen && row.subtopics.length > 0 && (
+                            <>
+                              <div className="w-4 h-0.5 flex-shrink-0" style={{ backgroundColor: row.color + "50" }} />
+                              <div className="flex flex-col gap-1">
+                                {row.subtopics.map((sub, si) => {
+                                  const key = `${ri}-${si}`;
+                                  const isSubOpen = expandedSub === key;
+                                  return (
+                                    <div key={si} className="flex items-start gap-0">
+                                      <div className="w-2 h-0.5 self-center flex-shrink-0" style={{ backgroundColor: row.color + "40" }} />
+                                      <div
+                                        className="rounded-lg border bg-white shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                                        style={{ borderColor: row.color + "25", maxWidth: 260 }}
+                                        onClick={() => setExpandedSub(isSubOpen ? null : key)}
+                                      >
+                                        <div className="px-2.5 py-1.5 flex items-center gap-1.5">
+                                          <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: row.color }} />
+                                          <p className="text-xs font-semibold text-slate-800 leading-tight">{sub.name}</p>
+                                          {sub.detail && (
+                                            <span className="text-[8px] ml-auto text-slate-400">{isSubOpen ? "▲" : "▼"}</span>
+                                          )}
+                                        </div>
+                                        {isSubOpen && sub.detail && (
+                                          <div className="px-2.5 pb-2 pt-0">
+                                            <p className="text-[11px] text-slate-600 leading-relaxed">{sub.detail}</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))
+            ) : (
+              // Flat topics (old format)
+              rows.map((row, ri) => {
+                const isOpen = expandedRows.has(ri);
+                return (
+                  <div key={ri} className="flex items-center gap-0">
+                    <div className="w-2 h-0.5" style={{ backgroundColor: row.color + "60" }} />
+                    <button
+                      onClick={() => toggleRow(ri)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs text-white shadow-md whitespace-nowrap hover:opacity-90 transition-all"
+                      style={{ backgroundColor: row.color }}
+                    >
+                      {row.name}
+                      {row.subtopics.length > 0 && <span className="text-[9px] opacity-70">{isOpen ? "−" : `+${row.subtopics.length}`}</span>}
+                    </button>
+                    {isOpen && row.subtopics.length > 0 && (
+                      <>
+                        <div className="w-4 h-0.5" style={{ backgroundColor: row.color + "50" }} />
+                        <div className="flex flex-col gap-1">
+                          {row.subtopics.map((sub, si) => {
+                            const key = `${ri}-${si}`;
+                            const isSubOpen = expandedSub === key;
+                            return (
+                              <div key={si} className="flex items-start gap-0" onClick={() => setExpandedSub(isSubOpen ? null : key)}>
+                                <div className="w-2 h-0.5 self-center" style={{ backgroundColor: row.color + "40" }} />
+                                <div className="px-2.5 py-1.5 rounded-lg text-xs bg-white shadow-sm border cursor-pointer hover:shadow-md transition-shadow"
+                                  style={{ borderColor: row.color + "30", maxWidth: 240 }}>
+                                  <p className="font-semibold text-slate-800">{sub.name}</p>
+                                  {isSubOpen && sub.detail && <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">{sub.detail}</p>}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
-
-        {/* Root → Topics connector */}
-        <div className="flex flex-col items-stretch self-stretch justify-center">
-          <div className="flex-1" />
-          <div className="w-8 h-0.5 self-center" style={{ backgroundColor: rootColor + "80" }} />
-          <div className="flex-1" />
-        </div>
-
-        {/* ── Topics column ── */}
-        <div className="flex flex-col gap-3 self-stretch justify-center">
-          {topics.map((topic, i) => {
-            const topicColor = topic.color || rootColor;
-            const isOpen = expandedTopics.has(i);
-            const hasSubs = (topic.subtopics?.length ?? 0) > 0;
-            return (
-              <div key={i} className="flex items-center gap-0">
-
-                {/* Vertical bar connecting to root line */}
-                <div className="relative flex items-center">
-                  {/* Horizontal arm from root */}
-                  <div className="w-4 h-0.5" style={{ backgroundColor: topicColor + "60" }} />
-                </div>
-
-                {/* Topic node */}
-                <button
-                  onClick={() => toggle(i)}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-[11px] text-white shadow-md whitespace-nowrap hover:opacity-90 active:scale-[0.97] transition-all"
-                  style={{ backgroundColor: topicColor }}
-                >
-                  {topic.name}
-                  {hasSubs && (
-                    <span className="text-[9px] font-black opacity-70">
-                      {isOpen ? "−" : `+${topic.subtopics.length}`}
-                    </span>
-                  )}
-                </button>
-
-                {/* Topic → Subtopics connector + subtopics */}
-                {isOpen && hasSubs && (
-                  <>
-                    <div className="w-4 h-0.5" style={{ backgroundColor: topicColor + "60" }} />
-                    <div className="flex flex-col gap-1.5">
-                      {topic.subtopics.map((sub, j) => (
-                        <div key={j}
-                          className="flex items-start gap-0"
-                        >
-                          <div className="w-2 h-0.5 self-center" style={{ backgroundColor: topicColor + "40" }} />
-                          <div
-                            className="px-2.5 py-1.5 rounded-lg text-[10px] font-medium bg-white shadow-sm border"
-                            style={{ borderColor: topicColor + "30", maxWidth: 200 }}
-                          >
-                            <p className="font-semibold text-slate-800 leading-tight">{sub.name}</p>
-                            {sub.detail && (
-                              <p className="text-[9px] text-slate-500 mt-0.5 leading-tight whitespace-normal">{sub.detail}</p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
       </div>
+
+      {/* Conexões Cruzadas footer */}
+      {conexoesCruzadas.length > 0 && (
+        <div className="flex-shrink-0 border-t border-slate-100 px-4 py-2.5 bg-white">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">🔗 Conexões entre ramos</p>
+          <div className="flex flex-wrap gap-2">
+            {conexoesCruzadas.map((c, i) => (
+              <div key={i} className="text-[10px] bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
+                <span className="font-bold text-slate-700">{c.de}</span>
+                <span className="text-slate-400 mx-1">→</span>
+                <span className="font-bold text-slate-700">{c.para}</span>
+                {c.relacao && <span className="text-slate-500">: {c.relacao}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -413,47 +547,97 @@ function FlashcardViewer({ cards }: { cards: Flashcard[] }) {
   const [idx, setIdx] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const card = cards[idx];
+  const cardAny = card as any;
   const diffColors: Record<string, string> = {
-    facil: "bg-green-100 text-green-700",
-    medio: "bg-yellow-100 text-yellow-700",
-    dificil: "bg-red-100 text-red-700",
+    facil: "bg-emerald-100 text-emerald-700 border border-emerald-200",
+    medio: "bg-amber-100 text-amber-700 border border-amber-200",
+    dificil: "bg-red-100 text-red-700 border border-red-200",
   };
+  const typeLabels: Record<string, string> = {
+    fato: "💡 Fato", conceito: "🔵 Conceito", comparacao: "⚖️ Comparação", aplicacao: "🎯 Aplicação"
+  };
+  const progress = ((idx + 1) / cards.length) * 100;
+
   return (
-    <div className="p-3">
-      <div className="flex justify-between items-center mb-3">
-        <span className="text-xs text-slate-500 font-medium">{idx + 1} / {cards.length}</span>
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${diffColors[card.dificuldade] ?? "bg-slate-100 text-slate-600"}`}>
-          {card.dificuldade?.toUpperCase() ?? ""}
-        </span>
-        <span className="text-xs text-indigo-600 font-medium">{card.materia}</span>
+    <div className="p-4 flex flex-col gap-3">
+      {/* Progress + meta */}
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-xs font-bold text-slate-500">{idx + 1} <span className="text-slate-300">/</span> {cards.length}</span>
+          <div className="flex items-center gap-1.5">
+            {card.dificuldade && (
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${diffColors[card.dificuldade] ?? "bg-slate-100 text-slate-600"}`}>
+                {card.dificuldade === "facil" ? "Fácil" : card.dificuldade === "medio" ? "Médio" : "Difícil"}
+              </span>
+            )}
+            {(card as any).tipo && (
+              <span className="text-[10px] font-semibold text-slate-500">{typeLabels[(card as any).tipo] ?? (card as any).tipo}</span>
+            )}
+          </div>
+        </div>
+        <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
+          <div className="h-full bg-indigo-500 rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
+        </div>
+        <p className="text-[10px] text-indigo-600 font-semibold mt-0.5">{card.materia}</p>
       </div>
+
+      {/* Flip card */}
       <motion.div
         className="relative cursor-pointer select-none"
         onClick={() => setFlipped(f => !f)}
         animate={{ rotateY: flipped ? 180 : 0 }}
-        transition={{ duration: 0.4 }}
-        style={{ transformStyle: "preserve-3d", minHeight: 140 }}>
-        <div className="absolute inset-0 rounded-2xl border-2 border-indigo-200 bg-indigo-50 p-4 flex flex-col justify-center"
+        transition={{ duration: 0.45, type: "spring", stiffness: 180, damping: 20 }}
+        style={{ transformStyle: "preserve-3d", minHeight: 180 }}
+      >
+        {/* Front */}
+        <div className="absolute inset-0 rounded-2xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 to-violet-50 p-5 flex flex-col"
           style={{ backfaceVisibility: "hidden" }}>
-          <p className="text-[10px] font-black text-indigo-400 uppercase tracking-wider mb-2">Pergunta</p>
-          <p className="text-sm font-bold text-slate-800 text-center leading-snug">{card.frente}</p>
-          <p className="text-[10px] text-indigo-400 text-center mt-3">Toque para ver a resposta</p>
+          <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-3">❓ Pergunta</p>
+          <p className="text-sm font-bold text-slate-800 leading-relaxed flex-1">{card.frente}</p>
+          <p className="text-[11px] text-indigo-300 text-center mt-3 flex items-center justify-center gap-1">
+            <span className="text-base">👆</span> Toque para ver a resposta
+          </p>
         </div>
-        <div className="absolute inset-0 rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-4 flex flex-col justify-center"
+        {/* Back */}
+        <div className="absolute inset-0 rounded-2xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-5 flex flex-col"
           style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
-          <p className="text-[10px] font-black text-emerald-500 uppercase tracking-wider mb-2">Resposta</p>
-          <p className="text-sm text-slate-800 leading-snug text-center">{card.verso}</p>
+          <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-2">✅ Resposta</p>
+          <p className="text-sm text-slate-800 leading-relaxed flex-1 overflow-y-auto">{card.verso}</p>
         </div>
       </motion.div>
-      <div className="flex gap-2 mt-3">
+
+      {/* Mnemônico */}
+      {cardAny.mnemonico && !flipped && (
+        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2">
+          <span className="text-lg flex-shrink-0">🔑</span>
+          <div>
+            <p className="text-[10px] font-black text-amber-600 uppercase tracking-wider mb-0.5">Macete de memorização</p>
+            <p className="text-xs text-amber-800 leading-relaxed">{cardAny.mnemonico}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Dica ENEM — só quando virado */}
+      {cardAny.dicaEnem && flipped && (
+        <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200 flex items-start gap-2">
+          <GraduationCap className="w-4 h-4 text-indigo-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-[10px] font-black text-indigo-600 uppercase tracking-wider mb-0.5">Como cai no ENEM</p>
+            <p className="text-xs text-indigo-800 leading-relaxed">{cardAny.dicaEnem}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Navigation */}
+      <div className="flex gap-2">
         <button onClick={() => { setIdx(i => Math.max(0, i - 1)); setFlipped(false); }}
           disabled={idx === 0}
-          className="flex-1 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 disabled:opacity-30 hover:bg-slate-50">
+          className="flex-1 py-2 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 disabled:opacity-25 hover:bg-slate-50 transition-colors">
           ← Anterior
         </button>
         <button onClick={() => { setIdx(i => Math.min(cards.length - 1, i + 1)); setFlipped(false); }}
           disabled={idx === cards.length - 1}
-          className="flex-1 py-1.5 rounded-xl border border-indigo-200 text-xs font-bold text-indigo-600 disabled:opacity-30 hover:bg-indigo-50">
+          className="flex-1 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-25 hover:bg-indigo-700 transition-colors">
           Próximo →
         </button>
       </div>
@@ -3334,96 +3518,127 @@ export default function Notebook() {
             {activeTool === "study-guide" && (() => {
               const r = toolResult as StudyGuide;
               return (
-                <div className="p-3 space-y-3">
-                  {/* Objetivo Final */}
+                <div className="p-4 space-y-4">
+                  {/* Objetivo Final — hero card */}
                   {r.objetivoFinal && (
-                    <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200">
-                      <p className="text-[9px] font-black text-indigo-500 uppercase tracking-wider mb-1">🎯 Ao Final, Você Será Capaz de</p>
-                      <p className="text-xs text-indigo-900 font-medium leading-snug">{r.objetivoFinal}</p>
+                    <div className="rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-700 p-4 text-white shadow-lg">
+                      <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-2">🎯 Ao Final, Você Será Capaz de</p>
+                      <p className="text-sm font-semibold leading-relaxed">{r.objetivoFinal}</p>
                     </div>
                   )}
-                  {/* Checklist */}
+
+                  {/* Checklist de Competências */}
                   {r.checklistCompetencias?.length > 0 && (
-                    <div>
-                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Competências</p>
-                      {r.checklistCompetencias.map((c, i) => (
-                        <p key={i} className="text-[10px] text-slate-600 flex items-center gap-1.5 mb-0.5">
-                          <CheckCircle className="w-3 h-3 text-emerald-400 flex-shrink-0" />{c}
-                        </p>
-                      ))}
+                    <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-3">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">📋 Competências que você vai dominar</p>
+                      <div className="space-y-1.5">
+                        {r.checklistCompetencias.map((c, i) => (
+                          <div key={i} className="flex items-start gap-2">
+                            <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                            <p className="text-xs text-slate-700 leading-relaxed">{c}</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
+
                   {/* Pré-requisitos */}
                   {r.prerequisitos && (
-                    <div className="p-2 rounded-lg bg-blue-50 border border-blue-100 text-[10px] text-blue-800">
-                      <span className="font-black text-blue-600">Pré-requisitos: </span>{r.prerequisitos}
+                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-blue-50 border border-blue-100">
+                      <span className="text-lg flex-shrink-0">📖</span>
+                      <div>
+                        <p className="text-[10px] font-black text-blue-600 uppercase tracking-wider mb-1">Pré-requisitos</p>
+                        <p className="text-xs text-blue-900 leading-relaxed">{r.prerequisitos}</p>
+                      </div>
                     </div>
                   )}
+
                   {/* Quiz Diagnóstico */}
                   {r.quizDiagnostico?.length > 0 && (
-                    <details className="group">
-                      <summary className="text-[10px] font-black text-amber-600 cursor-pointer flex items-center gap-1 list-none">
-                        <HelpCircle className="w-3 h-3" /> Quiz Diagnóstico
-                        <ChevronDown className="w-3 h-3 group-open:rotate-180 transition-transform" />
+                    <details className="group rounded-xl border border-amber-200 overflow-hidden" open>
+                      <summary className="px-4 py-3 cursor-pointer list-none bg-amber-50 flex items-center gap-2">
+                        <span className="text-base">🧪</span>
+                        <p className="text-xs font-black text-amber-800 flex-1">Teste seus Conhecimentos Prévios</p>
+                        <ChevronDown className="w-4 h-4 text-amber-500 group-open:rotate-180 transition-transform" />
                       </summary>
-                      <div className="mt-1 space-y-1">
+                      <div className="p-3 space-y-2 bg-white">
                         {r.quizDiagnostico.map((q, i) => (
-                          <div key={i} className="p-2 rounded-lg bg-amber-50 border border-amber-100">
-                            <p className="text-[10px] font-semibold text-amber-800">{q.pergunta}</p>
-                            {q.dica && <p className="text-[9px] text-amber-600 mt-0.5">💡 {q.dica}</p>}
+                          <div key={i} className="p-3 rounded-xl bg-amber-50 border border-amber-100">
+                            <p className="text-xs font-semibold text-amber-900 leading-relaxed">{i + 1}. {q.pergunta}</p>
+                            {q.dica && <p className="text-[11px] text-amber-600 mt-1.5">💡 Dica: {q.dica}</p>}
                           </div>
                         ))}
                       </div>
                     </details>
                   )}
-                  {/* Módulos (novo formato) */}
+
+                  {/* Módulos */}
                   {r.modulos?.length > 0 && (
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">📚 Módulos de Estudo</p>
                       {r.modulos.map((mod, i) => (
-                        <details key={i} className="group rounded-xl border border-violet-200 overflow-hidden">
-                          <summary className="px-3 py-2 cursor-pointer list-none bg-violet-50 flex items-center gap-2">
-                            <span className="w-5 h-5 rounded-full bg-violet-600 text-white text-[9px] font-black flex items-center justify-center flex-shrink-0">{mod.numero}</span>
-                            <p className="text-xs font-bold text-slate-800 flex-1 line-clamp-1">{mod.titulo}</p>
-                            {mod.tempoBruto && <span className="text-[9px] text-slate-400">{mod.tempoBruto}</span>}
+                        <details key={i} className="group rounded-2xl border border-violet-100 overflow-hidden shadow-sm" open={i === 0}>
+                          <summary className="px-4 py-3 cursor-pointer list-none bg-gradient-to-r from-violet-50 to-indigo-50 flex items-center gap-3">
+                            <span className="w-7 h-7 rounded-full bg-violet-600 text-white text-xs font-black flex items-center justify-center flex-shrink-0 shadow-md">{mod.numero}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-slate-800 leading-tight">{mod.titulo}</p>
+                              {mod.objetivo && <p className="text-[10px] text-violet-600 mt-0.5 line-clamp-1">{mod.objetivo}</p>}
+                            </div>
+                            {mod.tempoBruto && <span className="text-[10px] text-slate-400 flex-shrink-0 font-medium">⏱ {mod.tempoBruto}</span>}
+                            <ChevronDown className="w-4 h-4 text-violet-400 flex-shrink-0 group-open:rotate-180 transition-transform" />
                           </summary>
-                          <div className="px-3 py-2.5 space-y-2">
-                            {mod.objetivo && <p className="text-[10px] text-violet-700 font-semibold">{mod.objetivo}</p>}
+                          <div className="px-4 py-3 space-y-3 bg-white">
                             {mod.conceitoCentral && (
                               <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Conceito Central</p>
-                                <p className="text-[10px] text-slate-700 leading-snug">{mod.conceitoCentral}</p>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">💡 Conceito Central</p>
+                                <p className="text-sm text-slate-700 leading-relaxed">{mod.conceitoCentral}</p>
+                              </div>
+                            )}
+                            {mod.curiosidade && (
+                              <div className="p-3 rounded-xl bg-yellow-50 border border-yellow-200 flex items-start gap-2">
+                                <span className="text-xl flex-shrink-0">🤩</span>
+                                <div>
+                                  <p className="text-[10px] font-black text-yellow-700 uppercase tracking-wider mb-1">Sabia que?</p>
+                                  <p className="text-xs text-yellow-900 leading-relaxed">{mod.curiosidade}</p>
+                                </div>
                               </div>
                             )}
                             {mod.aprofundamento && (
                               <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Aprofundamento</p>
-                                <p className="text-[10px] text-slate-600 leading-snug">{mod.aprofundamento}</p>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">🔬 Aprofundamento</p>
+                                <p className="text-sm text-slate-600 leading-relaxed">{mod.aprofundamento}</p>
                               </div>
                             )}
                             {mod.exemploResolvido && (
-                              <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-100">
-                                <p className="text-[9px] font-black text-emerald-600 uppercase tracking-wider mb-0.5">Exemplo Resolvido</p>
-                                <p className="text-[10px] text-emerald-800 leading-snug">{mod.exemploResolvido}</p>
+                              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+                                <p className="text-[10px] font-black text-emerald-700 uppercase tracking-wider mb-1.5">✏️ Exemplo Resolvido</p>
+                                <p className="text-sm text-emerald-900 leading-relaxed">{mod.exemploResolvido}</p>
                               </div>
                             )}
                             {mod.errosComuns?.length > 0 && (
-                              <div>
-                                <p className="text-[9px] font-black text-red-500 uppercase tracking-wider mb-0.5">⚠️ Erros Comuns</p>
-                                {mod.errosComuns.map((e, j) => (
-                                  <p key={j} className="text-[9px] text-red-700 flex items-start gap-1">
-                                    <AlertCircle className="w-3 h-3 flex-shrink-0 mt-0.5" />{e}
-                                  </p>
-                                ))}
+                              <div className="p-3 rounded-xl bg-red-50 border border-red-100">
+                                <p className="text-[10px] font-black text-red-500 uppercase tracking-wider mb-1.5">⚠️ Erros Comuns</p>
+                                <div className="space-y-1.5">
+                                  {mod.errosComuns.map((e, j) => (
+                                    <div key={j} className="flex items-start gap-2">
+                                      <AlertCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
+                                      <p className="text-xs text-red-800 leading-relaxed">{e}</p>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
                             )}
                             {mod.checkpoint?.length > 0 && (
-                              <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Checkpoint</p>
-                                {mod.checkpoint.map((c, j) => (
-                                  <p key={j} className="text-[9px] text-slate-600 flex items-start gap-1">
-                                    <HelpCircle className="w-3 h-3 text-indigo-400 flex-shrink-0 mt-0.5" />{c}
-                                  </p>
-                                ))}
+                              <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-100">
+                                <p className="text-[10px] font-black text-indigo-600 uppercase tracking-wider mb-1.5">✅ Checkpoint — Perguntas de Autoavaliação</p>
+                                <div className="space-y-1.5">
+                                  {mod.checkpoint.map((c, j) => (
+                                    <div key={j} className="flex items-start gap-2">
+                                      <HelpCircle className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0 mt-0.5" />
+                                      <p className="text-xs text-indigo-900 leading-relaxed">{c}</p>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
                             )}
                           </div>
@@ -3431,46 +3646,55 @@ export default function Notebook() {
                       ))}
                     </div>
                   )}
-                  {/* Formato antigo (backward compat) */}
-                  {!r.modulos && r.questoes?.length > 0 && (
-                    <div className="space-y-2">
-                      {r.questoes.map((q, i) => (
-                        <details key={i} className="group rounded-xl border border-slate-200 overflow-hidden">
-                          <summary className="px-3 py-2 cursor-pointer list-none bg-slate-50 flex items-center gap-2">
-                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${
-                              q.tipo === "conceito" ? "bg-indigo-100 text-indigo-700" :
-                              q.tipo === "aplicacao" ? "bg-green-100 text-green-700" :
-                              "bg-amber-100 text-amber-700"
-                            }`}>{q.tipo}</span>
-                            <p className="text-xs font-semibold text-slate-700 flex-1 line-clamp-1">{q.pergunta}</p>
-                          </summary>
-                          <div className="px-3 py-2 space-y-2">
-                            <p className="text-xs text-slate-700 leading-relaxed">{q.resposta}</p>
-                            {q.dicaEnem && (
-                              <div className="flex items-start gap-1.5 p-2 bg-amber-50 rounded-lg">
-                                <GraduationCap className="w-3 h-3 text-amber-600 flex-shrink-0 mt-0.5" />
-                                <p className="text-[10px] text-amber-800">{q.dicaEnem}</p>
-                              </div>
-                            )}
-                          </div>
-                        </details>
-                      ))}
-                    </div>
-                  )}
-                  {/* Síntese e Expansão */}
+
+                  {/* Síntese Integradora */}
                   {r.sintese && (
-                    <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider mb-0.5">Síntese Integradora</p>
-                      <p className="text-[10px] text-slate-700 leading-snug">{r.sintese}</p>
+                    <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 shadow-sm">
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">🔗 Síntese Integradora</p>
+                      <p className="text-sm text-slate-700 leading-relaxed">{r.sintese}</p>
                     </div>
                   )}
+
+                  {/* Aplicação Prática */}
+                  {r.aplicacaoPratica && (
+                    <div className="p-4 rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-50 border border-teal-100">
+                      <p className="text-[10px] font-black text-teal-600 uppercase tracking-wider mb-2">🎯 Aplicação Prática</p>
+                      <p className="text-sm text-teal-900 leading-relaxed">{r.aplicacaoPratica}</p>
+                    </div>
+                  )}
+
+                  {/* Expansão */}
+                  {(r.expansao?.leituras?.length || r.expansao?.conexoes?.length) ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      {r.expansao?.leituras?.length > 0 && (
+                        <div className="p-3 rounded-xl bg-violet-50 border border-violet-100">
+                          <p className="text-[10px] font-black text-violet-600 uppercase tracking-wider mb-2">📚 Leituras</p>
+                          {r.expansao.leituras.map((l, i) => <p key={i} className="text-[11px] text-violet-800 py-0.5 leading-snug">• {l}</p>)}
+                        </div>
+                      )}
+                      {r.expansao?.conexoes?.length > 0 && (
+                        <div className="p-3 rounded-xl bg-sky-50 border border-sky-100">
+                          <p className="text-[10px] font-black text-sky-600 uppercase tracking-wider mb-2">🔗 Conexões</p>
+                          {r.expansao.conexoes.map((c, i) => <p key={i} className="text-[11px] text-sky-800 py-0.5 leading-snug">• {c}</p>)}
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+
                   {/* Cronograma */}
                   {r.cronogramaSugerido?.length > 0 && (
-                    <div>
-                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">📅 Cronograma</p>
-                      {r.cronogramaSugerido.map((d, i) => (
-                        <p key={i} className="text-[10px] text-slate-600 py-0.5">• {d}</p>
-                      ))}
+                    <div className="rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                      <div className="px-4 py-2.5 bg-slate-800">
+                        <p className="text-[10px] font-black text-slate-300 uppercase tracking-wider">📅 Cronograma de Estudo Sugerido</p>
+                      </div>
+                      <div className="divide-y divide-slate-100 bg-white">
+                        {r.cronogramaSugerido.map((d, i) => (
+                          <div key={i} className="flex items-start gap-3 px-4 py-2.5">
+                            <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+                            <p className="text-xs text-slate-700 leading-relaxed">{d}</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

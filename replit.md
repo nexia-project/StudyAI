@@ -26,7 +26,8 @@ StudyAI is built as a `pnpm` monorepo using TypeScript, Node.js 24, and Express 
 - **AI Integration**: A multi-model approach for cost optimization:
     - **DeepSeek-V3**: Chat, simulated exams, notebook tools.
     - **Claude Sonnet** (Anthropic via Replit): AulaIA lesson generation.
-    - **GPT-4o**: Fallback and essay correction.
+    - **GPT-4o**: Mind map, study guide, flashcards, tiagao-explica (Lousa do Tiagão).
+    - **GPT-4o-mini**: Fast tools (timeline, briefing, etc.).
     - **OpenAI Whisper**: Transcription.
     - **ElevenLabs**: TTS (`eleven_turbo_v2_5`) with OpenAI TTS-1 fallback.
     - **Gemini Flash** (via Replit AI Integrations): Image generation, multimodal question analysis, text explanation.

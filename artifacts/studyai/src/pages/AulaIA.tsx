@@ -517,45 +517,54 @@ export default function AulaIA() {
 
   return (
     <div className={`flex flex-col ${fullscreen ? "fixed inset-0 z-50" : "min-h-screen"}`}
-      style={{ background: "#F0F4F8" }}>
+      style={{ background: "#111827" }}>
       <audio ref={audioRef} />
 
       {/* ── HEADER ── */}
-      <header className="bg-white border-b border-slate-200 px-3 sm:px-5 py-2.5 flex items-center gap-2 sm:gap-3 shadow-sm flex-shrink-0">
+      <header className="px-3 sm:px-5 py-2.5 flex items-center gap-2 sm:gap-3 flex-shrink-0"
+        style={{ background: "#1a2332", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
         <button onClick={() => { setAula(null); setTopico(""); }}
-          className="flex items-center gap-1 text-slate-500 hover:text-slate-800 transition-colors text-sm font-medium flex-shrink-0">
+          className="flex items-center gap-1 text-sm font-medium flex-shrink-0 transition-colors"
+          style={{ color: "#9ca3af" }}
+          onMouseEnter={e => (e.currentTarget.style.color = "#e5e7eb")}
+          onMouseLeave={e => (e.currentTarget.style.color = "#9ca3af")}>
           <ChevronLeft className="w-4 h-4" />
           <span className="hidden sm:inline">Nova aula</span>
         </button>
-        <div className="h-4 w-px bg-slate-200 flex-shrink-0" />
+        <div className="h-4 w-px flex-shrink-0" style={{ background: "rgba(255,255,255,0.1)" }} />
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+          <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ background: "linear-gradient(135deg,#16a34a,#065f46)" }}>
             <BookOpen className="w-3 h-3 text-white" />
           </div>
           <div className="min-w-0">
-            <p className="font-black text-slate-800 text-sm truncate">{aula.titulo}</p>
-            <p className="text-slate-400 text-xs truncate hidden sm:block">{aula.subtitulo}</p>
+            <p className="font-black text-sm truncate" style={{ color: "#f9fafb" }}>{aula.titulo}</p>
+            <p className="text-xs truncate hidden sm:block" style={{ color: "#4ade80" }}>{aula.subtitulo}</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <select value={velocidade} onChange={e => setVelocidade(Number(e.target.value))}
-            className="text-xs font-bold bg-slate-100 border-0 rounded-lg px-2 py-1 text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-300">
-            {VELOCIDADES.map(v => <option key={v} value={v}>{v}x</option>)}
+            className="text-xs font-bold rounded-lg px-2 py-1 cursor-pointer focus:outline-none border-0"
+            style={{ background: "rgba(255,255,255,0.08)", color: "#e5e7eb" }}>
+            {VELOCIDADES.map(v => <option key={v} value={v} style={{ background: "#1a2332" }}>{v}x</option>)}
           </select>
           <button onClick={() => setMuted(m => !m)}
-            className={`p-1.5 rounded-lg transition-colors ${muted ? "bg-red-100 text-red-500" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+            className="p-1.5 rounded-lg transition-colors"
+            style={{ background: muted ? "rgba(239,68,68,0.2)" : "rgba(255,255,255,0.08)", color: muted ? "#f87171" : "#9ca3af" }}>
             {muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
           </button>
           <button onClick={() => setFullscreen(f => !f)}
-            className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
+            className="p-1.5 rounded-lg transition-colors"
+            style={{ background: "rgba(255,255,255,0.08)", color: "#9ca3af" }}>
             {fullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
         </div>
       </header>
 
       {/* ── PROGRESSO ── */}
-      <div className="h-1 bg-slate-200 flex-shrink-0">
-        <motion.div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
+      <div className="h-1 flex-shrink-0" style={{ background: "rgba(255,255,255,0.06)" }}>
+        <motion.div className="h-full"
+          style={{ background: "linear-gradient(90deg,#16a34a,#4ade80)" }}
           animate={{ width: `${progresso}%` }} transition={{ duration: 0.5 }} />
       </div>
 
@@ -569,8 +578,8 @@ export default function AulaIA() {
           <div className="flex-1 flex flex-col md:flex-row gap-3 min-h-0">
 
           {/* ── CANVAS BOARD ── */}
-          <div className={`relative rounded-3xl shadow-lg overflow-hidden min-h-[360px] transition-all ${imagemGerada ? "md:flex-1" : "flex-1"}`}
-            style={{ border: "2px solid #E8E0C8", background: "#FFFEF5" }}>
+          <div className={`relative rounded-3xl shadow-2xl overflow-hidden min-h-[360px] transition-all ${imagemGerada ? "md:flex-1" : "flex-1"}`}
+            style={{ border: "3px solid #2d5a3d", background: "#162b1f", boxShadow: "0 8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)" }}>
 
             <AnimatePresence mode="wait">
               <motion.div
@@ -598,14 +607,16 @@ export default function AulaIA() {
               <button
                 onClick={gerarIlustracao}
                 disabled={gerandoImagem || !etapa}
-                title="Gerar ilustração com Gemini IA"
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-violet-500 hover:bg-violet-600 text-white shadow-sm transition-all disabled:opacity-40">
+                title="Gerar ilustração com IA"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all disabled:opacity-40"
+                style={{ background: "rgba(88,28,135,0.85)", border: "1px solid rgba(196,181,253,0.3)", color: "#e9d5ff" }}>
                 {gerandoImagem
                   ? <Loader2 className="w-2.5 h-2.5 animate-spin" />
                   : <ImageIcon className="w-2.5 h-2.5" />}
-                {gerandoImagem ? "Gerando..." : "Ilustração"}
+                {gerandoImagem ? "Gerando..." : "Ilustração IA"}
               </button>
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-700 uppercase tracking-wider shadow-sm pointer-events-none">
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider pointer-events-none"
+                style={{ background: "rgba(15,32,24,0.9)", border: "1px solid rgba(74,222,128,0.35)", color: "#4ade80" }}>
                 {estilo}
               </span>
             </div>
@@ -616,9 +627,10 @@ export default function AulaIA() {
               {isPlaying && audioLoading && (
                 <motion.div
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="absolute top-3 left-3 z-20 flex items-center gap-2 bg-indigo-50/95 backdrop-blur-sm border border-indigo-200 rounded-xl px-3 py-1.5 shadow-sm">
-                  <Loader2 className="w-3 h-3 text-indigo-500 animate-spin" />
-                  <span className="text-xs text-indigo-600 font-semibold">Preparando áudio...</span>
+                  className="absolute top-3 left-3 z-20 flex items-center gap-2 rounded-xl px-3 py-1.5"
+                  style={{ background: "rgba(15,32,24,0.9)", border: "1px solid rgba(74,222,128,0.3)" }}>
+                  <Loader2 className="w-3 h-3 animate-spin" style={{ color: "#4ade80" }} />
+                  <span className="text-xs font-semibold" style={{ color: "#86efac" }}>Preparando voz...</span>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -628,12 +640,14 @@ export default function AulaIA() {
               {canvasPlaying && !boardAllDone && (
                 <motion.div
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-amber-200 rounded-xl px-3 py-1.5 shadow-sm">
+                  className="absolute top-3 left-3 z-20 flex items-center gap-1.5 rounded-xl px-3 py-1.5"
+                  style={{ background: "rgba(15,32,24,0.9)", border: "1px solid rgba(255,224,102,0.3)" }}>
                   <motion.span
-                    animate={{ opacity: [1, 0.3, 1] }}
-                    transition={{ repeat: Infinity, duration: 0.8 }}
-                    className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                  <span className="text-xs text-slate-600 font-medium">Professor escrevendo...</span>
+                    animate={{ opacity: [1, 0.2, 1] }}
+                    transition={{ repeat: Infinity, duration: 0.7 }}
+                    className="w-2 h-2 rounded-full"
+                    style={{ background: "#FFE066" }} />
+                  <span className="text-xs font-semibold" style={{ color: "#FFE066" }}>Tiagão escrevendo...</span>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -680,22 +694,24 @@ export default function AulaIA() {
             <div className="flex items-center justify-center gap-1.5">
               {aula.etapas.map((_, i) => (
                 <button key={i} onClick={() => irParaEtapa(i)}
-                  className={`rounded-full transition-all duration-300 ${
-                    i === etapaAtual ? "w-6 h-2.5 bg-indigo-500"
-                    : i < etapaAtual ? "w-2 h-2 bg-indigo-300"
-                    : "w-2 h-2 bg-slate-300 hover:bg-slate-400"
-                  }`} />
+                  className="rounded-full transition-all duration-300"
+                  style={{
+                    width: i === etapaAtual ? 24 : 8,
+                    height: i === etapaAtual ? 10 : 8,
+                    background: i === etapaAtual ? "#4ade80" : i < etapaAtual ? "rgba(74,222,128,0.4)" : "rgba(255,255,255,0.15)",
+                  }} />
               ))}
             </div>
             <div className="flex items-center justify-center gap-2">
               <button onClick={() => irParaEtapa(Math.max(0, etapaAtual - 1))}
                 disabled={etapaAtual === 0}
-                className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                className="w-10 h-10 rounded-full flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af" }}>
                 <SkipBack className="w-4 h-4" />
               </button>
               <motion.button whileTap={{ scale: 0.93 }} onClick={togglePlay}
                 className="w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-white transition-all"
-                style={{ background: "linear-gradient(135deg,#6366f1,#4f46e5)" }}>
+                style={{ background: "linear-gradient(135deg,#16a34a,#059669)" }}>
                 {isPlaying && !audioLoading
                   ? <Pause className="w-6 h-6" />
                   : audioLoading
@@ -712,26 +728,28 @@ export default function AulaIA() {
                       disabled={!podeAvancar}
                       animate={piscando ? {
                         boxShadow: [
-                          "0 0 0 0 rgba(99,102,241,0)",
-                          "0 0 0 8px rgba(99,102,241,0.25)",
-                          "0 0 0 0 rgba(99,102,241,0)",
+                          "0 0 0 0 rgba(74,222,128,0)",
+                          "0 0 0 8px rgba(74,222,128,0.3)",
+                          "0 0 0 0 rgba(74,222,128,0)",
                         ],
                         scale: [1, 1.05, 1],
-                      } : { boxShadow: "0 0 0 0 rgba(99,102,241,0)", scale: 1 }}
+                      } : { boxShadow: "0 0 0 0 rgba(74,222,128,0)", scale: 1 }}
                       transition={piscando ? { repeat: Infinity, duration: 1.4 } : { duration: 0.2 }}
-                      className={`w-10 h-10 rounded-full border shadow-sm flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
-                        piscando
-                          ? "bg-indigo-500 text-white border-indigo-400 hover:bg-indigo-600"
-                          : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                      }`}>
+                      className="w-10 h-10 rounded-full flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                      style={{
+                        background: piscando ? "#16a34a" : "rgba(255,255,255,0.08)",
+                        border: `1px solid ${piscando ? "#4ade80" : "rgba(255,255,255,0.1)"}`,
+                        color: piscando ? "white" : "#9ca3af",
+                      }}>
                       <SkipForward className="w-4 h-4" />
                     </motion.button>
                     {piscando && (
                       <motion.span
                         initial={{ opacity: 0, y: -2 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="absolute top-full mt-1 whitespace-nowrap text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
-                        Avance quando estiver pronto
+                        className="absolute top-full mt-1 whitespace-nowrap text-[10px] font-bold px-2 py-0.5 rounded-full"
+                        style={{ color: "#4ade80", background: "rgba(22,163,74,0.15)", border: "1px solid rgba(74,222,128,0.3)" }}>
+                        Avance quando pronto
                       </motion.span>
                     )}
                   </div>
@@ -748,33 +766,35 @@ export default function AulaIA() {
                     playNarration(etapa?.narracao ?? "", etapaAtual);
                   }
                 }}
-                className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-all ml-2"
+                className="w-10 h-10 rounded-full flex items-center justify-center transition-all ml-2"
+                style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af" }}
                 title="Repetir etapa">
                 <RefreshCw className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-center text-xs text-slate-400 font-medium">
+            <p className="text-center text-xs font-medium" style={{ color: "#6b7280" }}>
               Etapa {etapaAtual + 1} de {totalEtapas}
-              {boardAllDone && <span className="text-indigo-500 ml-2">✓ escrito</span>}
+              {boardAllDone && <span className="ml-2" style={{ color: "#4ade80" }}>✓ escrito</span>}
             </p>
           </div>
         </div>
 
         {/* ── PAINEL DIREITO ── */}
-        <div className="lg:w-72 xl:w-80 flex flex-col border-t lg:border-t-0 lg:border-l border-slate-200 bg-white flex-shrink-0">
+        <div className="lg:w-72 xl:w-80 flex flex-col flex-shrink-0"
+          style={{ background: "#1a2332", borderLeft: "1px solid rgba(255,255,255,0.06)", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
 
           {/* Narração com avatar do professor */}
-          <div className="p-4 border-b border-slate-100">
+          <div className="p-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
             <div className="flex items-center gap-2.5 mb-3">
               <div className="relative flex-shrink-0">
                 <TiagaoCharacter state={charState} size={44} showLabel={false} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 mb-1">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Prof. Tiagão</p>
+                  <p className="text-[10px] font-black uppercase tracking-wider" style={{ color: "#4ade80" }}>Prof. Tiagão</p>
                   <SpeakingWaveform active={isPlaying && !audioLoading} />
                 </div>
-                <p className="text-[11px] text-slate-400 font-medium">
+                <p className="text-[11px] font-medium" style={{ color: "#6b7280" }}>
                   {audioLoading ? "Preparando a explicação..." : isPlaying ? "Explicando agora..." : "Em pausa"}
                 </p>
               </div>
@@ -785,7 +805,7 @@ export default function AulaIA() {
               <motion.div key={etapaAtual}
                 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-                <p className="text-sm text-slate-700 leading-relaxed font-medium">
+                <p className="text-sm leading-relaxed" style={{ color: "#d1d5db" }}>
                   {etapa?.narracao}
                 </p>
               </motion.div>
@@ -797,43 +817,42 @@ export default function AulaIA() {
             {resposta && (
               <motion.div key={resposta.timestamp}
                 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                className="p-4 border-b border-indigo-100 bg-indigo-50">
+                className="p-4" style={{ background: "rgba(22,163,74,0.1)", borderBottom: "1px solid rgba(74,222,128,0.15)" }}>
                 <div className="flex items-center gap-2 mb-1.5">
                   <TiagaoCharacter state="speaking" size={28} showLabel={false} />
-                  <p className="text-[10px] font-black text-indigo-500 uppercase tracking-wider">
+                  <p className="text-[10px] font-black uppercase tracking-wider" style={{ color: "#4ade80" }}>
                     Tiagão responde
                   </p>
                 </div>
-                <p className="text-xs text-indigo-800 leading-relaxed">{resposta.texto}</p>
+                <p className="text-xs leading-relaxed" style={{ color: "#86efac" }}>{resposta.texto}</p>
               </motion.div>
             )}
           </AnimatePresence>
 
           {/* Lista de etapas */}
           <div className="flex-1 overflow-y-auto p-3 space-y-1">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2 px-1">
+            <p className="text-[10px] font-black uppercase tracking-wider mb-2 px-1" style={{ color: "#4b5563" }}>
               Etapas da aula
             </p>
             {aula.etapas.map((et, i) => (
               <button key={et.id} onClick={() => irParaEtapa(i)}
-                className={`w-full text-left px-3 py-2.5 rounded-xl transition-all text-xs font-medium flex items-start gap-2.5 ${
-                  i === etapaAtual
-                    ? "bg-indigo-50 text-indigo-800 border border-indigo-200"
-                    : i < etapaAtual
-                    ? "text-slate-400 hover:bg-slate-50"
-                    : "text-slate-500 hover:bg-slate-50"
-                }`}>
-                <span className={`w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-black mt-0.5 ${
-                  i === etapaAtual ? "bg-indigo-500 text-white"
-                  : i < etapaAtual ? "bg-slate-200 text-slate-400"
-                  : "bg-slate-100 text-slate-400"
-                }`}>{i + 1}</span>
+                className="w-full text-left px-3 py-2.5 rounded-xl transition-all text-xs font-medium flex items-start gap-2.5"
+                style={{
+                  background: i === etapaAtual ? "rgba(22,163,74,0.15)" : "transparent",
+                  border: `1px solid ${i === etapaAtual ? "rgba(74,222,128,0.25)" : "transparent"}`,
+                  color: i === etapaAtual ? "#86efac" : i < etapaAtual ? "#4b5563" : "#6b7280",
+                }}>
+                <span className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-black mt-0.5"
+                  style={{
+                    background: i === etapaAtual ? "#16a34a" : i < etapaAtual ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.06)",
+                    color: i === etapaAtual ? "white" : i < etapaAtual ? "#4ade80" : "#6b7280",
+                  }}>{i + 1}</span>
                 <span className="leading-tight line-clamp-2">
                   {et.elementos.find(e => e.tipo === "titulo")?.texto
                     || et.narracao.slice(0, 55) + "..."}
                 </span>
                 {i === etapaAtual && isPlaying && (
-                  <ChevronRight className="w-3 h-3 ml-auto flex-shrink-0 mt-0.5 text-indigo-400" />
+                  <ChevronRight className="w-3 h-3 ml-auto flex-shrink-0 mt-0.5" style={{ color: "#4ade80" }} />
                 )}
               </button>
             ))}
@@ -842,7 +861,8 @@ export default function AulaIA() {
       </div>
 
       {/* ── INPUT DE PERGUNTAS ── */}
-      <div className="flex-shrink-0 border-t border-slate-200 bg-white px-3 sm:px-5 py-3">
+      <div className="flex-shrink-0 px-3 sm:px-5 py-3"
+        style={{ background: "#1a2332", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         <div className="max-w-4xl mx-auto flex items-center gap-2">
           <div className="w-8 h-8 flex-shrink-0">
             <TiagaoCharacter state={respondendo ? "thinking" : "idle"} size={32} showLabel={false} />
@@ -852,37 +872,34 @@ export default function AulaIA() {
               value={transcrevendo ? "Transcrevendo..." : pergunta}
               onChange={e => setPergunta(e.target.value)}
               onKeyDown={e => e.key === "Enter" && !e.shiftKey && enviarPergunta()}
-              placeholder={gravando ? "🎙 Gravando... clique no mic para parar" : "Pergunte ao Professor — ou fale pelo microfone..."}
+              placeholder={gravando ? "🎙 Gravando... clique no mic para parar" : "Pergunte ao Tiagão — ou fale pelo microfone..."}
               disabled={transcrevendo}
-              className={`w-full px-4 py-2.5 rounded-2xl border text-sm pr-20 transition-all ${
-                gravando
-                  ? "border-red-300 bg-red-50 placeholder-red-400 text-red-800"
-                  : "border-slate-200 focus:border-indigo-400 bg-slate-50 placeholder-slate-400 text-slate-800"
-              } focus:outline-none`}
+              className="w-full px-4 py-2.5 rounded-2xl text-sm pr-20 transition-all focus:outline-none"
+              style={{
+                background: gravando ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.06)",
+                border: `1px solid ${gravando ? "rgba(239,68,68,0.3)" : "rgba(255,255,255,0.1)"}`,
+                color: gravando ? "#fca5a5" : "#e5e7eb",
+              }}
             />
             {/* Botão mic */}
             <button
               onClick={toggleMic}
               disabled={transcrevendo || respondendo}
               title={gravando ? "Parar gravação" : "Falar pergunta"}
-              className={`absolute right-10 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center transition-all ${
-                gravando
-                  ? "bg-red-500 animate-pulse"
-                  : transcrevendo
-                  ? "bg-amber-400"
-                  : "bg-slate-200 hover:bg-slate-300"
-              } disabled:opacity-30`}>
+              className={`absolute right-10 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center transition-all ${gravando ? "animate-pulse" : ""} disabled:opacity-30`}
+              style={{ background: gravando ? "#ef4444" : transcrevendo ? "#d97706" : "rgba(255,255,255,0.12)" }}>
               {transcrevendo
                 ? <Loader2 className="w-3 h-3 text-white animate-spin" />
                 : gravando
                 ? <MicOff className="w-3 h-3 text-white" />
-                : <Mic className="w-3 h-3 text-slate-600" />}
+                : <Mic className="w-3 h-3" style={{ color: "#9ca3af" }} />}
             </button>
             {/* Botão enviar */}
             <button
               onClick={enviarPergunta}
               disabled={!pergunta.trim() || respondendo || gravando}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center disabled:opacity-30">
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center disabled:opacity-30"
+              style={{ background: "#16a34a" }}>
               {respondendo
                 ? <Loader2 className="w-3 h-3 text-white animate-spin" />
                 : <Send className="w-3 h-3 text-white" />}

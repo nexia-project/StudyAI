@@ -58,14 +58,15 @@ interface ElStyle {
 // Calmer, more human-paced writing speeds — adjusted via audioDurationMs prop.
 // Lower bound clamp (in syncFactorRef) prevents going faster than baseline so the
 // student can actually follow letter-by-letter, like a real teacher on a board.
+// Dark chalkboard theme — chalk on green blackboard
 const STYLES: Record<BoardElement["tipo"], ElStyle> = {
-  titulo:    { fontSize: 30, fontWeight: "700", color: "#1e1b4b", lineHeight: 44, msPerChar: 145, pauseAfter: 1400, hasUnderline: true, underlineColor: "#F59E0B" },
-  formula:   { fontSize: 25, fontWeight: "700", color: "#6D28D9", lineHeight: 42, msPerChar: 195, pauseAfter: 1800, bgColor: "#FEF9C3", padding: 12, hasBorder: "#FDE047" },
-  texto:     { fontSize: 21, fontWeight: "400", color: "#374151", lineHeight: 34, msPerChar: 95,  pauseAfter: 950 },
-  destaque:  { fontSize: 21, fontWeight: "700", color: "#065F46", lineHeight: 34, msPerChar: 115, pauseAfter: 1100, bgColor: "#D1FAE5", textColor: "#065F46", padding: 10, hasBorder: "#6EE7B7" },
-  seta:      { fontSize: 21, fontWeight: "400", color: "#4338CA", lineHeight: 34, msPerChar: 95,  pauseAfter: 850, hasArrow: true },
-  separador: { fontSize: 0,  fontWeight: "400", color: "#D1D5DB", lineHeight: 22, msPerChar: 0,   pauseAfter: 400 },
-  exemplo:   { fontSize: 20, fontWeight: "400", color: "#1e40af", lineHeight: 34, msPerChar: 100, pauseAfter: 1100, bgColor: "#DBEAFE", padding: 12, hasBorder: "#93C5FD" },
+  titulo:    { fontSize: 30, fontWeight: "700", color: "#FFE066", lineHeight: 44, msPerChar: 145, pauseAfter: 1400, hasUnderline: true, underlineColor: "#FFB800" },
+  formula:   { fontSize: 25, fontWeight: "700", color: "#FFE066", lineHeight: 42, msPerChar: 195, pauseAfter: 1800, bgColor: "#1a3d2a", padding: 12, hasBorder: "#4ade80", textColor: "#FFE066" },
+  texto:     { fontSize: 21, fontWeight: "400", color: "#E8E0C8", lineHeight: 34, msPerChar: 95,  pauseAfter: 950 },
+  destaque:  { fontSize: 21, fontWeight: "700", color: "#86efac", lineHeight: 34, msPerChar: 115, pauseAfter: 1100, bgColor: "#0d2a1a", textColor: "#86efac", padding: 10, hasBorder: "#4ade80" },
+  seta:      { fontSize: 21, fontWeight: "400", color: "#FB923C", lineHeight: 34, msPerChar: 95,  pauseAfter: 850, hasArrow: true },
+  separador: { fontSize: 0,  fontWeight: "400", color: "#4a7c59", lineHeight: 22, msPerChar: 0,   pauseAfter: 400 },
+  exemplo:   { fontSize: 20, fontWeight: "400", color: "#7DD3FC", lineHeight: 34, msPerChar: 100, pauseAfter: 1100, bgColor: "#0c2233", padding: 12, hasBorder: "#38BDF8", textColor: "#BAE6FD" },
 };
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -134,7 +135,7 @@ function buildLayout(ctx: CanvasRenderingContext2D, canvasW: number, elementos: 
     const rawText = el.texto ?? "";
     const lines = wrapText(ctx, rawText, innerW);
 
-    const topLabelH = (el.tipo === "destaque" || el.tipo === "exemplo") ? 15 : 0;
+    const topLabelH = (el.tipo === "destaque" || el.tipo === "exemplo" || el.tipo === "formula") ? 15 : 0;
     const textH = lines.length * s.lineHeight;
     const height = textH + paddingY * 2 + topLabelH + (s.hasUnderline ? 10 : 0) + 16;
 
@@ -175,9 +176,9 @@ function drawElement(
 
   // ── Separador ──
   if (lel.el.tipo === "separador") {
-    ctx.strokeStyle = "#E5E7EB";
+    ctx.strokeStyle = "rgba(255,255,255,0.18)";
     ctx.lineWidth = 1.5;
-    ctx.setLineDash([6, 4]);
+    ctx.setLineDash([8, 5]);
     ctx.beginPath();
     ctx.moveTo(PAD_X, lel.startY + 12);
     ctx.lineTo(canvasW - PAD_X, lel.startY + 12);
@@ -223,12 +224,16 @@ function drawElement(
     // Top label
     if (lel.el.tipo === "exemplo") {
       ctx.font = "800 10px 'Inter', sans-serif";
-      ctx.fillStyle = hexToRgba("#1e40af", 0.7);
+      ctx.fillStyle = hexToRgba("#38BDF8", 0.9);
       ctx.fillText("EXEMPLO", bx + paddingX + 2, lel.startY + topLabelH - 2);
     } else if (lel.el.tipo === "destaque") {
       ctx.font = "800 10px 'Inter', sans-serif";
-      ctx.fillStyle = hexToRgba("#065F46", 0.65);
+      ctx.fillStyle = hexToRgba("#4ade80", 0.9);
       ctx.fillText("CONCEITO", bx + paddingX + 2, lel.startY + topLabelH - 2);
+    } else if (lel.el.tipo === "formula") {
+      ctx.font = "800 10px 'Inter', sans-serif";
+      ctx.fillStyle = hexToRgba("#FFE066", 0.9);
+      ctx.fillText("FÓRMULA", bx + paddingX + 2, lel.startY + topLabelH - 2);
     }
     ctx.restore();
   }
@@ -360,24 +365,30 @@ export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
 
       ctx.clearRect(0, 0, canvasW, canvasH);
 
-      // Fundo creme
-      ctx.fillStyle = "#FFFEF5";
+      // Fundo lousa verde escura com gradiente sutil
+      const gradient = ctx.createLinearGradient(0, 0, canvasW, canvasH);
+      gradient.addColorStop(0, "#1a3326");
+      gradient.addColorStop(0.5, "#162b1f");
+      gradient.addColorStop(1, "#0f2018");
+      ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvasW, canvasH);
 
-      // Linhas pautadas suaves (azul-acinzentado)
+      // Linhas horizontais de giz (lousa)
       ctx.save();
       for (let ly = 44; ly < st.totalHeight; ly += 36) {
         const screenY = ly - scrollY;
         if (screenY < -36 || screenY > canvasH + 36) continue;
-        ctx.strokeStyle = "rgba(180,200,230,0.18)";
-        ctx.lineWidth = 0.8;
+        ctx.strokeStyle = "rgba(255,255,255,0.055)";
+        ctx.lineWidth = 0.6;
+        ctx.setLineDash([canvasW, 0]);
         ctx.beginPath();
         ctx.moveTo(0, screenY);
         ctx.lineTo(canvasW, screenY);
         ctx.stroke();
       }
-      // Margem esquerda vertical (vermelho bem suave)
-      ctx.strokeStyle = "rgba(239,68,68,0.08)";
+      ctx.setLineDash([]);
+      // Margem esquerda vertical (giz rosa/salmão suave)
+      ctx.strokeStyle = "rgba(251,146,60,0.2)";
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(22, 0);
@@ -567,7 +578,7 @@ export const ChalkBoardCanvas = forwardRef<ChalkBoardHandle, Props>(
 
     return (
       <div ref={containerRef} className="w-full h-full relative overflow-hidden"
-        style={{ background: "#FFFEF5" }}>
+        style={{ background: "#162b1f" }}>
         <canvas ref={canvasRef} className="absolute inset-0" />
       </div>
     );

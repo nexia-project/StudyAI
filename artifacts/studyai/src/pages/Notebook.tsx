@@ -314,42 +314,95 @@ const ICON_TINT: Record<string, string> = {
 
 // ─── Mind Map Renderer ─────────────────────────────────────────────────────
 function MindMapView({ map }: { map: MindMap }) {
-  const [expanded, setExpanded] = useState<Set<number>>(new Set([0, 1]));
+  const [expandedTopics, setExpandedTopics] = useState<Set<number>>(
+    new Set((map.topics ?? []).map((_, i) => i))
+  );
+
+  const toggle = (i: number) =>
+    setExpandedTopics(s => { const ns = new Set(s); ns.has(i) ? ns.delete(i) : ns.add(i); return ns; });
+
+  const rootColor = map.color || "#6366f1";
+  const topics = map.topics ?? [];
+
   return (
-    <div className="p-3">
-      <div className="flex justify-center mb-4">
-        <div className="px-5 py-2.5 rounded-2xl font-black text-white text-sm shadow-lg"
-          style={{ backgroundColor: map.color || "#6366f1" }}>
-          {map.subject}
-        </div>
-      </div>
-      <div className="space-y-2">
-        {(map.topics ?? []).map((topic, i) => (
-          <div key={i} className="rounded-xl border overflow-hidden" style={{ borderColor: (topic.color || "#6366f1") + "40" }}>
-            <button
-              onClick={() => setExpanded(s => { const ns = new Set(s); ns.has(i) ? ns.delete(i) : ns.add(i); return ns; })}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-left"
-              style={{ backgroundColor: (topic.color || "#6366f1") + "15" }}>
-              <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: topic.color || "#6366f1" }} />
-              <span className="font-bold text-sm flex-1 text-slate-800">{topic.name}</span>
-              <span className="text-xs text-slate-400">{topic.subtopics?.length ?? 0}</span>
-              {expanded.has(i) ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
-            </button>
-            {expanded.has(i) && (
-              <div className="px-3 pb-2 pt-1 space-y-1 bg-white">
-                {(topic.subtopics ?? []).map((sub, j) => (
-                  <div key={j} className="flex items-start gap-2 py-1">
-                    <ChevronRight className="w-3 h-3 mt-0.5 flex-shrink-0 text-slate-400" />
-                    <div>
-                      <p className="text-xs font-semibold text-slate-700">{sub.name}</p>
-                      {sub.detail && <p className="text-[10px] text-slate-500 leading-tight mt-0.5">{sub.detail}</p>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+    <div className="w-full overflow-x-auto overflow-y-auto p-4 bg-slate-50">
+      {/* Horizontal tree: Root ──── Topics ──── Subtopics */}
+      <div className="inline-flex items-center gap-0 min-h-[200px]" style={{ minWidth: "max-content" }}>
+
+        {/* ── Root node ── */}
+        <div className="flex flex-col items-center self-stretch justify-center">
+          <div
+            className="px-5 py-3 rounded-2xl font-black text-white text-sm shadow-xl whitespace-nowrap select-none cursor-default"
+            style={{ backgroundColor: rootColor }}
+          >
+            {map.subject}
           </div>
-        ))}
+        </div>
+
+        {/* Root → Topics connector */}
+        <div className="flex flex-col items-stretch self-stretch justify-center">
+          <div className="flex-1" />
+          <div className="w-8 h-0.5 self-center" style={{ backgroundColor: rootColor + "80" }} />
+          <div className="flex-1" />
+        </div>
+
+        {/* ── Topics column ── */}
+        <div className="flex flex-col gap-3 self-stretch justify-center">
+          {topics.map((topic, i) => {
+            const topicColor = topic.color || rootColor;
+            const isOpen = expandedTopics.has(i);
+            const hasSubs = (topic.subtopics?.length ?? 0) > 0;
+            return (
+              <div key={i} className="flex items-center gap-0">
+
+                {/* Vertical bar connecting to root line */}
+                <div className="relative flex items-center">
+                  {/* Horizontal arm from root */}
+                  <div className="w-4 h-0.5" style={{ backgroundColor: topicColor + "60" }} />
+                </div>
+
+                {/* Topic node */}
+                <button
+                  onClick={() => toggle(i)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-[11px] text-white shadow-md whitespace-nowrap hover:opacity-90 active:scale-[0.97] transition-all"
+                  style={{ backgroundColor: topicColor }}
+                >
+                  {topic.name}
+                  {hasSubs && (
+                    <span className="text-[9px] font-black opacity-70">
+                      {isOpen ? "−" : `+${topic.subtopics.length}`}
+                    </span>
+                  )}
+                </button>
+
+                {/* Topic → Subtopics connector + subtopics */}
+                {isOpen && hasSubs && (
+                  <>
+                    <div className="w-4 h-0.5" style={{ backgroundColor: topicColor + "60" }} />
+                    <div className="flex flex-col gap-1.5">
+                      {topic.subtopics.map((sub, j) => (
+                        <div key={j}
+                          className="flex items-start gap-0"
+                        >
+                          <div className="w-2 h-0.5 self-center" style={{ backgroundColor: topicColor + "40" }} />
+                          <div
+                            className="px-2.5 py-1.5 rounded-lg text-[10px] font-medium bg-white shadow-sm border"
+                            style={{ borderColor: topicColor + "30", maxWidth: 200 }}
+                          >
+                            <p className="font-semibold text-slate-800 leading-tight">{sub.name}</p>
+                            {sub.detail && (
+                              <p className="text-[9px] text-slate-500 mt-0.5 leading-tight whitespace-normal">{sub.detail}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -2892,7 +2945,10 @@ export default function Notebook() {
             </div>
           </div>
         )}
+      </div>
 
+      {/* ── Tools list: hidden when result is showing, scrollable otherwise ── */}
+      <div className={`overflow-y-auto p-4 transition-all ${toolResult && activeTool ? "hidden" : "flex-1"}`}>
         {selectedDocIds.length === 0 ? (
           <div className="rounded-xl bg-slate-50 border border-dashed border-slate-200 p-4 text-center">
             <Sparkles className="w-5 h-5 text-slate-300 mx-auto mb-2" />
@@ -3075,7 +3131,7 @@ export default function Notebook() {
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className={`overflow-y-auto ${toolLoading || (toolResult && activeTool) ? "flex-1" : "hidden"}`}>
         {toolLoading && !toolResult && (
           <div className="flex flex-col items-center justify-center h-40 gap-3">
             <TiagaoCharacter state="thinking" size={60} showLabel />
@@ -3114,15 +3170,73 @@ export default function Notebook() {
         )}
 
         {!toolLoading && toolResult && activeTool && (
-          <div>
-            <div className="px-3 py-2 border-b border-slate-100 flex items-center gap-2">
-              {(() => { const Icon = TOOL_CONFIG[activeTool].icon; return <Icon className="w-4 h-4 text-indigo-500" />; })()}
-              <p className="text-xs font-bold text-slate-700">{TOOL_CONFIG[activeTool].label}</p>
+          <div className="flex flex-col h-full">
+            {/* Result header bar */}
+            <div className="px-3 py-2.5 border-b border-slate-100 flex items-center gap-2 flex-shrink-0 bg-white">
+              {(() => { const cfg = TOOL_CONFIG[activeTool]; const Icon = cfg.icon; return (
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${ICON_TINT[cfg.color] ?? "bg-slate-100 text-slate-500"}`}>
+                  <Icon className="w-3.5 h-3.5" />
+                </div>
+              ); })()}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-slate-800 truncate">{TOOL_CONFIG[activeTool].label}</p>
+                <p className="text-[9px] text-slate-400">Resultado gerado por IA</p>
+              </div>
+              {/* Download buttons */}
+              <button
+                onClick={() => {
+                  const fakeArtifact = { id: 0, kind: activeTool, title: TOOL_CONFIG[activeTool].label, created_at: "" };
+                  // Download PDF by creating print window from current toolResult
+                  const extractText = (payload: unknown, depth = 0): string => {
+                    if (depth > 6 || !payload) return "";
+                    if (typeof payload === "string") return payload;
+                    if (Array.isArray(payload)) return payload.map(v => extractText(v, depth + 1)).join("\n");
+                    if (typeof payload === "object") return Object.entries(payload as Record<string, unknown>).filter(([k]) => !["icon","color","image","emoji","id","url"].includes(k)).map(([,v]) => extractText(v, depth + 1)).join("\n");
+                    return String(payload);
+                  };
+                  const title = TOOL_CONFIG[activeTool].label;
+                  const lines = extractText(toolResult).split("\n").map(l => l.trim()).filter(Boolean);
+                  const bodyHtml = lines.map(l => `<p style="margin:0 0 6px;font-size:13px;line-height:1.6">${l.replace(/</g,"&lt;")}</p>`).join("");
+                  const win = window.open("", "_blank");
+                  if (win) {
+                    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>body{font-family:system-ui,sans-serif;max-width:780px;margin:40px auto;padding:0 20px;color:#1e293b}h1{font-size:22px;font-weight:800;margin-bottom:24px;color:#312e81;border-bottom:2px solid #e2e8f0;padding-bottom:12px}p{margin:0 0 8px;font-size:13px;line-height:1.65}@media print{body{margin:20px}}</style></head><body><h1>${title}</h1>${bodyHtml}<script>window.onload=function(){window.print();}<\/script></body></html>`);
+                    win.document.close();
+                  }
+                }}
+                className="p-1.5 rounded-lg border border-rose-200 text-rose-500 hover:bg-rose-50 transition-colors"
+                title="Baixar como PDF"
+              >
+                <Download className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={async () => {
+                  const _title = TOOL_CONFIG[activeTool].label;
+                  const _payload = toolResult;
+                  const pptxgen = (await import("pptxgenjs")).default;
+                  const prs = new pptxgen();
+                  prs.layout = "LAYOUT_WIDE"; prs.title = _title;
+                  const ts = prs.addSlide(); ts.background = { color: "312e81" };
+                  ts.addText(_title, { x: 0.5, y: 2.2, w: "90%", h: 1.5, fontSize: 36, bold: true, color: "FFFFFF", align: "center" });
+                  ts.addText("StudyAI · studyai.com.br", { x: 0.5, y: 4.2, w: "90%", h: 0.5, fontSize: 14, color: "a5b4fc", align: "center" });
+                  const _extract = (p: unknown, d = 0): string => { if (d > 6 || !p) return ""; if (typeof p === "string") return p; if (Array.isArray(p)) return p.map((v: unknown) => _extract(v, d + 1)).join("\n"); if (typeof p === "object") return Object.entries(p as Record<string, unknown>).filter(([k]) => !["icon","color","image","emoji","id","url"].includes(k)).map(([,v]) => _extract(v, d + 1)).join("\n"); return String(p); };
+                  const _isSlideArr = Array.isArray(_payload) && (_payload as any[])[0]?.titulo !== undefined;
+                  if (_isSlideArr) { (_payload as any[]).forEach((s: any) => { const sl = prs.addSlide(); sl.background = { color: "FFFFFF" }; if (s.titulo) sl.addText(s.titulo, { x: 0.5, y: 0.4, w: "90%", h: 0.8, fontSize: 22, bold: true, color: "312e81" }); const b = s.pontos?.join("\n") ?? s.conteudo ?? s.texto ?? ""; if (b) sl.addText(b, { x: 0.5, y: 1.4, w: "90%", h: 4, fontSize: 14, color: "334155", valign: "top" }); }); }
+                  else { const ls = _extract(_payload).split("\n").map((l: string) => l.trim()).filter(Boolean); for (let i = 0; i < ls.length; i += 14) { const sl = prs.addSlide(); sl.background = { color: "FFFFFF" }; sl.addText(ls.slice(i, i + 14).join("\n"), { x: 0.5, y: 0.5, w: "90%", h: 5.5, fontSize: 13, color: "334155", valign: "top" }); sl.addText(_title, { x: 0.5, y: 6.8, w: "90%", h: 0.35, fontSize: 9, color: "94a3b8", align: "right" }); } }
+                  await prs.writeFile({ fileName: `${_title.replace(/[^a-z0-9]/gi, "_")}.pptx` });
+                }}
+                className="p-1.5 rounded-lg border border-orange-200 text-orange-500 hover:bg-orange-50 transition-colors"
+                title="Baixar como PowerPoint"
+              >
+                <Presentation className="w-3.5 h-3.5" />
+              </button>
               <button onClick={() => { setActiveTool(null); setToolResult(null); setToolError(null); }}
-                className="ml-auto text-slate-300 hover:text-slate-500">
+                className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors"
+                title="Fechar resultado"
+              >
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
+            <div className="flex-1 overflow-y-auto">
 
             {activeTool === "overview" && (() => {
               const r = toolResult as Overview;
@@ -5256,6 +5370,7 @@ export default function Notebook() {
                 </div>
               );
             })()}
+            </div>
           </div>
         )}
 
@@ -5606,9 +5721,15 @@ export default function Notebook() {
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        <div className="hidden lg:flex w-[280px] xl:w-[300px] flex-shrink-0 flex-col overflow-hidden">{SourcesPanel}</div>
-        <div className="hidden lg:flex flex-1 flex-col overflow-hidden bg-slate-50">{ChatPanel}</div>
-        <div className="hidden lg:flex w-[300px] xl:w-[340px] flex-shrink-0 flex-col overflow-hidden">{ToolsPanel}</div>
+        <div className="hidden lg:flex w-[260px] xl:w-[280px] flex-shrink-0 flex-col overflow-hidden">{SourcesPanel}</div>
+        {/* Chat col: shrinks to fixed width when tool result is active */}
+        <div className={`hidden lg:flex flex-col overflow-hidden bg-slate-50 transition-all duration-300 ${
+          toolResult && activeTool ? "w-[280px] flex-shrink-0" : "flex-1"
+        }`}>{ChatPanel}</div>
+        {/* Studio/Results col: expands to flex-1 when tool result is active */}
+        <div className={`hidden lg:flex flex-col overflow-hidden border-l border-slate-200/70 transition-all duration-300 ${
+          toolResult && activeTool ? "flex-1" : "w-[300px] xl:w-[320px] flex-shrink-0"
+        }`}>{ToolsPanel}</div>
 
         <div className="flex lg:hidden flex-1 flex-col overflow-hidden">
           {mobilePanel === "sources" && SourcesPanel}

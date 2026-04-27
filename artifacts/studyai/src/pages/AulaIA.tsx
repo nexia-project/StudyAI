@@ -133,8 +133,10 @@ export default function AulaIA() {
 
   const etapa = aula?.etapas[etapaAtual];
 
-  // ── Canvas only draws when audio is ACTUALLY playing (not loading, not paused) ──
-  const canvasPlaying = isPlaying && !audioLoading;
+  // ── Canvas plays when audio is playing OR audio just ended but board isn't done yet.
+  // This prevents the board from freezing mid-word when audio finishes slightly before
+  // the canvas animation completes.
+  const canvasPlaying = (isPlaying || (audioEnded && !boardAllDone)) && !audioLoading;
 
   // ── character state ──
   useEffect(() => {
@@ -693,7 +695,7 @@ export default function AulaIA() {
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-center gap-1.5">
               {aula.etapas.map((_, i) => (
-                <button key={i} onClick={() => irParaEtapa(i)}
+                <button key={i} onClick={() => irParaEtapa(i, isPlaying)}
                   className="rounded-full transition-all duration-300"
                   style={{
                     width: i === etapaAtual ? 24 : 8,
@@ -703,7 +705,7 @@ export default function AulaIA() {
               ))}
             </div>
             <div className="flex items-center justify-center gap-2">
-              <button onClick={() => irParaEtapa(Math.max(0, etapaAtual - 1))}
+              <button onClick={() => irParaEtapa(Math.max(0, etapaAtual - 1), isPlaying)}
                 disabled={etapaAtual === 0}
                 className="w-10 h-10 rounded-full flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af" }}>
@@ -724,7 +726,7 @@ export default function AulaIA() {
                 return (
                   <div className="relative flex flex-col items-center">
                     <motion.button
-                      onClick={() => irParaEtapa(Math.min(totalEtapas - 1, etapaAtual + 1))}
+                      onClick={() => irParaEtapa(Math.min(totalEtapas - 1, etapaAtual + 1), isPlaying)}
                       disabled={!podeAvancar}
                       animate={piscando ? {
                         boxShadow: [

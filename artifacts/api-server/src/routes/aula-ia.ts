@@ -156,7 +156,7 @@ RETORNE SOMENTE JSON VÁLIDO, sem texto extra, sem markdown, sem blocos de códi
 
   const message = await claude.messages.create({
     model: "claude-sonnet-4-5",
-    max_tokens: 4096,
+    max_tokens: 2000,
     messages: [{ role: "user", content: `${systemPrompt}\n\nCrie uma aula sobre: ${topico.trim()}` }],
   });
 
@@ -234,26 +234,37 @@ router.post("/aula-ia/gerar", requireAuth, async (req: Request, res: Response) =
     }
 
     let raw = "";
-    let modelUsed = "claude-sonnet-4-5";
+    let modelUsed = "gpt-4o-mini";
 
-    // ── Tentativa 1: Claude (maior qualidade didática) ────────────────────────
-    try {
-      raw = await gerarAulaComClaude(topico, estilo, nivel);
-    } catch (claudeErr) {
-      console.warn("[aula-ia] Claude falhou:", (claudeErr as Error).message);
-      raw = "";
-    }
+    // ── Corrida paralela: GPT-4o-mini vs Claude — primeiro que responder ganha ─
+    // GPT-4o-mini costuma responder em 5-8s; Claude em 15-25s.
+    // Ambos rodam ao mesmo tempo — elimina a espera sequencial.
+    const openaiRace = gerarAulaComOpenAI(topico, estilo, nivel)
+      .then(r => ({ raw: r, model: "gpt-4o-mini" }))
+      .catch(() => null);
 
-    // ── Tentativa 2: GPT-4o-mini (fallback confiável com json_object garantido)
-    if (!raw) {
-      console.info("[aula-ia] Usando GPT-4o-mini como fallback");
-      modelUsed = "gpt-4o-mini";
-      try {
-        raw = await gerarAulaComOpenAI(topico, estilo, nivel);
-      } catch (openaiErr) {
-        console.error("[aula-ia] GPT-4o-mini também falhou:", openaiErr);
-        throw openaiErr;
-      }
+    const claudeRace = gerarAulaComClaude(topico, estilo, nivel)
+      .then(r => ({ raw: r, model: "claude-sonnet-4-5" }))
+      .catch(() => null);
+
+    // Espera o primeiro que resolver (null = falhou, ignora e aguarda o outro)
+    const raceResult = await new Promise<{ raw: string; model: string } | null>((resolve) => {
+      let settled = 0;
+      const tryResolve = (result: { raw: string; model: string } | null) => {
+        if (result) { resolve(result); return; }
+        settled++;
+        if (settled === 2) resolve(null); // ambos falharam
+      };
+      openaiRace.then(tryResolve);
+      claudeRace.then(tryResolve);
+    });
+
+    if (raceResult) {
+      raw = raceResult.raw;
+      modelUsed = raceResult.model;
+      console.info(`[aula-ia] Vencedor da corrida: ${modelUsed}`);
+    } else {
+      throw new Error("Ambos os modelos falharam ao gerar a aula");
     }
 
     // ── Parse robusto — nunca crasha, sempre tenta recuperar ─────────────────
@@ -267,14 +278,7 @@ router.post("/aula-ia/gerar", requireAuth, async (req: Request, res: Response) =
         console.warn("[aula-ia] JSON reparado com sucesso");
         aula = JSON.parse(repaired);
       } else {
-        // Último recurso: tenta GPT-4o-mini mesmo que o anterior já tenha rodado
-        if (modelUsed !== "gpt-4o-mini") {
-          console.warn("[aula-ia] Fallback final para GPT-4o-mini após JSON inválido");
-          const fallback = await gerarAulaComOpenAI(topico, estilo, nivel);
-          aula = JSON.parse(fallback);
-        } else {
-          throw new Error("JSON inválido após todas as tentativas");
-        }
+        throw new Error("JSON inválido após todas as tentativas");
       }
     }
 

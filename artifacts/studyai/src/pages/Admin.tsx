@@ -81,6 +81,28 @@ type AdminStats = {
   };
 };
 
+type FonteFonte = {
+  id: string; nome: string; tipo: "ia" | "cache" | "free-api" | "free-local";
+  calls: number; costUsd: number; costBrl: number;
+  savedUsd: number; savedBrl: number;
+  cor: string; emoji: string; descricao: string;
+};
+type FonteConsumo = {
+  ia: {
+    totalCalls: number; totalCostUsd: number; totalCostBrl: number;
+    byModel: { model: string; calls: number; costUsd: number; costBrl: number; tokens: number }[];
+  };
+  cache: {
+    totalEntries: number; totalHits: number; savedUsd: number; savedBrl: number;
+    avgCostPerIaCall: number;
+    byFeature: { feature: string; entries: number; hits: number }[];
+  };
+  fontes: FonteFonte[];
+  totalSavedUsd: number; totalSavedBrl: number;
+  totalIaCostUsd: number; totalIaCostBrl: number;
+  taxaEconomia: number;
+};
+
 type Section =
   | "visao" | "alunos" | "professores" | "instituicoes"
   | "financeiro" | "ia-custos" | "conteudos" | "banco-dados"
@@ -167,6 +189,8 @@ export default function AdminPage() {
   const kbFileRef = useRef<HTMLInputElement>(null);
   const [searchQ, setSearchQ] = useState("");
   const [debugInfo, setDebugInfo] = useState<Record<string, any> | null>(null);
+  const [fonteConsumo, setFonteConsumo] = useState<FonteConsumo | null>(null);
+  const [fonteLoading, setFonteLoading] = useState(false);
 
   // ── Date range filter — read initial value from URL ──────────────────────────
   const searchStr = useSearch();
@@ -374,6 +398,15 @@ export default function AdminPage() {
     }
   }
 
+  async function fetchFonteConsumo() {
+    setFonteLoading(true);
+    try {
+      const res = await adminFetch("/api/admin/fonte-consumo");
+      if (res.ok) setFonteConsumo(await res.json());
+    } catch {}
+    finally { setFonteLoading(false); }
+  }
+
   // Refetch stats whenever the date range changes
   useEffect(() => {
     if (!isLoaded) return;
@@ -387,6 +420,7 @@ export default function AdminPage() {
   }, [isLoaded]);
   useEffect(() => { if (activeSection === "conteudos") fetchTeacherContent(); }, [activeSection]);
   useEffect(() => { if (activeSection === "banco-dados") fetchKbDocs(); }, [activeSection]);
+  useEffect(() => { if (activeSection === "ia-custos" && !fonteConsumo) fetchFonteConsumo(); }, [activeSection]);
 
   /* ── Error / Access denied ── */
   if (error) {
@@ -1367,6 +1401,111 @@ export default function AdminPage() {
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* ── Medidor de Consumo por Fonte ─────────────────────────────────── */}
+              <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
+                <div className="flex items-center justify-between mb-1">
+                  <div>
+                    <p className="text-sm font-bold text-white/70">Medidor de Consumo por Fonte</p>
+                    <p className="text-[10px] text-white/40 mt-0.5">IA paga × fontes gratuitas — chamadas e economia gerada</p>
+                  </div>
+                  <button onClick={fetchFonteConsumo} disabled={fonteLoading}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors disabled:opacity-40">
+                    <RefreshCw className={`w-3 h-3 ${fonteLoading ? "animate-spin" : ""}`} />
+                    Atualizar
+                  </button>
+                </div>
+
+                {fonteLoading && !fonteConsumo ? (
+                  <div className="flex items-center justify-center h-32 text-white/30 text-xs gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Carregando fontes…
+                  </div>
+                ) : fonteConsumo ? (() => {
+                  const fc = fonteConsumo;
+                  const fmtBrl = (v: number) => v < 0.001 ? `R$ ${v.toFixed(6)}` : v < 0.01 ? `R$ ${v.toFixed(4)}` : `R$ ${v.toFixed(2)}`;
+                  const totalCalls = fc.fontes.reduce((s, f) => s + f.calls, 0);
+
+                  // KPI cards
+                  const kpis = [
+                    { label: "Custo IA Real",       val: fmtBrl(fc.totalIaCostBrl), sub: `US$ ${fc.totalIaCostUsd.toFixed(4)}`, color: "text-blue-400" },
+                    { label: "Economia Total",       val: fmtBrl(fc.totalSavedBrl),  sub: `US$ ${fc.totalSavedUsd.toFixed(4)}`, color: "text-emerald-400" },
+                    { label: "Taxa de Economia",     val: `${fc.taxaEconomia}%`,      sub: "do total potencial",                  color: "text-violet-400" },
+                    { label: "Chamadas Gratuitas",   val: (fc.cache.totalHits + (fc.fontes.find(f => f.id === "wikipedia")?.calls ?? 0) + (fc.fontes.find(f => f.id === "bncc")?.calls ?? 0) + (fc.fontes.find(f => f.id === "fts-kb")?.calls ?? 0)).toLocaleString("pt-BR"), sub: "cache + APIs gratuitas", color: "text-amber-400" },
+                  ];
+
+                  return (
+                    <div className="mt-4 space-y-5">
+                      {/* KPI row */}
+                      <div className="grid grid-cols-4 gap-2">
+                        {kpis.map(k => (
+                          <div key={k.label} className="bg-white/[0.03] rounded-xl p-3 border border-white/[0.05]">
+                            <p className="text-[9px] text-white/40 font-bold uppercase tracking-wide">{k.label}</p>
+                            <p className={`text-base font-black mt-0.5 ${k.color}`}>{k.val}</p>
+                            <p className="text-[9px] text-white/30 mt-0.5">{k.sub}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Barras por fonte */}
+                      <div className="space-y-3">
+                        {fc.fontes.map(fonte => {
+                          const isIa = fonte.tipo === "ia";
+                          const barValue = isIa ? fonte.calls : fonte.calls;
+                          const barPct = totalCalls > 0 ? Math.max((barValue / totalCalls) * 100, 1) : 0;
+                          const badge = isIa ? { label: "PAGO", cls: "bg-blue-500/15 text-blue-300" }
+                            : fonte.tipo === "cache" ? { label: "CACHE", cls: "bg-emerald-500/15 text-emerald-300" }
+                            : { label: "GRÁTIS", cls: "bg-violet-500/15 text-violet-300" };
+                          return (
+                            <div key={fonte.id}>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm">{fonte.emoji}</span>
+                                  <span className="text-xs font-bold text-white/80">{fonte.nome}</span>
+                                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${badge.cls}`}>{badge.label}</span>
+                                </div>
+                                <div className="flex items-center gap-3 text-right">
+                                  {isIa ? (
+                                    <span className="text-xs font-bold text-blue-300">{fmtBrl(fonte.costBrl)}</span>
+                                  ) : (
+                                    <span className="text-xs font-bold text-emerald-300">+{fmtBrl(fonte.savedBrl)} economizados</span>
+                                  )}
+                                  <span className="text-[10px] text-white/40">{fonte.calls.toLocaleString("pt-BR")} chamadas</span>
+                                </div>
+                              </div>
+                              <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all duration-700"
+                                  style={{ width: `${barPct}%`, backgroundColor: fonte.cor }}
+                                />
+                              </div>
+                              <p className="text-[9px] text-white/30 mt-1">{fonte.descricao}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Cache breakdown */}
+                      {fc.cache.byFeature.length > 0 && (
+                        <div>
+                          <p className="text-[10px] text-white/40 font-bold uppercase tracking-wide mb-2">Cache semântico por feature</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            {fc.cache.byFeature.slice(0, 6).map(cf => (
+                              <div key={cf.feature} className="bg-white/[0.02] rounded-lg p-2.5 border border-white/[0.04]">
+                                <p className="text-[10px] font-bold text-emerald-300 capitalize truncate">{cf.feature}</p>
+                                <p className="text-[9px] text-white/40 mt-0.5">{cf.hits} hits · {cf.entries} entradas</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })() : (
+                  <div className="flex items-center justify-center h-20 text-white/30 text-xs">
+                    Clique em "Atualizar" para carregar os dados de fontes
+                  </div>
+                )}
               </div>
 
               {/* Status dos provedores de IA */}

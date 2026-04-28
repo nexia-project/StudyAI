@@ -17,6 +17,7 @@
 import { searchBncc, getBnccContext } from "../data/bncc-data";
 import { searchWikipedia, fetchWikiSummary } from "../routes/wikipedia";
 import { cacheGet, cacheSave } from "../lib/semanticCache";
+import { logFreeSource } from "../lib/aiCostLogger";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface KnowledgeContextOptions {
@@ -162,6 +163,7 @@ export async function getKnowledgeContext(
           `Habilidades relacionadas ao conteúdo (use para fundamentar e alinhar):\n${val.text}`;
         parts.push(bnccBlock);
         bnccCodes.push(...val.codes);
+        logFreeSource("bncc-local", query.slice(0, 60), bnccBlock.length);
       }
     }
 
@@ -176,6 +178,7 @@ export async function getKnowledgeContext(
           `Fonte: ${wiki.url}`,
         ].filter(Boolean).join("\n");
         parts.push(wikiBlock);
+        logFreeSource("wikipedia-api", query.slice(0, 60), wikiBlock.length);
       }
     }
 
@@ -198,6 +201,7 @@ export async function getKnowledgeContext(
         `━━━ BASE DE CONHECIMENTO DO ALUNO ━━━\n` +
         `(Conteúdo enviado pelo próprio aluno — priorize este material):\n${local.slice(0, maxCharsPerSource)}`
       );
+      logFreeSource("fts-kb", query.slice(0, 60), local.length);
     }
   }
 

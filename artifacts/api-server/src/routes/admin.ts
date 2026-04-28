@@ -416,6 +416,177 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
   });
 });
 
+// ─── Medidor de Fontes de Conhecimento — consumo + economia ──────────────────
+router.get("/admin/fonte-consumo", async (req: Request, res: Response) => {
+  if (!await isAdminUserAsync(req.userId)) {
+    res.status(403).json({ erro: "Acesso negado" });
+    return;
+  }
+
+  const FREE_MODELS = ["wikipedia-api", "bncc-local", "fts-kb", "cache-semantic"];
+  const FREE_SAVED: Record<string, number> = {
+    "wikipedia-api": 0.00018,
+    "bncc-local":    0.000075,
+    "fts-kb":        0.000225,
+  };
+  const USD_TO_BRL = 5.70;
+
+  try {
+    const { pool } = await import("@workspace/db");
+
+    // ── IA Paga: custo e chamadas reais ──────────────────────────────────────
+    const iaRes = await pool.query(`
+      SELECT
+        model,
+        COUNT(*)::int                            AS calls,
+        COALESCE(SUM(cost_usd::numeric), 0)::float AS cost_usd,
+        COALESCE(SUM(tokens_in + tokens_out), 0)::bigint AS tokens
+      FROM ai_cost_log
+      WHERE model NOT IN (${FREE_MODELS.map((_, i) => `$${i + 1}`).join(",")})
+      GROUP BY model
+      ORDER BY cost_usd DESC
+    `, FREE_MODELS);
+
+    const iaTotals = await pool.query(`
+      SELECT
+        COUNT(*)::int                            AS total_calls,
+        COALESCE(SUM(cost_usd::numeric), 0)::float AS total_cost,
+        COALESCE(SUM(tokens_in + tokens_out), 0)::bigint AS total_tokens
+      FROM ai_cost_log
+      WHERE model NOT IN (${FREE_MODELS.map((_, i) => `$${i + 1}`).join(",")})
+    `, FREE_MODELS);
+
+    // ── Fontes Gratuitas: chamadas por modelo ────────────────────────────────
+    const freeRes = await pool.query(`
+      SELECT
+        model,
+        COUNT(*)::int                            AS calls,
+        COALESCE(SUM(tokens_out), 0)::int        AS tokens_out
+      FROM ai_cost_log
+      WHERE model IN (${FREE_MODELS.map((_, i) => `$${i + 1}`).join(",")})
+      GROUP BY model
+    `, FREE_MODELS);
+
+    // ── Cache Semântico ──────────────────────────────────────────────────────
+    const cacheRes = await pool.query(`
+      SELECT
+        feature,
+        COUNT(*)::int                             AS entries,
+        COALESCE(SUM(uso_count), 0)::int          AS hits
+      FROM ai_response_cache
+      GROUP BY feature
+      ORDER BY hits DESC
+    `);
+
+    const cacheTotals = await pool.query(`
+      SELECT
+        COUNT(*)::int                             AS total_entries,
+        COALESCE(SUM(uso_count), 0)::int          AS total_hits
+      FROM ai_response_cache
+    `);
+
+    // ── Calcula economias ────────────────────────────────────────────────────
+    const ia = iaTotals.rows[0] as any;
+    const totalIaCalls  = Number(ia?.total_calls  ?? 0);
+    const totalIaCost   = Number(ia?.total_cost   ?? 0);
+    const avgCostPerIaCall = totalIaCalls > 0 ? totalIaCost / totalIaCalls : 0;
+
+    const cacheTotal = cacheTotals.rows[0] as any;
+    const cacheHits    = Number(cacheTotal?.total_hits    ?? 0);
+    const cacheSavedUsd = cacheHits * avgCostPerIaCall;
+
+    // Savings from each free source
+    const freeByModel: Record<string, number> = {};
+    for (const row of freeRes.rows as any[]) {
+      freeByModel[row.model] = Number(row.calls);
+    }
+
+    const wikiCalls  = freeByModel["wikipedia-api"] ?? 0;
+    const bnccCalls  = freeByModel["bncc-local"]    ?? 0;
+    const ftsCalls   = freeByModel["fts-kb"]        ?? 0;
+
+    const wikiSaved  = wikiCalls  * FREE_SAVED["wikipedia-api"];
+    const bnccSaved  = bnccCalls  * FREE_SAVED["bncc-local"];
+    const ftsSaved   = ftsCalls   * FREE_SAVED["fts-kb"];
+    const totalSavedUsd = cacheSavedUsd + wikiSaved + bnccSaved + ftsSaved;
+
+    const taxaEconomia = (totalIaCost + totalSavedUsd) > 0
+      ? Math.round((totalSavedUsd / (totalIaCost + totalSavedUsd)) * 100)
+      : 0;
+
+    res.json({
+      ia: {
+        totalCalls:  totalIaCalls,
+        totalCostUsd: totalIaCost,
+        totalCostBrl: totalIaCost * USD_TO_BRL,
+        byModel: (iaRes.rows as any[]).map(r => ({
+          model: r.model,
+          calls: Number(r.calls),
+          costUsd: Number(r.cost_usd),
+          costBrl: Number(r.cost_usd) * USD_TO_BRL,
+          tokens: Number(r.tokens),
+        })),
+      },
+      cache: {
+        totalEntries: Number(cacheTotal?.total_entries ?? 0),
+        totalHits:    cacheHits,
+        savedUsd:     cacheSavedUsd,
+        savedBrl:     cacheSavedUsd * USD_TO_BRL,
+        avgCostPerIaCall,
+        byFeature: (cacheRes.rows as any[]).map(r => ({
+          feature: r.feature,
+          entries: Number(r.entries),
+          hits:    Number(r.hits),
+        })),
+      },
+      fontes: [
+        {
+          id: "ia-paga", nome: "IA Paga (OpenAI / Claude)", tipo: "ia",
+          calls: totalIaCalls, costUsd: totalIaCost, costBrl: totalIaCost * USD_TO_BRL,
+          savedUsd: 0, savedBrl: 0, cor: "#3b82f6", emoji: "🤖",
+          descricao: "Chamadas reais aos modelos GPT-4o-mini, Claude, Gemini",
+        },
+        {
+          id: "cache", nome: "Cache Semântico", tipo: "cache",
+          calls: cacheHits, costUsd: 0, costBrl: 0,
+          savedUsd: cacheSavedUsd, savedBrl: cacheSavedUsd * USD_TO_BRL,
+          cor: "#10b981", emoji: "⚡",
+          descricao: "Respostas reutilizadas por similaridade vetorial (pgvector)",
+        },
+        {
+          id: "wikipedia", nome: "Wikipedia PT", tipo: "free-api",
+          calls: wikiCalls, costUsd: 0, costBrl: 0,
+          savedUsd: wikiSaved, savedBrl: wikiSaved * USD_TO_BRL,
+          cor: "#06b6d4", emoji: "🌐",
+          descricao: "API pública do Wikipedia em português — zero custo",
+        },
+        {
+          id: "bncc", nome: "BNCC Local (MEC)", tipo: "free-local",
+          calls: bnccCalls, costUsd: 0, costBrl: 0,
+          savedUsd: bnccSaved, savedBrl: bnccSaved * USD_TO_BRL,
+          cor: "#8b5cf6", emoji: "📚",
+          descricao: "Base Nacional Comum Curricular em memória — sem latência",
+        },
+        {
+          id: "fts-kb", nome: "Base de Conhecimento (FTS)", tipo: "free-local",
+          calls: ftsCalls, costUsd: 0, costBrl: 0,
+          savedUsd: ftsSaved, savedBrl: ftsSaved * USD_TO_BRL,
+          cor: "#f59e0b", emoji: "🗄️",
+          descricao: "Busca em texto completo no banco de dados local (PostgreSQL)",
+        },
+      ],
+      totalSavedUsd,
+      totalSavedBrl: totalSavedUsd * USD_TO_BRL,
+      totalIaCostUsd: totalIaCost,
+      totalIaCostBrl: totalIaCost * USD_TO_BRL,
+      taxaEconomia,
+    });
+  } catch (err) {
+    console.error("[admin/fonte-consumo]", err);
+    res.status(500).json({ erro: "Erro ao calcular fontes de consumo" });
+  }
+});
+
 // ─── Cache Semântico — estatísticas ──────────────────────────────────────────
 router.get("/admin/cache/stats", async (req: Request, res: Response) => {
   if (!await isAdminUserAsync(req.userId)) {

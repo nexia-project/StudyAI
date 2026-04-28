@@ -423,11 +423,12 @@ router.get("/admin/fonte-consumo", async (req: Request, res: Response) => {
     return;
   }
 
-  const FREE_MODELS = ["wikipedia-api", "bncc-local", "fts-kb", "cache-semantic"];
+  const FREE_MODELS = ["wikipedia-api", "bncc-local", "fts-kb", "exatas-kb", "cache-semantic"];
   const FREE_SAVED: Record<string, number> = {
     "wikipedia-api": 0.00018,
     "bncc-local":    0.000075,
     "fts-kb":        0.000225,
+    "exatas-kb":     0.000300, // ~500 tokens de fórmulas curadas por chamada
   };
   const USD_TO_BRL = 5.70;
 
@@ -501,14 +502,16 @@ router.get("/admin/fonte-consumo", async (req: Request, res: Response) => {
       freeByModel[row.model] = Number(row.calls);
     }
 
-    const wikiCalls  = freeByModel["wikipedia-api"] ?? 0;
-    const bnccCalls  = freeByModel["bncc-local"]    ?? 0;
-    const ftsCalls   = freeByModel["fts-kb"]        ?? 0;
+    const wikiCalls   = freeByModel["wikipedia-api"] ?? 0;
+    const bnccCalls   = freeByModel["bncc-local"]    ?? 0;
+    const ftsCalls    = freeByModel["fts-kb"]        ?? 0;
+    const exatasCalls = freeByModel["exatas-kb"]     ?? 0;
 
-    const wikiSaved  = wikiCalls  * FREE_SAVED["wikipedia-api"];
-    const bnccSaved  = bnccCalls  * FREE_SAVED["bncc-local"];
-    const ftsSaved   = ftsCalls   * FREE_SAVED["fts-kb"];
-    const totalSavedUsd = cacheSavedUsd + wikiSaved + bnccSaved + ftsSaved;
+    const wikiSaved   = wikiCalls   * FREE_SAVED["wikipedia-api"];
+    const bnccSaved   = bnccCalls   * FREE_SAVED["bncc-local"];
+    const ftsSaved    = ftsCalls    * FREE_SAVED["fts-kb"];
+    const exatasSaved = exatasCalls * FREE_SAVED["exatas-kb"];
+    const totalSavedUsd = cacheSavedUsd + wikiSaved + bnccSaved + ftsSaved + exatasSaved;
 
     const taxaEconomia = (totalIaCost + totalSavedUsd) > 0
       ? Math.round((totalSavedUsd / (totalIaCost + totalSavedUsd)) * 100)
@@ -573,6 +576,13 @@ router.get("/admin/fonte-consumo", async (req: Request, res: Response) => {
           savedUsd: ftsSaved, savedBrl: ftsSaved * USD_TO_BRL,
           cor: "#f59e0b", emoji: "🗄️",
           descricao: "Busca em texto completo no banco de dados local (PostgreSQL)",
+        },
+        {
+          id: "exatas-kb", nome: "Banco de Fórmulas Exatas", tipo: "free-local",
+          calls: exatasCalls, costUsd: 0, costBrl: 0,
+          savedUsd: exatasSaved, savedBrl: exatasSaved * USD_TO_BRL,
+          cor: "#ef4444", emoji: "📐",
+          descricao: "Banco curado de fórmulas ENEM — Matemática, Física e Química (in-memory)",
         },
       ],
       totalSavedUsd,

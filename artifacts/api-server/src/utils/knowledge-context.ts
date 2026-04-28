@@ -18,6 +18,7 @@ import { searchBncc, getBnccContext } from "../data/bncc-data";
 import { searchWikipedia, fetchWikiSummary } from "../routes/wikipedia";
 import { cacheGet, cacheSave } from "../lib/semanticCache";
 import { logFreeSource } from "../lib/aiCostLogger";
+import { searchExatas, formatExatasBlock, type MateriaExatas } from "../data/exatas-data";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface KnowledgeContextOptions {
@@ -39,6 +40,8 @@ export interface KnowledgeContextOptions {
   includeBncc?: boolean;
   /** Whether to include local knowledge base (default: true if userId provided) */
   includeLocal?: boolean;
+  /** Whether to include the curated ENEM formula bank for Exatas (default: auto-detect) */
+  includeExatas?: boolean;
 }
 
 export interface KnowledgeContextResult {
@@ -62,6 +65,12 @@ export interface KnowledgeContextResult {
 export async function getKnowledgeContext(
   opts: KnowledgeContextOptions
 ): Promise<KnowledgeContextResult> {
+  const EXATAS_MATERIAS: Record<string, MateriaExatas> = {
+    "matemática": "matematica", "matematica": "matematica", "math": "matematica",
+    "física": "fisica", "fisica": "fisica", "physics": "fisica",
+    "química": "quimica", "quimica": "quimica", "chemistry": "quimica",
+  };
+
   const {
     query,
     materia,
@@ -72,6 +81,7 @@ export async function getKnowledgeContext(
     includeWikipedia = true,
     includeBncc = true,
     includeLocal = true,
+    includeExatas,
   } = opts;
 
   if (!query.trim()) {
@@ -81,6 +91,26 @@ export async function getKnowledgeContext(
   const parts: string[] = [];
   const bnccCodes: string[] = [];
   let wikiTitle: string | undefined;
+
+  // ── Banco de Fórmulas Exatas (síncrono, in-memory, zero latência) ─────────
+  const exatasMateriaKey = (materia ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const exatasMateria = EXATAS_MATERIAS[exatasMateriaKey];
+  const shouldIncludeExatas = includeExatas !== false && (
+    includeExatas === true ||
+    exatasMateria !== undefined ||
+    /(?:mat|fis|qui|equa|formul|calcul|area|volume|pressao|energia|força|forca|calor|onda|eletri|circuit|função|funcao|log|trig|sen\b|cos\b|derivad|integral|probabili|estatist)/i.test(query)
+  );
+
+  let exatasFormulasCount = 0;
+  if (shouldIncludeExatas) {
+    const formulas = searchExatas(query, { materia: exatasMateria, limit: 3 });
+    if (formulas.length > 0) {
+      const exatasBlock = formatExatasBlock(formulas);
+      parts.push(exatasBlock);
+      exatasFormulasCount = formulas.length;
+      logFreeSource("exatas-kb", query.slice(0, 60), exatasBlock.length);
+    }
+  }
 
   // ── Cache check: BNCC + Wikipedia (fontes públicas, iguais para todos) ──────
   // A base local do aluno é sempre consultada fresca (é pessoal e muda).
@@ -215,7 +245,7 @@ export async function getKnowledgeContext(
 
 ╔═══════════════════════════════════════════════════════════════╗
 ║         CONTEXTO DE CONHECIMENTO — CONSULTA AUTOMÁTICA       ║
-║  Fontes: BNCC (MEC) + Wikipedia PT + Base do Aluno           ║
+║  Fontes: Banco Exatas + BNCC (MEC) + Wikipedia PT + Aluno    ║
 ╚═══════════════════════════════════════════════════════════════╝
 ${header}
 
@@ -227,7 +257,7 @@ INSTRUÇÕES OBRIGATÓRIAS:
 - Se a Wikipedia trouxer definição ou fórmula, use-a com precisão.
 - O conteúdo do aluno tem prioridade sobre fontes externas.
 - NUNCA invente fórmulas, datas ou fatos — use apenas o que está documentado acima.
-- Para Matemática: use apenas as fórmulas e definições do contexto BNCC/Wikipedia.
+- Para Matemática/Física/Química: use APENAS as fórmulas do "BANCO DE FÓRMULAS ENEM" acima. Não altere coeficientes, expoentes ou variáveis.
 `;
 
   return {
@@ -235,7 +265,7 @@ INSTRUÇÕES OBRIGATÓRIAS:
     bnccHabilidades: bnccCodes,
     wikiTitle,
     hasKnowledge: true,
-    summary: `BNCC: ${bnccCodes.length} habilidades | Wiki: ${wikiTitle || "nenhuma"} | Local: ${localResult.status === "fulfilled" && localResult.value ? "sim" : "não"}`,
+    summary: `Exatas: ${exatasFormulasCount} fórmulas | BNCC: ${bnccCodes.length} habilidades | Wiki: ${wikiTitle || "nenhuma"} | Local: ${localResult.status === "fulfilled" && localResult.value ? "sim" : "não"}`,
   };
 }
 

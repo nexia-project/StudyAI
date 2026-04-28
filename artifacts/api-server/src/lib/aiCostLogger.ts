@@ -20,6 +20,7 @@ const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   "wikipedia-api":           { input: 0,      output: 0     },
   "bncc-local":              { input: 0,      output: 0     },
   "fts-kb":                  { input: 0,      output: 0     },
+  "exatas-kb":               { input: 0,      output: 0     },
   "cache-semantic":          { input: 0,      output: 0     },
 };
 
@@ -29,6 +30,7 @@ export const FREE_SOURCE_SAVED_PER_CALL: Record<string, number> = {
   "wikipedia-api": 0.00018,  // ~300 tokens de conteúdo rico
   "bncc-local":    0.000075, // ~125 tokens de habilidades BNCC
   "fts-kb":        0.000225, // ~375 tokens do banco de conhecimento
+  "exatas-kb":     0.000300, // ~500 tokens de fórmulas curadas por consulta
 };
 
 export function calcCostUsd(model: string, tokensIn: number, tokensOut: number): number {
@@ -57,8 +59,8 @@ export async function logAiUsage(opts: {
   }
 }
 
-/** Registra uso de fonte gratuita (Wikipedia, BNCC, FTS-KB) de forma não-bloqueante */
-export function logFreeSource(model: "wikipedia-api" | "bncc-local" | "fts-kb", feature: string, charsReturned: number): void {
+/** Registra uso de fonte gratuita (Wikipedia, BNCC, FTS-KB, Exatas) de forma não-bloqueante */
+export function logFreeSource(model: "wikipedia-api" | "bncc-local" | "fts-kb" | "exatas-kb", feature: string, charsReturned: number): void {
   const tokensOut = Math.round(charsReturned / 4);
   logAiUsage({ feature, model, tokensIn: 0, tokensOut }).catch(() => {});
 }

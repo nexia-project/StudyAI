@@ -12,6 +12,10 @@ import {
   executeTiagaoTool,
   loadUserMemories,
 } from "../lib/tiagao-agent";
+import {
+  getFullMemoryContext,
+  updateProfileAfterSession,
+} from "../lib/generativeMemory";
 
 type UserRole = "student" | "teacher" | "institution_admin" | "government" | "admin" | "researcher";
 
@@ -251,7 +255,9 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
     const [userProfile, kbContext, memCtx] = await Promise.all([
       req.userId ? fetchUserProfile(req.userId) : Promise.resolve({ role: "student" as UserRole, name: contexto?.aluno || "Aluno" }),
       getFullKbContext(lastUserMsg, contexto?.materia, 5),
-      req.userId ? loadUserMemories(req.userId) : Promise.resolve(""),
+      req.userId
+        ? getFullMemoryContext(req.userId, contexto?.aluno || "Aluno")
+        : Promise.resolve(""),
     ]);
 
     const isAdvanced = isAdvancedMatcher.includes(userProfile.role);
@@ -372,6 +378,11 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
 
     res.write("data: [DONE]\n\n");
     res.end();
+
+    // ── Async memory update (fire-and-forget, never blocks the response) ──────
+    if (req.userId && messages?.length >= 2) {
+      updateProfileAfterSession(req.userId, userProfile.name, messages, "chat").catch(() => {});
+    }
 
   } catch (error) {
     req.log.error({ error }, "Erro no chat");

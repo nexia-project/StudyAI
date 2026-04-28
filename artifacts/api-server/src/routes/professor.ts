@@ -14,6 +14,10 @@ import {
   loadUserMemories,
   saveUserMemory,
 } from "../lib/tiagao-agent";
+import {
+  getFullMemoryContext,
+  updateProfileAfterSession,
+} from "../lib/generativeMemory";
 
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
@@ -462,11 +466,11 @@ router.post("/voice-chat", async (req, res) => {
     let memoryContext = "";
     if (req.userId) {
       try {
-        [dbData, userProfile, memoryContext] = await Promise.all([
+        [dbData, userProfile] = await Promise.all([
           fetchStudentData(req.userId!).catch(() => null),
           fetchUserProfile(req.userId!).catch(() => ({ role: "student" as UserRole, name: "Usuário" })),
-          loadUserMemories(req.userId!),
         ]);
+        memoryContext = await getFullMemoryContext(req.userId!, userProfile.name);
       } catch { /* não crítico */ }
     }
 
@@ -585,6 +589,12 @@ INSTRUÇÕES DE AGENTE:
       const legacyAction = actionMatch ? { type: actionMatch[1], param: actionMatch[2] } : null;
       const text = raw.replace(/<(ir|criar_plano):[^>]+>/g, "").trim();
       res.json({ text, action: legacyAction, notifications: [] });
+    }
+
+    // ── Async memory update (fire-and-forget) ────────────────────────────────
+    if (req.userId && cleanMessages?.length >= 2) {
+      const typedMessages = cleanMessages.map(m => ({ role: m.role as "user" | "assistant", content: m.content }));
+      updateProfileAfterSession(req.userId, userProfile.name, typedMessages, "voice").catch(() => {});
     }
   } catch (err) {
     console.error("[voice-chat]", err);

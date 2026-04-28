@@ -41,7 +41,8 @@ StudyAI is built as a `pnpm` monorepo using TypeScript, Node.js 24, and Express 
 
 **Key Features and Modules:**
 
-- **Professor Tiagão (Agente IA)**: Universal AI assistant with persistent memory, OpenAI Function Calling for real-time actions, adapting to user roles.
+- **Professor Tiagão (Agente IA)**: Universal AI assistant with **Generative Memory System**, OpenAI Function Calling for real-time actions, adapting to user roles.
+- **Sistema de Memória Generativa**: Two-tier persistent memory for Professor Tiagão. (1) `tiagao_memory` table — manual observations saved during chat. (2) `user_profile_memory` table — auto-updated rich profile (tone, style, goals, struggles, session summaries, topic frequency map) via GPT-4o-mini analysis after every conversation. Lives in `artifacts/api-server/src/lib/generativeMemory.ts`. Integrated into `chat.ts` (text), `professor.ts` (voice), and `aula-ia.ts` (topic tracking). Admin endpoints: `GET /api/admin/memoria-generativa` (stats) and `GET /api/admin/memoria-generativa/:userId` (individual profiles).
 - **Aula com IA (Tiagão na Lousa)**: Interactive animated whiteboard lessons.
 - **Caderno Digital**: Digital notebook with AI processing for summaries, key points, flashcards, and questions.
 - **Study Modules**: Study plans, simulated exams, essay correction, flashcards (SM-2 algorithm), Pomodoro timer, performance heat map.

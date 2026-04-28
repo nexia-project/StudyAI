@@ -222,6 +222,22 @@ export const cadernoNotesTable = pgTable("caderno_notes", {
 export type CadernoNote = typeof cadernoNotesTable.$inferSelect;
 export type InsertCadernoNote = typeof cadernoNotesTable.$inferInsert;
 
+// ─── User Profile Memory (generative — auto-updated after each session) ───────
+export const userProfileMemoryTable = pgTable("user_profile_memory", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 255 }).notNull().unique(),
+  // Rich profile card: tone, style, goals, personality
+  perfil: jsonb("perfil").default({}),
+  // Topic frequency map: [{topico, materia, count, ultimaVez}]
+  topicosFrequentes: jsonb("topicos_frequentes").default([]),
+  // Last N session summaries: [{data, resumo, topicos, humor}]
+  ultimasSessoes: jsonb("ultimas_sessoes").default([]),
+  // Stable facts about this person that don't change (goals, school, etc.)
+  fatosImportantes: jsonb("fatos_importantes").default([]),
+  atualizadoAt: timestamp("atualizado_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type UserProfileMemory = typeof userProfileMemoryTable.$inferSelect;
+
 // ─── AI Cost Log (tracks token usage + cost per AI call) ─────────────────────
 export const aiCostLogTable = pgTable("ai_cost_log", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),

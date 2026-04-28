@@ -4,6 +4,7 @@ import OpenAI from "openai";
 import { requireAuth } from "../middlewares/requireAuth";
 import { logAiUsage } from "../lib/aiCostLogger";
 import { cacheGet, cacheSave } from "../lib/semanticCache";
+import { incrementTopicFrequency } from "../lib/generativeMemory";
 
 const router = Router();
 
@@ -292,6 +293,12 @@ router.post("/aula-ia/gerar", requireAuth, async (req: Request, res: Response) =
     cacheSave("aula-ia", cacheKey, finalJson, modelUsed).catch(() => {});
 
     res.json(aula);
+
+    // ── Track topic in generative memory (fire-and-forget) ───────────────────
+    if ((req as any).userId) {
+      const materia = (aula.materia as string) || aula.subtitulo?.split(" ")[0] || "Geral";
+      incrementTopicFrequency((req as any).userId, topico.trim(), materia).catch(() => {});
+    }
   } catch (err) {
     console.error("[aula-ia/gerar]", err);
     res.status(500).json({ erro: "Erro ao gerar aula" });

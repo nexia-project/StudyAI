@@ -4,6 +4,7 @@ import { roleRequestsTable } from "@workspace/db/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { isAdminUserAsync, getAdminDebugInfo } from "../lib/adminCheck";
 import { cacheStats } from "../lib/semanticCache";
+import { getFullMemoryContext } from "../lib/generativeMemory";
 
 /** Runs a DB query and returns its rows; on failure returns [] and logs the error */
 async function safeQuery<T = any>(label: string, query: () => Promise<{ rows: T[] }>): Promise<T[]> {
@@ -622,6 +623,96 @@ router.delete("/admin/cache/clear", async (req: Request, res: Response) => {
       await pool.query(`DELETE FROM ai_response_cache`);
       res.json({ ok: true, mensagem: "Cache completo limpo." });
     }
+  } catch (err) {
+    res.status(500).json({ erro: (err as Error).message });
+  }
+});
+
+// ─── Memória Generativa — visualização e estatísticas ────────────────────────
+router.get("/admin/memoria-generativa", async (req: Request, res: Response) => {
+  if (!await isAdminUserAsync(req.userId)) {
+    res.status(403).json({ erro: "Acesso negado" });
+    return;
+  }
+  try {
+    const { pool } = await import("@workspace/db");
+
+    // Stats gerais
+    const statsRes = await pool.query(`
+      SELECT
+        COUNT(*) as total_perfis,
+        COUNT(CASE WHEN jsonb_array_length(ultimas_sessoes::jsonb) > 0 THEN 1 END) as com_sessoes,
+        COUNT(CASE WHEN jsonb_array_length(topicos_frequentes::jsonb) > 0 THEN 1 END) as com_topicos,
+        AVG(jsonb_array_length(ultimas_sessoes::jsonb)) as media_sessoes,
+        AVG(jsonb_array_length(topicos_frequentes::jsonb)) as media_topicos,
+        MAX(atualizado_at) as ultima_atualizacao
+      FROM user_profile_memory
+    `);
+    const stats = statsRes.rows[0];
+
+    // Top tópicos mais estudados na plataforma (cross-user)
+    const topTopicsRes = await pool.query(`
+      SELECT
+        t->>'topico' as topico,
+        t->>'materia' as materia,
+        SUM((t->>'count')::int) as total_acessos
+      FROM user_profile_memory,
+        jsonb_array_elements(topicos_frequentes::jsonb) as t
+      GROUP BY t->>'topico', t->>'materia'
+      ORDER BY total_acessos DESC
+      LIMIT 20
+    `);
+
+    // Legacy tiagao_memory count
+    const legacyRes = await pool.query(`
+      SELECT COUNT(*) as total, COUNT(DISTINCT user_id) as usuarios
+      FROM tiagao_memory
+    `);
+
+    res.json({
+      perfisAtivos: Number(stats.total_perfis),
+      perfisComSessoes: Number(stats.com_sessoes),
+      perfisComTopicos: Number(stats.com_topicos),
+      mediasSessoesPorPerfil: parseFloat(stats.media_sessoes ?? "0").toFixed(1),
+      mediaTopicosPorPerfil: parseFloat(stats.media_topicos ?? "0").toFixed(1),
+      ultimaAtualizacao: stats.ultima_atualizacao,
+      topTopicosPlataforma: topTopicsRes.rows,
+      memoriasLegacy: {
+        total: Number(legacyRes.rows[0]?.total ?? 0),
+        usuarios: Number(legacyRes.rows[0]?.usuarios ?? 0),
+      },
+    });
+  } catch (err) {
+    console.error("[admin/memoria-generativa]", err);
+    res.status(500).json({ erro: (err as Error).message });
+  }
+});
+
+router.get("/admin/memoria-generativa/:userId", async (req: Request, res: Response) => {
+  if (!await isAdminUserAsync(req.userId)) {
+    res.status(403).json({ erro: "Acesso negado" });
+    return;
+  }
+  try {
+    const { userId } = req.params;
+    const { pool } = await import("@workspace/db");
+
+    const profileRes = await pool.query(
+      `SELECT * FROM user_profile_memory WHERE user_id = $1`,
+      [userId]
+    );
+    const legacyRes = await pool.query(
+      `SELECT memoria, categoria, importancia, atualizado_at FROM tiagao_memory WHERE user_id = $1 ORDER BY importancia DESC LIMIT 30`,
+      [userId]
+    );
+
+    const contextBlock = await getFullMemoryContext(userId, "Usuário");
+
+    res.json({
+      perfil: profileRes.rows[0] ?? null,
+      memoriasLegacy: legacyRes.rows,
+      blocoContexto: contextBlock,
+    });
   } catch (err) {
     res.status(500).json({ erro: (err as Error).message });
   }

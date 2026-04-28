@@ -169,89 +169,103 @@ export async function getFullMemoryContext(
 
     const { perfil, topicosFrequentes, ultimasSessoes, fatosImportantes } = profile;
 
-    const parts: string[] = [];
     const nomeDisplay = perfil.nomePreferido || userName;
+    const hasProfile = Object.keys(perfil).length > 0;
+    const hasSessions = ultimasSessoes.length > 0;
+    const hasTopics = topicosFrequentes.length > 0;
+    const hasLegacy = !!legacyFacts;
+    const isFirstTime = !hasProfile && !hasSessions && !hasTopics && !hasLegacy;
+
+    const parts: string[] = [];
 
     // ── Header ──────────────────────────────────────────────────────────────
     parts.push(`📖 BRIEFING DO USUÁRIO — ${nomeDisplay}`);
     parts.push("─".repeat(55));
 
-    // ── Profile card ────────────────────────────────────────────────────────
-    const profileLines: string[] = [];
-    if (perfil.objetivo)         profileLines.push(`🎯 Objetivo: ${perfil.objetivo}`);
-    if (perfil.metaVestibular)   profileLines.push(`🏫 Vestibular-alvo: ${perfil.metaVestibular}`);
-    if (perfil.serie)            profileLines.push(`📚 Série/Nível: ${perfil.serie}`);
-    if (perfil.tomDeVoz)         profileLines.push(`💬 Tom de voz: ${perfil.tomDeVoz}`);
-    if (perfil.usaEmoji !== undefined) profileLines.push(`😊 Usa emoji: ${perfil.usaEmoji ? "sim, usa bastante" : "raramente"}`);
-    if (perfil.giriasFrequentes?.length) profileLines.push(`🗣️ Gírias: ${perfil.giriasFrequentes.join(", ")}`);
-    if (perfil.estiloAprendizagem) profileLines.push(`🧠 Estilo de aprendizagem: ${perfil.estiloAprendizagem}`);
-    if (perfil.pontosFortes?.length) profileLines.push(`✅ Pontos fortes: ${perfil.pontosFortes.join(", ")}`);
-    if (perfil.dificuldades?.length) profileLines.push(`⚠️ Dificuldades: ${perfil.dificuldades.join(", ")}`);
-    if (perfil.frequenciaEstudo) profileLines.push(`📅 Frequência de estudo: ${perfil.frequenciaEstudo}`);
+    if (isFirstTime) {
+      // ── First time user: prime the AI to get to know them ─────────────────
+      parts.push(`🆕 PRIMEIRA CONVERSA com ${nomeDisplay}.`);
+      parts.push(`Você ainda não o conhece — use esta sessão para descobrir:`);
+      parts.push(`   • Como prefere ser chamado`);
+      parts.push(`   • Qual o objetivo (ENEM, vestibular, concurso, etc.)`);
+      parts.push(`   • O que está estudando / em que série está`);
+      parts.push(`   • Em que tem mais dificuldade`);
+      parts.push(`Seja caloroso, curioso e genuíno. Essa é a fundação da relação de vocês.`);
+    } else {
+      // ── Profile card ────────────────────────────────────────────────────────
+      const profileLines: string[] = [];
+      if (perfil.objetivo)           profileLines.push(`🎯 Objetivo: ${perfil.objetivo}`);
+      if (perfil.metaVestibular)     profileLines.push(`🏫 Vestibular-alvo: ${perfil.metaVestibular}`);
+      if (perfil.serie)              profileLines.push(`📚 Série/Nível: ${perfil.serie}`);
+      if (perfil.tomDeVoz)           profileLines.push(`💬 Tom de voz: ${perfil.tomDeVoz}`);
+      if (perfil.usaEmoji !== undefined) profileLines.push(`😊 Usa emoji: ${perfil.usaEmoji ? "sim, usa bastante" : "raramente"}`);
+      if (perfil.giriasFrequentes?.length) profileLines.push(`🗣️ Gírias: ${perfil.giriasFrequentes.join(", ")}`);
+      if (perfil.estiloAprendizagem) profileLines.push(`🧠 Estilo de aprendizagem: ${perfil.estiloAprendizagem}`);
+      if (perfil.pontosFortes?.length) profileLines.push(`✅ Pontos fortes: ${perfil.pontosFortes.join(", ")}`);
+      if (perfil.dificuldades?.length) profileLines.push(`⚠️ Dificuldades: ${perfil.dificuldades.join(", ")}`);
+      if (perfil.frequenciaEstudo)   profileLines.push(`📅 Frequência de estudo: ${perfil.frequenciaEstudo}`);
+      if (profileLines.length > 0)   parts.push(profileLines.join("\n"));
 
-    if (profileLines.length > 0) {
-      parts.push(profileLines.join("\n"));
-    }
+      // ── Last session ──────────────────────────────────────────────────────
+      if (hasSessions) {
+        const last = ultimasSessoes[ultimasSessoes.length - 1];
+        const date = last.data ? new Date(last.data).toLocaleDateString("pt-BR") : "recentemente";
+        parts.push(`\n🕐 ÚLTIMA SESSÃO (${date} — ${last.feature ?? "chat"}):`);
+        parts.push(`   ${last.resumo}`);
+        if (last.topicos?.length) parts.push(`   Tópicos: ${last.topicos.join(", ")}`);
+        if (last.humor) parts.push(`   Humor: ${last.humor}`);
+      }
 
-    // ── Last session ────────────────────────────────────────────────────────
-    if (ultimasSessoes.length > 0) {
-      const last = ultimasSessoes[ultimasSessoes.length - 1];
-      const date = last.data ? new Date(last.data).toLocaleDateString("pt-BR") : "recentemente";
-      parts.push(`\n🕐 ÚLTIMA SESSÃO (${date} — ${last.feature ?? "chat"}):`);
-      parts.push(`   ${last.resumo}`);
-      if (last.topicos?.length) parts.push(`   Tópicos: ${last.topicos.join(", ")}`);
-      if (last.humor) parts.push(`   Humor: ${last.humor}`);
-    }
+      // ── Previous sessions (brief) ─────────────────────────────────────────
+      const prevSessions = ultimasSessoes.slice(-4, -1).reverse();
+      if (prevSessions.length > 0) {
+        parts.push(`\n📅 SESSÕES ANTERIORES:`);
+        for (const s of prevSessions) {
+          const date = s.data ? new Date(s.data).toLocaleDateString("pt-BR") : "";
+          parts.push(`   • ${date}: ${s.resumo.slice(0, 120)}`);
+        }
+      }
 
-    // ── Previous sessions (brief) ───────────────────────────────────────────
-    const prevSessions = ultimasSessoes.slice(-4, -1).reverse();
-    if (prevSessions.length > 0) {
-      parts.push(`\n📅 SESSÕES ANTERIORES:`);
-      for (const s of prevSessions) {
-        const date = s.data ? new Date(s.data).toLocaleDateString("pt-BR") : "";
-        parts.push(`   • ${date}: ${s.resumo.slice(0, 120)}`);
+      // ── Topic frequency ───────────────────────────────────────────────────
+      if (hasTopics) {
+        const top5 = [...topicosFrequentes]
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 5);
+        parts.push(`\n📊 TÓPICOS MAIS ESTUDADOS:`);
+        parts.push(top5.map(t => `   • ${t.topico} (${t.materia}) — ${t.count}x`).join("\n"));
+      }
+
+      // ── Important facts ───────────────────────────────────────────────────
+      if (fatosImportantes.length > 0) {
+        parts.push(`\n💡 FATOS IMPORTANTES:`);
+        parts.push(fatosImportantes.slice(-8).map(f => `   • ${f.fato}`).join("\n"));
+      }
+
+      // ── Legacy memories ───────────────────────────────────────────────────
+      if (hasLegacy) {
+        parts.push(`\n🧠 OBSERVAÇÕES SALVAS:`);
+        parts.push(legacyFacts);
+      }
+
+      // ── Behavioral instructions ───────────────────────────────────────────
+      parts.push(`\n⚡ INSTRUÇÕES DE PERSONALIZAÇÃO:`);
+      if (perfil.tomDeVoz === "muito informal" || perfil.usaEmoji) {
+        parts.push(`   → Seja informal, use o nome "${nomeDisplay}", emojis são bem-vindos`);
+      } else if (perfil.tomDeVoz === "formal") {
+        parts.push(`   → Tom profissional e respeitoso com ${nomeDisplay}`);
+      } else {
+        parts.push(`   → Tom amigável e próximo com ${nomeDisplay}`);
+      }
+      if (perfil.dificuldades?.length) {
+        parts.push(`   → Seja extra paciente com: ${perfil.dificuldades.join(", ")}`);
+      }
+      if (perfil.pontosFortes?.length) {
+        parts.push(`   → Reconheça e valorize as forças: ${perfil.pontosFortes.join(", ")}`);
       }
     }
 
-    // ── Topic frequency ─────────────────────────────────────────────────────
-    if (topicosFrequentes.length > 0) {
-      const top5 = [...topicosFrequentes]
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
-      parts.push(`\n📊 TÓPICOS MAIS ESTUDADOS:`);
-      parts.push(top5.map(t => `   • ${t.topico} (${t.materia}) — ${t.count}x`).join("\n"));
-    }
-
-    // ── Important facts ─────────────────────────────────────────────────────
-    if (fatosImportantes.length > 0) {
-      parts.push(`\n💡 FATOS IMPORTANTES:`);
-      parts.push(fatosImportantes.slice(-8).map(f => `   • ${f.fato}`).join("\n"));
-    }
-
-    // ── Legacy memories ─────────────────────────────────────────────────────
-    if (legacyFacts) {
-      parts.push(`\n🧠 OBSERVAÇÕES SALVAS:`);
-      parts.push(legacyFacts);
-    }
-
-    // ── Behavioral instructions ─────────────────────────────────────────────
-    parts.push(`\n⚡ INSTRUÇÕES DE PERSONALIZAÇÃO:`);
-    if (perfil.tomDeVoz === "muito informal" || perfil.usaEmoji) {
-      parts.push(`   → Seja informal, use o nome "${nomeDisplay}", emojis são bem-vindos`);
-    } else if (perfil.tomDeVoz === "formal") {
-      parts.push(`   → Tom profissional e respeitoso com ${nomeDisplay}`);
-    } else {
-      parts.push(`   → Tom amigável e próximo com ${nomeDisplay}`);
-    }
-    if (perfil.dificuldades?.length) {
-      parts.push(`   → Seja extra paciente com: ${perfil.dificuldades.join(", ")}`);
-    }
-    if (perfil.pontosFortes?.length) {
-      parts.push(`   → Faça referência às forças: ${perfil.pontosFortes.join(", ")}`);
-    }
-
     const block = parts.join("\n");
-    return block.length > 100 ? `\n\n${block}` : "";
+    return `\n\n${block}`;
   } catch (e) {
     console.error("[generativeMemory] getFullMemoryContext error:", e);
     return "";

@@ -128,7 +128,17 @@ COMPORTAMENTO INTELIGENTE OBRIGATÓRIO EM TODA INTERAÇÃO:
 ANÁLISE DE DESEMPENHO — REGRA ABSOLUTA:
 Quando o aluno pedir análise de desempenho, resultados, estatísticas, progresso, como está indo, matérias fracas, matérias fortes, quantos simulados fez, flashcards, sequência — ANALISE OS DADOS E RESPONDA AGORA. Os dados reais estão injetados neste contexto. NUNCA navegue para lugar nenhum. NUNCA diga que não tem acesso.
 
-USO DE FERRAMENTAS:
+USO DE FERRAMENTAS — REGRA DE OURO:
+⚡ SE VAI FAZER, FAÇA AGORA. Nunca anuncie uma ação sem executá-la no mesmo turno.
+Frases PROIBIDAS que criam falsas promessas:
+  ✗ "Vou criar seus flashcards agora..."  → chame criar_flashcards AGORA, sem avisar
+  ✗ "Deixa eu analisar seus dados..."     → analise e responda AGORA, sem avisar
+  ✗ "Vou gerar um plano para você..."     → chame criar_plano_estudos AGORA
+  ✗ "Aguarda que vou verificar..."        → verifique e responda AGORA
+  ✗ "Posso criar X para você, quer?"      → se o aluno pediu, CRIE. Não peça confirmação.
+Regra: AÇÃO = ferramenta chamada no mesmo turno. Se mencionou criar, gerar ou buscar algo — EXECUTE imediatamente.
+
+Quando usar cada ferramenta:
 - Criar slides/apresentação → criar_slides
 - Criar flashcards → criar_flashcards
 - Criar prova/teste → criar_prova
@@ -387,12 +397,71 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
       logAiUsage({ feature: "tiagao-chat", model: chatModel, tokensIn: usageIn, tokensOut: usageOut, userId: req.userId ?? null });
 
     } else {
-      // ── No tools called: direct streaming response ────────────────────────
+      // ── No tools called: check for unfulfilled action promises ───────────
       const directContent = firstMsg.content ?? "";
-      if (directContent) {
+
+      // If the AI promised to do something but didn't call a tool, force it
+      const unfulfilledPromisePattern = /\b(vou (criar|gerar|fazer|montar|preparar|analisar|buscar|verificar|avaliar)|deixa (eu|me) (criar|ver|verificar|analisar|buscar|montar)|vou (te|lhe) (ajudar com|preparar|fazer|criar|gerar))\b/i;
+      const hasUnfulfilledPromise = unfulfilledPromisePattern.test(directContent);
+
+      if (hasUnfulfilledPromise) {
+        // Force a tool call — the AI promised to do something, make it execute
+        const forcedCall = await openai.chat.completions.create({
+          model: chatModel,
+          stream: false,
+          max_tokens: isAdvanced ? 1200 : 900,
+          temperature: 0.2,
+          tools: TIAGAO_TOOLS,
+          tool_choice: "required",
+          messages: [
+            { role: "system", content: systemPrompt + "\n\n[SISTEMA INTERNO: O aluno pediu uma ação. Chame a ferramenta correta AGORA — não responda com texto.]" },
+            ...maxCtxMessages,
+          ],
+        });
+        const forcedMsg = forcedCall.choices[0].message;
+        if (forcedMsg.tool_calls && forcedMsg.tool_calls.length > 0) {
+          const toolResults2: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+            { role: "assistant", ...forcedMsg } as any,
+          ];
+          for (const toolCall of forcedMsg.tool_calls) {
+            let args: Record<string, any> = {};
+            try { args = JSON.parse(toolCall.function.arguments); } catch { /* ignore */ }
+            const { result, action } = await executeTiagaoTool(toolCall.function.name, args, req.userId);
+            if (action) {
+              frontendActions.push(action);
+              res.write(`data: ${JSON.stringify({ action })}\n\n`);
+            }
+            toolResults2.push({ role: "tool", tool_call_id: toolCall.id, content: result });
+          }
+          // Generate follow-up text after forced tool execution
+          const stream2 = await openai.chat.completions.create({
+            model: chatModel,
+            stream: true,
+            stream_options: { include_usage: true },
+            max_tokens: isAdvanced ? 700 : 500,
+            temperature: 0.75,
+            messages: [
+              { role: "system", content: systemPrompt },
+              ...maxCtxMessages,
+              ...toolResults2,
+            ],
+          });
+          let usageIn2 = 0; let usageOut2 = 0;
+          for await (const chunk of stream2) {
+            const delta = chunk.choices[0]?.delta?.content;
+            if (delta) res.write(`data: ${JSON.stringify({ text: delta })}\n\n`);
+            if (chunk.usage) { usageIn2 = chunk.usage.prompt_tokens; usageOut2 = chunk.usage.completion_tokens; }
+          }
+          logAiUsage({ feature: "tiagao-chat-forced", model: chatModel, tokensIn: usageIn2, tokensOut: usageOut2, userId: req.userId ?? null });
+        } else {
+          // Forced call still returned no tool — just output the original text
+          if (directContent) res.write(`data: ${JSON.stringify({ text: directContent })}\n\n`);
+        }
+      } else if (directContent) {
+        // ── Normal text response (no action promised) ──────────────────────
         res.write(`data: ${JSON.stringify({ text: directContent })}\n\n`);
       } else {
-        // Fallback: stream via a second call
+        // ── Empty response fallback: stream a fresh call ───────────────────
         const stream = await openai.chat.completions.create({
           model: chatModel,
           stream: true,

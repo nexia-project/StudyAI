@@ -103,7 +103,7 @@ export const TIAGAO_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "navegar",
-      description: "Navega para uma seção do StudyAI. Use quando o usuário pede para abrir, ir ou acessar uma parte do sistema.",
+      description: "Navega fisicamente para uma tela do StudyAI. Use SOMENTE quando o usuário quer IR para algum lugar — com verbos como 'me leva para', 'abre', 'vai para', 'quero ir ao', 'abrir o'. NUNCA use esta ferramenta quando o usuário perguntar sobre seu desempenho, resultados, estatísticas, progresso ou pedir análise — nesses casos, analise os dados diretamente na resposta sem navegar a lugar algum.",
       parameters: {
         type: "object",
         properties: {

@@ -16,6 +16,10 @@ import {
   getFullMemoryContext,
   updateProfileAfterSession,
 } from "../lib/generativeMemory";
+import {
+  fetchStudentPerformance,
+  buildStudentContextBlock,
+} from "../lib/studentContext";
 
 type UserRole = "student" | "teacher" | "institution_admin" | "government" | "admin" | "researcher";
 
@@ -261,18 +265,24 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
     res.flushHeaders();
 
     // ── Fetch user context in parallel ────────────────────────────────────────
-    const [userProfile, kbContext, memCtx] = await Promise.all([
+    const [userProfile, kbContext, memCtx, perfData] = await Promise.all([
       req.userId ? fetchUserProfile(req.userId) : Promise.resolve({ role: "student" as UserRole, name: contexto?.aluno || "Aluno" }),
       getFullKbContext(lastUserMsg, contexto?.materia, 5),
       req.userId
         ? getFullMemoryContext(req.userId, contexto?.aluno || "Aluno")
         : Promise.resolve(""),
+      req.userId
+        ? fetchStudentPerformance(req.userId).catch(() => null)
+        : Promise.resolve(null),
     ]);
 
     const isAdvanced = isAdvancedMatcher.includes(userProfile.role);
+    const perfCtx = perfData ? buildStudentContextBlock(perfData) : "";
+
     const systemPrompt = buildUniversalSystemPrompt(userProfile, contexto ?? {})
-      + (kbContext ? `\n\n${kbContext}` : "")
-      + (memCtx ? `\n\n${memCtx}` : "");
+      + (memCtx ? `\n\n${memCtx}` : "")
+      + (perfCtx ? `\n\n${perfCtx}` : "")
+      + (kbContext ? `\n\n${kbContext}` : "");
 
     const chatModel = isAdvanced ? "gpt-4o" : "gpt-4o-mini";
     const maxCtxMessages = messages.slice(-16);

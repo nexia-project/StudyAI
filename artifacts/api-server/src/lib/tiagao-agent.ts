@@ -281,6 +281,51 @@ export const TIAGAO_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "analisar_desempenho_completo",
+      description: "Faz uma análise profunda e personalizada do desempenho do aluno com recomendações concretas. Use quando o usuário pergunta 'como estou indo?', 'qual minha situação?', 'o que devo estudar?', 'analisa meu desempenho', 'onde estou fraco?', 'me dá um diagnóstico', ou qualquer pedido de orientação baseada no seu histórico de estudos.",
+      parameters: {
+        type: "object",
+        properties: {
+          foco: {
+            type: "string",
+            enum: ["geral", "materia", "evolucao", "simulados", "flashcards"],
+            description: "Aspecto específico a analisar. Padrão: geral",
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "criar_agenda_hoje",
+      description: "Cria uma agenda de estudos personalizada para hoje com base no perfil do aluno. Use quando o usuário pede 'o que devo estudar hoje?', 'me faz uma agenda', 'por onde começo hoje?', 'me organiza', 'como devo distribuir meu tempo hoje?'.",
+      parameters: {
+        type: "object",
+        properties: {
+          horas_disponiveis: { type: "number", description: "Horas disponíveis para estudar hoje (padrão: 2)" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "gerar_questao_personalizada",
+      description: "Gera uma questão prática estilo ENEM personalizada para o aluno treinar. Use quando o usuário pede 'me dá uma questão', 'me testa', 'quero praticar', 'faz uma pergunta sobre', 'me desafia', 'me dá um exercício'.",
+      parameters: {
+        type: "object",
+        properties: {
+          topico: { type: "string", description: "Tópico da questão — se não informado, usa a matéria mais fraca do aluno" },
+          materia: { type: "string", description: "Disciplina" },
+          nivel: { type: "string", enum: ["facil", "medio", "dificil", "enem"], description: "Nível de dificuldade (padrão: enem)" },
+        },
+      },
+    },
+  },
 ];
 
 // ─── Tool executor ────────────────────────────────────────────────────────────
@@ -753,6 +798,248 @@ APENAS JSON.`,
         };
       } catch {
         return { result: "Erro ao buscar nos seus documentos." };
+      }
+    }
+
+    // ── Análise de desempenho completa ────────────────────────────────────────
+    case "analisar_desempenho_completo": {
+      if (!userId) return { result: "Login necessário para análise de desempenho." };
+      try {
+        const rows = await db.execute<any>(sql`
+          SELECT
+            sr.materia,
+            COUNT(*)::int AS total_simulados,
+            ROUND(AVG(sr.score::float / NULLIF(sr.total::float, 0) * 100))::int AS avg_pct,
+            ROUND(AVG(CASE WHEN sr.created_at > NOW() - INTERVAL '14 days'
+              THEN sr.score::float / NULLIF(sr.total::float, 0) * 100 END))::int AS recent_avg,
+            ROUND(AVG(CASE WHEN sr.created_at <= NOW() - INTERVAL '14 days'
+              THEN sr.score::float / NULLIF(sr.total::float, 0) * 100 END))::int AS old_avg,
+            MAX(sr.created_at) AS last_date
+          FROM simulado_results sr
+          WHERE sr.user_id = ${userId}
+          GROUP BY sr.materia
+          ORDER BY avg_pct ASC
+        `).catch(() => ({ rows: [] }));
+
+        const fcRows = await db.execute<any>(sql`
+          SELECT materia,
+            COUNT(*)::int AS sessoes,
+            ROUND(AVG(known::float / NULLIF(total_cards::float, 0) * 100))::int AS fc_avg
+          FROM flashcard_sessions
+          WHERE user_id = ${userId}
+          GROUP BY materia
+        `).catch(() => ({ rows: [] }));
+
+        const subjectData = (rows.rows as any[]).map(r => ({
+          materia: r.materia,
+          totalSimulados: r.total_simulados,
+          avgPct: r.avg_pct ?? 0,
+          recentAvg: r.recent_avg,
+          oldAvg: r.old_avg,
+          trend: r.recent_avg && r.old_avg
+            ? (r.recent_avg > r.old_avg + 5 ? "melhorando" : r.recent_avg < r.old_avg - 5 ? "piorando" : "estável")
+            : "sem dados suficientes",
+          lastDate: r.last_date,
+        }));
+
+        const fcData = (fcRows.rows as any[]).map(r => ({
+          materia: r.materia,
+          sessoes: r.sessoes,
+          fcAvg: r.fc_avg ?? 0,
+        }));
+
+        if (subjectData.length === 0 && fcData.length === 0) {
+          return {
+            result: "O aluno ainda não tem dados de desempenho registrados — não fez simulados nem sessões de flashcard. Encoraje-o a começar com um simulado rápido ou uma sessão de flashcards para ter dados reais.",
+          };
+        }
+
+        const weak = subjectData.filter(s => s.avgPct < 60).sort((a, b) => a.avgPct - b.avgPct);
+        const strong = subjectData.filter(s => s.avgPct >= 75);
+        const improving = subjectData.filter(s => s.trend === "melhorando");
+        const declining = subjectData.filter(s => s.trend === "piorando");
+
+        const analysis = [
+          `ANÁLISE DE DESEMPENHO — ${subjectData.length} matérias avaliadas:`,
+          weak.length > 0 ? `PONTOS CRÍTICOS (abaixo de 60%): ${weak.map(s => `${s.materia} ${s.avgPct}%${s.trend !== "sem dados suficientes" ? " [" + s.trend + "]" : ""}`).join(", ")}` : "Nenhuma matéria abaixo de 60%.",
+          strong.length > 0 ? `PONTOS FORTES (acima de 75%): ${strong.map(s => `${s.materia} ${s.avgPct}%`).join(", ")}` : "",
+          improving.length > 0 ? `MELHORANDO: ${improving.map(s => `${s.materia} (${s.oldAvg}% → ${s.recentAvg}%)`).join(", ")}` : "",
+          declining.length > 0 ? `EM QUEDA: ${declining.map(s => `${s.materia} (${s.oldAvg}% → ${s.recentAvg}%)`).join(", ")}` : "",
+          fcData.length > 0 ? `FLASHCARDS: ${fcData.map(f => `${f.materia} ${f.sessoes} sessões — ${f.fcAvg}% acerto`).join(", ")}` : "",
+          `RECOMENDAÇÃO PRIORITÁRIA: ${weak.length > 0 ? "Foco imediato em " + weak[0].materia + " (" + weak[0].avgPct + "% — maior risco para o ENEM)" : "Mantenha a consistência e aprofunde nos pontos fortes"}`,
+          `PRÓXIMO PASSO CONCRETO: ${weak.length > 0 ? "Fazer simulado de " + weak[0].materia + " hoje, revisar erros e criar flashcards dos pontos que errou" : "Diversifique para matérias que ainda não foram avaliadas"}`,
+        ].filter(Boolean).join("\n");
+
+        return { result: analysis };
+      } catch {
+        return { result: "Erro ao buscar dados de desempenho. Use os dados já disponíveis no contexto para responder." };
+      }
+    }
+
+    // ── Agenda personalizada para hoje ───────────────────────────────────────
+    case "criar_agenda_hoje": {
+      try {
+        const horas = args.horas_disponiveis ?? 2;
+        let subjectContext = "Sem dados de desempenho — crie uma agenda equilibrada com as principais matérias do ENEM.";
+
+        if (userId) {
+          const rows = await db.execute<any>(sql`
+            SELECT materia,
+              ROUND(AVG(score::float / NULLIF(total::float, 0) * 100))::int AS avg_pct,
+              MAX(created_at) AS last_date
+            FROM simulado_results
+            WHERE user_id = ${userId}
+            GROUP BY materia
+            ORDER BY avg_pct ASC
+            LIMIT 10
+          `).catch(() => ({ rows: [] }));
+
+          const planRows = await db.execute<any>(sql`
+            SELECT materia, dias_prova FROM study_plans
+            WHERE user_id = ${userId}
+            ORDER BY created_at DESC LIMIT 1
+          `).catch(() => ({ rows: [] }));
+
+          if ((rows.rows as any[]).length > 0) {
+            const subjects = (rows.rows as any[]).map(r => `${r.materia}: ${r.avg_pct}%`).join(", ");
+            const plan = (planRows.rows as any[])[0];
+            subjectContext = `Desempenho por matéria: ${subjects}${plan ? `. Plano ativo: ${plan.materia}, ${plan.dias_prova} dias até a prova` : ""}`;
+          }
+        }
+
+        const hora = new Date().getHours();
+        const periodo = hora < 12 ? "manhã" : hora < 18 ? "tarde" : "noite";
+
+        const gen = await gpt.chat.completions.create({
+          model: CONTENT_MODEL,
+          messages: [{
+            role: "system",
+            content: `Você é um pedagogo especialista em planejamento de estudos. Crie uma agenda de estudos para HOJE — ${new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })} (período: ${periodo}).
+
+Dados do aluno: ${subjectContext}
+Tempo disponível: ${horas} horas
+
+REGRAS:
+- Comece pela matéria mais fraca (maior impacto no ENEM)
+- Distribua o tempo em blocos de 25-50 minutos com pausas
+- Varie: teoria → exercícios → revisão
+- Seja ESPECÍFICO: não "estudar Matemática" mas "Funções do 2º grau — resolver 10 questões de vestibular"
+- Inclua um bloco de revisão rápida no final
+- Tom motivador e humano, como se fosse um coach falando
+
+Retorne APENAS este JSON:
+{
+  "data": "hoje",
+  "horas_total": ${horas},
+  "blocos": [
+    {
+      "horario_sugerido": "ex: 19h00 - 19h50",
+      "materia": "nome da matéria",
+      "topico_especifico": "o que exatamente estudar",
+      "atividade": "tipo de atividade (ex: resolver 8 questões de vestibular)",
+      "duracao_min": 50,
+      "prioridade": "alta|media|baixa"
+    }
+  ],
+  "intervalo": "orientação sobre pausas",
+  "meta_do_dia": "o que você deve conseguir fazer hoje",
+  "frase_motivacional": "frase curta e genuína de encorajamento"
+}`,
+          }],
+          response_format: { type: "json_object" },
+          max_tokens: 1500,
+          temperature: 0.6,
+        });
+
+        const agenda = JSON.parse(gen.choices[0].message.content ?? "{}");
+        if (userId) {
+          await db.execute(sql`
+            INSERT INTO notebook_artifacts (user_id, doc_id, kind, title, payload)
+            VALUES (${userId}, 0, 'agenda', ${"Agenda de Hoje — " + new Date().toLocaleDateString("pt-BR")}, ${JSON.stringify(agenda)}::jsonb)
+          `).catch(() => {});
+        }
+
+        const summary = agenda.blocos?.map((b: any) =>
+          `${b.horario_sugerido || ""} ${b.materia}: ${b.topico_especifico}`
+        ).join(" | ") || "Agenda criada";
+
+        return {
+          result: `AGENDA DE HOJE CRIADA:\nMeta: ${agenda.meta_do_dia}\nBlocos: ${summary}\n${agenda.frase_motivacional || ""}`,
+          action: { type: "agenda_criada", agenda, label: "agenda de hoje" },
+        };
+      } catch {
+        return { result: "Erro ao criar agenda. Faça uma sugestão baseada nos dados disponíveis." };
+      }
+    }
+
+    // ── Questão personalizada ────────────────────────────────────────────────
+    case "gerar_questao_personalizada": {
+      try {
+        let topico = args.topico;
+        let materia = args.materia;
+
+        if (!topico && userId) {
+          const rows = await db.execute<any>(sql`
+            SELECT materia,
+              ROUND(AVG(score::float / NULLIF(total::float, 0) * 100))::int AS avg_pct
+            FROM simulado_results
+            WHERE user_id = ${userId}
+            GROUP BY materia
+            ORDER BY avg_pct ASC LIMIT 1
+          `).catch(() => ({ rows: [] }));
+          const weakest = (rows.rows as any[])[0];
+          if (weakest) {
+            materia = materia || weakest.materia;
+            topico = `tópico de ${weakest.materia}`;
+          }
+        }
+
+        topico = topico || "conhecimentos gerais ENEM";
+        materia = materia || "Geral";
+        const nivel = args.nivel ?? "enem";
+
+        const gen = await gpt.chat.completions.create({
+          model: CONTENT_MODEL,
+          messages: [{
+            role: "system",
+            content: `Você é um elaborador de questões do ENEM e vestibulares brasileiros. Crie UMA questão de múltipla escolha de alta qualidade sobre "${topico}" (${materia}), nível ${nivel === "enem" ? "ENEM — contextualizada, com texto motivador" : nivel}.
+
+A questão deve:
+- Ter enunciado contextualizado com situação real (não só definição)
+- 5 alternativas (A, B, C, D, E) plausíveis — não óbvias
+- Resposta inequívoca
+- Explicação detalhada do porquê a correta é correta e as outras não
+- Ser original e desafiadora
+
+Retorne APENAS este JSON:
+{
+  "enunciado": "texto completo da questão",
+  "alternativas": { "A": "...", "B": "...", "C": "...", "D": "...", "E": "..." },
+  "resposta_correta": "A",
+  "explicacao": "explicação completa",
+  "dica_resolucao": "como identificar a resposta sem decorar — raciocínio"
+}`,
+          }],
+          response_format: { type: "json_object" },
+          max_tokens: 1500,
+          temperature: 0.7,
+        });
+
+        const q = JSON.parse(gen.choices[0].message.content ?? "{}");
+        const questionText = `QUESTÃO — ${materia.toUpperCase()}:\n\n${q.enunciado}\n\nA) ${q.alternativas?.A}\nB) ${q.alternativas?.B}\nC) ${q.alternativas?.C}\nD) ${q.alternativas?.D}\nE) ${q.alternativas?.E}\n\nResposta: ${q.resposta_correta}\n\nExplicação: ${q.explicacao}\n\nDica: ${q.dica_resolucao}`;
+
+        return {
+          result: questionText,
+          action: {
+            type: "questao_gerada",
+            questao: q,
+            materia,
+            topico,
+            label: `Questão de ${materia}`,
+          },
+        };
+      } catch {
+        return { result: "Erro ao gerar questão. Tente novamente." };
       }
     }
 

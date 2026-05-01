@@ -21,7 +21,7 @@ function getGpt() {
   }
   return _gpt;
 }
-const CONTENT_MODEL = "gpt-4o-mini";
+const CONTENT_MODEL = "gpt-4o"; // Conteúdo profissional exige o modelo mais capaz
 
 // ─── Memory helpers ───────────────────────────────────────────────────────────
 export async function loadUserMemories(userId: string): Promise<string> {
@@ -339,18 +339,26 @@ export async function executeTiagaoTool(
     case "criar_flashcards": {
       if (!userId) return { result: "Login necessário para criar flashcards." };
       try {
-        const qtd = Math.min(Math.max(args.quantidade ?? 8, 4), 12);
+        const qtd = Math.min(Math.max(args.quantidade ?? 10, 5), 15);
         const gen = await gpt.chat.completions.create({
           model: CONTENT_MODEL,
           messages: [{
             role: "system",
-            content: `Crie ${qtd} flashcards em JSON sobre "${args.topico}" (${args.materia ?? "Geral"}).
-Formato: {"flashcards":[{"pergunta":"...","resposta":"..."}]}
-Perguntas claras, respostas diretas (máx 2 linhas). APENAS JSON.`,
+            content: `Você é um professor universitário especialista em ${args.materia ?? "educação"} com domínio completo do conteúdo cobrado no ENEM, FUVEST, UNICAMP, UNB e principais vestibulares brasileiros.
+
+Crie ${qtd} flashcards de alta qualidade sobre "${args.topico}" (${args.materia ?? "Geral"}).
+
+PADRÃO EXIGIDO — cada flashcard deve:
+- Pergunta: direta, específica, que testa compreensão real (não memorização vazia). Pode incluir situação-problema, exemplo ou contexto real.
+- Resposta: completa, precisa, com explicação do porquê. Entre 2 e 5 linhas. Inclua exemplos concretos quando ajudar.
+- Variar os tipos: definição conceitual, aplicação prática, comparação entre conceitos, erro comum, fórmula/lei/regra, implicação real.
+
+Retorne APENAS este JSON:
+{"flashcards":[{"pergunta":"...","resposta":"..."}]}`,
           }],
           response_format: { type: "json_object" },
-          max_tokens: 1500,
-          temperature: 0.7,
+          max_tokens: 3000,
+          temperature: 0.6,
         });
         const raw = JSON.parse(gen.choices[0].message.content ?? "{}");
         const cards: { pergunta: string; resposta: string }[] = raw.flashcards ?? raw.cards ?? raw.perguntas ?? Object.values(raw)[0] ?? [];
@@ -377,28 +385,40 @@ Perguntas claras, respostas diretas (máx 2 linhas). APENAS JSON.`,
     case "criar_slides": {
       if (!userId) return { result: "Login necessário para criar slides." };
       try {
-        const qtd = Math.min(Math.max(args.quantidade_slides ?? 8, 5), 15);
+        const qtd = Math.min(Math.max(args.quantidade_slides ?? 10, 6), 16);
         const gen = await gpt.chat.completions.create({
           model: CONTENT_MODEL,
           messages: [{
             role: "system",
-            content: `Crie ${qtd} slides educacionais sobre "${args.topico}" ${args.materia ? "(" + args.materia + ")" : ""}.
-Retorne JSON:
+            content: `Você é um professor universitário e designer instrucional expert. Crie uma apresentação educacional profissional com ${qtd} slides sobre "${args.topico}" ${args.materia ? "(" + args.materia + ")" : ""}.
+
+PADRÃO PROFISSIONAL EXIGIDO:
+- Cada slide deve ter conteúdo denso e preciso, sem superficialidade
+- Bullets devem ser informativos e completos (não palavras soltas)
+- Destaque: fato, dado, fórmula ou conceito-chave que o aluno não pode esquecer
+- Cobrir: contexto histórico/teórico, conceitos centrais, exemplos práticos, aplicação em provas, erros comuns
+- Alinhar com ENEM, BNCC e vestibulares de alta concorrência
+- Slide de comparação: quando relevante, compare teorias/conceitos de forma didática
+
+Retorne APENAS este JSON:
 {
-  "titulo": "string",
-  "subtitulo": "string",
+  "titulo": "string — título profissional",
+  "subtitulo": "string — subtítulo contextual",
   "tema": "indigo",
   "slides": [
-    { "tipo": "capa", "titulo": "...", "subtitulo": "..." },
-    { "tipo": "conteudo", "titulo": "...", "bullets": ["...", "...", "..."], "destaque": "..." },
-    { "tipo": "encerramento", "titulo": "...", "mensagem": "...", "dicaEnem": "..." }
+    { "tipo": "capa", "titulo": "...", "subtitulo": "contexto e relevância do tema" },
+    { "tipo": "agenda", "titulo": "O que você vai aprender", "bullets": ["tópico 1", "tópico 2", "tópico 3", "tópico 4"] },
+    { "tipo": "conteudo", "titulo": "...", "bullets": ["bullet completo com explicação", "..."], "destaque": "conceito ou dado chave" },
+    { "tipo": "comparacao", "titulo": "...", "itens": [{"label":"A","descricao":"..."},{"label":"B","descricao":"..."}] },
+    { "tipo": "citacao", "titulo": "...", "citacao": "...", "autor": "..." },
+    { "tipo": "encerramento", "titulo": "Pontos essenciais", "mensagem": "síntese completa", "dicaEnem": "o que o ENEM cobra sobre isso" }
   ]
 }
-Tipos: capa (1x início), agenda, conteudo, comparacao, citacao, encerramento (1x fim). APENAS JSON.`,
+Tipos disponíveis: capa (1x), agenda (1x), conteudo (maioria), comparacao, citacao, encerramento (1x). APENAS JSON.`,
           }],
           response_format: { type: "json_object" },
-          max_tokens: 2500,
-          temperature: 0.7,
+          max_tokens: 4000,
+          temperature: 0.6,
         });
         const slidesData = JSON.parse(gen.choices[0].message.content ?? "{}");
         await db.execute(sql`
@@ -423,28 +443,37 @@ Tipos: capa (1x início), agenda, conteudo, comparacao, citacao, encerramento (1
           model: CONTENT_MODEL,
           messages: [{
             role: "system",
-            content: `Crie um mapa mental hierárquico de 4 níveis sobre "${args.topico}" ${args.materia ? "(" + args.materia + ")" : ""}.
-Retorne JSON:
+            content: `Você é um professor especialista com visão sistêmica do conteúdo. Crie um mapa mental completo e profissional sobre "${args.topico}" ${args.materia ? "(" + args.materia + ")" : ""}.
+
+PADRÃO EXIGIDO:
+- Estrutura hierárquica real: categorias = grandes eixos do tema
+- Tópicos = conceitos específicos dentro de cada eixo
+- Subtópicos = definições, exemplos, aplicações, dados e fórmulas
+- Detalhes ("detail"): frase informativa completa — não apenas nomear, mas explicar
+- Cobrir todos os aspectos relevantes: histórico, teoria, aplicação, ENEM, erros comuns
+- Mínimo: 4 categorias, 3 tópicos por categoria, 4 subtópicos por tópico
+
+Retorne APENAS este JSON:
 {
   "subject": "Tema central (max 4 palavras)",
   "categories": [
     {
-      "name": "Categoria (max 4 palavras)",
+      "name": "Grande eixo temático (max 4 palavras)",
       "topics": [
         {
-          "name": "Tópico (max 5 palavras)",
+          "name": "Conceito específico (max 5 palavras)",
           "subtopics": [
-            { "name": "Subtópico (max 6 palavras)", "detail": "1-2 frases" }
+            { "name": "Subtópico (max 6 palavras)", "detail": "Explicação completa com exemplo ou dado" }
           ]
         }
       ]
     }
   ]
 }
-3-4 categorias, 2-4 tópicos, 3-5 subtópicos. Conteúdo BNCC brasileiro. APENAS JSON.`,
+APENAS JSON.`,
           }],
           response_format: { type: "json_object" },
-          max_tokens: 2000,
+          max_tokens: 3500,
           temperature: 0.5,
         });
         const mapaData = JSON.parse(gen.choices[0].message.content ?? "{}");
@@ -514,29 +543,43 @@ Retorne JSON:
           model: CONTENT_MODEL,
           messages: [{
             role: "system",
-            content: `Você é um especialista em ${args.materia ?? "educação"}. Crie um resumo de estudo completo sobre "${args.topico}" para nível ${nivel}.
-Retorne JSON:
+            content: `Você é um professor universitário especialista em ${args.materia ?? "educação"}, com domínio profundo de todo o conteúdo cobrado no ENEM, vestibulares e concursos públicos brasileiros.
+
+Crie um resumo de estudo completo e profissional sobre "${args.topico}" para nível ${nivel}.
+
+PADRÃO EXIGIDO:
+- Introdução: contextualização histórica/científica, relevância do tema, onde aparece em provas
+- Tópicos: 5 a 7 seções temáticas, cada uma com conteúdo explicativo denso (mínimo 3 parágrafos de conteúdo por tópico)
+- Exemplos: práticos, do cotidiano brasileiro, resolução passo a passo quando houver cálculo
+- Destaque: o conceito mais cobrado em provas desse tópico + dica de como reconhecer na questão
+- Pontos-chave: 6 a 8 afirmações precisas que o aluno deve dominar
+- Dica ENEM: como o ENEM aborda esse tema, tipos de questão, pegadinhas comuns
+- Palavras-chave: 8 a 12 termos técnicos com definições breves
+- Erros comuns: o que os alunos costumam errar e como evitar
+
+Retorne APENAS este JSON:
 {
-  "titulo": "Resumo: [topico]",
+  "titulo": "Resumo Completo: [topico]",
   "materia": "${args.materia ?? "Geral"}",
   "nivel": "${nivel}",
-  "introducao": "parágrafo introdutório",
+  "introducao": "parágrafo rico de contextualização",
   "topicos": [
     {
-      "titulo": "Subtítulo",
-      "conteudo": "texto explicativo",
-      "exemplos": ["exemplo 1"],
-      "destaque": "ponto chave para prova"
+      "titulo": "Título do subtópico",
+      "conteudo": "explicação completa e densa",
+      "exemplos": ["exemplo detalhado 1", "exemplo detalhado 2"],
+      "destaque": "conceito-chave para prova: frase precisa"
     }
   ],
-  "pontos_chave": ["ponto 1", "ponto 2", "ponto 3"],
-  "dica_enem": "dica específica para ENEM",
-  "palavras_chave": ["termo 1", "termo 2"]
+  "pontos_chave": ["afirmação precisa 1", "afirmação precisa 2"],
+  "dica_enem": "análise de como o ENEM aborda o tema com tipos de questão",
+  "erros_comuns": ["erro 1 — como evitar", "erro 2 — como evitar"],
+  "palavras_chave": ["termo: definição breve"]
 }
-4-6 tópicos. Conteúdo alinhado ao ENEM/BNCC. APENAS JSON.`,
+APENAS JSON.`,
           }],
           response_format: { type: "json_object" },
-          max_tokens: 2500,
+          max_tokens: 5000,
           temperature: 0.5,
         });
         const resumoData = JSON.parse(gen.choices[0].message.content ?? "{}");
@@ -560,38 +603,50 @@ Retorne JSON:
     case "criar_prova": {
       if (!userId) return { result: "Login necessário para criar prova." };
       try {
-        const qtd = Math.min(Math.max(args.quantidade ?? 5, 3), 15);
+        const qtd = Math.min(Math.max(args.quantidade ?? 8, 5), 15);
         const tipo = args.tipo ?? "multipla_escolha";
         const nivel = args.nivel ?? "medio";
         const gen = await gpt.chat.completions.create({
           model: CONTENT_MODEL,
           messages: [{
             role: "system",
-            content: `Crie uma prova de ${qtd} questões sobre "${args.assunto}" (${args.materia}).
-Tipo: ${tipo === "multipla_escolha" ? "múltipla escolha (A,B,C,D,E)" : tipo === "dissertativa" ? "dissertativas" : "mista"}.
-Nível: ${nivel}.
-Retorne JSON:
+            content: `Você é um elaborador de provas de alto nível, com experiência em ENEM, FUVEST, UNICAMP, CESPE, FGV e demais bancas brasileiras.
+
+Crie uma prova profissional de ${qtd} questões sobre "${args.assunto}" (${args.materia ?? "Geral"}).
+Tipo: ${tipo === "multipla_escolha" ? "múltipla escolha (A, B, C, D, E) — padrão ENEM" : tipo === "dissertativa" ? "dissertativas — critérios ENEM/FUVEST" : "mista"}.
+Nível: ${nivel === "facil" ? "básico / Ensino Fundamental II" : nivel === "medio" ? "médio / pré-vestibular ENEM" : "avançado / vestibulares de alta concorrência"}.
+
+PADRÃO EXIGIDO:
+- Enunciados: contextualizados, com situação-problema real, textos motivadores quando adequado
+- Alternativas (múltipla escolha): plausíveis, sem pegadinhas cruéis — que testem raciocínio real
+- Resposta correta: inequívoca
+- Explicação: detalhada — explica o porquê da correta E por que as outras são erradas
+- Distribuição: variação de dificuldade (30% fácil, 50% médio, 20% difícil)
+- Cobrir diferentes aspectos do tema (não repetir o mesmo conceito)
+
+Retorne APENAS este JSON:
 {
-  "titulo": "Prova: [assunto]",
-  "materia": "${args.materia}",
+  "titulo": "Avaliação: [assunto]",
+  "materia": "${args.materia ?? "Geral"}",
   "nivel": "${nivel}",
   "tempo_minutos": number,
+  "instrucoes": "orientações para o aluno",
   "questoes": [
     {
       "numero": 1,
-      "enunciado": "string",
+      "enunciado": "Enunciado completo e contextualizado",
       "tipo": "multipla_escolha",
-      "alternativas": { "A": "...", "B": "...", "C": "...", "D": "..." },
+      "alternativas": { "A": "...", "B": "...", "C": "...", "D": "...", "E": "..." },
       "resposta_correta": "A",
-      "explicacao": "string"
+      "explicacao": "Explicação detalhada da resposta correta e análise das incorretas"
     }
   ]
 }
-Para dissertativas: omita alternativas, inclua "criterios_avaliacao". APENAS JSON.`,
+Para dissertativas: omita alternativas, inclua "criterios_avaliacao": ["critério 1", "critério 2"]. APENAS JSON.`,
           }],
           response_format: { type: "json_object" },
-          max_tokens: 3000,
-          temperature: 0.7,
+          max_tokens: 5000,
+          temperature: 0.65,
         });
         const provaData = JSON.parse(gen.choices[0].message.content ?? "{}");
         await db.execute(sql`
@@ -614,35 +669,56 @@ Para dissertativas: omita alternativas, inclua "criterios_avaliacao". APENAS JSO
       try {
         const prazo = args.prazo_dias ?? 30;
         const horas = args.horas_dia ?? 2;
+        const semanas = Math.ceil(prazo / 7);
         const gen = await gpt.chat.completions.create({
           model: CONTENT_MODEL,
           messages: [{
             role: "system",
-            content: `Crie um plano de estudos para: "${args.objetivo}"${args.materia ? " — Foco em " + args.materia : ""}.
-Prazo: ${prazo} dias. Horas/dia: ${horas}h.
-Retorne JSON:
+            content: `Você é um pedagogo especialista em planejamento de estudos para vestibulares e concursos. Crie um plano de estudos profissional e realista para: "${args.objetivo}"${args.materia ? " — Foco em " + args.materia : ""}.
+
+Parâmetros: ${prazo} dias | ${horas}h por dia de estudo | ${semanas} semanas.
+
+PADRÃO EXIGIDO:
+- Progressão pedagógica real: começa pelos fundamentos, avança para intermediário, finaliza com revisão e simulados
+- Cada semana com tema central coerente (não aleatório)
+- Tópicos específicos e concretos — não "estudar Matemática" mas "funções quadráticas e gráficos"
+- Atividades diversificadas: leitura, exercícios, flashcards, simulados, revisão ativa
+- Distribuição de carga horária equilibrada e sustentável
+- Semana final sempre de revisão e simulados
+- Dicas de técnica de estudo: Pomodoro, espaçamento, retrieval practice
+- Meta semanal mensurável e específica
+
+Retorne APENAS este JSON:
 {
-  "titulo": "Plano: [objetivo]",
-  "objetivo": "[objetivo]",
+  "titulo": "Plano de Estudos: [objetivo]",
+  "objetivo": "${args.objetivo}",
   "prazo_dias": ${prazo},
   "horas_dia": ${horas},
   "total_horas": number,
+  "metodologia": "descrição breve da abordagem pedagógica",
   "semanas": [
     {
       "numero": 1,
-      "tema": "string",
-      "topicos": ["topico 1", "topico 2"],
-      "atividades": ["atividade 1"],
-      "meta_semanal": "string"
+      "tema_central": "tema da semana",
+      "topicos": ["tópico específico 1", "tópico específico 2", "tópico específico 3"],
+      "atividades": [
+        { "tipo": "teoria", "descricao": "...", "horas": number },
+        { "tipo": "exercicios", "descricao": "...", "horas": number },
+        { "tipo": "revisao", "descricao": "...", "horas": number }
+      ],
+      "meta_semanal": "meta mensurável e específica",
+      "materiais": ["livro/recurso recomendado"]
     }
   ],
-  "dicas_gerais": ["dica 1", "dica 2"],
-  "meta_final": "string"
+  "tecnicas_estudo": ["técnica com explicação breve"],
+  "cronograma_diario": "sugestão de como distribuir as horas do dia",
+  "dicas_gerais": ["dica específica e acionável"],
+  "meta_final": "o que o aluno será capaz de fazer ao concluir o plano"
 }
-Específico, realista, alinhado com ENEM/BNCC. APENAS JSON.`,
+APENAS JSON.`,
           }],
           response_format: { type: "json_object" },
-          max_tokens: 2000,
+          max_tokens: 4500,
           temperature: 0.6,
         });
         const planoData = JSON.parse(gen.choices[0].message.content ?? "{}");

@@ -156,9 +156,12 @@ export function useAudioCapture(options: AudioCaptureOptions = {}) {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
 
-      // AudioContext + Analyser
+      // AudioContext + Analyser — must resume on iOS/Safari/Chrome where it starts "suspended"
       const ctx = new AudioContext({ sampleRate: 48000, latencyHint: "interactive" });
       audioCtxRef.current = ctx;
+      try {
+        if (ctx.state === "suspended") await ctx.resume();
+      } catch { /* best-effort — proceed even if resume fails */ }
       const source = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 256;

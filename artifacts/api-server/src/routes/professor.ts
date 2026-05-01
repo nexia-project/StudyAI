@@ -389,7 +389,16 @@ const BASE_PROMPT = `Você é o Professor Tiagão — o melhor professor de IA d
 ═══ IDIOMA: SEMPRE português brasileiro (pt-BR). ZERO inglês. Sem exceção.
 
 ═══ QUEM É O TIAGÃO:
-Você é o Tiagão — professor apaixonado pela educação, com aquela energia contagiante de cursinho bom. Você tem 15 anos de experiência, já ajudou milhares de alunos a entrar na faculdade, passou em concurso público, e ama quando o aluno tem aquele "clique" de entender. Você é autêntico, humano, empático. Tem humor, tem calor, tem garra.
+Você é o Tiagão — professor com graduação universitária completa e pós-graduação, apaixonado pela educação brasileira. Você tem domínio enciclopédico e profundo de todas as disciplinas — Matemática, Física, Química, Biologia, História, Geografia, Literatura, Filosofia, Sociologia, Português, Redação, Inglês, Artes. Você entende os mecanismos profundos de cada tema, sabe o histórico das descobertas científicas, os debates acadêmicos e as múltiplas perspectivas teóricas. Você conhece o ENEM, FUVEST, UNICAMP, CESPE, FCC, Vunesp, e todos os vestibulares e concursos brasileiros com precisão de especialista. Você é autêntico, humano, empático — com energia contagiante e amor genuíno por quando o aluno tem aquele "clique" de entender.
+
+═══ PROFUNDIDADE INTELECTUAL — REGRA ABSOLUTA:
+Quando responder perguntas educacionais, você NUNCA simplifica demais ou dá respostas rasas. Você:
+• Explica o MECANISMO por trás do conceito, não só a definição superficial
+• Conecta o tema a contextos históricos, científicos ou filosóficos reais
+• Usa exemplos concretos e precisos — não genéricos
+• Diferencia nuances que a maioria dos professores não explica
+• Quando pertinente, menciona por que o conceito é assim e não de outra forma
+• Domina a matemática e os dados por trás de cada explicação quando há
 
 ═══ MEMÓRIA GENERATIVA — CRÍTICO:
 Você possui memória real e evolutiva. Você SE LEMBRA de conversas anteriores, tópicos estudados, dificuldades, conquistas, e o jeito de ser de cada pessoa.
@@ -426,10 +435,10 @@ Você fala como um professor real — espontâneo, caloroso, com personalidade:
 • NUNCA diga "não tenho acesso" ou "não consigo ver" — você tem acesso total. Use os dados.
 
 ═══ MÉTODO DE ENSINO POR TIPO DE PERGUNTA:
-• Pergunta conceitual: explique com analogia do cotidiano brasileiro, depois pergunte se ficou claro
+• Pergunta conceitual: explique com profundidade real + analogia do cotidiano brasileiro, depois pergunte se ficou claro
 • Exercício/problema: não dê a resposta de cara — guie com perguntas socráticas, comemore quando chegar lá
-• Dúvida existencial/motivacional: valide o sentimento, share uma história inspiradora curta, depois volte ao foco
-• Pedido de criação: confirme brevemente o que vai fazer, execute, ofereça variação
+• Dúvida existencial/motivacional: valide o sentimento, compartilhe uma perspectiva genuína, depois volte ao foco
+• Pedido de criação (flashcards, prova, plano): USE A FERRAMENTA AGORA — não fale, faça
 • Erro do aluno: "Quase lá! Pensa assim..." — nunca humilhe, sempre redirecione com carinho
 
 ═══ ADAPTAÇÃO AUTOMÁTICA POR PERFIL:
@@ -508,7 +517,7 @@ router.post("/voice-chat", async (req, res) => {
     const studentCtx = userProfile.role === "student" ? buildRichContext(context, dbData) : "";
     const agentInstructions = `
 
-INSTRUÇÕES DE AGENTE:
+INSTRUÇÕES DE AGENTE — LEIA ANTES DE QUALQUER RESPOSTA:
 - Você TEM ferramentas reais que executam ações no sistema — USE-AS de verdade!
 - salvar_memoria: chame SEMPRE que o usuário revelar objetivos, dificuldades, matérias preferidas ou qualquer info pessoal relevante. Silencioso.
 - navegar: chame quando usuário pede pra ir a algum lugar do sistema.
@@ -516,7 +525,15 @@ INSTRUÇÕES DE AGENTE:
 - criar_flashcards: chame quando usuário pede flashcards. Gera E SALVA automaticamente.
 - iniciar_simulado: chame quando usuário quer fazer um simulado.
 - criar_cronograma: chame quando usuário quer organizar os estudos.
-- Após chamar tools, dê uma resposta curta (máx 3 frases) confirmando o que fez, em PT-BR coloquial. Nunca markdown, nunca lista.`;
+- Após chamar tools, dê uma resposta curta (máx 3 frases) confirmando o que fez, em PT-BR coloquial. Nunca markdown, nunca lista.
+
+REGRA CRÍTICA — SE VAI FAZER, FAÇA AGORA:
+Proibido dizer "vou criar", "vou fazer", "vou gerar" sem CHAMAR A FERRAMENTA na mesma resposta.
+Se o usuário pediu flashcards → chame criar_flashcards AGORA.
+Se o usuário pediu plano → chame criar_cronograma AGORA.
+Se o usuário pediu simulado → chame iniciar_simulado AGORA.
+Se o usuário pediu análise de desempenho → USE os dados do sistema prompt AGORA, não prometa.
+NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.`;
     const systemContent = BASE_PROMPT + rolePersona + studentCtx + kbContext + bnccContext + memoryContext + agentInstructions;
 
     // ── Primeira chamada com tools ───────────────────────────────────────────
@@ -593,6 +610,49 @@ INSTRUÇÕES DE AGENTE:
     } else {
       // Sem tool calls — resposta direta
       const raw = firstMsg.content?.trim() || "";
+
+      // ── "Falsa promessa" safety net: se prometeu ação sem chamar tool, forçar retry ──
+      const PROMISE_REGEX = /\b(vou criar|vou fazer|vou gerar|vou montar|vou elaborar|vou preparar|deixa eu criar|deixa eu fazer|deixa eu gerar)\b/i;
+      if (PROMISE_REGEX.test(raw)) {
+        // Força o modelo a realmente chamar a ferramenta
+        const retryCall = await gptChat.chat.completions.create({
+          model: CHAT_MODEL,
+          messages: [
+            ...apiMessages,
+            { role: "assistant", content: raw },
+            { role: "user", content: "Execute a ação agora — chame a ferramenta correspondente imediatamente." },
+          ],
+          tools: TIAGAO_TOOLS,
+          tool_choice: "required",
+          max_tokens: 1200,
+          temperature: 0.7,
+        });
+        const retryMsg = retryCall.choices[0].message;
+        if (retryMsg.tool_calls && retryMsg.tool_calls.length > 0) {
+          const toolResults: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+            { role: "assistant", ...retryMsg } as any,
+          ];
+          for (const toolCall of retryMsg.tool_calls) {
+            let args: Record<string, any> = {};
+            try { args = JSON.parse(toolCall.function.arguments); } catch { /* ignore */ }
+            const { result, action } = await executeTiagaoTool(toolCall.function.name, args, req.userId);
+            if (action) frontendActions.push(action);
+            toolResults.push({ role: "tool", tool_call_id: toolCall.id, content: result });
+          }
+          const primaryAction = frontendActions[0] ?? null;
+          const notifications = frontendActions.filter(a => a.type === "flashcards_criados");
+          const finalCall = await gptChat.chat.completions.create({
+            model: CHAT_MODEL,
+            messages: [...apiMessages, ...toolResults],
+            max_tokens: 200,
+            temperature: 0.85,
+          });
+          const text = finalCall.choices[0]?.message?.content?.trim() || "";
+          res.json({ text, action: primaryAction, notifications });
+          return;
+        }
+      }
+
       const actionMatch = raw.match(/<(ir|criar_plano):([^>]+)>/);
       const legacyAction = actionMatch ? { type: actionMatch[1], param: actionMatch[2] } : null;
       const text = raw.replace(/<(ir|criar_plano):[^>]+>/g, "").trim();

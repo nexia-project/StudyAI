@@ -509,7 +509,7 @@ export function VoiceProfessor() {
     rec.continuous = false;
     rec.interimResults = true;
     rec.onstart = () => { setPhase("listening"); };
-    rec.onend = () => { if (phase === "listening") setPhase("idle"); };
+    rec.onend = () => { setPhase(p => p === "listening" ? "idle" : p); };
     rec.onresult = (event: any) => {
       let interim = "", final = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {

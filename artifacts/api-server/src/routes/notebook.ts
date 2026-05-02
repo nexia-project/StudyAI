@@ -150,6 +150,20 @@ async function ensureNotebooksSchema() {
       END IF;
     END $$
   `);
+  // Cache de overviews por documento
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS notebook_overviews (
+      id SERIAL PRIMARY KEY,
+      user_id VARCHAR NOT NULL,
+      doc_id INTEGER NOT NULL,
+      summary TEXT DEFAULT '',
+      key_topics JSONB DEFAULT '[]'::jsonb,
+      faq JSONB DEFAULT '[]'::jsonb,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(user_id, doc_id)
+    )
+  `);
+
   _schemaReady = true;
 }
 

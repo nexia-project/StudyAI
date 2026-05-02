@@ -26,9 +26,18 @@ const router = Router();
 
 // Debug endpoint — returns full auth & admin status info
 router.get("/admin/whoami", async (req: Request, res: Response) => {
+  if (!req.userId) {
+    res.status(401).json({ error: "Não autenticado" });
+    return;
+  }
   const debug = await getAdminDebugInfo(req.userId);
   const isAdmin = await isAdminUserAsync(req.userId);
-  res.json({ userId: req.userId ?? null, authenticated: !!req.userId, isAdmin, ...debug });
+  // Não expõe debug info para não-admins
+  if (!isAdmin) {
+    res.json({ userId: req.userId, authenticated: true, isAdmin: false });
+    return;
+  }
+  res.json({ userId: req.userId, authenticated: true, isAdmin, ...debug });
 });
 
 router.get("/admin/users", async (req: Request, res: Response) => {

@@ -234,38 +234,20 @@ router.post("/aula-ia/gerar", requireAuth, async (req: Request, res: Response) =
       return;
     }
 
+    // ── Geração: Claude primary, GPT-4o-mini fallback ──
     let raw = "";
-    let modelUsed = "gpt-4o-mini";
+    let modelUsed = "claude-sonnet-4-5";
 
-    // ── Corrida paralela: GPT-4o-mini vs Claude — primeiro que responder ganha ─
-    // GPT-4o-mini costuma responder em 5-8s; Claude em 15-25s.
-    // Ambos rodam ao mesmo tempo — elimina a espera sequencial.
-    const openaiRace = gerarAulaComOpenAI(topico, estilo, nivel)
-      .then(r => ({ raw: r, model: "gpt-4o-mini" }))
-      .catch(() => null);
-
-    const claudeRace = gerarAulaComClaude(topico, estilo, nivel)
-      .then(r => ({ raw: r, model: "claude-sonnet-4-5" }))
-      .catch(() => null);
-
-    // Espera o primeiro que resolver (null = falhou, ignora e aguarda o outro)
-    const raceResult = await new Promise<{ raw: string; model: string } | null>((resolve) => {
-      let settled = 0;
-      const tryResolve = (result: { raw: string; model: string } | null) => {
-        if (result) { resolve(result); return; }
-        settled++;
-        if (settled === 2) resolve(null); // ambos falharam
-      };
-      openaiRace.then(tryResolve);
-      claudeRace.then(tryResolve);
-    });
-
-    if (raceResult) {
-      raw = raceResult.raw;
-      modelUsed = raceResult.model;
-      console.info(`[aula-ia] Vencedor da corrida: ${modelUsed}`);
-    } else {
-      throw new Error("Ambos os modelos falharam ao gerar a aula");
+    try {
+      raw = await gerarAulaComClaude(topico, estilo, nivel);
+    } catch (claudeErr) {
+      console.warn("[aula-ia] Claude falhou, usando fallback GPT-4o-mini:", claudeErr);
+      try {
+        raw = await gerarAulaComOpenAI(topico, estilo, nivel);
+        modelUsed = "gpt-4o-mini";
+      } catch (openaiErr) {
+        throw new Error("Ambos os modelos falharam ao gerar a aula");
+      }
     }
 
     // ── Parse robusto — nunca crasha, sempre tenta recuperar ─────────────────

@@ -15,6 +15,7 @@ import { Router, type IRouter } from "express";
 import { Resend } from "resend";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
+import { isAdminUserAsync } from "../lib/adminCheck";
 
 const router: IRouter = Router();
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -628,6 +629,22 @@ async function enviarEmail(opts: {
 
   return data;
 }
+
+// ============================================================
+// PROTEÇÃO — requer autenticação + perfil admin em todos os endpoints
+// ============================================================
+router.use(async (req, res, next) => {
+  if (!req.userId) {
+    res.status(401).json({ error: "Não autenticado" });
+    return;
+  }
+  const isAdmin = await isAdminUserAsync(req.userId);
+  if (!isAdmin) {
+    res.status(403).json({ error: "Acesso negado — apenas administradores" });
+    return;
+  }
+  next();
+});
 
 // ============================================================
 // ENDPOINTS EXISTENTES (mantidos + melhorados com log real)

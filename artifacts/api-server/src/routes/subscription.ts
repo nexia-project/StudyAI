@@ -8,25 +8,38 @@ const router: IRouter = Router();
 
 // GET /subscription/status — returns current user's subscription status
 router.get("/subscription/status", async (req: Request, res: Response) => {
-  if (!!!req.userId) {
-    res.json({ status: "free", isPremium: false });
+  if (!req.userId) {
+    res.json({ status: "free", isPremium: false, freeAiUses: 0, freeAiUsesRemaining: FREE_AI_LIMIT, freeAiLimit: FREE_AI_LIMIT, role: "student" });
     return;
   }
 
   try {
     const [user] = await db
-      .select({ role: usersTable.role })
+      .select({
+        role: usersTable.role,
+        stripeSubscriptionStatus: usersTable.stripeSubscriptionStatus,
+        freeAiUses: usersTable.freeAiUses,
+      })
       .from(usersTable)
       .where(eq(usersTable.id, req.userId!))
       .limit(1);
 
     const userRole = user?.role ?? "student";
+    const status = user?.stripeSubscriptionStatus ?? "free";
+    const isPremium = status === "active" || status === "trialing";
+    const freeAiUses = user?.freeAiUses ?? 0;
 
-    // MODO TESTE: todos os usuários logados têm acesso premium ilimitado
-    res.json({ status: "active", isPremium: true, freeAiUses: 0, freeAiUsesRemaining: null, freeAiLimit: FREE_AI_LIMIT, role: userRole });
+    res.json({
+      status,
+      isPremium,
+      freeAiUses,
+      freeAiUsesRemaining: isPremium ? null : Math.max(0, FREE_AI_LIMIT - freeAiUses),
+      freeAiLimit: FREE_AI_LIMIT,
+      role: userRole,
+    });
   } catch (err) {
     req.log.error({ err }, "Error fetching subscription status");
-    res.json({ status: "active", isPremium: true, freeAiUses: 0, freeAiUsesRemaining: null, freeAiLimit: FREE_AI_LIMIT, role: "student" });
+    res.status(500).json({ error: "Erro ao verificar assinatura" });
   }
 });
 
@@ -42,7 +55,7 @@ router.get("/subscription/publishable-key", async (_req: Request, res: Response)
 
 // POST /subscription/create-checkout — creates Stripe checkout session
 router.post("/subscription/create-checkout", async (req: Request, res: Response) => {
-  if (!!!req.userId) {
+  if (!req.userId) {
     res.status(401).json({ error: "Não autenticado" });
     return;
   }

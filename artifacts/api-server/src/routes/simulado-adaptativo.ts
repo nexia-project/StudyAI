@@ -220,4 +220,126 @@ Escale dificuldade: Q1-Q2 fundamentos da lacuna, Q3-Q7 aplicação direta, Q8-Q1
   }
 });
 
+// ─── Diagnóstico Total — varre TODAS as matérias fracas e monta prova mista ──
+router.post("/simulado-diagnostico-total", async (req, res) => {
+  try {
+    const userId = (req.session as any)?.userId ?? req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ erro: "Login necessário para o diagnóstico total." });
+    }
+
+    // 1. Busca TODO o histórico de simulados do aluno
+    const simulados = await db
+      .select()
+      .from(simuladoResultsTable)
+      .where(eq(simuladoResultsTable.userId, userId))
+      .orderBy(desc(simuladoResultsTable.createdAt));
+
+    if (simulados.length === 0) {
+      return res.status(400).json({
+        erro: "Você ainda não fez nenhum simulado. Faça ao menos um simulado em qualquer matéria primeiro para o diagnóstico total funcionar!",
+      });
+    }
+
+    // 2. Calcula desempenho por matéria
+    const subjectMap: Record<string, { scores: number[]; materia: string }> = {};
+    for (const s of simulados) {
+      const key = s.materia.trim().toLowerCase();
+      if (!subjectMap[key]) subjectMap[key] = { scores: [], materia: s.materia.trim() };
+      const pct = s.total > 0 ? Math.round((s.score / s.total) * 100) : 0;
+      subjectMap[key].scores.push(pct);
+    }
+
+    const allSubjects = Object.values(subjectMap).map((data) => ({
+      materia: data.materia,
+      avg: Math.round(data.scores.reduce((a, b) => a + b, 0) / data.scores.length),
+      count: data.scores.length,
+    })).sort((a, b) => a.avg - b.avg); // Mais fraco primeiro
+
+    // 3. Separa fracas (abaixo de 70%) — se tudo >= 70%, usa todas
+    let weakSubjects = allSubjects.filter((s) => s.avg < 70);
+    if (weakSubjects.length === 0) weakSubjects = allSubjects;
+    // Máximo de 5 matérias para não diluir demais
+    weakSubjects = weakSubjects.slice(0, 5);
+
+    // 4. Distribui 10 questões ponderadas pelo peso da fraqueza
+    const totalWeight = weakSubjects.reduce((sum, s) => sum + Math.max(1, 100 - s.avg), 0);
+    const rawDistribution = weakSubjects.map((s) => ({
+      materia: s.materia,
+      avg: s.avg,
+      weight: Math.max(1, Math.round(((100 - s.avg) / totalWeight) * 10)),
+    }));
+
+    // Ajusta para garantir exatamente 10 questões
+    let totalQ = rawDistribution.reduce((sum, d) => sum + d.weight, 0);
+    while (totalQ < 10) { rawDistribution[0].weight++; totalQ++; }
+    while (totalQ > 10) { rawDistribution[rawDistribution.length - 1].weight = Math.max(1, rawDistribution[rawDistribution.length - 1].weight - 1); totalQ--; }
+    const distribution = rawDistribution.filter((d) => d.weight > 0);
+
+    // 5. Gera o simulado misto com GPT
+    const distribStr = distribution
+      .map((d) => `- ${d.materia}: ${d.weight} questão(ões) | Desempenho atual: ${d.avg}% → foque nas maiores lacunas`)
+      .join("\n");
+
+    const systemPrompt = `Você é um professor elaborador de simulados diagnósticos multidisciplinares para o ENEM e vestibulares brasileiros.
+Crie EXATAMENTE as questões especificadas abaixo, na quantidade exata por matéria, MISTURADAS no array.
+Responda SOMENTE JSON puro, sem markdown:
+{"titulo":"Diagnóstico Total — Matérias Fracas","tempoMinutos":25,"perguntas":[{"id":1,"materia":"Nome da Matéria","enunciado":"...","opcoes":{"A":"...","B":"...","C":"...","D":"..."},"correta":"B","explicacao":"..."}]}
+REGRAS: "correta" deve ser A, B, C ou D exato. Explicações em 2 frases: por que a correta é certa + dica para não errar de novo. Questões contextualizadas, nível ENEM. Campo "materia" obrigatório em cada questão.`;
+
+    const userContent = `DISTRIBUIÇÃO DE QUESTÕES (baseada em desempenho histórico real do aluno):
+${distribStr}
+
+Total: 10 questões misturadas de ${distribution.length} matéria(s) diferente(s).
+Para cada matéria, gere questões focadas nos conceitos mais cobrados onde o aluno tem lacuna.
+Escale: conceito base → aplicação → situação-problema dentro de cada matéria.`;
+
+    const aiResponse = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent },
+      ],
+      max_tokens: 4000,
+      temperature: 0.8,
+      response_format: { type: "json_object" },
+    });
+
+    logAiUsage({
+      feature: "simulado-diagnostico-total",
+      model: "gpt-4o-mini",
+      tokensIn: aiResponse.usage?.prompt_tokens ?? 0,
+      tokensOut: aiResponse.usage?.completion_tokens ?? 0,
+    });
+
+    const content = aiResponse.choices[0]?.message?.content;
+    if (!content) return res.status(500).json({ erro: "Resposta vazia da IA." });
+
+    let simulado: unknown;
+    try {
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      simulado = JSON.parse(jsonMatch ? jsonMatch[0] : content);
+    } catch {
+      return res.status(500).json({ erro: "Formato inválido da IA. Tente novamente." });
+    }
+
+    return res.json({
+      simulado,
+      diagnostico: {
+        totalSimulados: simulados.length,
+        totalMateriasAnalisadas: allSubjects.length,
+        avgScore: Math.round(allSubjects.reduce((a, b) => a + b.avg, 0) / allSubjects.length),
+        ultimaNota: null,
+        tendencia: "estavel" as const,
+        topicosEstudados: [],
+        materiasFracas: weakSubjects.map((s) => ({ materia: s.materia, avg: s.avg })),
+        distribuicao: distribution,
+      },
+    });
+  } catch (err) {
+    console.error("Simulado diagnóstico total error:", err);
+    return res.status(500).json({ erro: "Erro ao gerar diagnóstico. Tente novamente." });
+  }
+});
+
 export default router;

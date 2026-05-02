@@ -8,6 +8,7 @@ import {
   BarChart2, Target, Flame, BookOpen, Layers, AlertCircle, Sparkles, Zap,
 } from "lucide-react";
 import { AppNav } from "@/components/AppNav";
+import { SimuladoDiagnosticoTotalButton } from "@/components/Simulado";
 
 interface SubjectData {
   materia: string;
@@ -353,6 +354,7 @@ export default function Mapa() {
                           <Zap className="w-3 h-3" />
                         </button>
                       ))}
+                      <SimuladoDiagnosticoTotalButton className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-rose-500 to-orange-500 text-white font-black text-xs hover:from-rose-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2" />
                     </div>
                   </div>
                 )}

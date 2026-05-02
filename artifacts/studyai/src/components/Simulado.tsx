@@ -30,6 +30,7 @@ import { StudyPlan } from "@/hooks/use-study-plan";
 
 interface Pergunta {
   id: number;
+  materia?: string;
   enunciado: string;
   opcoes: { A: string; B: string; C: string; D: string };
   correta: "A" | "B" | "C" | "D";
@@ -59,6 +60,7 @@ function sanitizeSimulado(raw: any): SimuladoData | null {
         };
         return {
           id: typeof p.id === "number" ? p.id : idx + 1,
+          materia: p.materia ? String(p.materia) : undefined,
           enunciado: String(p.enunciado ?? p.pergunta ?? "Questão sem enunciado"),
           opcoes: safeOpcoes,
           correta,
@@ -90,6 +92,7 @@ interface SimuladoProps {
   serie: string;
   conteudoTexto?: string;
   adaptativo?: boolean;
+  diagnosticoTotal?: boolean;
   onClose: () => void;
 }
 
@@ -117,11 +120,19 @@ const OPTION_COLORS: Record<string, { idle: string; selected: string; badge: str
   D: { idle: "border-slate-200 hover:border-orange-300 hover:bg-orange-50", selected: "border-orange-500 bg-orange-50 shadow-md shadow-orange-100", badge: "bg-orange-100 text-orange-700" },
 };
 
-function LoadingSimulado({ adaptativo }: { adaptativo?: boolean }) {
+function LoadingSimulado({ adaptativo, diagnosticoTotal }: { adaptativo?: boolean; diagnosticoTotal?: boolean }) {
   const [progress, setProgress] = useState(0);
   const [step, setStep] = useState(0);
 
-  const steps = adaptativo
+  const steps = diagnosticoTotal
+    ? [
+        { icon: "🔎", text: "Varrendo seu histórico de todas as matérias...", at: 0 },
+        { icon: "📊", text: "Calculando desempenho por matéria...", at: 20 },
+        { icon: "🎯", text: "Identificando todas as lacunas...", at: 45 },
+        { icon: "⚗️", text: "Montando prova mista personalizada...", at: 65 },
+        { icon: "✅", text: "Finalizando seu Diagnóstico Total...", at: 85 },
+      ]
+    : adaptativo
     ? [
         { icon: "🔍", text: "Analisando seu histórico de simulados...", at: 0 },
         { icon: "📊", text: "Identificando pontos fracos...", at: 25 },
@@ -137,7 +148,7 @@ function LoadingSimulado({ adaptativo }: { adaptativo?: boolean }) {
 
   useEffect(() => {
     // Simulate progress based on expected ~8s completion time for gpt-4o-mini
-    const totalMs = adaptativo ? 10000 : 8000;
+    const totalMs = diagnosticoTotal ? 12000 : adaptativo ? 10000 : 8000;
     const tickMs = 80;
     let elapsed = 0;
 
@@ -156,12 +167,17 @@ function LoadingSimulado({ adaptativo }: { adaptativo?: boolean }) {
     }, tickMs);
 
     return () => clearInterval(id);
-  }, [adaptativo]);
+  }, [adaptativo, diagnosticoTotal]);
 
   return (
     <div className="flex flex-col items-center justify-center h-full gap-6 p-8">
       <div className="relative">
-        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-2xl shadow-violet-200">
+        <div className={cn(
+          "w-20 h-20 rounded-full flex items-center justify-center shadow-2xl",
+          diagnosticoTotal
+            ? "bg-gradient-to-br from-rose-500 to-orange-500 shadow-orange-200"
+            : "bg-gradient-to-br from-violet-500 to-indigo-600 shadow-violet-200"
+        )}>
           <Loader2 className="w-10 h-10 text-white animate-spin" />
         </div>
         <motion.div
@@ -176,7 +192,7 @@ function LoadingSimulado({ adaptativo }: { adaptativo?: boolean }) {
 
       <div className="text-center space-y-2 w-full max-w-xs">
         <h3 className="text-xl font-black text-slate-800">
-          {adaptativo ? "Simulado Adaptativo" : "Gerando Simulado"}
+          {diagnosticoTotal ? "Diagnóstico Total" : adaptativo ? "Simulado Adaptativo" : "Gerando Simulado"}
         </h3>
         <AnimatePresence mode="wait">
           <motion.p key={step} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
@@ -201,7 +217,7 @@ function LoadingSimulado({ adaptativo }: { adaptativo?: boolean }) {
           />
         </div>
         <p className="text-[10px] text-slate-400 mt-1.5 text-center">
-          {adaptativo ? "⚡ Analisando seu histórico para personalizar" : "⚡ Geração acelerada com IA"}
+          {diagnosticoTotal ? "🔎 Varredura total de todas as matérias" : adaptativo ? "⚡ Analisando seu histórico para personalizar" : "⚡ Geração acelerada com IA"}
         </p>
       </div>
     </div>
@@ -247,7 +263,43 @@ export function SimuladoAdaptativoButton({ plan, serie, conteudoTexto }: { plan:
   );
 }
 
-function Simulado({ plan, serie, conteudoTexto, adaptativo, onClose }: SimuladoProps) {
+const DIAGNOSTICO_STUB_PLAN: StudyPlan = {
+  materia: "Diagnóstico Total",
+  aluno: "Diagnóstico Total",
+  serie: "",
+  diasProva: 0,
+  dias: [],
+  resumoDoConteudo: "",
+  dicasGerais: [],
+} as unknown as StudyPlan;
+
+export function SimuladoDiagnosticoTotalButton({ className }: { className?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <ErrorBoundary>
+      <button
+        onClick={() => setOpen(true)}
+        className={className ?? "flex items-center gap-2 px-5 py-2.5 rounded-2xl font-black text-white bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500 hover:from-rose-600 hover:via-orange-600 hover:to-amber-600 shadow-lg shadow-orange-200 hover:shadow-xl hover:shadow-orange-300 transition-all duration-200 hover:-translate-y-0.5 text-sm"}
+        title="Varre todas as matérias fracas e gera uma prova mista personalizada"
+      >
+        <BookOpen className="w-4 h-4" />
+        Diagnóstico Total
+      </button>
+      <AnimatePresence>
+        {open && (
+          <Simulado
+            plan={DIAGNOSTICO_STUB_PLAN}
+            serie=""
+            diagnosticoTotal
+            onClose={() => setOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+    </ErrorBoundary>
+  );
+}
+
+function Simulado({ plan, serie, conteudoTexto, adaptativo, diagnosticoTotal, onClose }: SimuladoProps) {
   const { isAuthenticated } = useAuth();
   const [phase, setPhase] = useState<"loading" | "exam" | "results">("loading");
   const [copied, setCopied] = useState(false);
@@ -320,7 +372,7 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, onClose }: SimuladoP
       const scoreVal = sim.perguntas.filter((p) => finalAnswers[p.id] === p.correta).length;
       const totalVal = sim.perguntas.length;
       const gradeVal = getGrade(scoreVal, totalVal);
-      const materia = plan && typeof (plan as any).materia === "string" ? (plan as any).materia : "Simulado";
+      const materia = diagnosticoTotal ? "Diagnóstico Total" : (plan && typeof (plan as any).materia === "string" ? (plan as any).materia : "Simulado");
       fetch("/api/history/simulado", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -401,7 +453,14 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, onClose }: SimuladoP
         : fullPlanText;
 
       let res: Response;
-      if (adaptativo) {
+      if (diagnosticoTotal) {
+        res = await fetch("/api/simulado-diagnostico-total", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({}),
+        });
+      } else if (adaptativo) {
         res = await fetch("/api/simulado-adaptativo", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -430,7 +489,7 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, onClose }: SimuladoP
       const data = await res.json();
       if (!res.ok || data.erro) throw new Error(data.erro || "Erro ao gerar simulado");
       // Store adaptive diagnostic if available
-      if (adaptativo && data.diagnostico) {
+      if ((adaptativo || diagnosticoTotal) && data.diagnostico) {
         setDiagnosticoData(data.diagnostico);
       }
       const safe = sanitizeSimulado(data.simulado);
@@ -511,9 +570,18 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, onClose }: SimuladoP
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <p className="text-white/60 text-xs font-semibold uppercase tracking-wider">
-                  {phase === "loading" ? (adaptativo ? "IA Analisando" : "Preparando") : phase === "results" ? "Resultado Final" : `${plan.aluno} · ${serie}`}
+                  {phase === "loading"
+                    ? (diagnosticoTotal ? "Varrendo tudo" : adaptativo ? "IA Analisando" : "Preparando")
+                    : phase === "results" ? "Resultado Final"
+                    : diagnosticoTotal ? "Todas as matérias fracas"
+                    : `${plan.aluno} · ${serie}`}
                 </p>
-                {adaptativo && (
+                {diagnosticoTotal && (
+                  <span className="flex-shrink-0 px-1.5 py-0.5 rounded-md bg-white/25 text-white/90 text-[10px] font-black tracking-wide">
+                    🔎 DIAGNÓSTICO TOTAL
+                  </span>
+                )}
+                {adaptativo && !diagnosticoTotal && (
                   <span className="flex-shrink-0 px-1.5 py-0.5 rounded-md bg-white/25 text-white/90 text-[10px] font-black tracking-wide">
                     ⚡ ADAPTATIVO
                   </span>
@@ -563,7 +631,7 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, onClose }: SimuladoP
         <div className="flex-1 overflow-y-auto bg-slate-50">
 
           {/* LOADING */}
-          {phase === "loading" && <LoadingSimulado adaptativo={adaptativo} />}
+          {phase === "loading" && <LoadingSimulado adaptativo={adaptativo} diagnosticoTotal={diagnosticoTotal} />}
 
           {/* EXAM */}
           {phase === "exam" && simulado && currentQ && (
@@ -601,6 +669,13 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, onClose }: SimuladoP
                 >
                   {/* Question text */}
                   <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+                    {diagnosticoTotal && currentQ.materia && (
+                      <div className="mb-3">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700 text-[11px] font-black uppercase tracking-wider">
+                          📚 {currentQ.materia}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex items-start gap-3">
                       <div className="w-8 h-8 rounded-xl bg-violet-600 text-white text-sm font-black flex items-center justify-center flex-shrink-0 mt-0.5 shrink-0">
                         {current + 1}

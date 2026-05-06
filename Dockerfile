@@ -12,18 +12,33 @@ COPY lib/api-spec/package.json ./lib/api-spec/
 COPY lib/integrations-openai-ai-server/package.json ./lib/integrations-openai-ai-server/
 COPY lib/integrations-gemini-ai/package.json ./lib/integrations-gemini-ai/
 COPY artifacts/api-server/package.json ./artifacts/api-server/
+COPY artifacts/studyai/package.json ./artifacts/studyai/
 
 # Install all dependencies
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # Copy all source
 COPY lib/ ./lib/
 COPY artifacts/api-server/ ./artifacts/api-server/
+COPY artifacts/studyai/ ./artifacts/studyai/
 
-# Build API server
+# Fix rollup for Alpine
+RUN npm install @rollup/rollup-linux-musl-arm64-unwind-on-error --os=linux --cpu=arm64 --no-save || true
+RUN npm install @rollup/rollup-linux-x64-musl --os=linux --cpu=x64 --no-save || true
+RUN npm install @rollup/rollup-linux-arm-gnueabihf --os=linux --cpu=arm --no-save || true
+
+# ── Build frontend FIRST ──────────────────────────────────────────────────────
+ENV VITE_API_URL=https://api-production-6ff15.up.railway.app
+ENV VITE_CLERK_PUBLISHABLE_KEY=pk_test_c3Ryb25nLWdvb3NlLTcwLmNsZXJrLmFjY291bnRzLmRldiQ
+RUN pnpm --filter @workspace/studyai build
+
+# ── Copy frontend build to backend public folder ──────────────────────────────
+RUN mkdir -p ./artifacts/api-server/public && cp -r ./artifacts/studyai/dist/* ./artifacts/api-server/public/
+
+# ── Build backend ───────────────────────────────────────────────────────────
 RUN pnpm --filter @workspace/api-server run build
 
-# --- Runner stage ---
+# ── Runner stage ──────────────────────────────────────────────────────────────
 FROM node:22-alpine AS runner
 RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
@@ -35,6 +50,7 @@ COPY --from=base /app/pnpm-lock.yaml ./
 COPY --from=base /app/node_modules ./node_modules
 COPY --from=base /app/lib ./lib
 COPY --from=base /app/artifacts/api-server/dist ./artifacts/api-server/dist
+COPY --from=base /app/artifacts/api-server/public ./artifacts/api-server/public
 COPY --from=base /app/artifacts/api-server/package.json ./artifacts/api-server/
 COPY --from=base /app/artifacts/api-server/node_modules ./artifacts/api-server/node_modules
 

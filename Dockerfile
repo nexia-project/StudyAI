@@ -9,7 +9,6 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json tsconfig
 COPY lib/db/package.json ./lib/db/
 COPY lib/api-zod/package.json ./lib/api-zod/
 COPY lib/api-spec/package.json ./lib/api-spec/
-COPY lib/integrations/package.json ./lib/integrations/
 COPY lib/integrations-openai-ai-server/package.json ./lib/integrations-openai-ai-server/
 COPY lib/integrations-gemini-ai/package.json ./lib/integrations-gemini-ai/
 COPY artifacts/api-server/package.json ./artifacts/api-server/

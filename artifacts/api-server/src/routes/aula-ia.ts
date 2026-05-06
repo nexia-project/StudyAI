@@ -1,26 +1,12 @@
 import { Router, Request, Response } from "express";
-import Anthropic from "@anthropic-ai/sdk";
-import OpenAI from "openai";
+import { aiChat, openaiDirect } from "../lib/aiClient";
+import { getModelConfig } from "../lib/modelRouter";
 import { requireAuth } from "../middlewares/requireAuth";
 import { logAiUsage } from "../lib/aiCostLogger";
 import { cacheGet, cacheSave } from "../lib/semanticCache";
 import { incrementTopicFrequency } from "../lib/generativeMemory";
 
 const router = Router();
-
-// ─── Clientes de IA ───────────────────────────────────────────────────────────
-// OpenAI via Replit AI Integrations (principal — rápido e confiável)
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? process.env.OPENAI_API_KEY ?? "dummy",
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
-
-// Claude: primário para geração de conteúdo educacional (mais didático e criativo)
-const claude = new Anthropic({
-  apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY ?? "dummy",
-  baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
-  timeout: 45_000, // 45s — suficiente para aula completa com max_tokens reduzido
-});
 
 // ─── Calibração de dificuldade conforme o estilo escolhido pelo aluno ─────────
 function difficultyProfile(estilo: string): {
@@ -111,7 +97,7 @@ function tryRepairJson(s: string): string | null {
   }
 }
 
-// ─── Gerar aula com Claude (melhor qualidade educacional) ─────────────────────
+// ─── Gerar aula com Claude via aiChat (melhor qualidade educacional) ──────────
 async function gerarAulaComClaude(topico: string, estilo: string, nivel: string): Promise<string> {
   const prof = difficultyProfile(estilo);
   const systemPrompt = `Você é o Professor Tiagão, tutor educacional brasileiro especialista em ${estilo}.
@@ -155,21 +141,18 @@ RETORNE SOMENTE JSON VÁLIDO, sem texto extra, sem markdown, sem blocos de códi
   ]
 }`;
 
-  const message = await claude.messages.create({
-    model: "claude-sonnet-4-5",
-    max_tokens: 2000,
+  const { response, config } = await aiChat({
+    taskType: "lesson-generation",
     messages: [{ role: "user", content: `${systemPrompt}\n\nCrie uma aula sobre: ${topico.trim()}` }],
   });
 
-  const block = message.content[0];
-  logAiUsage({ feature: "lousa-aula", model: "claude-sonnet-4-5", tokensIn: message.usage?.input_tokens ?? 0, tokensOut: message.usage?.output_tokens ?? 0 });
-  if (block.type !== "text") throw new Error("Claude retornou bloco não-texto");
-  const extracted = extractJson(block.text);
-  if (!extracted) throw new Error("Claude retornou JSON inválido ou vazio");
+  logAiUsage({ feature: "lousa-aula", model: config.model, tokensIn: response.usage?.prompt_tokens ?? 0, tokensOut: response.usage?.completion_tokens ?? 0 });
+  const extracted = extractJson(response.choices[0].message.content ?? "");
+  if (!extracted) throw new Error("Retornou JSON inválido ou vazio");
   return extracted;
 }
 
-// ─── Gerar aula com OpenAI gpt-4o-mini (primário — rápido e confiável) ────────
+// ─── Gerar aula com fast-qa (fallback — rápido e confiável) ──────────────────
 async function gerarAulaComOpenAI(topico: string, estilo: string, nivel: string): Promise<string> {
   const prof = difficultyProfile(estilo);
   const systemPrompt = `Você é o Professor Tiagão, tutor educacional brasileiro especialista em ${estilo}.
@@ -195,19 +178,17 @@ Crie uma aula DETALHADA e DIDÁTICA em JSON. Retorne APENAS o JSON, sem texto ex
 }
 Nível: ${nivel}. Máx 6 etapas, mín 4. Exemplos do contexto ${estilo}. RESPEITE rigorosamente o nível "${prof.nivelLabel}".`;
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+  const { response, config } = await aiChat({
+    taskType: "fast-qa",
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: `Crie uma aula sobre: ${topico.trim()}` },
     ],
-    temperature: 0.7,
-    response_format: { type: "json_object" },
-    max_tokens: 3000,
+    jsonMode: true,
   });
 
-  logAiUsage({ feature: "lousa-aula", model: "gpt-4o-mini", tokensIn: completion.usage?.prompt_tokens ?? 0, tokensOut: completion.usage?.completion_tokens ?? 0 });
-  return completion.choices[0].message.content ?? "{}";
+  logAiUsage({ feature: "lousa-aula", model: config.model, tokensIn: response.usage?.prompt_tokens ?? 0, tokensOut: response.usage?.completion_tokens ?? 0 });
+  return response.choices[0].message.content ?? "{}";
 }
 
 // ─── Gerar aula estruturada para a lousa ─────────────────────────────────────
@@ -236,7 +217,7 @@ router.post("/aula-ia/gerar", requireAuth, async (req: Request, res: Response) =
 
     // ── Geração: Claude primary, GPT-4o-mini fallback ──
     let raw = "";
-    let modelUsed = "claude-sonnet-4-5";
+    let modelUsed = getModelConfig("lesson-generation").model;
 
     try {
       raw = await gerarAulaComClaude(topico, estilo, nivel);
@@ -244,7 +225,7 @@ router.post("/aula-ia/gerar", requireAuth, async (req: Request, res: Response) =
       console.warn("[aula-ia] Claude falhou, usando fallback GPT-4o-mini:", claudeErr);
       try {
         raw = await gerarAulaComOpenAI(topico, estilo, nivel);
-        modelUsed = "gpt-4o-mini";
+        modelUsed = getModelConfig("fast-qa").model;
       } catch (openaiErr) {
         throw new Error("Ambos os modelos falharam ao gerar a aula");
       }
@@ -311,32 +292,24 @@ Não use markdown nem listas. Termine com uma frase de encorajamento.`;
     let resposta = "";
 
     try {
-      const message = await claude.messages.create({
-        model: "claude-haiku-4-5",
-        max_tokens: 300,
-        messages: [
-          {
-            role: "user",
-            content: `${systemContent}\n\nPergunta do aluno: ${pergunta}`,
-          },
-        ],
+      const { response, config } = await aiChat({
+        taskType: "lesson-generation",
+        messages: [{ role: "user", content: `${systemContent}\n\nPergunta do aluno: ${pergunta}` }],
       });
-      const block = message.content[0];
-      resposta = block.type === "text" ? block.text : "";
-      logAiUsage({ feature: "lousa-pergunta", model: "claude-haiku-4-5", tokensIn: message.usage?.input_tokens ?? 0, tokensOut: message.usage?.output_tokens ?? 0 });
+      const block = response.choices[0].message.content ?? "";
+      resposta = block;
+      logAiUsage({ feature: "lousa-pergunta", model: config.model, tokensIn: response.usage?.prompt_tokens ?? 0, tokensOut: response.usage?.completion_tokens ?? 0 });
     } catch {
-      // Fallback para OpenAI mini
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+      // Fallback para fast-qa
+      const { response, config } = await aiChat({
+        taskType: "fast-qa",
         messages: [
           { role: "system", content: systemContent },
           { role: "user", content: pergunta },
         ],
-        temperature: 0.8,
-        max_tokens: 250,
       });
-      resposta = completion.choices[0].message.content ?? "";
-      logAiUsage({ feature: "lousa-pergunta", model: "gpt-4o-mini", tokensIn: completion.usage?.prompt_tokens ?? 0, tokensOut: completion.usage?.completion_tokens ?? 0 });
+      resposta = response.choices[0].message.content ?? "";
+      logAiUsage({ feature: "lousa-pergunta", model: config.model, tokensIn: response.usage?.prompt_tokens ?? 0, tokensOut: response.usage?.completion_tokens ?? 0 });
     }
 
     res.json({ resposta });
@@ -360,7 +333,7 @@ router.post("/aula-ia/transcrever", requireAuth, upload.single("audio"), async (
     const blob = new Blob([req.file.buffer], { type: req.file.mimetype || "audio/webm" });
     const file = new File([blob], "audio.webm", { type: req.file.mimetype || "audio/webm" });
 
-    const transcription = await openai.audio.transcriptions.create({
+    const transcription = await openaiDirect.audio.transcriptions.create({
       file,
       model: "whisper-1",
       language: "pt",

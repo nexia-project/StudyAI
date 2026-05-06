@@ -16,10 +16,11 @@
  *  5. Complementa — não substitui — a tabela `tiagao_memory` existente
  */
 
-import OpenAI from "openai";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { logAiUsage } from "./aiCostLogger";
+import { openrouterClient } from "./aiClient";
+import { getModelConfig } from "./modelRouter";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -68,15 +69,8 @@ interface UserProfile {
 
 // ─── OpenAI client ────────────────────────────────────────────────────────────
 
-let _gpt: OpenAI | null = null;
-function getGpt(): OpenAI {
-  if (!_gpt) {
-    _gpt = new OpenAI({
-      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? process.env.OPENAI_API_KEY ?? "dummy",
-      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-    });
-  }
-  return _gpt;
+function getGpt() {
+  return openrouterClient;
 }
 
 // ─── DB helpers ───────────────────────────────────────────────────────────────
@@ -383,8 +377,9 @@ REGRAS:
 
   try {
     const gpt = getGpt();
+    const summaryModel = getModelConfig("summary").model;
     const response = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: summaryModel,
       max_tokens: 800,
       temperature: 0.2,
       response_format: { type: "json_object" },
@@ -397,7 +392,7 @@ REGRAS:
     const raw = response.choices[0]?.message?.content ?? "";
     const tokensIn = response.usage?.prompt_tokens ?? 0;
     const tokensOut = response.usage?.completion_tokens ?? 0;
-    logAiUsage({ feature: "generative-memory", model: "gpt-4o-mini", tokensIn, tokensOut, userId: null });
+    logAiUsage({ feature: "generative-memory", model: summaryModel, tokensIn, tokensOut, userId: null });
 
     const parsed = JSON.parse(raw) as ExtractedInsights;
     return parsed;

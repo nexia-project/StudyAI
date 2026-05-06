@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { createRequire } from "module";
-import OpenAI from "openai";
+import { aiChat } from "../lib/aiClient";
 import multer from "multer";
 import AdmZip from "adm-zip";
 import { db } from "@workspace/db";
@@ -13,11 +13,6 @@ import { enrichTopicFromWikipedia } from "./wikipedia";
 const _require = createRequire(import.meta.url);
 
 const router: IRouter = Router();
-// Use Replit AI Integrations proxy — OPENAI_API_KEY not needed
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? "dummy",
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 // ─── Extract text from uploaded file (PDF, DOCX, DOC, TXT) ───────────────────
@@ -90,9 +85,8 @@ async function extractTextFromFile(file: Express.Multer.File): Promise<string> {
 
 // ─── Generate mind map JSON from text via AI ──────────────────────────────────
 async function generateMindMapFromText(contentText: string, docTitle: string): Promise<{ subject: string; topics: Array<{ name: string; subtopics: string[] }> }> {
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    temperature: 0.2,
+  const { response } = await aiChat({
+    taskType: "fast-qa",
     messages: [
       {
         role: "system",
@@ -124,12 +118,12 @@ REGRAS OBRIGATÓRIAS:
         content: `Analise COMPLETAMENTE este documento chamado "${docTitle}" e gere o mapa mental completo e detalhado:\n\n${contentText.slice(0, 15000)}`,
       },
     ],
-    response_format: { type: "json_object" },
+    jsonMode: true,
   });
 
   let rawJson: { subject?: string; topics?: Array<{ name: string; subtopics: string[] }> } = {};
   try {
-    rawJson = JSON.parse(completion.choices[0].message.content || "{}");
+    rawJson = JSON.parse(response.choices[0].message.content || "{}");
   } catch {
     rawJson = {};
   }

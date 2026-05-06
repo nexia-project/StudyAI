@@ -1,5 +1,5 @@
 import { Router } from "express";
-import OpenAI from "openai";
+import { aiChat } from "../lib/aiClient";
 import { db } from "@workspace/db";
 import { redacoesTable } from "@workspace/db/schema";
 import { checkFreeUsage } from "../lib/freeUsage";
@@ -7,35 +7,34 @@ import { logAiUsage } from "../lib/aiCostLogger";
 import { trackEvent } from "../lib/trackEvent";
 
 const router = Router();
-const openai = new OpenAI();
 
-const SYSTEM_PROMPT = `IDIOMA OBRIGATÓRIO: SEMPRE em português brasileiro (pt-BR). NUNCA use inglês ou outro idioma — nem uma palavra. Esta regra é absoluta.
+const SYSTEM_PROMPT = `IDIOMA OBRIGATORIO: SEMPRE em portugues brasileiro (pt-BR). NUNCA use ingles ou outro idioma — nem uma palavra. Esta regra e absoluta.
 
-Você é um corretor especialista em redação do ENEM com mais de 20 anos de experiência. 
-Avalie a redação enviada nas 5 competências do ENEM, cada uma valendo de 0 a 200 pontos (em múltiplos de 40: 0, 40, 80, 120, 160 ou 200).
+Voce e um corretor especialista em redacao do ENEM com mais de 20 anos de experiencia. 
+Avalie a redacao enviada nas 5 competencias do ENEM, cada uma valendo de 0 a 200 pontos (em multiplos de 40: 0, 40, 80, 120, 160 ou 200).
 
-As 5 competências são:
-1. Domínio da norma culta da Língua Portuguesa escrita
-2. Compreensão da proposta e aplicação de conceitos de várias áreas do conhecimento para desenvolver o tema
-3. Seleção, relação, organização e interpretação de informações, fatos, opiniões e argumentos em defesa de um ponto de vista
-4. Conhecimento dos mecanismos linguísticos necessários para a construção da argumentação
-5. Elaboração de proposta de intervenção para o problema abordado, respeitando os direitos humanos
+As 5 competencias sao:
+1. Dominio da norma culta da Lingua Portuguesa escrita
+2. Compreensao da proposta e aplicacao de conceitos de varias areas do conhecimento para desenvolver o tema
+3. Selecao, relacao, organizacao e interpretacao de informacoes, fatos, opinioes e argumentos em defesa de um ponto de vista
+4. Conhecimento dos mecanismos linguisticos necessarios para a construcao da argumentacao
+5. Elaboracao de proposta de intervencao para o problema abordado, respeitando os direitos humanos
 
-Responda SOMENTE com um JSON válido no seguinte formato:
+Responda SOMENTE com um JSON valido no seguinte formato:
 {
   "competencias": [
-    { "numero": 1, "nome": "Domínio da Norma Culta", "nota": 160, "feedback": "...", "pontosFortes": "...", "pontosMelhorar": "..." },
-    { "numero": 2, "nome": "Proposta e Repertório", "nota": 120, "feedback": "...", "pontosFortes": "...", "pontosMelhorar": "..." },
-    { "numero": 3, "nome": "Seleção de Argumentos", "nota": 160, "feedback": "...", "pontosFortes": "...", "pontosMelhorar": "..." },
-    { "numero": 4, "nome": "Coesão e Coerência", "nota": 120, "feedback": "...", "pontosFortes": "...", "pontosMelhorar": "..." },
-    { "numero": 5, "nome": "Proposta de Intervenção", "nota": 80, "feedback": "...", "pontosFortes": "...", "pontosMelhorar": "..." }
+    { "numero": 1, "nome": "Dominio da Norma Culta", "nota": 160, "feedback": "...", "pontosFortes": "...", "pontosMelhorar": "..." },
+    { "numero": 2, "nome": "Proposta e Repertorio", "nota": 120, "feedback": "...", "pontosFortes": "...", "pontosMelhorar": "..." },
+    { "numero": 3, "nome": "Selecao de Argumentos", "nota": 160, "feedback": "...", "pontosFortes": "...", "pontosMelhorar": "..." },
+    { "numero": 4, "nome": "Coesao e Coerencia", "nota": 120, "feedback": "...", "pontosFortes": "...", "pontosMelhorar": "..." },
+    { "numero": 5, "nome": "Proposta de Intervencao", "nota": 80, "feedback": "...", "pontosFortes": "...", "pontosMelhorar": "..." }
   ],
   "notaTotal": 640,
   "comentarioGeral": "...",
   "nivelGeral": "Bom",
   "proximosPasso": "..."
 }
-Seja específico, didático e encorajador. Feedback em português brasileiro. Não inclua nada além do JSON.`;
+Seja especifico, didatico e encorajador. Feedback em portugues brasileiro. Nao inclua nada alem do JSON.`;
 
 router.post("/api/redacao", checkFreeUsage, async (req, res) => {
   try {
@@ -46,21 +45,20 @@ router.post("/api/redacao", checkFreeUsage, async (req, res) => {
     }
 
     const userContent = tema
-      ? `TEMA: ${tema}\n\nREDAÇÃO:\n${texto}`
-      : `REDAÇÃO (sem tema especificado):\n${texto}`;
+      ? `TEMA: ${tema}\n\nREDACAO:\n${texto}`
+      : `REDACAO (sem tema especificado):\n${texto}`;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const { response, config } = await aiChat({
+      taskType: "essay-correction",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userContent },
       ],
-      response_format: { type: "json_object" },
-      temperature: 0.3,
+      jsonMode: true,
     });
 
-    const raw = completion.choices[0].message.content ?? "{}";
-    logAiUsage({ feature: "redacao", model: "gpt-4o", tokensIn: completion.usage?.prompt_tokens ?? 0, tokensOut: completion.usage?.completion_tokens ?? 0, userId: (req as any).userId ?? null });
+    const raw = response.choices[0].message.content ?? "{}";
+    logAiUsage({ feature: "redacao", model: config.model, tokensIn: response.usage?.prompt_tokens ?? 0, tokensOut: response.usage?.completion_tokens ?? 0, userId: (req as any).userId ?? null });
     const result = JSON.parse(raw);
 
     // Save to DB if user is authenticated
@@ -90,7 +88,7 @@ router.post("/api/redacao", checkFreeUsage, async (req, res) => {
     return res.json(result);
   } catch (err) {
     console.error("Redacao error:", err);
-    return res.status(500).json({ error: "Erro ao corrigir redação. Tente novamente." });
+    return res.status(500).json({ error: "Erro ao corrigir redacao. Tente novamente." });
   }
 });
 

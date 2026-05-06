@@ -1,15 +1,10 @@
 import { Router, type IRouter } from "express";
-import OpenAI from "openai";
+import { aiChat } from "../lib/aiClient";
 import { checkFreeUsage } from "../lib/freeUsage";
 import { getKnowledgeContext } from "../utils/knowledge-context";
 import { logAiUsage } from "../lib/aiCostLogger";
 
 const router: IRouter = Router();
-
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? process.env.OPENAI_API_KEY ?? "dummy",
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
 
 const FLASHCARD_PROMPT = `Você é um especialista em criar flashcards para estudo baseado no método de Active Recall e Spaced Repetition (Anki/Leitner).
 
@@ -86,19 +81,17 @@ Semente: #${seed} — gere flashcards originais, com âncoras mnemônicas criati
 
 Crie 15 flashcards no formato Anki (Active Recall + Spaced Repetition) para o aluno dominar este conteúdo.`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const { response, config } = await aiChat({
+      taskType: "flashcard",
       messages: [
         { role: "system", content: FLASHCARD_PROMPT },
         { role: "user", content: userContent },
       ],
-      max_tokens: 2000,
-      temperature: 1.1,
-      response_format: { type: "json_object" },
+      jsonMode: true,
     });
 
     const content = response.choices[0].message.content;
-    logAiUsage({ feature: "flashcards", model: "gpt-4o-mini", tokensIn: response.usage?.prompt_tokens ?? 0, tokensOut: response.usage?.completion_tokens ?? 0, userId: (req as any).userId ?? null });
+    logAiUsage({ feature: "flashcards", model: config.model, tokensIn: response.usage?.prompt_tokens ?? 0, tokensOut: response.usage?.completion_tokens ?? 0, userId: (req as any).userId ?? null });
     if (!content) {
       res.status(500).json({ erro: "Erro ao gerar flashcards." });
       return;

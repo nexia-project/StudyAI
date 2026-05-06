@@ -1,31 +1,31 @@
 /**
- * StudyAI — Model Router
+ * StudyAI — Model Router v2
  * Centralized AI model selection per task type.
+ * All models routed through OpenRouter (single API key).
+ * OpenAI direct only for Whisper (transcription) and TTS (voice).
  *
- * Distribution target:
- *   70%  gpt-4o-mini   — fast Q&A, flashcards, chat, summaries
- *   25%  gpt-4o        — essay correction, document analysis, OCR
- *    4%  o1-mini       — math / physics / chemistry reasoning
- *    1%  o1-preview    — complex multi-step reasoning (reserved)
- *   ---  claude-sonnet — educational content, creative, long docs
+ * Distribution:
+ *   GPT-4o-mini  → chat, flashcards, fast Q&A, summaries (cheap, fast)
+ *   GPT-4o       → essay correction, document analysis, OCR, complex reasoning
+ *   Claude Sonnet 4 → lesson generation, creative content, long educational docs
  */
 
 export type TaskType =
-  | "lesson-generation"   // Claude: aula didática completa
-  | "essay-correction"    // gpt-4o: análise complexa de redação
-  | "document-analysis"   // gpt-4o: documentos longos, OCR
-  | "math-reasoning"      // o1-mini: matemática, física, química
-  | "deep-reasoning"      // o1-preview: raciocínio multi-etapa
-  | "fast-qa"             // gpt-4o-mini: Q&A rápida
-  | "flashcard"           // gpt-4o-mini: geração de flashcards
-  | "summary"             // gpt-4o-mini: resumos
-  | "creative"            // Claude: conteúdo criativo educacional
-  | "chat";               // gpt-4o-mini: conversação
+  | "lesson-generation"   // Claude Sonnet: aula didática completa, conteúdo longo
+  | "creative"            // Claude Sonnet: conteúdo criativo educacional
+  | "essay-correction"    // GPT-4o: análise complexa de redação
+  | "document-analysis"   // GPT-4o: documentos longos, OCR
+  | "math-reasoning"      // GPT-4o: matemática, física, química (o1 não disponível no OpenRouter)
+  | "deep-reasoning"      // GPT-4o: raciocínio multi-etapa complexo
+  | "fast-qa"             // GPT-4o-mini: Q&A rápida
+  | "flashcard"           // GPT-4o-mini: geração de flashcards
+  | "summary"             // GPT-4o-mini: resumos
+  | "chat";               // GPT-4o-mini: conversação Tiagão
 
-export type Provider = "openai" | "anthropic";
+export type Provider = "openrouter" | "openai-direct";
 
 export type ModelConfig = {
-  model: string;
+  model: string;           // OpenRouter model slug (e.g. "openai/gpt-4o-mini")
   provider: Provider;
   maxTokens: number;
   temperature?: number;
@@ -36,26 +36,26 @@ export type ModelConfig = {
 
 export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
   "lesson-generation": {
-    provider: "anthropic",
-    model: "claude-sonnet-4-6",
-    maxTokens: 2500,
+    provider: "openrouter",
+    model: "anthropic/claude-sonnet-4",
+    maxTokens: 4096,
     temperature: 0.8,
     supportsSystemRole: true,
     supportsJsonMode: false,
     supportsTemperature: true,
   },
   "creative": {
-    provider: "anthropic",
-    model: "claude-sonnet-4-6",
-    maxTokens: 2000,
+    provider: "openrouter",
+    model: "anthropic/claude-sonnet-4",
+    maxTokens: 4096,
     temperature: 0.9,
     supportsSystemRole: true,
     supportsJsonMode: false,
     supportsTemperature: true,
   },
   "essay-correction": {
-    provider: "openai",
-    model: "gpt-4o",
+    provider: "openrouter",
+    model: "openai/gpt-4o",
     maxTokens: 2048,
     temperature: 0.4,
     supportsSystemRole: true,
@@ -63,8 +63,8 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
     supportsTemperature: true,
   },
   "document-analysis": {
-    provider: "openai",
-    model: "gpt-4o",
+    provider: "openrouter",
+    model: "openai/gpt-4o",
     maxTokens: 2048,
     temperature: 0.3,
     supportsSystemRole: true,
@@ -72,24 +72,26 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
     supportsTemperature: true,
   },
   "math-reasoning": {
-    provider: "openai",
-    model: "o1-mini",
+    provider: "openrouter",
+    model: "openai/gpt-4o",
     maxTokens: 3000,
-    supportsSystemRole: false,
-    supportsJsonMode: false,
-    supportsTemperature: false,
+    temperature: 0.3,
+    supportsSystemRole: true,
+    supportsJsonMode: true,
+    supportsTemperature: true,
   },
   "deep-reasoning": {
-    provider: "openai",
-    model: "o1-preview",
+    provider: "openrouter",
+    model: "openai/gpt-4o",
     maxTokens: 4096,
-    supportsSystemRole: false,
-    supportsJsonMode: false,
-    supportsTemperature: false,
+    temperature: 0.3,
+    supportsSystemRole: true,
+    supportsJsonMode: true,
+    supportsTemperature: true,
   },
   "fast-qa": {
-    provider: "openai",
-    model: "gpt-4o-mini",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
     maxTokens: 1024,
     temperature: 0.7,
     supportsSystemRole: true,
@@ -97,8 +99,8 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
     supportsTemperature: true,
   },
   "flashcard": {
-    provider: "openai",
-    model: "gpt-4o-mini",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
     maxTokens: 1200,
     temperature: 0.7,
     supportsSystemRole: true,
@@ -106,8 +108,8 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
     supportsTemperature: true,
   },
   "summary": {
-    provider: "openai",
-    model: "gpt-4o-mini",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
     maxTokens: 1500,
     temperature: 0.5,
     supportsSystemRole: true,
@@ -115,17 +117,17 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
     supportsTemperature: true,
   },
   "chat": {
-    provider: "openai",
-    model: "gpt-4o-mini",
-    maxTokens: 1024,
-    temperature: 0.7,
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
+    maxTokens: 2048,
+    temperature: 0.8,
     supportsSystemRole: true,
     supportsJsonMode: false,
     supportsTemperature: true,
   },
 };
 
-/** Subjects that benefit from o1-mini's reasoning capabilities */
+/** Subjects that benefit from reasoning capabilities */
 const MATH_SCIENCE_SUBJECTS = new Set([
   "matemática", "matematica",
   "física", "fisica",
@@ -140,18 +142,10 @@ const MATH_SCIENCE_SUBJECTS = new Set([
   "ciencias da natureza",
 ]);
 
-/**
- * Detect if a subject warrants the math-reasoning (o1-mini) model.
- */
 export function isMathScienceSubject(materia: string): boolean {
   return MATH_SCIENCE_SUBJECTS.has(materia.toLowerCase().trim());
 }
 
-/**
- * Pick the best task type for a given simulado subject.
- * Math/science → "math-reasoning" (o1-mini)
- * Others       → "fast-qa" (gpt-4o-mini)
- */
 export function pickSimuladoTaskType(materia: string): TaskType {
   return isMathScienceSubject(materia) ? "math-reasoning" : "fast-qa";
 }
@@ -159,3 +153,10 @@ export function pickSimuladoTaskType(materia: string): TaskType {
 export function getModelConfig(task: TaskType): ModelConfig {
   return MODEL_CONFIGS[task];
 }
+
+/** Cost per 1M tokens (USD) for logging */
+export const MODEL_COSTS: Record<string, { input: number; output: number }> = {
+  "openai/gpt-4o": { input: 2.50, output: 10.00 },
+  "openai/gpt-4o-mini": { input: 0.15, output: 0.60 },
+  "anthropic/claude-sonnet-4": { input: 3.00, output: 15.00 },
+};

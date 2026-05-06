@@ -5,23 +5,18 @@
  * Usado pelo voice-chat (professor.ts) E pelo text-chat (chat.ts).
  */
 
-import OpenAI from "openai";
+import type OpenAI from "openai";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
+import { openrouterClient } from "./aiClient";
+import { getModelConfig } from "./modelRouter";
 
 // ─── Clients ──────────────────────────────────────────────────────────────────
-// Usamos GPT-4o-mini via proxy Replit para todas as ferramentas (baixa latência)
-let _gpt: OpenAI | null = null;
+// Usamos o openrouterClient centralizado para todas as ferramentas
 function getGpt() {
-  if (!_gpt) {
-    _gpt = new OpenAI({
-      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? process.env.OPENAI_API_KEY ?? "dummy",
-      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-    });
-  }
-  return _gpt;
+  return openrouterClient;
 }
-const CONTENT_MODEL = "gpt-4o"; // Conteúdo profissional exige o modelo mais capaz
+const CONTENT_MODEL = getModelConfig("essay-correction").model; // openai/gpt-4o via OpenRouter
 
 // ─── Memory helpers ───────────────────────────────────────────────────────────
 export async function loadUserMemories(userId: string): Promise<string> {

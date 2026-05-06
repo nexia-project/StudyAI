@@ -1,5 +1,5 @@
 import { Router } from "express";
-import OpenAI from "openai";
+import { aiChat } from "../lib/aiClient";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -7,7 +7,6 @@ import { logAiUsage } from "../lib/aiCostLogger";
 import { trackEvent } from "../lib/trackEvent";
 
 const router = Router();
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ── Currículo por nível ──────────────────────────────────────────────────────
 
@@ -219,17 +218,16 @@ REGRAS:
 
   try {
     const [mat, pt] = await Promise.all((["matematica", "portugues"] as const).map(async (subject) => {
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+      const { response, config } = await aiChat({
+        taskType: subject === "matematica" ? "math-reasoning" : "fast-qa",
         messages: [
           { role: "system", content: sysPromptFor(subject) },
           { role: "user", content: userPrompt },
         ],
-        response_format: { type: "json_object" },
-        temperature: 0.6,
-        max_tokens: 2200,
+        jsonMode: true,
       });
-      const parsed = JSON.parse(completion.choices[0]?.message?.content || "{}");
+      const parsed = JSON.parse(response.choices[0]?.message?.content || "{}");
+      logAiUsage({ feature: "trilha-diagnostico", model: config.model, tokensIn: response.usage?.prompt_tokens ?? 0, tokensOut: response.usage?.completion_tokens ?? 0, userId: (req as any).userId ?? null });
       const arr: any[] = Array.isArray(parsed.questions) ? parsed.questions : [];
       return arr.slice(0, 5).map((q, i) => ({
         ...q,

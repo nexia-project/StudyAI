@@ -1,10 +1,10 @@
 import { Router, type IRouter } from "express";
-import OpenAI from "openai";
+import { aiChat } from "../lib/aiClient";
 import { requireAuth } from "../middlewares/requireAuth";
 import { getKnowledgeContext } from "../utils/knowledge-context";
+import { logAiUsage } from "../lib/aiCostLogger";
 
 const router: IRouter = Router();
-const openai = new OpenAI();
 
 const ENEM_DIAS: Record<number, { nome: string; materias: string[]; descricao: string }> = {
   1: {
@@ -105,18 +105,17 @@ Responda SOMENTE com JSON válido:
 
 RIGOR TÉCNICO: Toda questão deve ser tecnicamente irrefutável — fórmulas, datas, nomes, conceitos e definições devem ser exatos. Nenhuma margem para imprecisão acadêmica.${bnccSystemAddendum}`;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const { response, config } = await aiChat({
+      taskType: "fast-qa",
       messages: [
         { role: "system", content: enemSystemPrompt },
         { role: "user", content: prompt },
       ],
-      response_format: { type: "json_object" },
-      temperature: 0.8,
-      max_tokens: 4000,
+      jsonMode: true,
     });
 
-    const raw = completion.choices[0]?.message?.content ?? "{}";
+    const raw = response.choices[0]?.message?.content ?? "{}";
+    logAiUsage({ feature: "simulado-enem", model: config.model, tokensIn: response.usage?.prompt_tokens ?? 0, tokensOut: response.usage?.completion_tokens ?? 0, userId: req.userId ?? null });
     const data = JSON.parse(raw);
 
     res.json({

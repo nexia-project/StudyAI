@@ -1,5 +1,7 @@
 import { Router, type IRouter } from "express";
-import OpenAI from "openai";
+import type OpenAI from "openai";
+import { openaiDirect, openrouterClient } from "../lib/aiClient";
+import { getModelConfig } from "../lib/modelRouter";
 import multer from "multer";
 import { Readable } from "stream";
 import { db } from "@workspace/db";
@@ -23,15 +25,7 @@ import {
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 
 const router: IRouter = Router();
-// Cliente OpenAI direto — apenas para TTS (tts-1) e Whisper (não disponíveis no proxy)
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-// Cliente via proxy Replit — para chat completions (baixa latência, sem rota internacional)
-const gptChat = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? process.env.OPENAI_API_KEY ?? "dummy",
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
-const CHAT_MODEL = "gpt-4o-mini";
+const CHAT_MODEL = getModelConfig("chat").model;
 
 // ─── Search knowledge base + Wikipedia — ACESSO TOTAL ────────────────────────
 async function searchKnowledgeBase(query: string, topK = 5): Promise<string> {
@@ -630,7 +624,7 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.`;
       ...cleanMessages,
     ];
 
-    const firstCall = await gptChat.chat.completions.create({
+    const firstCall = await openrouterClient.chat.completions.create({
       model: CHAT_MODEL,
       messages: apiMessages,
       tools: TIAGAO_TOOLS,
@@ -687,7 +681,7 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.`;
       }
 
       // Segunda chamada: resposta final para ações que precisam de texto (ex: flashcards criados)
-      const finalCall = await openai.chat.completions.create({
+      const finalCall = await openrouterClient.chat.completions.create({
         model: "gpt-4o-mini", // ~3x mais rápido que deepseek para respostas curtas
         messages: [...apiMessages, ...toolResults],
         max_tokens: 200,
@@ -703,7 +697,7 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.`;
       const PROMISE_REGEX = /\b(vou criar|vou fazer|vou gerar|vou montar|vou elaborar|vou preparar|deixa eu criar|deixa eu fazer|deixa eu gerar)\b/i;
       if (PROMISE_REGEX.test(raw)) {
         // Força o modelo a realmente chamar a ferramenta
-        const retryCall = await gptChat.chat.completions.create({
+        const retryCall = await openrouterClient.chat.completions.create({
           model: CHAT_MODEL,
           messages: [
             ...apiMessages,
@@ -729,7 +723,7 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.`;
           }
           const primaryAction = frontendActions[0] ?? null;
           const notifications = frontendActions.filter(a => a.type === "flashcards_criados");
-          const finalCall = await gptChat.chat.completions.create({
+          const finalCall = await openrouterClient.chat.completions.create({
             model: CHAT_MODEL,
             messages: [...apiMessages, ...toolResults],
             max_tokens: 200,
@@ -812,7 +806,7 @@ ${richContext}`;
       ? `Última coisa que eu disse: "${context.ultimaMensagem}"`
       : "Primeira vez falando com o aluno nesta sessão.";
 
-    const completion = await gptChat.chat.completions.create({
+    const completion = await openrouterClient.chat.completions.create({
       model: CHAT_MODEL,
       messages: [
         { role: "system", content: systemPrompt },
@@ -900,7 +894,7 @@ router.post("/voice-tts", async (req, res) => {
     }
 
     // OpenAI TTS-1 com a voz escolhida
-    const mp3 = await openai.audio.speech.create({
+    const mp3 = await openaiDirect.audio.speech.create({
       model: "tts-1",
       voice: chosen as any,
       input: text.trim().slice(0, 1000),
@@ -931,7 +925,7 @@ router.post("/transcribe", upload.single("audio"), async (req, res) => {
       type: file.mimetype || "audio/m4a",
     });
 
-    const transcription = await openai.audio.transcriptions.create({
+    const transcription = await openaiDirect.audio.transcriptions.create({
       file: audioFile,
       model: "whisper-1",
       language: "pt",

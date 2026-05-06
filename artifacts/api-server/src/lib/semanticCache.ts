@@ -12,18 +12,16 @@
  */
 
 import crypto from "crypto";
-import OpenAI from "openai";
+import { openrouterClient } from "./aiClient";
 import { pool } from "@workspace/db";
 
 // ─── Thresholds de similaridade cosseno ───────────────────────────────────────
 const THRESHOLD_SEMANTICO  = 0.92;   // Nível 2: resposta direta
 const THRESHOLD_APROXIMADO = 0.82;   // Nível 3: resposta com caveat
 
-// ─── Cliente OpenAI para embeddings (text-embedding-3-small = $0.02/M tokens) ─
-const embedder = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? process.env.OPENAI_API_KEY ?? "dummy",
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
+// ─── Usa o openrouterClient centralizado para embeddings ─────────────────────
+// text-embedding-3-small disponível via OpenRouter ($0.02/M tokens)
+const embedder = openrouterClient;
 
 // ─── Usa o pool compartilhado de @workspace/db ───────────────────────────────
 function getPool() {

@@ -1,8 +1,8 @@
 import { Router, type IRouter } from "express";
-import OpenAI from "openai";
+import { aiChat } from "../lib/aiClient";
+import { logAiUsage } from "../lib/aiCostLogger";
 
 const router: IRouter = Router();
-const openai = new OpenAI();
 
 router.post("/api/ocr-explain", async (req, res) => {
   try {
@@ -13,22 +13,22 @@ router.post("/api/ocr-explain", async (req, res) => {
     };
 
     if (!imageBase64) {
-      res.status(400).json({ erro: "imageBase64 é obrigatório" });
+      res.status(400).json({ erro: "imageBase64 e obrigatorio" });
       return;
     }
 
-    const systemPrompt = `Você é o Professor Tiagão, tutor de IA do StudyAI. Sua tarefa é analisar a imagem enviada pelo aluno (pode ser página de livro, apostila, exercício, diagrama, gráfico, fórmula etc.) e dar uma explicação didática e motivadora, SEMPRE em português brasileiro.
+    const systemPrompt = `Voce e o Professor Tiagao, tutor de IA do StudyAI. Sua tarefa e analisar a imagem enviada pelo aluno (pode ser pagina de livro, apostila, exercicio, diagrama, grafico, formula etc.) e dar uma explicacao didatica e motivadora, SEMPRE em portugues brasileiro.
 
 Regras:
-- Identifique o conteúdo da imagem
-- Explique o conteúdo de forma clara e acessível para o nível do aluno
-- Se for exercício, resolva passo a passo
+- Identifique o conteudo da imagem
+- Explique o conteudo de forma clara e acessivel para o nivel do aluno
+- Se for exercicio, resolva passo a passo
 - Se for texto, resuma os pontos principais e explique os conceitos mais importantes
-- Se for gráfico/tabela, interprete os dados
+- Se for grafico/tabela, interprete os dados
 - Use linguagem brasileira, animada, como um professor de cursinho
-- Responda SEMPRE em português do Brasil`;
+- Responda SEMPRE em portugues do Brasil`;
 
-    const userContent: OpenAI.Chat.ChatCompletionContentPart[] = [
+    const userContent = [
       {
         type: "image_url",
         image_url: {
@@ -39,21 +39,21 @@ Regras:
       {
         type: "text",
         text: contexto
-          ? `Analise esta imagem e explique o conteúdo. Contexto adicional do aluno: "${contexto}"`
-          : "Analise esta imagem e explique o conteúdo de forma didática. O que está aqui? Como entender melhor este material?",
+          ? `Analise esta imagem e explique o conteudo. Contexto adicional do aluno: "${contexto}"`
+          : "Analise esta imagem e explique o conteudo de forma didatica. O que esta aqui? Como entender melhor este material?",
       },
     ];
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const { response, config } = await aiChat({
+      taskType: "document-analysis",
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: userContent },
+        { role: "user", content: userContent as any },
       ],
-      max_tokens: 1500,
     });
 
-    const explicacao = completion.choices[0]?.message?.content ?? "";
+    const explicacao = response.choices[0]?.message?.content ?? "";
+    logAiUsage({ feature: "ocr-explain", model: config.model, tokensIn: response.usage?.prompt_tokens ?? 0, tokensOut: response.usage?.completion_tokens ?? 0, userId: (req as any).userId ?? null });
     res.json({ explicacao, sucesso: true });
   } catch (err) {
     console.error("OCR explain error:", err);

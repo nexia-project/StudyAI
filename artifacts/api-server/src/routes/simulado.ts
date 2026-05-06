@@ -1,15 +1,10 @@
 import { Router, type IRouter } from "express";
-import OpenAI from "openai";
+import { aiChat } from "../lib/aiClient";
 import { getKnowledgeContext } from "../utils/knowledge-context";
 import { logAiUsage } from "../lib/aiCostLogger";
-import { isMathScienceSubject } from "../lib/modelRouter";
+import { getModelConfig, pickSimuladoTaskType } from "../lib/modelRouter";
 
 const router: IRouter = Router();
-
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? process.env.OPENAI_API_KEY ?? "dummy",
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
 
 const SIMULADO_SYSTEM_PROMPT = `Professor criador de simulados em pt-BR. Responda SOMENTE JSON puro sem markdown:
 {"titulo":"Simulado - [tema]","tempoMinutos":25,"perguntas":[{"id":1,"enunciado":"...","opcoes":{"A":"...","B":"...","C":"...","D":"..."},"correta":"B","explicacao":"Por que B é certa (1 frase). Dica rápida."}]}
@@ -96,37 +91,17 @@ Distribuição: ${targetDistribution.map((l, i) => `Q${i + 1}→${l}`).join(", "
 Formatos: ${shuffledFormats.map((f, i) => `Q${i + 1}:${f}`).join(" | ")}
 Gere 10 questões. Dificuldade crescente: Q1-3 fácil, Q4-6 médio, Q7-9 difícil, Q10 desafio.`;
 
-    // Exatas → o1-mini (raciocínio simbólico/matemático); demais → gpt-4o-mini
-    const useMathModel = isMathScienceSubject(materia);
-    const chosenModel = useMathModel ? "o1-mini" : "gpt-4o-mini";
-
-    let response: Awaited<ReturnType<typeof openai.chat.completions.create>>;
-
-    if (useMathModel) {
-      // o1-mini não suporta: system role, temperature, response_format
-      // Combina system prompt + user content em uma única mensagem user
-      response = await openai.chat.completions.create({
-        model: "o1-mini",
-        messages: [
-          {
-            role: "user",
-            content: `${enrichedSystemPrompt}\n\n${userContent}\n\nRetorne SOMENTE JSON válido sem markdown.`,
-          },
-        ],
-        max_completion_tokens: 3000,
-      } as Parameters<typeof openai.chat.completions.create>[0]);
-    } else {
-      response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: enrichedSystemPrompt },
-          { role: "user", content: userContent },
-        ],
-        max_tokens: 3000,
-        temperature: 1.0,
-        response_format: { type: "json_object" },
-      });
-    }
+    const taskType = pickSimuladoTaskType(materia);
+    const modelConfig = getModelConfig(taskType);
+    const { response, config } = await aiChat({
+      taskType,
+      messages: [
+        { role: "system", content: enrichedSystemPrompt },
+        { role: "user", content: userContent },
+      ],
+      jsonMode: modelConfig.supportsJsonMode,
+    });
+    const chosenModel = config.model;
 
     logAiUsage({ feature: "simulado", model: chosenModel, tokensIn: response.usage?.prompt_tokens ?? 0, tokensOut: response.usage?.completion_tokens ?? 0 });
 

@@ -8,7 +8,8 @@
 
 import { Router, type IRouter, type Request, type Response } from "express";
 import { createRequire } from "module";
-import OpenAI from "openai";
+import { openrouterClient, openaiDirect } from "../lib/aiClient";
+import { getModelConfig } from "../lib/modelRouter";
 import multer from "multer";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
@@ -20,41 +21,13 @@ import { trackEvent } from "../lib/trackEvent";
 const _require = createRequire(import.meta.url);
 const router: IRouter = Router();
 
-// ─── AI client via Replit AI Integrations proxy ────────────────────────────
-const _rawGpt = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? "dummy",
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
-
-// Proxy that auto-logs token usage for every chat completion
-const gpt = new Proxy(_rawGpt, {
-  get(target, prop) {
-    if (prop === "chat") {
-      return new Proxy(target.chat, {
-        get(chatTarget, chatProp) {
-          if (chatProp === "completions") {
-            return new Proxy(chatTarget.completions, {
-              get(compTarget, compProp) {
-                if (compProp === "create") {
-                  return async (params: Parameters<typeof compTarget.create>[0], opts?: Parameters<typeof compTarget.create>[1]) => {
-                    const result = await (compTarget.create as Function)(params, opts);
-                    if (result && typeof result === "object" && "usage" in result && result.usage) {
-                      logAiUsage({ feature: "notebook", model: (params as any).model ?? "gpt-4o-mini", tokensIn: (result as any).usage.prompt_tokens ?? 0, tokensOut: (result as any).usage.completion_tokens ?? 0 });
-                    }
-                    return result;
-                  };
-                }
-                return (compTarget as any)[compProp];
-              }
-            });
-          }
-          return (chatTarget as any)[chatProp];
-        }
-      });
-    }
-    return (target as any)[prop];
-  }
-}) as OpenAI;
+// ─── AI clients ────────────────────────────────────────────────────────────
+// All text generation via OpenRouter (centralized)
+const gpt = openrouterClient;
+// Model slugs from central config
+const FAST_MODEL = getModelConfig("fast-qa").model;        // openai/gpt-4o-mini
+const LESSON_MODEL = getModelConfig("lesson-generation").model; // anthropic/claude-sonnet-4
+const ANALYSIS_MODEL = getModelConfig("document-analysis").model; // openai/gpt-4o
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
@@ -776,7 +749,7 @@ router.post("/notebook/upload-audio", upload.single("audio"), async (req: Reques
   if (!file) { res.status(400).json({ erro: "Arquivo de áudio obrigatório" }); return; }
   try {
     const audioFile = new File([file.buffer], file.originalname || "audio.m4a", { type: file.mimetype || "audio/m4a" });
-    const transcription = await gpt.audio.transcriptions.create({
+    const transcription = await openaiDirect.audio.transcriptions.create({
       file: audioFile,
       model: "whisper-1",
       language: "pt",
@@ -805,7 +778,7 @@ router.post("/notebook/upload-image", upload.single("image"), async (req: Reques
     const b64 = file.buffer.toString("base64");
     const mime = file.mimetype || "image/jpeg";
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       max_tokens: 2500,
       messages: [
         { role: "system", content: "Você extrai TODO o texto visível na imagem (OCR), preservando estrutura, parágrafos, listas, fórmulas. Se for diagrama/gráfico, descreva exaustivamente. Responda apenas com o conteúdo extraído, sem comentários." },
@@ -894,7 +867,7 @@ router.post("/notebook/chat", async (req: Request, res: Response) => {
     const modePrompt = CHAT_MODE_PROMPTS[modo] ?? CHAT_MODE_PROMPTS.padrao;
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       temperature: modo === "pesquisa" ? 0.1 : modo === "estudo" ? 0.4 : 0.2,
       max_tokens: 1800,
       messages: [
@@ -992,7 +965,7 @@ router.post("/notebook/chat-stream", async (req: Request, res: Response) => {
 
     const modePrompt = CHAT_MODE_PROMPTS[modo] ?? CHAT_MODE_PROMPTS.padrao;
     const stream = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       temperature: modo === "pesquisa" ? 0.1 : modo === "estudo" ? 0.4 : 0.2,
       max_tokens: 1800,
       stream: true,
@@ -1082,7 +1055,7 @@ router.post("/notebook/overview", async (req: Request, res: Response) => {
     if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       temperature: 0.4,
       max_tokens: 2500,
       messages: [
@@ -1144,7 +1117,7 @@ router.post("/notebook/study-guide", async (req: Request, res: Response) => {
     if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o",
+      model: ANALYSIS_MODEL,
       temperature: 0.5,
       max_tokens: 6000,
       messages: [
@@ -1218,7 +1191,7 @@ router.post("/notebook/flashcards", async (req: Request, res: Response) => {
     if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       temperature: 0.3,
       max_tokens: 5500,
       messages: [
@@ -1273,7 +1246,7 @@ router.post("/notebook/questoes", async (req: Request, res: Response) => {
     if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       temperature: 0.2,
       max_tokens: 4000,
       messages: [
@@ -1322,7 +1295,7 @@ router.post("/notebook/mapa-mental", async (req: Request, res: Response) => {
     if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o",
+      model: ANALYSIS_MODEL,
       temperature: 0.3,
       max_tokens: 5000,
       messages: [
@@ -1410,7 +1383,7 @@ router.post("/notebook/podcast", async (req: Request, res: Response) => {
     if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       temperature: 0.7,
       max_tokens: 3500,
       messages: [
@@ -1478,7 +1451,7 @@ router.post("/notebook/briefing", async (req: Request, res: Response) => {
     if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       temperature: 0.3,
       max_tokens: 2500,
       messages: [
@@ -1575,7 +1548,7 @@ async function validarPares(planoJson: string, tema: string): Promise<Record<str
   for (const v of validadores) {
     try {
       const r = await gpt.chat.completions.create({
-        model: "gpt-4o-mini", temperature: 0.5, max_tokens: 400,
+        model: FAST_MODEL, temperature: 0.5, max_tokens: 400,
         messages: [
           { role: "system", content: `Você é ${v.perfil}. Analise este plano de aula e dê um feedback HONESTO e ESPECÍFICO em 2-4 frases: o que funciona, o que não funciona, 1 sugestão de melhoria. Seja direto.` },
           { role: "user", content: `Tema: ${tema}\n\nPlano:\n${planoJson.slice(0, 3000)}` },
@@ -1612,7 +1585,7 @@ router.post("/notebook/plano-aula", async (req: Request, res: Response) => {
     const personaInfo = PERSONAS_EDU[persona] ?? PERSONAS_EDU["planejador"];
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       temperature: 0.6,
       max_tokens: 6500,
       messages: [
@@ -1777,7 +1750,7 @@ router.post("/notebook/tarefa", async (req: Request, res: Response) => {
     if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       temperature: 0.6,
       max_tokens: 4500,
       messages: [
@@ -1874,7 +1847,7 @@ router.post("/notebook/sequencia-didatica", async (req: Request, res: Response) 
     if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       temperature: 0.55,
       max_tokens: 5500,
       messages: [
@@ -1959,7 +1932,7 @@ router.post("/notebook/aula-viva", async (req: Request, res: Response) => {
     if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       temperature: 0.75,
       max_tokens: 5000,
       messages: [
@@ -2181,7 +2154,7 @@ Retorne JSON com: titulo, coldOpen{cena,punchline}, monologo{roteiro,piadas[],ga
     const personaSystem = getPersonaSystem(persona);
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       temperature: 0.8,
       max_tokens: 4500,
       messages: [
@@ -2216,7 +2189,7 @@ router.post("/notebook/avaliacao-voz", async (req: Request, res: Response) => {
     const personaInfo = PERSONAS_EDU[persona] ?? PERSONAS_EDU["planejador"];
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       temperature: 0.65,
       max_tokens: 4000,
       messages: [
@@ -2308,7 +2281,7 @@ router.post("/notebook/making-of", async (req: Request, res: Response) => {
     const personaInfo = PERSONAS_EDU[persona] ?? PERSONAS_EDU["planejador"];
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       temperature: 0.7,
       max_tokens: 3500,
       messages: [
@@ -2403,7 +2376,7 @@ router.post("/notebook/simulador-aula", async (req: Request, res: Response) => {
     const personaInfo = PERSONAS_EDU[persona] ?? PERSONAS_EDU["planejador"];
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       temperature: 0.75,
       max_tokens: 4500,
       messages: [
@@ -2580,7 +2553,7 @@ router.post("/notebook/micro-aulas", async (req: Request, res: Response) => {
     if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       temperature: 0.7,
       max_tokens: 4000,
       messages: [
@@ -2668,7 +2641,7 @@ router.post("/notebook/narrativa", async (req: Request, res: Response) => {
     if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       temperature: 0.8,
       max_tokens: 4500,
       messages: [
@@ -2772,7 +2745,7 @@ router.post("/notebook/remix-cultural", async (req: Request, res: Response) => {
     if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       temperature: 0.85,
       max_tokens: 4000,
       messages: [
@@ -2855,7 +2828,7 @@ router.post("/notebook/plano-aula-versoes", async (req: Request, res: Response) 
     if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       temperature: 0.6,
       max_tokens: 5500,
       messages: [
@@ -2958,7 +2931,7 @@ router.post("/notebook/dna", async (req: Request, res: Response) => {
     if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       temperature: 0.2,
       max_tokens: 3000,
       messages: [
@@ -3016,7 +2989,7 @@ router.post("/notebook/tiagao-explica", async (req: Request, res: Response) => {
     if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o",
+      model: ANALYSIS_MODEL,
       temperature: 0.5,
       max_tokens: 5000,
       messages: [
@@ -3085,7 +3058,7 @@ router.post("/notebook/timeline", async (req: Request, res: Response) => {
     if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       temperature: 0.3,
       max_tokens: 2500,
       messages: [
@@ -3147,7 +3120,7 @@ router.post("/notebook/infografico", async (req: Request, res: Response) => {
 
     // Step 1: extract a tight visual brief from the document
     const briefCompletion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       temperature: 0.3,
       max_tokens: 1200,
       messages: [
@@ -3254,7 +3227,7 @@ router.post("/notebook/slides", async (req: Request, res: Response) => {
     if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: FAST_MODEL,
       temperature: 0.4,
       max_tokens: 3500,
       messages: [
@@ -3448,7 +3421,7 @@ router.post("/notebook/suggest-questions", async (req: Request, res: Response) =
     if (!chunks.length) { res.json({ perguntas: [] }); return; }
     const context = chunks.map(c => c.text).join("\n\n").slice(0, 3000);
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini", temperature: 0.7, max_tokens: 350,
+      model: FAST_MODEL, temperature: 0.7, max_tokens: 350,
       messages: [
         { role: "system", content: "Você é assistente de estudos. Com base no contexto, gere EXATAMENTE 5 perguntas inteligentes e específicas que um estudante faria. Retorne APENAS JSON array de strings, sem explicações." },
         { role: "user", content: `Contexto:\n${context}\n\nGere 5 perguntas em PT-BR.` }
@@ -3473,7 +3446,7 @@ router.post("/notebook/tabela", async (req: Request, res: Response) => {
     if (!chunks.length) { res.status(400).json({ erro: "Adicione documentos primeiro." }); return; }
     const context = chunks.map(c => `[${c.title}]\n${c.text}`).join("\n\n").slice(0, 6000);
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini", temperature: 0.3, max_tokens: 1500,
+      model: FAST_MODEL, temperature: 0.3, max_tokens: 1500,
       messages: [
         { role: "system", content: 'Analise as fontes e crie uma tabela comparativa dos conceitos/dados principais. Retorne JSON: {"titulo":"string","colunas":["col1","col2",...],"linhas":[["val1","val2",...],...],"notas":"string opcional"}. Mínimo 3 colunas e 5 linhas.' },
         { role: "user", content: `Fontes:\n${context}` }
@@ -3504,7 +3477,7 @@ router.post("/notebook/relatorio", async (req: Request, res: Response) => {
       aula: "plano de aula completo com objetivos, conteúdo, metodologia e avaliação",
     };
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini", temperature: 0.4, max_tokens: 2000,
+      model: FAST_MODEL, temperature: 0.4, max_tokens: 2000,
       messages: [
         { role: "system", content: `Você é especialista em produção de conteúdo. Escreva um ${templates[template] ?? templates.academico} com base nas fontes. Use Markdown formatado. Cite fontes quando relevante.` },
         { role: "user", content: `Fontes:\n${context}` }
@@ -3541,7 +3514,7 @@ router.post("/notebook/fast-research", async (req: Request, res: Response) => {
     // Fallback: use GPT to suggest real Wikipedia/educational sources
     if (results.length < 3) {
       const completion = await gpt.chat.completions.create({
-        model: "gpt-4o-mini", max_tokens: 700,
+        model: FAST_MODEL, max_tokens: 700,
         messages: [
           { role: "system", content: 'Sugira 6-8 fontes web educacionais reais e relevantes (Wikipedia pt.br, Khan Academy, Brasil Escola, etc). Retorne JSON: [{"titulo":"...","url":"https://...","snippet":"..."}]. Use URLs reais.' },
           { role: "user", content: `Tópico: ${topic}` }
@@ -3567,7 +3540,7 @@ router.post("/notebook/discover", async (req: Request, res: Response) => {
     if (!chunks.length) { res.json({ sugestoes: [] }); return; }
     const context = chunks.slice(0, 3).map(c => c.text).join("\n\n").slice(0, 2000);
     const completion = await gpt.chat.completions.create({
-      model: "gpt-4o-mini", max_tokens: 700,
+      model: FAST_MODEL, max_tokens: 700,
       messages: [
         { role: "system", content: 'Com base no material, sugira 6 fontes web complementares reais (Wikipedia, Khan Academy, Brasil Escola, YouTube educativo). Retorne JSON: [{"titulo":"...","url":"https://...","snippet":"...","relevancia":"alta|media"}]. URLs devem ser reais e educacionais.' },
         { role: "user", content: `Material atual:\n${context}` }

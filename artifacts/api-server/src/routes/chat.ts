@@ -1,5 +1,7 @@
 import { Router, type IRouter } from "express";
-import OpenAI from "openai";
+import type OpenAI from "openai";
+import { openrouterClient } from "../lib/aiClient";
+import { getModelConfig } from "../lib/modelRouter";
 import { db } from "@workspace/db";
 import { usersTable, turmasTable, turmaMembershipsTable } from "@workspace/db/schema";
 import { eq, inArray } from "drizzle-orm";
@@ -253,17 +255,6 @@ FORMATO: 2-4 parágrafos, direto, objetivo, sempre termina com pergunta ou açã
 
 const router: IRouter = Router();
 
-let _openai: OpenAI | null = null;
-function getOpenAI() {
-  if (!_openai) {
-    _openai = new OpenAI({
-      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? process.env.OPENAI_API_KEY ?? "dummy",
-      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-    });
-  }
-  return _openai;
-}
-
 router.post("/chat", checkFreeUsage, async (req, res) => {
   try {
     const {
@@ -284,7 +275,6 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
     }
 
     const lastUserMsg = messages.filter(m => m.role === "user").slice(-1)[0]?.content ?? "";
-    const openai = getOpenAI();
     const isAdvancedMatcher = ["teacher", "institution_admin", "government", "admin"];
 
     // ── Setup SSE ─────────────────────────────────────────────────────────────
@@ -314,11 +304,12 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
       + (perfCtx ? `\n\n${perfCtx}` : "")
       + (kbContext ? `\n\n${kbContext}` : "");
 
-    const chatModel = isAdvanced ? "gpt-4o" : "gpt-4o-mini";
+    const chatConfig = getModelConfig(isAdvanced ? "essay-correction" : "chat");
+    const chatModel = chatConfig.model;
     const maxCtxMessages = messages.slice(-16);
 
     // ── 1st call: tool-calling (non-streaming) ────────────────────────────────
-    const firstCall = await openai.chat.completions.create({
+    const firstCall = await openrouterClient.chat.completions.create({
       model: chatModel,
       stream: false,
       max_tokens: isAdvanced ? 1200 : 900,
@@ -375,7 +366,7 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
       }
 
       // ── 2nd call: generate follow-up text (streaming) ─────────────────────
-      const stream = await openai.chat.completions.create({
+      const stream = await openrouterClient.chat.completions.create({
         model: chatModel,
         stream: true,
         stream_options: { include_usage: true },
@@ -406,7 +397,7 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
 
       if (hasUnfulfilledPromise) {
         // Force a tool call — the AI promised to do something, make it execute
-        const forcedCall = await openai.chat.completions.create({
+        const forcedCall = await openrouterClient.chat.completions.create({
           model: chatModel,
           stream: false,
           max_tokens: isAdvanced ? 1200 : 900,
@@ -434,7 +425,7 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
             toolResults2.push({ role: "tool", tool_call_id: toolCall.id, content: result });
           }
           // Generate follow-up text after forced tool execution
-          const stream2 = await openai.chat.completions.create({
+          const stream2 = await openrouterClient.chat.completions.create({
             model: chatModel,
             stream: true,
             stream_options: { include_usage: true },
@@ -462,7 +453,7 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
         res.write(`data: ${JSON.stringify({ text: directContent })}\n\n`);
       } else {
         // ── Empty response fallback: stream a fresh call ───────────────────
-        const stream = await openai.chat.completions.create({
+        const stream = await openrouterClient.chat.completions.create({
           model: chatModel,
           stream: true,
           stream_options: { include_usage: true },

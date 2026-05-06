@@ -1,0 +1,42 @@
+modules = ["nodejs-24", "python-3.11", "postgresql-16"]
+
+[[artifacts]]
+id = "artifacts/api-server"
+
+[[artifacts]]
+id = "artifacts/mockup-sandbox"
+
+[deployment]
+router = "application"
+deploymentTarget = "autoscale"
+
+[deployment.postBuild]
+args = ["pnpm", "store", "prune"]
+env = { "CI" = "true" }
+
+[workflows]
+runButton = "Project"
+
+[agent]
+stack = "PNPM_WORKSPACE"
+expertMode = true
+integrations = ["stripe:1.0.0"]
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 20000
+
+[nix]
+channel = "stable-25_05"
+packages = ["zip"]
+
+[userenv]
+
+[userenv.shared]
+STRIPE_PREMIUM_PRICE_ID = "price_1TJlcQ89mXjTdwp9ZQjS8stW"
+ADMIN_USER_IDS = "user_3CRMRRUAr5yu3EaznIyz01zzyvO,44063371,user_3CPRUIQQ6kjPLn5npolHP36sWFW"
+ADMIN_EMAILS = "alex@pimenta.page,nexusatacado@gmail.com"
+DEEPSEEK_API_KEY = "sk-8873af00afaa489697bc63d4e7a76dfa"
+ELEVENLABS_API_KEY = "sk_72dec266767536636a4a57b86888713e2eeadddd4a47fd0f"
+
+[userenv.production]

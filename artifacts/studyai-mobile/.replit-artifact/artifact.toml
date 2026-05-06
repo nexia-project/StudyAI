@@ -1,0 +1,23 @@
+kind = "mobile"
+previewPath = "/studyai-mobile/"
+title = "StudyAI Mobile"
+version = "1.0.0"
+id = "artifacts/studyai-mobile"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/studyai-mobile/" ]
+localPort = 19460
+
+[services.development]
+run = "pnpm --filter @workspace/studyai-mobile run dev"
+
+[services.env]
+PORT = "19460"
+BASE_PATH = "/studyai-mobile/"

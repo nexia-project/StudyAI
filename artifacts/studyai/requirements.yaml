@@ -1,0 +1,13 @@
+packages:
+  "framer-motion": "For smooth transitions between form, loading, and result states"
+  "react-markdown": "To beautifully render the markdown study plan response from the API"
+  "remark-gfm": "For github flavored markdown support in react-markdown (tables, lists, etc)"
+  "lucide-react": "For high-quality icons"
+  "clsx": "For conditional class names"
+  "tailwind-merge": "For merging tailwind classes safely"
+
+images: []
+
+notes:
+  - "The API endpoint is POST /api/analisar and expects multipart/form-data"
+  - "The frontend handles the state machine: Form -> Loading -> Result"

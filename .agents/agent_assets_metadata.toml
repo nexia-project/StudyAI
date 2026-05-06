@@ -1,0 +1,19 @@
+uploads = []
+
+[[generated]]
+id = "KeEygRbH0WIbPhntDW-B3"
+uri = "file://artifacts/studyai-mobile/assets/images/icon.png"
+type = "image"
+title = "studyai mobile app icon"
+
+[[generated]]
+id = "GjW0f-Noi59AR3on4M0kp"
+uri = "file://artifacts/studyai-deck/public/hero.png"
+type = "image"
+title = "generated_image"
+
+[[outputs]]
+id = "vxPgBJsfqI2RuDa28gh8m"
+uri = "file://exports/StudyAI-Apresentacao.pdf"
+type = "pdf"
+title = "StudyAI — Apresentação Completa (17 Slides)"

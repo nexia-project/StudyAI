@@ -195,8 +195,8 @@ if (process.env.NODE_ENV === "production") {
 
   app.use(express.static(frontendDist, { maxAge: "1d", etag: true }));
 
-  // SPA fallback — qualquer rota não-API devolve index.html
-  app.get("*", (_req, res) => {
+  // SPA fallback — qualquer rota não-API devolve index.html (Express 5: use regex)
+  app.get(/.*/, (_req, res) => {
     res.sendFile(path.join(frontendDist, "index.html"));
   });
 }

@@ -901,9 +901,11 @@ router.post("/voice-tts", async (req, res) => {
     const audioBuffer = Buffer.from(await response.arrayBuffer());
     res.setHeader("Content-Type", "audio/mpeg");
     res.end(audioBuffer);
-  } catch (err) {
-    console.error("[TTS] erro:", err);
-    if (!res.headersSent) res.status(503).json({ erro: "tts_unavailable", fallback: "speech_synthesis" });
+  } catch (err: any) {
+    const msg = err?.message ?? String(err);
+    const status = err?.status ?? err?.statusCode ?? 0;
+    console.error("[TTS] erro:", status, msg);
+    if (!res.headersSent) res.status(503).json({ erro: "tts_unavailable", fallback: "speech_synthesis", _debug: `${status}: ${msg}` });
   }
 });
 

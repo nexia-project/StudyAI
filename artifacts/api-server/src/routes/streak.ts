@@ -4,18 +4,7 @@ import { sql, eq, desc } from "drizzle-orm";
 
 const router = Router();
 
-async function ensureTable() {
-  await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS user_activity (
-      id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
-      user_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      study_date VARCHAR(10) NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      UNIQUE(user_id, study_date)
-    )
-  `);
-}
-ensureTable().catch(console.error);
+// Table is created by ensureAllSchemas() at boot — no duplicate DDL needed here.
 
 // POST /api/activity — record today's study activity (upsert)
 router.post("/activity", async (req, res) => {

@@ -78,8 +78,8 @@ app.use(
 // ── Clerk proxy (must be BEFORE body parsers) ─────────────────────────────────
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
-// ── Clerk middleware ─────────────────────────────────────────────────────────
-app.use(clerkMiddleware());
+// ── Clerk middleware (only for /api — frontend uses Clerk client-side) ──────
+app.use("/api", clerkMiddleware());
 
 app.use(
   pinoHttp({

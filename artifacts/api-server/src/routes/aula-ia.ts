@@ -1,19 +1,11 @@
 import { Router, Request, Response } from "express";
-import Anthropic from "@anthropic-ai/sdk";
-import { openai, OR } from "../lib/aiClient";
+import { openai, openrouter, OR } from "../lib/aiClient";
 import { requireAuth } from "../middlewares/requireAuth";
 import { logAiUsage } from "../lib/aiCostLogger";
 import { cacheGet, cacheSave } from "../lib/semanticCache";
 import { incrementTopicFrequency } from "../lib/generativeMemory";
 
 const router = Router();
-
-// Claude: primário para geração de conteúdo educacional (mais didático e criativo)
-const claude = new Anthropic({
-  apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY ?? "dummy",
-  baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
-  timeout: 45_000, // 45s — suficiente para aula completa com max_tokens reduzido
-});
 
 // ─── Calibração de dificuldade conforme o estilo escolhido pelo aluno ─────────
 function difficultyProfile(estilo: string): {
@@ -148,17 +140,19 @@ RETORNE SOMENTE JSON VÁLIDO, sem texto extra, sem markdown, sem blocos de códi
   ]
 }`;
 
-  const message = await claude.messages.create({
-    model: "claude-sonnet-4-5",
+  const completion = await openrouter.chat.completions.create({
+    model: OR.claude,
     max_tokens: 2000,
-    messages: [{ role: "user", content: `${systemPrompt}\n\nCrie uma aula sobre: ${topico.trim()}` }],
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: `Crie uma aula sobre: ${topico.trim()}` },
+    ],
   });
 
-  const block = message.content[0];
-  logAiUsage({ feature: "lousa-aula", model: "claude-sonnet-4-5", tokensIn: message.usage?.input_tokens ?? 0, tokensOut: message.usage?.output_tokens ?? 0 });
-  if (block.type !== "text") throw new Error("Claude retornou bloco não-texto");
-  const extracted = extractJson(block.text);
-  if (!extracted) throw new Error("Claude retornou JSON inválido ou vazio");
+  const content = completion.choices[0]?.message?.content ?? "";
+  logAiUsage({ feature: "lousa-aula", model: OR.claude, tokensIn: completion.usage?.prompt_tokens ?? 0, tokensOut: completion.usage?.completion_tokens ?? 0 });
+  const extracted = extractJson(content);
+  if (!extracted) throw new Error("Modelo retornou JSON inválido ou vazio");
   return extracted;
 }
 
@@ -304,21 +298,19 @@ Não use markdown nem listas. Termine com uma frase de encorajamento.`;
     let resposta = "";
 
     try {
-      const message = await claude.messages.create({
-        model: "claude-haiku-4-5",
+      const completion = await openrouter.chat.completions.create({
+        model: OR.mini,
         max_tokens: 300,
+        temperature: 0.8,
         messages: [
-          {
-            role: "user",
-            content: `${systemContent}\n\nPergunta do aluno: ${pergunta}`,
-          },
+          { role: "system", content: systemContent },
+          { role: "user", content: pergunta },
         ],
       });
-      const block = message.content[0];
-      resposta = block.type === "text" ? block.text : "";
-      logAiUsage({ feature: "lousa-pergunta", model: "claude-haiku-4-5", tokensIn: message.usage?.input_tokens ?? 0, tokensOut: message.usage?.output_tokens ?? 0 });
+      resposta = completion.choices[0]?.message?.content ?? "";
+      logAiUsage({ feature: "lousa-pergunta", model: OR.mini, tokensIn: completion.usage?.prompt_tokens ?? 0, tokensOut: completion.usage?.completion_tokens ?? 0 });
     } catch {
-      // Fallback para OpenAI mini
+      // Fallback para openai direto
       const completion = await openai.chat.completions.create({
         model: OR.fast,
         messages: [
@@ -329,7 +321,7 @@ Não use markdown nem listas. Termine com uma frase de encorajamento.`;
         max_tokens: 250,
       });
       resposta = completion.choices[0].message.content ?? "";
-      logAiUsage({ feature: "lousa-pergunta", model: "gpt-4o-mini", tokensIn: completion.usage?.prompt_tokens ?? 0, tokensOut: completion.usage?.completion_tokens ?? 0 });
+      logAiUsage({ feature: "lousa-pergunta", model: OR.fast, tokensIn: completion.usage?.prompt_tokens ?? 0, tokensOut: completion.usage?.completion_tokens ?? 0 });
     }
 
     res.json({ resposta });

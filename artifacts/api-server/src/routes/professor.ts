@@ -36,8 +36,8 @@ const openai = new OpenAI({
 });
 // gptChat → OpenRouter (DeepSeek Flash — rápido e barato)
 const gptChat = openrouter;
-const CHAT_MODEL = OR.fast;               // DeepSeek V4 Flash — alunos
-const CHAT_MODEL_ADVANCED = OR.pro;      // DeepSeek V4 Pro — professores/admin
+const CHAT_MODEL = OR.mini;              // GPT-4o-mini — alunos (rápido e barato)
+const CHAT_MODEL_ADVANCED = OR.pro;     // GPT-4o — professores/admin (qualidade)
 
 // ─── Search knowledge base + Wikipedia — ACESSO TOTAL ────────────────────────
 async function searchKnowledgeBase(query: string, topK = 5): Promise<string> {
@@ -891,7 +891,7 @@ router.post("/voice-tts", async (req, res) => {
     if (ttsText.length > 4096) ttsText = ttsText.slice(0, 4096);
 
     const response = await openai.audio.speech.create({
-      model: "tts-1",
+      model: "gpt-4o-mini-tts",
       voice: "onyx",
       input: ttsText,
       speed: 1.1,

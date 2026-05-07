@@ -36,7 +36,7 @@ function buildMaterialHTML(title: string, raw: string): string {
 // ─── Clients ──────────────────────────────────────────────────────────────────
 // Geração de conteúdo pesado (planos, materiais, HTML) → OpenRouter (mais barato)
 function getGpt() { return openrouter; }
-const CONTENT_MODEL = OR.pro; // DeepSeek V4 Pro — substitui gpt-4o para conteúdo
+const CONTENT_MODEL = OR.claude; // Claude Sonnet via OpenRouter — qualidade educacional
 
 /**
  * Gera HTML de material pesado.

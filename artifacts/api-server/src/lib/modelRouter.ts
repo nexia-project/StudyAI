@@ -1,28 +1,27 @@
 /**
  * StudyAI — Model Router
- * Centralized AI model selection per task type.
+ * Seleção centralizada de modelos por tipo de tarefa.
  *
- * Distribution target:
- *   70%  gpt-4o-mini   — fast Q&A, flashcards, chat, summaries
- *   25%  gpt-4o        — essay correction, document analysis, OCR
- *    4%  o1-mini       — math / physics / chemistry reasoning
- *    1%  o1-preview    — complex multi-step reasoning (reserved)
- *   ---  claude-sonnet — educational content, creative, long docs
+ * Distribuição (custo-benefício):
+ *   ~65%  openai/gpt-4o-mini  — chat, Q&A, flashcards, resumos, materiais
+ *   ~25%  openai/gpt-4o       — redação, documentos, visão/OCR
+ *   ~ 8%  anthropic/claude-*  — geração de conteúdo educacional pesado
+ *   ~ 2%  deepseek-r1-0528    — matemática, física, química (raciocínio)
  */
 
 export type TaskType =
   | "lesson-generation"   // Claude: aula didática completa
   | "essay-correction"    // gpt-4o: análise complexa de redação
   | "document-analysis"   // gpt-4o: documentos longos, OCR
-  | "math-reasoning"      // o1-mini: matemática, física, química
-  | "deep-reasoning"      // o1-preview: raciocínio multi-etapa
+  | "math-reasoning"      // deepseek-r1: matemática, física, química
+  | "deep-reasoning"      // gpt-4o: raciocínio complexo
   | "fast-qa"             // gpt-4o-mini: Q&A rápida
   | "flashcard"           // gpt-4o-mini: geração de flashcards
   | "summary"             // gpt-4o-mini: resumos
   | "creative"            // Claude: conteúdo criativo educacional
   | "chat";               // gpt-4o-mini: conversação
 
-export type Provider = "openai" | "anthropic";
+export type Provider = "openrouter" | "openai";
 
 export type ModelConfig = {
   model: string;
@@ -36,8 +35,8 @@ export type ModelConfig = {
 
 export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
   "lesson-generation": {
-    provider: "anthropic",
-    model: "claude-sonnet-4-6",
+    provider: "openrouter",
+    model: "anthropic/claude-sonnet-4",
     maxTokens: 2500,
     temperature: 0.8,
     supportsSystemRole: true,
@@ -45,8 +44,8 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
     supportsTemperature: true,
   },
   "creative": {
-    provider: "anthropic",
-    model: "claude-sonnet-4-6",
+    provider: "openrouter",
+    model: "anthropic/claude-sonnet-4",
     maxTokens: 2000,
     temperature: 0.9,
     supportsSystemRole: true,
@@ -54,8 +53,8 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
     supportsTemperature: true,
   },
   "essay-correction": {
-    provider: "openai",
-    model: "gpt-4o",
+    provider: "openrouter",
+    model: "openai/gpt-4o",
     maxTokens: 2048,
     temperature: 0.4,
     supportsSystemRole: true,
@@ -63,8 +62,8 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
     supportsTemperature: true,
   },
   "document-analysis": {
-    provider: "openai",
-    model: "gpt-4o",
+    provider: "openrouter",
+    model: "openai/gpt-4o",
     maxTokens: 2048,
     temperature: 0.3,
     supportsSystemRole: true,
@@ -72,24 +71,25 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
     supportsTemperature: true,
   },
   "math-reasoning": {
-    provider: "openai",
-    model: "o1-mini",
+    provider: "openrouter",
+    model: "deepseek/deepseek-r1-0528",
     maxTokens: 3000,
-    supportsSystemRole: false,
+    supportsSystemRole: true,
     supportsJsonMode: false,
     supportsTemperature: false,
   },
   "deep-reasoning": {
-    provider: "openai",
-    model: "o1-preview",
+    provider: "openrouter",
+    model: "openai/gpt-4o",
     maxTokens: 4096,
-    supportsSystemRole: false,
-    supportsJsonMode: false,
-    supportsTemperature: false,
+    temperature: 0.4,
+    supportsSystemRole: true,
+    supportsJsonMode: true,
+    supportsTemperature: true,
   },
   "fast-qa": {
-    provider: "openai",
-    model: "gpt-4o-mini",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
     maxTokens: 1024,
     temperature: 0.7,
     supportsSystemRole: true,
@@ -97,8 +97,8 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
     supportsTemperature: true,
   },
   "flashcard": {
-    provider: "openai",
-    model: "gpt-4o-mini",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
     maxTokens: 1200,
     temperature: 0.7,
     supportsSystemRole: true,
@@ -106,8 +106,8 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
     supportsTemperature: true,
   },
   "summary": {
-    provider: "openai",
-    model: "gpt-4o-mini",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
     maxTokens: 1500,
     temperature: 0.5,
     supportsSystemRole: true,
@@ -115,8 +115,8 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
     supportsTemperature: true,
   },
   "chat": {
-    provider: "openai",
-    model: "gpt-4o-mini",
+    provider: "openrouter",
+    model: "openai/gpt-4o-mini",
     maxTokens: 1024,
     temperature: 0.7,
     supportsSystemRole: true,
@@ -125,7 +125,7 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
   },
 };
 
-/** Subjects that benefit from o1-mini's reasoning capabilities */
+/** Matérias que se beneficiam de DeepSeek R1 (raciocínio matemático) */
 const MATH_SCIENCE_SUBJECTS = new Set([
   "matemática", "matematica",
   "física", "fisica",
@@ -141,16 +141,16 @@ const MATH_SCIENCE_SUBJECTS = new Set([
 ]);
 
 /**
- * Detect if a subject warrants the math-reasoning (o1-mini) model.
+ * Detecta se uma matéria precisa do modelo de raciocínio (DeepSeek R1).
  */
 export function isMathScienceSubject(materia: string): boolean {
   return MATH_SCIENCE_SUBJECTS.has(materia.toLowerCase().trim());
 }
 
 /**
- * Pick the best task type for a given simulado subject.
- * Math/science → "math-reasoning" (o1-mini)
- * Others       → "fast-qa" (gpt-4o-mini)
+ * Escolhe o tipo de tarefa ideal para um simulado.
+ * Exatas → "math-reasoning" (DeepSeek R1)
+ * Humanas → "fast-qa" (GPT-4o-mini)
  */
 export function pickSimuladoTaskType(materia: string): TaskType {
   return isMathScienceSubject(materia) ? "math-reasoning" : "fast-qa";

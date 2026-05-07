@@ -380,12 +380,8 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
         return false;
       };
       return [
-        { id: "deepseek",   ok: !!process.env.DEEPSEEK_API_KEY },
-        { id: "anthropic",  ok: hasIntegration("AI_INTEGRATIONS_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY") },
         { id: "openai",     ok: hasIntegration("AI_INTEGRATIONS_OPENAI_API_KEY",     "OPENAI_API_KEY") },
-        { id: "gemini",     ok: hasIntegration("AI_INTEGRATIONS_GEMINI_API_KEY",     "GEMINI_API_KEY") },
         { id: "openrouter", ok: hasIntegration("AI_INTEGRATIONS_OPENROUTER_API_KEY", "OPENROUTER_API_KEY") },
-        { id: "elevenlabs", ok: !!process.env.ELEVENLABS_API_KEY },
       ];
     })(),
     trilhaBySubject: trilhaRows.map((r: any) => ({ subject: r.subject, students: r.cnt, avgLevel: r.avg_level, maxLevel: r.max_level })),

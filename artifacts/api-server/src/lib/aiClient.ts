@@ -1,8 +1,16 @@
 /**
  * StudyAI — Central AI Client
- * Chat completions → OpenRouter (Claude Sonnet + DeepSeek).
- * Heavy content → Claude Sonnet via OpenRouter (mesmo interface do antigo Gemini).
- * Whisper + TTS → OpenAI Replit proxy.
+ *
+ * Distribuição de modelos (custo-benefício):
+ *   mini / fast  → openai/gpt-4o-mini      — chat, Q&A, flashcards, resumos, materiais (barato)
+ *   pro / premium→ openai/gpt-4o           — redação, visão, análise de documentos (qualidade)
+ *   reasoning    → deepseek/deepseek-r1-0528 — matemática, física, química (raciocínio)
+ *   claude       → anthropic/claude-sonnet-4 — conteúdo educacional pesado (máxima qualidade)
+ *   claudeFast   → anthropic/claude-3-haiku  — Claude rápido e barato
+ *
+ * Dois clientes apenas:
+ *   openrouter   — TODOS os chat.completions (GPT, Claude, DeepSeek via OpenRouter)
+ *   whisperClient— APENAS Whisper (STT) e TTS (OpenAI direto)
  */
 import OpenAI from "openai";
 
@@ -16,7 +24,7 @@ export const openrouter = new OpenAI({
   },
 });
 
-// ── OpenAI proxy — Whisper (transcrição) + TTS (voz) ─────────────────────────
+// ── OpenAI direto — Whisper (transcrição) + TTS (voz do Tiagão) ──────────────
 export const whisperClient = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? "dummy",
@@ -24,13 +32,21 @@ export const whisperClient = new OpenAI({
 
 // ── Model constants ───────────────────────────────────────────────────────────
 export const OR = {
-  fast:       "deepseek/deepseek-v4-flash",      // rápido e barato
-  pro:        "deepseek/deepseek-v4-pro",         // alta qualidade
-  reasoning:  "deepseek/deepseek-r1-0528",        // raciocínio
-  materials:  "deepseek/deepseek-chat-v3-0324",   // conteúdo longo
-  premium:    "openai/gpt-4o",                    // GPT-4o (visão + premium)
-  claude:     "anthropic/claude-sonnet-4",        // geração de conteúdo pesado
-  claudeFast: "anthropic/claude-3-haiku",         // Claude rápido
+  // Rápido e barato — maioria das tarefas
+  mini:       "openai/gpt-4o-mini",
+  fast:       "openai/gpt-4o-mini",          // alias de mini
+  materials:  "openai/gpt-4o-mini",          // resumos e materiais
+
+  // Qualidade — análise complexa, redação, visão
+  pro:        "openai/gpt-4o",
+  premium:    "openai/gpt-4o",               // alias de pro (visão)
+
+  // Raciocínio — matemática, física, química
+  reasoning:  "deepseek/deepseek-r1-0528",
+
+  // Claude via OpenRouter — conteúdo educacional pesado
+  claude:     "anthropic/claude-sonnet-4",
+  claudeFast: "anthropic/claude-3-haiku",
 } as const;
 
 export type ORModel = (typeof OR)[keyof typeof OR];
@@ -41,13 +57,13 @@ export const openaiProxy = whisperClient;
 
 /**
  * generateWithGemini — mantido para compatibilidade retroativa.
- * Agora usa Claude Sonnet via OpenRouter (mesma interface, mesmo resultado).
+ * Usa Claude Sonnet via OpenRouter — melhor qualidade para conteúdo educacional.
  * Chamado por: notebook.ts, studio-ia.ts, tiagao-agent.ts
  */
 export async function generateWithGemini(
   systemPrompt: string,
   userPrompt: string,
-  maxOutputTokens = 16000,
+  maxOutputTokens = 8000,
   sourceContext?: string,
 ): Promise<string> {
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [

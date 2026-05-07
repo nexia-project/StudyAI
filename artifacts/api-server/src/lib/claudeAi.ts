@@ -1,33 +1,22 @@
 /**
- * Cliente Claude compartilhado + helpers de geração premium para o StudyAI.
+ * StudyAI — Claude helpers (via OpenRouter — sem SDK Anthropic direto)
  *
- * Estratégia:
- *   - CLAUDE_OPUS    → conteúdo editorial premium (provas, slides, redação)
- *   - CLAUDE_SONNET  → tarefas estruturadas rápidas (banco, copilot, research)
- *   - GPT-4o fallback final se Claude indisponível
+ * Estratégia de modelos:
+ *   CLAUDE_OPUS    → conteúdo editorial premium (provas, slides, redação)
+ *   CLAUDE_SONNET  → tarefas estruturadas rápidas (banco, copilot, research)
+ *   Fallback final → gpt-4o via OpenRouter se Claude indisponível
  *
  * Helpers:
- *   - claudeText(model, system, user, maxTokens)   → texto bruto
- *   - claudeJson<T>({ system, user, ... })          → JSON tipado com fallback robusto
+ *   claudeText(model, system, user, maxTokens)   → texto bruto
+ *   claudeJson<T>({ system, user, ... })          → JSON tipado com fallback robusto
+ *   claudeChat({ system, user, history, ... })    → texto livre com histórico
  */
 
-import Anthropic from "@anthropic-ai/sdk";
-import OpenAI from "openai";
+import { openrouter } from "./aiClient";
 
-export const CLAUDE_OPUS = "claude-opus-4-7";
-export const CLAUDE_SONNET = "claude-sonnet-4-6";
-
-export const claude = new Anthropic({
-  apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY ?? "dummy",
-  baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
-  timeout: 90_000,
-});
-
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? process.env.OPENAI_API_KEY ?? "dummy",
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  timeout: 90_000,
-});
+// Modelos Claude via OpenRouter (prefixo anthropic/)
+export const CLAUDE_OPUS   = "anthropic/claude-opus-4-5";
+export const CLAUDE_SONNET = "anthropic/claude-sonnet-4";
 
 function jsonClean(raw: string): string {
   return raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
@@ -44,34 +33,36 @@ export function extractJson(raw: string): string {
   return cleaned;
 }
 
-/** Chama Claude e devolve o texto bruto da primeira content block. */
+/** Chama Claude via OpenRouter e devolve o texto bruto. */
 export async function claudeText(
   model: string,
   system: string,
   user: string,
   maxTokens = 4096,
 ): Promise<string> {
-  const message = await claude.messages.create({
+  const completion = await openrouter.chat.completions.create({
     model,
     max_tokens: maxTokens,
-    system,
-    messages: [{ role: "user", content: user }],
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
   });
-  const block = message.content[0];
-  if (!block || block.type !== "text") throw new Error("Claude retornou bloco não-texto");
-  return block.text;
+  const content = completion.choices[0]?.message?.content;
+  if (!content) throw new Error("OpenRouter/Claude retornou resposta vazia");
+  return content;
 }
 
 interface ClaudeJsonOpts {
   system: string;
   user: string;
-  /** Modelo primário. Default: Sonnet (rápido e capaz). */
+  /** Modelo primário. Default: Sonnet. */
   primary?: string;
   /** Modelo de fallback Claude. Default: Sonnet se primary=Opus, senão pula. */
   fallback?: string;
   /** Max tokens de saída. Default: 4096. */
   maxTokens?: number;
-  /** Modelo OpenAI fallback final. Default: gpt-4o. */
+  /** Modelo OpenRouter fallback final. Default: gpt-4o. */
   openaiFallback?: string;
 }
 
@@ -86,7 +77,7 @@ export async function claudeJson<T = any>(opts: ClaudeJsonOpts): Promise<T> {
     primary = CLAUDE_SONNET,
     fallback,
     maxTokens = 4096,
-    openaiFallback = "gpt-4o",
+    openaiFallback = "openai/gpt-4o",
   } = opts;
 
   const fallbackChain = fallback ?? (primary === CLAUDE_OPUS ? CLAUDE_SONNET : null);
@@ -109,8 +100,8 @@ export async function claudeJson<T = any>(opts: ClaudeJsonOpts): Promise<T> {
     }
   }
 
-  // 3) GPT-4o fallback final
-  const completion = await openai.chat.completions.create({
+  // 3) GPT-4o fallback final via OpenRouter
+  const completion = await openrouter.chat.completions.create({
     model: openaiFallback,
     temperature: 0.6,
     response_format: { type: "json_object" },
@@ -140,29 +131,28 @@ export async function claudeChat(opts: {
     history = [],
     primary = CLAUDE_SONNET,
     maxTokens = 2048,
-    openaiFallback = "gpt-4o",
+    openaiFallback = "openai/gpt-4o",
   } = opts;
 
-  // 1) Claude
+  // 1) Claude via OpenRouter
   try {
-    const messages = [
-      ...history.map(h => ({ role: h.role, content: h.content })),
-      { role: "user" as const, content: user },
-    ];
-    const message = await claude.messages.create({
+    const completion = await openrouter.chat.completions.create({
       model: primary,
       max_tokens: maxTokens,
-      system,
-      messages,
+      messages: [
+        { role: "system", content: system },
+        ...history.map(h => ({ role: h.role as "user" | "assistant", content: h.content })),
+        { role: "user", content: user },
+      ],
     });
-    const block = message.content[0];
-    if (block && block.type === "text") return block.text;
+    const content = completion.choices[0]?.message?.content;
+    if (content) return content;
   } catch (err) {
     console.warn(`[claudeChat] ${primary} falhou:`, (err as Error)?.message ?? err);
   }
 
-  // 2) GPT-4o
-  const completion = await openai.chat.completions.create({
+  // 2) GPT-4o fallback via OpenRouter
+  const completion = await openrouter.chat.completions.create({
     model: openaiFallback,
     temperature: 0.6,
     messages: [

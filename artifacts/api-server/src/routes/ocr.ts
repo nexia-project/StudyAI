@@ -44,9 +44,9 @@ Regras:
       },
     ];
 
-    // gpt-4o-mini: fast, cheap, multimodal — sufficient for OCR/explain
+    // gpt-4o (pro): vision-capable on OpenRouter — gpt-4o-mini has no image endpoints
     const completion = await openrouter.chat.completions.create({
-      model: OR.mini,
+      model: OR.pro,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userContent },

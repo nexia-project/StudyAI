@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import path from "path";
+import { existsSync } from "fs";
 import pinoHttp from "pino-http";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
@@ -179,11 +180,11 @@ app.use("/api/aula-ia/generate", heavyAiLimiter);
 
 app.use("/api", generalLimiter);
 
-// ── Optional auth: sets req.userId for authenticated requests ─────────────────
-app.use(optionalAuth);
+// ── Optional auth: sets req.userId for authenticated requests (only for /api) ──
+app.use("/api", optionalAuth);
 
-// ── Activity tracking: fire-and-forget, records logins + daily activity ───────
-app.use(trackActivity);
+// ── Activity tracking: fire-and-forget, records logins + daily activity ────────
+app.use("/api", trackActivity);
 
 // ── Per-user rate limits em endpoints de geração IA ──────────────────────────
 // (após optionalAuth que resolve req.userId)
@@ -204,7 +205,7 @@ if (process.env.NODE_ENV === "production") {
     ?? path.resolve(process.cwd(), "artifacts/studyai/dist/public");
 
   const indexHtml = path.join(frontendDist, "index.html");
-  const distExists = (() => { try { return require("fs").existsSync(indexHtml); } catch { return false; } })();
+  const distExists = existsSync(indexHtml);
 
   if (distExists) {
     app.use(express.static(frontendDist, { maxAge: "1d", etag: true }));

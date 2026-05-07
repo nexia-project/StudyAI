@@ -816,7 +816,7 @@ router.post("/notebook/upload-image", upload.single("image"), async (req: Reques
     const b64 = file.buffer.toString("base64");
     const mime = file.mimetype || "image/jpeg";
     const completion = await gpt.chat.completions.create({
-      model: OR.fast,
+      model: OR.pro,
       max_tokens: 2500,
       messages: [
         { role: "system", content: "Você extrai TODO o texto visível na imagem (OCR), preservando estrutura, parágrafos, listas, fórmulas. Se for diagrama/gráfico, descreva exaustivamente. Responda apenas com o conteúdo extraído, sem comentários." },

@@ -523,13 +523,13 @@ router.post("/analisar", checkFreeUsage, (req, res, next) => {
     // ── Unified OpenAI call (streaming or not) ─────────────────────────
     let aiResponse: string;
 
-    // Use gpt-4o for vision (images) — reliable multimodal on OpenRouter.
-    // Use claude-3.5-sonnet for text-only (PDF/DOCX/typed) — best quality.
+    // Use gpt-4o-mini for vision (images) — fast, cheap, multimodal on OpenRouter.
+    // Use claude-3.5-sonnet for text-only (PDF/DOCX/typed) — best quality for long text.
     const hasVision = messages.some(
       (m) => Array.isArray(m.content) && m.content.some((p: any) => p.type === "image_url"),
     );
-    const chosenModel = hasVision ? OR.pro : OR.claude;
-    const MAX_TOKENS = 8000;
+    const chosenModel = hasVision ? OR.mini : OR.claude;
+    const MAX_TOKENS = hasVision ? 6000 : 8000;
 
     if (wantsStream) {
       sendSSE({ type: "status", message: "Analisando conteúdo..." });

@@ -44,14 +44,14 @@ Regras:
       },
     ];
 
-    // gpt-4o has reliable vision support on OpenRouter for image analysis
+    // gpt-4o-mini: fast, cheap, multimodal — sufficient for OCR/explain
     const completion = await openrouter.chat.completions.create({
-      model: OR.pro,
+      model: OR.mini,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userContent },
       ],
-      max_tokens: 1500,
+      max_tokens: 1200,
     });
 
     const explicacao = completion.choices[0]?.message?.content ?? "";

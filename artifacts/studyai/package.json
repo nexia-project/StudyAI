@@ -74,6 +74,10 @@
     "wouter": "^3.3.5",
     "zod": "catalog:"
   },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-musl": "*",
+    "@rollup/rollup-linux-x64-gnu": "*"
+  },
   "dependencies": {
     "@clerk/localizations": "^4.5.3",
     "@clerk/react": "^6.4.5",

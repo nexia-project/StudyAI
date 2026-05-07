@@ -891,11 +891,10 @@ router.post("/voice-tts", async (req, res) => {
     if (ttsText.length > 4096) ttsText = ttsText.slice(0, 4096);
 
     const response = await openaiProxy.audio.speech.create({
-      model: "gpt-4o-mini-tts",
+      model: "tts-1",
       voice: "nova",
       input: ttsText,
       speed: 1.15,
-      instructions: "Fale em português brasileiro com sotaque carioca/paulistano natural, tom animado e entusiasmado de professor de cursinho. Ritmo vivo, nunca arrastado. Jamais use sotaque português europeu.",
     } as any);
 
     const audioBuffer = Buffer.from(await response.arrayBuffer());

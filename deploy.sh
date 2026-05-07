@@ -7,7 +7,9 @@ MSG=${1:-"update"}
 
 $GIT add -A
 $GIT commit -m "$MSG" 2>/dev/null || echo "(nada novo para commitar)"
-$GIT push origin HEAD:main --force
+
+# Sem --force para não quebrar o webhook do Railway
+$GIT push origin HEAD:main
 
 echo ""
-echo "Enviado! Railway vai atualizar em ~5 minutos."
+echo "Enviado! Railway vai atualizar em ~3-5 minutos."

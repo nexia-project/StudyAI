@@ -15,8 +15,8 @@
 import { openrouter } from "./aiClient";
 
 // Modelos Claude via OpenRouter (prefixo anthropic/)
-export const CLAUDE_OPUS   = "anthropic/claude-opus-4-5";
-export const CLAUDE_SONNET = "anthropic/claude-sonnet-4";
+export const CLAUDE_OPUS   = "anthropic/claude-3-opus";
+export const CLAUDE_SONNET = "anthropic/claude-3.5-sonnet";
 
 function jsonClean(raw: string): string {
   return raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();

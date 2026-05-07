@@ -50,7 +50,8 @@ export const OR = {
   reasoning:  "deepseek/deepseek-r1-0528",
 
   // Claude via OpenRouter — conteúdo educacional pesado
-  claude:     "anthropic/claude-sonnet-4",
+  // Use the stable 3.5-sonnet slug — claude-sonnet-4 is not yet on OR
+  claude:     "anthropic/claude-3.5-sonnet",
   claudeFast: "anthropic/claude-3-haiku",
 } as const;
 

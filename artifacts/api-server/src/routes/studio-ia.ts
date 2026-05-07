@@ -298,7 +298,7 @@ Crie a apresentação completa, no padrão editorial premium, retornando APENAS 
   // Geração: Claude Sonnet via OpenRouter (generateWithGemini) → OR.pro (fallback)
   // ──────────────────────────────────────────────────────────────────────────
   let raw = "";
-  let modelUsed = "anthropic/claude-sonnet-4";
+  let modelUsed = "anthropic/claude-3.5-sonnet";
   try {
     raw = await generateWithGemini(systemPrompt, userPrompt, 8000);
     if (!raw || raw.length < 100) throw new Error("Claude retornou conteúdo vazio");

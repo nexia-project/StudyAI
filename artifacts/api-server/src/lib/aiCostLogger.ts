@@ -14,8 +14,8 @@ const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   "openai/gpt-4o":              { input: 2.50,  output: 10.00 },
   "openai/gpt-4o-mini":        { input: 0.150, output: 0.600 },
   // ── OpenRouter — prefixo anthropic/ ──────────────────────────────────────
-  "anthropic/claude-sonnet-4":  { input: 3.00,  output: 15.00 },
-  "anthropic/claude-opus-4-5":  { input: 15.00, output: 75.00 },
+  "anthropic/claude-3.5-sonnet": { input: 3.00,  output: 15.00 },
+  "anthropic/claude-3-opus":     { input: 15.00, output: 75.00 },
   "anthropic/claude-3-haiku":   { input: 0.25,  output: 1.25  },
   // ── OpenRouter — DeepSeek ─────────────────────────────────────────────────
   "deepseek/deepseek-r1-0528":  { input: 0.50,  output: 2.18  },

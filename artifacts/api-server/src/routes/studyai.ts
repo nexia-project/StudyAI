@@ -448,12 +448,19 @@ router.post("/analisar", checkFreeUsage, (req, res, next) => {
       const MAX_TEXT_CHARS = 12_000;
       let accumulatedTextChars = 0;
 
+      // Max image size ~1 MB base64 to avoid OpenRouter payload limits
+      const MAX_IMAGE_BYTES = 1_048_576;
+
       for (const file of files) {
         if (isImage(file.mimetype)) {
+          // Truncate oversized images so the request doesn't time out or get rejected
+          const buf = file.buffer.length > MAX_IMAGE_BYTES
+            ? file.buffer.slice(0, MAX_IMAGE_BYTES)
+            : file.buffer;
           imageParts.push({
             type: "image_url",
             image_url: {
-              url: `data:${file.mimetype};base64,${file.buffer.toString("base64")}`,
+              url: `data:${file.mimetype};base64,${buf.toString("base64")}`,
             },
           });
         } else {
@@ -492,7 +499,12 @@ router.post("/analisar", checkFreeUsage, (req, res, next) => {
 
       messages = [
         { role: "system", content: finalSystemPrompt },
-        { role: "user", content: hasImages ? content : content.filter((p) => p.type === "text") as ContentPart[] },
+        {
+          role: "user",
+          content: hasImages
+            ? content
+            : (content.filter((p) => p.type === "text") as ContentPart[]),
+        },
       ];
     } else if (textoFinal) {
       const textoTruncado = textoFinal.slice(0, 12_000);
@@ -511,14 +523,22 @@ router.post("/analisar", checkFreeUsage, (req, res, next) => {
     // ── Unified OpenAI call (streaming or not) ─────────────────────────
     let aiResponse: string;
 
+    // Use gpt-4o for vision (images) — reliable multimodal on OpenRouter.
+    // Use claude-3.5-sonnet for text-only (PDF/DOCX/typed) — best quality.
+    const hasVision = messages.some(
+      (m) => Array.isArray(m.content) && m.content.some((p: any) => p.type === "image_url"),
+    );
+    const chosenModel = hasVision ? OR.pro : OR.claude;
+    const MAX_TOKENS = 8000;
+
     if (wantsStream) {
       sendSSE({ type: "status", message: "Analisando conteúdo..." });
       const abortCtrl = new AbortController();
       res.on("close", () => abortCtrl.abort());
       const stream = await openrouter.chat.completions.create({
-        model: OR.claude,
+        model: chosenModel,
         messages: messages as any,
-        max_tokens: 4500,
+        max_tokens: MAX_TOKENS,
         stream: true,
       }, { signal: abortCtrl.signal }) as any;
       let accumulated = "";
@@ -538,9 +558,9 @@ router.post("/analisar", checkFreeUsage, (req, res, next) => {
       aiResponse = accumulated;
     } else {
       const response = await openrouter.chat.completions.create({
-        model: OR.claude,
+        model: chosenModel,
         messages: messages as any,
-        max_tokens: 4500,
+        max_tokens: MAX_TOKENS,
       }) as any;
       const raw = response.choices[0].message.content;
       if (!raw) {
@@ -551,7 +571,19 @@ router.post("/analisar", checkFreeUsage, (req, res, next) => {
     }
     // ──────────────────────────────────────────────────────────────────
 
-    const plano = JSON.parse(extractJson(aiResponse));
+    let plano: any;
+    try {
+      plano = JSON.parse(extractJson(aiResponse));
+    } catch (parseErr) {
+      console.error("[studyai] JSON parse falhou — resposta truncada?", parseErr, aiResponse.slice(-200));
+      if (wantsStream) {
+        sendSSE({ type: "error", message: "A IA retornou uma resposta incompleta. Tente novamente." });
+        res.end();
+      } else {
+        res.status(500).json({ erro: "Resposta da IA incompleta. Por favor, tente novamente." });
+      }
+      return;
+    }
 
     // Build the richest possible raw text to pass to the simulado generator.
     // Priority: (1) actual file text (PDF/DOCX), (2) typed text, (3) plan content itself.

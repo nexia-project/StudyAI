@@ -25,9 +25,9 @@ const OPENAI_MODELS: Record<TaskType, string> = {
 };
 
 const CLAUDE_MODELS: Record<TaskType, string> = {
-  fast:   "anthropic/claude-3-haiku",         // mais barato
-  deep:   "anthropic/claude-sonnet-4",        // qualidade alta
-  slides: "anthropic/claude-sonnet-4",        // estrutura de conteúdo
+  fast:   OR.claudeFast,   // claude-3-haiku — mais barato
+  deep:   OR.claude,       // claude-3.5-sonnet — qualidade alta
+  slides: OR.claude,       // claude-3.5-sonnet — estrutura de conteúdo
 };
 
 function hashKey(provider: string, type: string, message: string): string {

@@ -44,8 +44,9 @@ Regras:
       },
     ];
 
+    // gpt-4o has reliable vision support on OpenRouter for image analysis
     const completion = await openrouter.chat.completions.create({
-      model: OR.claude,
+      model: OR.pro,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userContent },

@@ -223,7 +223,7 @@ router.post("/aula-ia/gerar", requireAuth, async (req: Request, res: Response) =
 
     // ── Geração: Claude primary, GPT-4o-mini fallback ──
     let raw = "";
-    let modelUsed = "claude-sonnet-4-5";
+    let modelUsed = "anthropic/claude-3.5-sonnet";
 
     try {
       raw = await gerarAulaComClaude(topico, estilo, nivel);

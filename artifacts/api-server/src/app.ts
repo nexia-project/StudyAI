@@ -203,12 +203,22 @@ if (process.env.NODE_ENV === "production") {
   const frontendDist = process.env.FRONTEND_DIST_DIR
     ?? path.resolve(process.cwd(), "artifacts/studyai/dist/public");
 
-  app.use(express.static(frontendDist, { maxAge: "1d", etag: true }));
+  const indexHtml = path.join(frontendDist, "index.html");
+  const distExists = (() => { try { return require("fs").existsSync(indexHtml); } catch { return false; } })();
 
-  // SPA fallback — qualquer rota não-API devolve index.html (Express 5: use regex)
-  app.get(/.*/, (_req, res) => {
-    res.sendFile(path.join(frontendDist, "index.html"));
-  });
+  if (distExists) {
+    app.use(express.static(frontendDist, { maxAge: "1d", etag: true }));
+    // SPA fallback — qualquer rota não-API devolve index.html (Express 5: use regex)
+    app.get(/.*/, (_req, res, next) => {
+      res.sendFile(indexHtml, (err) => { if (err) next(err); });
+    });
+  } else {
+    // Frontend não buildado — avisa no log mas não quebra a API
+    console.warn("[static] Frontend dist não encontrado em:", frontendDist);
+    app.get(/.*/, (_req, res) => {
+      res.status(503).json({ status: "api-only", message: "Frontend not built. Access via study.ia.br after DNS propagates." });
+    });
+  }
 }
 
 // ── Global Error Handler — catch-all para erros não tratados ─────────────────

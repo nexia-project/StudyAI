@@ -19,7 +19,16 @@ import { isAdminUserAsync as _isAdminUserAsync } from "../lib/adminCheck";
 const isAdminUserAsync: any = _isAdminUserAsync;
 
 const router: IRouter = Router();
-const resend = new Resend(process.env.RESEND_API_KEY);
+
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (!_resend) {
+    const key = process.env.RESEND_API_KEY;
+    if (!key) throw new Error("RESEND_API_KEY não configurado — adicione nas variáveis do Railway");
+    _resend = new Resend(key);
+  }
+  return _resend;
+}
 
 // ============================================================
 // BOOTSTRAP — cria tabelas se não existirem
@@ -594,7 +603,7 @@ async function enviarEmail(opts: {
   const assunto = tpl.assunto(opts.vars);
   const html = tpl.html(opts.vars);
 
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await getResend().emails.send({
     from: "StudyAI <no-reply@study.ia.br>",
     to: [opts.email],
     subject: assunto,

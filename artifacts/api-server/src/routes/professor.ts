@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import OpenAI from "openai";
-import { openrouter, OR } from "../lib/aiClient";
+import { openrouter, openaiProxy, OR } from "../lib/aiClient";
 import multer from "multer";
 import { Readable } from "stream";
 import { db } from "@workspace/db";
@@ -890,11 +890,12 @@ router.post("/voice-tts", async (req, res) => {
       .replace(/\*\*/g, "").replace(/\n+/g, " ").replace(/\s+/g, " ").trim();
     if (ttsText.length > 4096) ttsText = ttsText.slice(0, 4096);
 
-    const response = await openai.audio.speech.create({
+    const response = await openaiProxy.audio.speech.create({
       model: "gpt-4o-mini-tts",
-      voice: "onyx",
+      voice: "nova",
       input: ttsText,
-      speed: 1.1,
+      speed: 1.15,
+      instructions: "Fale em português brasileiro com sotaque carioca/paulistano natural, tom animado e entusiasmado de professor de cursinho. Ritmo vivo, nunca arrastado. Jamais use sotaque português europeu.",
     } as any);
 
     const audioBuffer = Buffer.from(await response.arrayBuffer());

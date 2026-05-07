@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { getKnowledgeContext } from "../utils/knowledge-context";
 import multer from "multer";
-import { openai, OR } from "../lib/aiClient";
+import { openai, openaiProxy, OR } from "../lib/aiClient";
 // Import from lib directly to avoid pdf-parse's startup self-test (reads a file at load time)
 import pdfParse from "pdf-parse/lib/pdf-parse.js";
 import mammoth from "mammoth";
@@ -514,8 +514,8 @@ router.post("/analisar", checkFreeUsage, (req, res, next) => {
       sendSSE({ type: "status", message: "Analisando conteúdo..." });
       const abortCtrl = new AbortController();
       res.on("close", () => abortCtrl.abort());
-      const stream = await openai.chat.completions.create({
-        model: OR.pro,
+      const stream = await openaiProxy.chat.completions.create({
+        model: "gpt-4o",
         messages: messages as any,
         max_tokens: 4500,
         response_format: { type: "json_object" },
@@ -537,8 +537,8 @@ router.post("/analisar", checkFreeUsage, (req, res, next) => {
       }
       aiResponse = accumulated;
     } else {
-      const response = await openai.chat.completions.create({
-        model: OR.pro,
+      const response = await openaiProxy.chat.completions.create({
+        model: "gpt-4o",
         messages: messages as any,
         max_tokens: 4500,
         response_format: { type: "json_object" },

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import type OpenAI from "openai";
-import { openai, OR } from "../lib/aiClient";
+import { openaiProxy, OR } from "../lib/aiClient";
 
 const router: IRouter = Router();
 
@@ -44,8 +44,8 @@ Regras:
       },
     ];
 
-    const completion = await openai.chat.completions.create({
-      model: OR.pro,
+    const completion = await openaiProxy.chat.completions.create({
+      model: "gpt-4o",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userContent },

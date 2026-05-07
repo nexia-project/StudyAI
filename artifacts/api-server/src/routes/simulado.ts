@@ -3,6 +3,7 @@ import { openai, OR } from "../lib/aiClient";
 import { getKnowledgeContext } from "../utils/knowledge-context";
 import { logAiUsage } from "../lib/aiCostLogger";
 import { isMathScienceSubject } from "../lib/modelRouter";
+import { cacheGet, cacheSave } from "../lib/semanticCache";
 
 const router: IRouter = Router();
 

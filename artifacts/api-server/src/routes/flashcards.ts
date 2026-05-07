@@ -3,6 +3,7 @@ import { openai, OR } from "../lib/aiClient";
 import { checkFreeUsage } from "../lib/freeUsage";
 import { getKnowledgeContext } from "../utils/knowledge-context";
 import { logAiUsage } from "../lib/aiCostLogger";
+import { cacheGet, cacheSave } from "../lib/semanticCache";
 
 const router: IRouter = Router();
 

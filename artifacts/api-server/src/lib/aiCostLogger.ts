@@ -2,26 +2,29 @@ import { db } from "@workspace/db";
 import { aiCostLogTable } from "@workspace/db/schema";
 
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
-  "gpt-4o":                  { input: 2.50,   output: 10.00 },
-  "gpt-4o-mini":             { input: 0.150,  output: 0.600 },
-  "gpt-4o-mini-2024-07-18":  { input: 0.150,  output: 0.600 },
-  "gpt-4o-2024-08-06":       { input: 2.50,   output: 10.00 },
-  "claude-sonnet-4-5":       { input: 3.00,   output: 15.00 },
-  "claude-sonnet-4-6":       { input: 3.00,   output: 15.00 },
-  "claude-haiku-4-5":        { input: 0.25,   output: 1.25  },
-  "gemini-3-flash-preview":  { input: 0.075,  output: 0.30  },
-  "text-embedding-3-small":  { input: 0.020,  output: 0     },
-  "text-embedding-3-large":  { input: 0.130,  output: 0     },
-  "whisper-1":               { input: 0,      output: 0     },
-  "tts-1":                   { input: 0,      output: 0     },
-  "tts-1-hd":                { input: 0,      output: 0     },
-  "dall-e-3":                { input: 0,      output: 0     },
+  // ── OpenAI direto (e via OpenRouter) ─────────────────────────────────────
+  "gpt-4o":                     { input: 2.50,  output: 10.00 },
+  "gpt-4o-mini":                { input: 0.150, output: 0.600 },
+  "gpt-4o-mini-tts":            { input: 0,     output: 0     },
+  "whisper-1":                  { input: 0,     output: 0     },
+  "text-embedding-3-small":     { input: 0.020, output: 0     },
+  "text-embedding-3-large":     { input: 0.130, output: 0     },
+  "gpt-image-1":                { input: 0,     output: 0     },
+  // ── OpenRouter — prefixo openai/ ─────────────────────────────────────────
+  "openai/gpt-4o":              { input: 2.50,  output: 10.00 },
+  "openai/gpt-4o-mini":        { input: 0.150, output: 0.600 },
+  // ── OpenRouter — prefixo anthropic/ ──────────────────────────────────────
+  "anthropic/claude-sonnet-4":  { input: 3.00,  output: 15.00 },
+  "anthropic/claude-opus-4-5":  { input: 15.00, output: 75.00 },
+  "anthropic/claude-3-haiku":   { input: 0.25,  output: 1.25  },
+  // ── OpenRouter — DeepSeek ─────────────────────────────────────────────────
+  "deepseek/deepseek-r1-0528":  { input: 0.50,  output: 2.18  },
   // ── Fontes gratuitas — custo zero, rastreadas para medir economia ─────────
-  "wikipedia-api":           { input: 0,      output: 0     },
-  "bncc-local":              { input: 0,      output: 0     },
-  "fts-kb":                  { input: 0,      output: 0     },
-  "exatas-kb":               { input: 0,      output: 0     },
-  "cache-semantic":          { input: 0,      output: 0     },
+  "wikipedia-api":              { input: 0,     output: 0     },
+  "bncc-local":                 { input: 0,     output: 0     },
+  "fts-kb":                     { input: 0,     output: 0     },
+  "exatas-kb":                  { input: 0,     output: 0     },
+  "cache-semantic":             { input: 0,     output: 0     },
 };
 
 // Custo estimado que cada fonte gratuita poupa (em USD por chamada)

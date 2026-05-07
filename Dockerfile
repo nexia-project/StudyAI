@@ -15,15 +15,12 @@ COPY artifacts/api-server/package.json ./artifacts/api-server/
 COPY artifacts/studyai/package.json ./artifacts/studyai/
 
 # Install all dependencies
-RUN pnpm install --frozen-lockfile --ignore-scripts
+RUN pnpm install --frozen-lockfile
 
 # Copy all source
 COPY lib/ ./lib/
 COPY artifacts/api-server/ ./artifacts/api-server/
 COPY artifacts/studyai/ ./artifacts/studyai/
-
-# Fix rollup for Alpine — rebuild within pnpm context to install platform-specific native binary
-RUN pnpm rebuild rollup
 
 # ── Build frontend FIRST ──────────────────────────────────────────────────────
 ENV VITE_API_URL=https://api-production-6ff15.up.railway.app

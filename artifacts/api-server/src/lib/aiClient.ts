@@ -25,9 +25,14 @@ export const openrouter = new OpenAI({
 });
 
 // ── OpenAI direto — Whisper (transcrição) + TTS (voz do Tiagão) ──────────────
+// Fallback: se AI_INTEGRATIONS_OPENAI_* não estiver configurado (Railway),
+// usa OPENAI_API_KEY + endpoint padrão da OpenAI diretamente.
 export const whisperClient = new OpenAI({
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? "dummy",
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ?? "https://api.openai.com/v1",
+  apiKey:
+    process.env.AI_INTEGRATIONS_OPENAI_API_KEY ??
+    process.env.OPENAI_API_KEY ??
+    "dummy",
 });
 
 // ── Model constants ───────────────────────────────────────────────────────────

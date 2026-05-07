@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
 import { getKnowledgeContext } from "../utils/knowledge-context";
 import multer from "multer";
-import { openai, openaiProxy, OR } from "../lib/aiClient";
+import { openai, openrouter, OR } from "../lib/aiClient";
+import { extractJson } from "../lib/claudeAi";
 // Import from lib directly to avoid pdf-parse's startup self-test (reads a file at load time)
 import pdfParse from "pdf-parse/lib/pdf-parse.js";
 import mammoth from "mammoth";
@@ -514,11 +515,10 @@ router.post("/analisar", checkFreeUsage, (req, res, next) => {
       sendSSE({ type: "status", message: "Analisando conteúdo..." });
       const abortCtrl = new AbortController();
       res.on("close", () => abortCtrl.abort());
-      const stream = await openaiProxy.chat.completions.create({
-        model: "gpt-4o",
+      const stream = await openrouter.chat.completions.create({
+        model: OR.claude,
         messages: messages as any,
         max_tokens: 4500,
-        response_format: { type: "json_object" },
         stream: true,
       }, { signal: abortCtrl.signal }) as any;
       let accumulated = "";
@@ -537,11 +537,10 @@ router.post("/analisar", checkFreeUsage, (req, res, next) => {
       }
       aiResponse = accumulated;
     } else {
-      const response = await openaiProxy.chat.completions.create({
-        model: "gpt-4o",
+      const response = await openrouter.chat.completions.create({
+        model: OR.claude,
         messages: messages as any,
         max_tokens: 4500,
-        response_format: { type: "json_object" },
       }) as any;
       const raw = response.choices[0].message.content;
       if (!raw) {
@@ -552,7 +551,7 @@ router.post("/analisar", checkFreeUsage, (req, res, next) => {
     }
     // ──────────────────────────────────────────────────────────────────
 
-    const plano = JSON.parse(aiResponse);
+    const plano = JSON.parse(extractJson(aiResponse));
 
     // Build the richest possible raw text to pass to the simulado generator.
     // Priority: (1) actual file text (PDF/DOCX), (2) typed text, (3) plan content itself.

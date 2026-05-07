@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { logAiUsage } from "../lib/aiCostLogger";
 import { trackEvent } from "../lib/trackEvent";
+import { cacheGet, cacheSave } from "../lib/semanticCache";
 
 const router = Router();
 
@@ -88,6 +89,15 @@ router.post("/trilha/generate", requireAuth, async (req, res) => {
   const curriculo = getCurriculo(subject, lv);
   const subjectLabel = getSubjectLabel(subject);
 
+  const ckTrilha = `trilha|${subject}|${lv}`;
+  const cachedTrilha = await cacheGet("trilha", ckTrilha);
+  if (cachedTrilha.hit) {
+    try {
+      const q = JSON.parse(cachedTrilha.response);
+      return void res.json({ questions: q, curriculo, level: lv, subject });
+    } catch { /* gera novo */ }
+  }
+
   const systemPrompt = `Você é um gerador de questões de ${subjectLabel} para o ENEM e vestibulares brasileiros.
 Gere EXATAMENTE 10 questões de múltipla escolha no formato JSON especificado.
 Nível atual: ${curriculo}
@@ -131,7 +141,7 @@ Retorne SOMENTE este JSON:
     if (!parsed.questions || !Array.isArray(parsed.questions)) {
       return void res.status(500).json({ error: "Resposta inválida da IA" });
     }
-
+    cacheSave("trilha", ckTrilha, JSON.stringify(parsed.questions), OR.fast).catch(() => {});
     res.json({ questions: parsed.questions, curriculo, level: lv, subject });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

@@ -17,6 +17,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { openai as gpt, OR, generateWithGemini } from "../lib/aiClient";
 import { generateImageBuffer } from "@workspace/integrations-openai-ai-server/image";
 import { saveGeneratedContent } from "../lib/contentHistory";
+import { cacheGet, cacheSave } from "../lib/semanticCache";
 
 const router: IRouter = Router();
 
@@ -46,6 +47,12 @@ router.post("/studio-ia/mapa-mental", async (req: Request, res: Response) => {
     topico: string; materia?: string; nivel?: string;
   };
   if (!topico?.trim()) { res.status(400).json({ erro: "Tópico obrigatório" }); return; }
+
+  const ckMapa = `mapa-mental|${materia}|${topico}|${nivel}`;
+  const cachedMapa = await cacheGet("mapa-mental", ckMapa);
+  if (cachedMapa.hit) {
+    try { res.json(JSON.parse(cachedMapa.response)); return; } catch { /* gera novo */ }
+  }
 
   try {
     const system = `Você é um curador pedagógico brasileiro de elite, especialista em ${nivel}.
@@ -83,6 +90,7 @@ Regras OBRIGATÓRIAS:
     if (parsed.topics && !parsed.categories) {
       parsed.categories = [{ name: parsed.subject, topics: parsed.topics }];
     }
+    cacheSave("mapa-mental", ckMapa, JSON.stringify(parsed), OR.claude).catch(() => {});
     if (req.userId) {
       saveGeneratedContent({
         ownerId: req.userId, ownerRole: "student",
@@ -108,6 +116,12 @@ router.post("/studio-ia/infografico", async (req: Request, res: Response) => {
     orientacao?: "quadrado" | "paisagem" | "retrato";
   };
   if (!topico?.trim()) { res.status(400).json({ erro: "Tópico obrigatório" }); return; }
+
+  const ckInfo = `infografico|${materia}|${topico}|${nivel}|${estilo}|${orientacao}`;
+  const cachedInfo = await cacheGet("infografico", ckInfo);
+  if (cachedInfo.hit) {
+    try { res.json(JSON.parse(cachedInfo.response)); return; } catch { /* gera novo */ }
+  }
 
   try {
     const briefSystem = `Você é diretor de arte sênior de uma editora educacional premium criando o briefing de um infográfico sobre "${topico}" (${materia}, nível ${nivel}).
@@ -197,13 +211,9 @@ REQUIREMENTS:
       }).catch(() => {});
     }
 
-    res.json({
-      b64_json: b64,
-      mimeType: "image/png",
-      titulo: brief.titulo,
-      subtitulo: brief.subtitulo,
-      estilo, orientacao,
-    });
+    const infoPayload = { b64_json: b64, mimeType: "image/png", titulo: brief.titulo, subtitulo: brief.subtitulo, estilo, orientacao };
+    cacheSave("infografico", ckInfo, JSON.stringify(infoPayload), OR.claude).catch(() => {});
+    res.json(infoPayload);
   } catch (e: any) {
     console.error("studio-ia infografico:", e);
     res.status(500).json({ erro: e.message ?? "Erro ao gerar infográfico" });
@@ -217,6 +227,15 @@ router.post("/studio-ia/slides", async (req: Request, res: Response) => {
     topico: string; materia?: string; nivel?: string; comImagens?: boolean;
   };
   if (!topico?.trim()) { res.status(400).json({ erro: "Tópico obrigatório" }); return; }
+
+  // ── Cache semântico — slides sem imagens podem ser reutilizados ──────────
+  if (!comImagens) {
+    const ckSlides = `slides|${materia}|${topico}|${nivel}`;
+    const cachedSlides = await cacheGet("slides", ckSlides);
+    if (cachedSlides.hit) {
+      try { res.json(JSON.parse(cachedSlides.response)); return; } catch { /* gera novo */ }
+    }
+  }
 
   // ──────────────────────────────────────────────────────────────────────────
   // 🎓 PROMPT PROFISSIONAL — exige qualidade impecável, didática real,
@@ -315,6 +334,10 @@ Crie a apresentação completa, no padrão editorial premium, retornando APENAS 
   }
   parsed.slides = parsed.slides ?? [];
   parsed._model = modelUsed;
+  if (!comImagens) {
+    const ckSlidesSave = `slides|${materia}|${topico}|${nivel}`;
+    cacheSave("slides", ckSlidesSave, JSON.stringify(parsed), modelUsed).catch(() => {});
+  }
 
   // ────────────────────────────────────────────────────────────────────────
   // 🖼️ Imagens premium (gpt-image-1, quality:"high") — 6 primeiros slides

@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { openai, OR } from "../lib/aiClient";
 import { requireAuth } from "../middlewares/requireAuth";
 import { getKnowledgeContext } from "../utils/knowledge-context";
+import { cacheGet, cacheSave } from "../lib/semanticCache";
 
 const router: IRouter = Router();
 
@@ -39,6 +40,16 @@ router.post("/simulado-enem/gerar", requireAuth, async (req, res) => {
 
     const diaInfo = ENEM_DIAS[dia];
     const qtd = Math.min(Math.max(Number(quantidade), 5), 45);
+
+    const ckEnem = `simulado-enem|${dia}|${qtd}`;
+    const cachedEnem = await cacheGet("simulado-enem", ckEnem);
+    if (cachedEnem.hit) {
+      try {
+        const cached = JSON.parse(cachedEnem.response);
+        res.json({ ...cached, diaInfo, totalTempo: "5 horas e 30 minutos", totalQuestoes: qtd });
+        return;
+      } catch { /* gera novo */ }
+    }
 
     // ── Consulta automática BNCC + Wikipedia para cada área do ENEM ───────────
     const materiasPrincipais = diaInfo.materias;
@@ -117,6 +128,7 @@ RIGOR TÉCNICO: Toda questão deve ser tecnicamente irrefutável — fórmulas, 
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
     const data = JSON.parse(raw);
+    cacheSave("simulado-enem", ckEnem, JSON.stringify(data), OR.fast).catch(() => {});
 
     res.json({
       ...data,

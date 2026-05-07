@@ -3,6 +3,7 @@ import { openai, OR } from "../lib/aiClient";
 import { checkFreeUsage } from "../lib/freeUsage";
 import { getKnowledgeContext } from "../utils/knowledge-context";
 import { saveGeneratedContent } from "../lib/contentHistory";
+import { cacheGet, cacheSave } from "../lib/semanticCache";
 
 const router = Router();
 
@@ -55,6 +56,12 @@ router.post("/resumao", checkFreeUsage, async (req, res) => {
       return res.status(400).json({ error: "Conteúdo necessário para gerar resumão." });
     }
 
+    const ckResumo = `resumao|${materia ?? ""}|${(conteudoTexto || planoResumo || "").slice(0, 150)}`;
+    const cachedResumo = await cacheGet("resumao", ckResumo);
+    if (cachedResumo.hit) {
+      try { return res.json({ resumao: JSON.parse(cachedResumo.response) }); } catch { /* gera novo */ }
+    }
+
     const contexto = [
       materia ? `Matéria: ${materia}` : null,
       serie ? `Nível do aluno: ${serie}` : null,
@@ -95,6 +102,7 @@ router.post("/resumao", checkFreeUsage, async (req, res) => {
     if (!raw) return res.status(500).json({ error: "Sem resposta da IA." });
 
     const resumao = JSON.parse(raw);
+    cacheSave("resumao", ckResumo, raw, OR.materials).catch(() => {});
 
     // Salva no histórico universal (best-effort)
     if ((req as any).userId) {

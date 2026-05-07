@@ -8,10 +8,9 @@
  *   - POST /studio-ia/slides        → slides + (opcional) imagens IA por slide
  *
  * 🧠 Estratégia de IA:
- *   - SLIDES: Gemini 2.5 Flash (primary) → OR.pro (fallback)
- *   - INFOGRÁFICO (briefing): Gemini 2.5 Flash (primary)
- *   - MAPA MENTAL: Gemini 2.5 Flash (primary)
- *   - IMAGENS: gpt-image-1 quality="high" (resolução máxima)
+ *   - SLIDES / MAPA MENTAL / INFOGRÁFICO: Claude Sonnet via OpenRouter (generateWithGemini)
+ *   - Fallback: GPT-4o via OpenRouter
+ *   - IMAGENS: gpt-image-1 quality="high"
  */
 
 import { Router, type IRouter, type Request, type Response } from "express";
@@ -277,15 +276,15 @@ Nível: ${nivel}
 Crie a apresentação completa, no padrão editorial premium, retornando APENAS o JSON.`;
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Geração: Gemini 2.5 Flash → OR.pro (fallback único)
+  // Geração: Claude Sonnet via OpenRouter (generateWithGemini) → OR.pro (fallback)
   // ──────────────────────────────────────────────────────────────────────────
   let raw = "";
-  let modelUsed = "gemini-2.5-flash";
+  let modelUsed = "anthropic/claude-sonnet-4";
   try {
     raw = await generateWithGemini(systemPrompt, userPrompt, 8000);
-    if (!raw || raw.length < 100) throw new Error("Gemini retornou conteúdo vazio");
+    if (!raw || raw.length < 100) throw new Error("Claude retornou conteúdo vazio");
   } catch (gemErr) {
-    console.warn("[studio-ia/slides] Gemini falhou, usando OR.pro:", (gemErr as Error)?.message);
+    console.warn("[studio-ia/slides] Claude falhou, usando OR.pro:", (gemErr as Error)?.message);
     try {
       const completion = await gpt.chat.completions.create({
         model: OR.pro,

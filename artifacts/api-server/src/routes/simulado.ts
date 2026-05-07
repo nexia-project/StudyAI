@@ -46,6 +46,17 @@ router.post("/simulado", async (req, res) => {
       return;
     }
 
+    // ── Cache semântico — reusa simulado gerado para o mesmo conteúdo ─────────
+    const cacheKey = `${materia}|${serie}|${resumo.slice(0, 150)}`;
+    const cached = await cacheGet("simulado", cacheKey);
+    if (cached.hit) {
+      try {
+        const simulado = JSON.parse(cached.response);
+        res.json({ simulado });
+        return;
+      } catch { /* continua para gerar novo */ }
+    }
+
     // Keep questions fixed at 10 to ensure the response always fits within token budget.
     // More variation comes from the randomized formats and seed, not from quantity.
     const numQuestoes = 10;
@@ -92,37 +103,21 @@ Distribuição: ${targetDistribution.map((l, i) => `Q${i + 1}→${l}`).join(", "
 Formatos: ${shuffledFormats.map((f, i) => `Q${i + 1}:${f}`).join(" | ")}
 Gere 10 questões. Dificuldade crescente: Q1-3 fácil, Q4-6 médio, Q7-9 difícil, Q10 desafio.`;
 
-    // Exatas → o1-mini (raciocínio simbólico/matemático); demais → gpt-4o-mini
+    // Exatas → DeepSeek R1 (raciocínio matemático via OpenRouter); demais → GPT-4o-mini
     const useMathModel = isMathScienceSubject(materia);
-    const chosenModel = useMathModel ? "o1-mini" : "gpt-4o-mini";
+    const chosenModel = useMathModel ? OR.reasoning : OR.fast;
 
-    let response: Awaited<ReturnType<typeof openai.chat.completions.create>>;
-
-    if (useMathModel) {
-      // o1-mini não suporta: system role, temperature, response_format
-      // Combina system prompt + user content em uma única mensagem user
-      response = await openai.chat.completions.create({
-        model: OR.reasoning,
-        messages: [
-          {
-            role: "user",
-            content: `${enrichedSystemPrompt}\n\n${userContent}\n\nRetorne SOMENTE JSON válido sem markdown.`,
-          },
-        ],
-        max_completion_tokens: 3000,
-      } as Parameters<typeof openai.chat.completions.create>[0]);
-    } else {
-      response = await openai.chat.completions.create({
-        model: OR.fast,
-        messages: [
-          { role: "system", content: enrichedSystemPrompt },
-          { role: "user", content: userContent },
-        ],
-        max_tokens: 3000,
-        temperature: 1.0,
-        response_format: { type: "json_object" },
-      });
-    }
+    // DeepSeek R1 e GPT-4o-mini ambos suportam system role via OpenRouter
+    const response = await openai.chat.completions.create({
+      model: chosenModel,
+      messages: [
+        { role: "system", content: enrichedSystemPrompt },
+        { role: "user", content: userContent },
+      ],
+      max_tokens: 3000,
+      temperature: 0.9,
+      response_format: { type: "json_object" },
+    });
 
     const respAny = response as any;
     logAiUsage({ feature: "simulado", model: chosenModel, tokensIn: respAny.usage?.prompt_tokens ?? 0, tokensOut: respAny.usage?.completion_tokens ?? 0 });
@@ -151,6 +146,7 @@ Gere 10 questões. Dificuldade crescente: Q1-3 fácil, Q4-6 médio, Q7-9 difíci
       return;
     }
 
+    cacheSave("simulado", cacheKey, JSON.stringify(simulado), chosenModel).catch(() => {});
     res.json({ simulado });
   } catch (error) {
     req.log.error({ error }, "Erro ao gerar simulado");

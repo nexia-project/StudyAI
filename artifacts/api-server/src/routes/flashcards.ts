@@ -54,6 +54,16 @@ router.post("/flashcards", checkFreeUsage, async (req, res) => {
       return;
     }
 
+    // ── Cache semântico — evita chamar IA para o mesmo conteúdo ──────────────
+    const cacheKey = `${materia}|${serie}|${(diaTopicos || resumo).slice(0, 150)}`;
+    const cached = await cacheGet("flashcards", cacheKey);
+    if (cached.hit) {
+      try {
+        res.json(JSON.parse(cached.response));
+        return;
+      } catch { /* continua para gerar novo */ }
+    }
+
     const seed = Math.floor(Math.random() * 99999);
 
     const scopeText = diaTopicos
@@ -94,13 +104,14 @@ Crie 15 flashcards no formato Anki (Active Recall + Spaced Repetition) para o al
     });
 
     const content = response.choices[0].message.content;
-    logAiUsage({ feature: "flashcards", model: "gpt-4o-mini", tokensIn: response.usage?.prompt_tokens ?? 0, tokensOut: response.usage?.completion_tokens ?? 0, userId: (req as any).userId ?? null });
+    logAiUsage({ feature: "flashcards", model: OR.fast, tokensIn: response.usage?.prompt_tokens ?? 0, tokensOut: response.usage?.completion_tokens ?? 0, userId: (req as any).userId ?? null });
     if (!content) {
       res.status(500).json({ erro: "Erro ao gerar flashcards." });
       return;
     }
 
     const data = JSON.parse(content);
+    cacheSave("flashcards", cacheKey, content, OR.fast).catch(() => {});
     res.json(data);
   } catch (error) {
     req.log.error({ error }, "Erro ao gerar flashcards");

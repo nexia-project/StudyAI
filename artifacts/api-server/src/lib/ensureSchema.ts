@@ -31,6 +31,7 @@ export async function ensureAllSchemas(): Promise<void> {
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS users (
         id                        VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+        clerk_id                  VARCHAR UNIQUE,
         email                     VARCHAR UNIQUE,
         first_name                VARCHAR,
         last_name                 VARCHAR,
@@ -54,6 +55,9 @@ export async function ensureAllSchemas(): Promise<void> {
         updated_at                TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
+    // Safe migration: add clerk_id to existing tables that were created without it
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS clerk_id VARCHAR`).catch(() => {});
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_clerk_id ON users (clerk_id) WHERE clerk_id IS NOT NULL`).catch(() => {});
 
     // 3. ai_cache (no deps)
     await db.execute(sql`

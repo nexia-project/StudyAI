@@ -28,7 +28,7 @@ const app: Express = express();
 app.get("/api/healthz", (_req, res) => {
   res.status(200).json({
     status: "ok",
-    v: "clerk-pubkey-v15",
+    v: "schema-clerkid-v16",
     commit: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? "local",
     keys: {
       openai:    !!(process.env.AI_INTEGRATIONS_OPENAI_API_KEY   ?? process.env.OPENAI_API_KEY),

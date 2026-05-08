@@ -42,9 +42,13 @@ export const OR = {
   fast:       "openai/gpt-4o-mini",          // alias de mini
   materials:  "openai/gpt-4o-mini",          // resumos e materiais
 
-  // Qualidade — análise complexa, redação, visão
+  // Qualidade — análise complexa, redação
   pro:        "openai/gpt-4o",
-  premium:    "openai/gpt-4o",               // alias de pro (visão)
+  premium:    "openai/gpt-4o",               // alias de pro
+
+  // Visão — modelo confiável para image_url no OpenRouter
+  // openai/gpt-4o às vezes retorna "No endpoints found that support image input"
+  vision:     "google/gemini-2.0-flash-001",
 
   // Raciocínio — matemática, física, química
   reasoning:  "deepseek/deepseek-r1-0528",

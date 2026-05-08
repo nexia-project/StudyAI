@@ -4,6 +4,11 @@ if (!process.env.CLERK_PUBLISHABLE_KEY && process.env.VITE_CLERK_PUBLISHABLE_KEY
   process.env.CLERK_PUBLISHABLE_KEY = process.env.VITE_CLERK_PUBLISHABLE_KEY;
 }
 
+// Ensure default admin email is always set (can be overridden via ADMIN_EMAILS env var on Railway)
+if (!process.env.ADMIN_EMAILS) {
+  process.env.ADMIN_EMAILS = "nexusatacado@gmail.com";
+}
+
 import express, { type Express } from "express";
 import cors from "cors";
 import path from "path";
@@ -28,7 +33,7 @@ const app: Express = express();
 app.get("/api/healthz", (_req, res) => {
   res.status(200).json({
     status: "ok",
-    v: "schema-clerkid-v16",
+    v: "admin-fix-v17",
     commit: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? "local",
     keys: {
       openai:    !!(process.env.AI_INTEGRATIONS_OPENAI_API_KEY   ?? process.env.OPENAI_API_KEY),

@@ -84,9 +84,9 @@ router.use(notebookRouter);
 router.use(geminiRouter);
 router.use(openaiImageRouter);
 router.use(studioIaRouter);
-router.use(comunicacaoRouter);
-router.use(contentHistoryRouter);
 router.use(boardRouter);
+router.use(contentHistoryRouter);
+router.use(comunicacaoRouter);
 router.use(aiCacheChatRouter);
 
 export default router;

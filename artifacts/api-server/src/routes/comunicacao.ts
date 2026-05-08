@@ -641,9 +641,10 @@ async function enviarEmail(opts: {
 }
 
 // ============================================================
-// PROTEÇÃO — requer autenticação + perfil admin em todos os endpoints
+// PROTEÇÃO — requer autenticação + perfil admin SOMENTE para /comunicacao/* endpoints
+// (scoped to /comunicacao so it doesn't block other routers like /board/*, /chat, etc.)
 // ============================================================
-router.use(async (req, res, next) => {
+router.use("/comunicacao", async (req, res, next) => {
   if (!req.userId) {
     res.status(401).json({ error: "Não autenticado" });
     return;

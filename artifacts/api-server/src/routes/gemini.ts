@@ -68,7 +68,7 @@ router.post("/gemini/analisar-problema", upload.single("imagem"), async (req: Re
       : "Analise esta questão ou exercício e resolva passo a passo de forma didática para um aluno do ensino médio.";
 
     const completion = await openrouter.chat.completions.create({
-      model: OR.premium,
+      model: OR.vision,
       max_tokens: 1500,
       messages: [{
         role: "user",

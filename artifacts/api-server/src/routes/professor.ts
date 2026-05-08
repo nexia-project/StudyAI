@@ -890,12 +890,21 @@ router.post("/voice-tts", async (req, res) => {
       .replace(/\*\*/g, "").replace(/\n+/g, " ").replace(/\s+/g, " ").trim();
     if (ttsText.length > 4096) ttsText = ttsText.slice(0, 4096);
 
-    // Raw fetch — bypasses SDK proxy issues in Railway
-    // SDK openaiProxy sometimes routes to OpenRouter which rejects /audio/speech
-    const ttsApiKey = process.env.OPENAI_API_KEY ?? process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? "";
+    // Prefer real OPENAI_API_KEY (direct); fall back to Replit proxy with its base URL
+    const realKey = process.env.OPENAI_API_KEY;
+    const proxyKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+    const proxyBase = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+
+    const ttsApiKey = realKey || proxyKey || "";
+    const ttsBase = realKey
+      ? "https://api.openai.com/v1"
+      : proxyBase
+        ? proxyBase.replace(/\/$/, "")
+        : "https://api.openai.com/v1";
+
     if (!ttsApiKey) throw new Error("OPENAI_API_KEY not configured");
 
-    const ttsRes = await fetch("https://api.openai.com/v1/audio/speech", {
+    const ttsRes = await fetch(`${ttsBase}/audio/speech`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${ttsApiKey}`,

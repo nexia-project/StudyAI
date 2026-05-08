@@ -25,14 +25,18 @@ export const openrouter = new OpenAI({
 });
 
 // ── OpenAI direto — Whisper (transcrição) + TTS (voz do Tiagão) ──────────────
-// SEMPRE usa https://api.openai.com/v1 — o proxy Replit (AI_INTEGRATIONS_OPENAI_BASE_URL)
-// só suporta chat.completions e rejeita /audio/speech e /audio/transcriptions com 400.
+// Se OPENAI_API_KEY real está set → usa api.openai.com diretamente.
+// Se só AI_INTEGRATIONS_OPENAI_API_KEY (Replit proxy) → usa o base URL do proxy.
+const _whisperBase = process.env.OPENAI_API_KEY
+  ? "https://api.openai.com/v1"
+  : (process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ?? "https://api.openai.com/v1");
+const _whisperKey =
+  process.env.OPENAI_API_KEY ??
+  process.env.AI_INTEGRATIONS_OPENAI_API_KEY ??
+  "dummy";
 export const whisperClient = new OpenAI({
-  baseURL: "https://api.openai.com/v1",
-  apiKey:
-    process.env.OPENAI_API_KEY ??
-    process.env.AI_INTEGRATIONS_OPENAI_API_KEY ??
-    "dummy",
+  baseURL: _whisperBase,
+  apiKey: _whisperKey,
 });
 
 // ── Model constants ───────────────────────────────────────────────────────────

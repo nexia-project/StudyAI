@@ -19,17 +19,22 @@ const router = Router();
 
 // GET /api/history — full history for the authenticated user
 router.get("/history", async (req, res) => {
-  if (!!!req.userId) {
+  if (!req.userId) {
     res.status(401).json({ erro: "Não autenticado." });
     return;
   }
-  const userId = req.userId!;
-  const [plans, simulados, flashcards] = await Promise.all([
-    db.select().from(studyPlansTable).where(eq(studyPlansTable.userId, userId)).orderBy(desc(studyPlansTable.createdAt)).limit(20),
-    db.select().from(simuladoResultsTable).where(eq(simuladoResultsTable.userId, userId)).orderBy(desc(simuladoResultsTable.createdAt)).limit(50),
-    db.select().from(flashcardSessionsTable).where(eq(flashcardSessionsTable.userId, userId)).orderBy(desc(flashcardSessionsTable.completedAt)).limit(50),
-  ]);
-  res.json({ plans, simulados, flashcards });
+  try {
+    const userId = req.userId;
+    const [plans, simulados, flashcards] = await Promise.all([
+      db.select().from(studyPlansTable).where(eq(studyPlansTable.userId, userId)).orderBy(desc(studyPlansTable.createdAt)).limit(20).catch(() => []),
+      db.select().from(simuladoResultsTable).where(eq(simuladoResultsTable.userId, userId)).orderBy(desc(simuladoResultsTable.createdAt)).limit(50).catch(() => []),
+      db.select().from(flashcardSessionsTable).where(eq(flashcardSessionsTable.userId, userId)).orderBy(desc(flashcardSessionsTable.completedAt)).limit(50).catch(() => []),
+    ]);
+    res.json({ plans, simulados, flashcards });
+  } catch (err: any) {
+    console.error("[history] GET error:", err?.message ?? err);
+    res.json({ plans: [], simulados: [], flashcards: [], _error: err?.message });
+  }
 });
 
 // POST /api/history/plan — save a study plan (+25 XP)

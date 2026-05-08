@@ -528,7 +528,7 @@ router.post("/analisar", checkFreeUsage, (req, res, next) => {
     const hasVision = messages.some(
       (m) => Array.isArray(m.content) && m.content.some((p: any) => p.type === "image_url"),
     );
-    const chosenModel = hasVision ? OR.pro : OR.claude;
+    const chosenModel = hasVision ? OR.vision : OR.claude;
     const MAX_TOKENS = hasVision ? 6000 : 8000;
 
     if (wantsStream) {

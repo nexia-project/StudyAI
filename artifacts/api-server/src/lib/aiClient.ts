@@ -16,8 +16,8 @@ import OpenAI from "openai";
 
 // ── OpenRouter client — ALL chat.completions calls ────────────────────────────
 export const openrouter = new OpenAI({
-  baseURL: process.env.AI_INTEGRATIONS_OPENROUTER_BASE_URL,
-  apiKey: process.env.AI_INTEGRATIONS_OPENROUTER_API_KEY ?? "dummy",
+  baseURL: process.env.AI_INTEGRATIONS_OPENROUTER_BASE_URL ?? "https://openrouter.ai/api/v1",
+  apiKey: process.env.AI_INTEGRATIONS_OPENROUTER_API_KEY ?? process.env.OPENROUTER_API_KEY ?? "dummy",
   defaultHeaders: {
     "HTTP-Referer": "https://study.ia.br",
     "X-Title": "StudyAI",

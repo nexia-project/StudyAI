@@ -31,8 +31,8 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 
 const router: IRouter = Router();
 // Whisper client (OpenAI proxy — only for audio transcription)
 const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? process.env.OPENAI_API_KEY ?? "dummy",
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  apiKey: process.env.OPENAI_API_KEY ?? process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? "dummy",
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ?? "https://api.openai.com/v1",
 });
 // gptChat → OpenRouter (DeepSeek Flash — rápido e barato)
 const gptChat = openrouter;

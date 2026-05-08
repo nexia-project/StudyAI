@@ -22,11 +22,11 @@ const app: Express = express();
 app.get("/api/healthz", (_req, res) => {
   res.status(200).json({
     status: "ok",
-    v: "fix-tts-vision-v5",
+    v: "fix-openrouter-baseurl-v6",
     commit: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? "local",
     keys: {
       openai:    !!(process.env.AI_INTEGRATIONS_OPENAI_API_KEY   ?? process.env.OPENAI_API_KEY),
-      openrouter: !!(process.env.AI_INTEGRATIONS_OPENROUTER_API_KEY),
+      openrouter: !!(process.env.AI_INTEGRATIONS_OPENROUTER_API_KEY ?? process.env.OPENROUTER_API_KEY),
       clerk:      !!(process.env.CLERK_SECRET_KEY),
       db:         !!(process.env.DATABASE_URL),
     },

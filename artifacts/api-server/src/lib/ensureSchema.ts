@@ -652,6 +652,16 @@ export async function ensureAllSchemas(): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_ai_usage_logs_model ON ai_usage_logs (model)
     `);
 
+    // ── Admin promotion — promote ADMIN_EMAILS users to role='admin' at boot ──
+    const adminEmailsRaw = process.env.ADMIN_EMAILS || "nexusatacado@gmail.com";
+    const adminEmailsList = adminEmailsRaw.split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+    for (const email of adminEmailsList) {
+      await db.execute(sql`
+        UPDATE users SET role = 'admin', updated_at = NOW()
+        WHERE LOWER(email) = ${email} AND (role IS NULL OR role != 'admin')
+      `).catch(() => {});
+    }
+
     _initialized = true;
     logger.info("[ensureAllSchemas] All raw SQL tables verified/created.");
   } catch (err) {

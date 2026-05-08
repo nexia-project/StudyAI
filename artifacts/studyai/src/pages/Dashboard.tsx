@@ -126,17 +126,24 @@ export default function Dashboard() {
     if (!isAuthenticated || isLoading) return;
     setLoading(true);
     Promise.all([
-      fetch("/api/history", { credentials: "include" }).then(r => r.json()),
+      fetch("/api/history", { credentials: "include" }).then(r => r.json()).catch(() => ({})),
       fetch("/api/streak", { credentials: "include" }).then(r => r.json()).catch(() => ({})),
     ]).then(([hist, str]) => {
-      setData(hist);
+      setData({
+        plans: Array.isArray(hist?.plans) ? hist.plans : [],
+        simulados: Array.isArray(hist?.simulados) ? hist.simulados : [],
+        flashcards: Array.isArray(hist?.flashcards) ? hist.flashcards : [],
+      } as HistoryData);
       setStreak({
         currentStreak: Number(str?.currentStreak) || 0,
         longestStreak: Number(str?.longestStreak) || 0,
         totalDays: Number(str?.totalDays) || 0,
       });
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch(() => {
+      setData({ plans: [], simulados: [], flashcards: [] } as HistoryData);
+      setLoading(false);
+    });
     fetch("/api/activity", { method: "POST", credentials: "include" }).catch(() => {});
   }, [isAuthenticated, isLoading]);
 

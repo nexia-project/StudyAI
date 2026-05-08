@@ -412,7 +412,10 @@ export function VoiceProfessor() {
         credentials: "include",
         signal: abortRef.current.signal,
       });
-      if (!res.ok) throw new Error("HTTP " + res.status);
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(`HTTP ${res.status}${errBody?._debug ? `: ${errBody._debug}` : ""}`);
+      }
       const { text, action, notifications } = await res.json();
       historyRef.current.push({ role: "assistant", content: text || "" });
       lastProactiveRef.current = Date.now();
@@ -427,7 +430,8 @@ export function VoiceProfessor() {
     } catch (e: any) {
       setPhase("idle");
       if (e?.name !== "AbortError") {
-        setError("Não consegui responder. Tente de novo.");
+        const detail = e?.message && e.message !== "Failed to fetch" ? ` (${e.message})` : "";
+        setError(`Não consegui responder. Tente de novo.${detail}`);
         setRetrying(true);
       }
     }

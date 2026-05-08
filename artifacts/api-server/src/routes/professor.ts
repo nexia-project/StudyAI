@@ -794,9 +794,11 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.
       const typedMessages = cleanMessages.map(m => ({ role: m.role as "user" | "assistant", content: m.content }));
       updateProfileAfterSession(req.userId, userProfile.name, typedMessages, "voice").catch(() => {});
     }
-  } catch (err) {
-    console.error("[voice-chat]", err);
-    res.status(500).json({ erro: "Erro interno" });
+  } catch (err: any) {
+    const msg = err?.message ?? String(err);
+    const status = err?.status ?? err?.statusCode ?? 0;
+    console.error("[voice-chat]", status, msg);
+    res.status(500).json({ erro: "Erro interno", _debug: `${status}: ${msg}` });
   }
 });
 

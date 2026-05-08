@@ -22,6 +22,44 @@ interface AulaScript {
   resumo?: string[];
 }
 
+// ── Self-healing schema (inline, idempotent — runs once per process) ────────
+let boardSchemaReady = false;
+async function ensureBoardSchema() {
+  if (boardSchemaReady) return;
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS board_lessons (
+      id SERIAL PRIMARY KEY,
+      user_id VARCHAR NOT NULL,
+      title VARCHAR(500) NOT NULL,
+      subject VARCHAR(120),
+      topic VARCHAR(500),
+      difficulty VARCHAR(20) DEFAULT 'medio',
+      duration_seconds INTEGER,
+      total_steps INTEGER DEFAULT 0,
+      script JSONB NOT NULL DEFAULT '{}',
+      status VARCHAR(20) DEFAULT 'generating',
+      views INTEGER DEFAULT 0,
+      last_viewed_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_board_lessons_user ON board_lessons (user_id, created_at DESC)`);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS board_lesson_progress (
+      id SERIAL PRIMARY KEY,
+      user_id VARCHAR NOT NULL,
+      lesson_id INTEGER NOT NULL REFERENCES board_lessons(id) ON DELETE CASCADE,
+      current_step INTEGER DEFAULT 0,
+      completed BOOLEAN DEFAULT FALSE,
+      questions_asked INTEGER DEFAULT 0,
+      started_at TIMESTAMPTZ DEFAULT NOW(),
+      completed_at TIMESTAMPTZ,
+      UNIQUE(user_id, lesson_id)
+    )
+  `);
+  boardSchemaReady = true;
+}
+
 // ── Generator ─────────────────────────────────────────────────────────────────
 async function generateBoardLesson(
   userId: string,
@@ -29,9 +67,11 @@ async function generateBoardLesson(
 ): Promise<number> {
   const { topic, subject, difficulty } = params;
 
+  await ensureBoardSchema();
+
   const result = await db.execute(sql`
     INSERT INTO board_lessons (user_id, title, subject, topic, difficulty, status, script, total_steps)
-    VALUES (${userId}, ${topic}, ${subject}, ${topic}, ${difficulty}, 'generating', '{}', 0)
+    VALUES (${userId}, ${topic}, ${subject}, ${topic}, ${difficulty}, 'generating', '{}'::jsonb, 0)
     RETURNING id
   `);
   const lessonId = (result.rows[0] as any).id as number;

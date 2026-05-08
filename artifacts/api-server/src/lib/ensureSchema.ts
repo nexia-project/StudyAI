@@ -161,7 +161,17 @@ export async function ensureAllSchemas(): Promise<void> {
         UNIQUE(user_id, study_date)
       )
     `);
-
+// 7b. login_events (→ users) — used by trackActivity middleware
+await db.execute(sql`
+ CREATE TABLE IF NOT EXISTS login_events (
+  id BIGSERIAL PRIMARY KEY,
+  user_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  event_date DATE NOT NULL,
+  event_hour SMALLINT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, event_date)
+ )
+`);
     // 8. instituicoes (→ users)
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS instituicoes (
@@ -592,7 +602,23 @@ export async function ensureAllSchemas(): Promise<void> {
     await db.execute(sql`
       CREATE INDEX IF NOT EXISTS idx_knowledge_base_subject ON knowledge_base (user_id, subject)
     `);
-
+// ── Notebook RAG base table (required by /api/notebook/*) ────────────────────
+await db.execute(sql`
+ CREATE TABLE IF NOT EXISTS knowledge_documents (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL DEFAULT '',
+  content_text TEXT NOT NULL DEFAULT '',
+  uploaded_by VARCHAR NOT NULL,
+  source_file TEXT,
+  file_size_kb INTEGER,
+  language VARCHAR(10) DEFAULT 'pt',
+  notebook_id INTEGER,
+  is_chunk BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+ )
+`);
+await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_knowdocs_uploaded_by ON knowledge_documents(uploaded_by)`).catch(() => {});
+await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_knowdocs_notebook ON knowledge_documents(notebook_id)`).catch(() => {});
     // ── Lousa Imersiva — board lessons ───────────────────────────────────────
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS board_lessons (

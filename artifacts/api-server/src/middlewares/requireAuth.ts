@@ -59,21 +59,21 @@ declare global {
 
 // ─── requireAuth — blocks if not authenticated ────────────────────────────────
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const auth = getAuth(req);
-  const clerkId = (auth?.sessionClaims?.userId as string | undefined) || auth?.userId;
-
-  if (!clerkId) {
-    res.status(401).json({ erro: "Não autenticado" });
-    return;
-  }
-
   try {
+    const auth = getAuth(req);
+    const clerkId = (auth?.sessionClaims?.userId as string | undefined) || auth?.userId;
+
+    if (!clerkId) {
+      res.status(401).json({ erro: "Não autenticado" });
+      return;
+    }
+
     req.userId = await resolveInternalId(clerkId);
     req.isAuthenticated = function() { return true; } as any;
     next();
-  } catch (err) {
+  } catch (err: any) {
     console.error("requireAuth:", err);
-    res.status(401).json({ erro: "Erro de autenticação" });
+    res.status(500).json({ erro: "Erro de autenticação", _debug: `requireAuth: ${err?.message ?? String(err)}` });
   }
 }
 
@@ -81,7 +81,8 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 export async function optionalAuth(req: Request, res: Response, next: NextFunction) {
   req.isAuthenticated = function() { return !!req.userId; } as any;
 
-  const auth = getAuth(req);
+  let auth: any;
+  try { auth = getAuth(req); } catch { auth = null; }
   // Try all possible locations for the user ID in the Clerk token
   const clerkId = (auth?.sessionClaims?.userId as string | undefined)
     || (auth?.sessionClaims?.sub as string | undefined)

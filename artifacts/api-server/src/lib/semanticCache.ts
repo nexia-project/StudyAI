@@ -20,9 +20,10 @@ const THRESHOLD_SEMANTICO  = 0.92;   // Nível 2: resposta direta
 const THRESHOLD_APROXIMADO = 0.82;   // Nível 3: resposta com caveat
 
 // ─── Cliente OpenAI para embeddings (text-embedding-3-small = $0.02/M tokens) ─
+// Usa api.openai.com diretamente — AI_INTEGRATIONS_OPENAI_BASE_URL não suporta /embeddings
 const embedder = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? process.env.OPENAI_API_KEY ?? "dummy",
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  apiKey: process.env.OPENAI_API_KEY ?? process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? "dummy",
+  baseURL: "https://api.openai.com/v1",
 });
 
 // ─── Usa o pool compartilhado de @workspace/db ───────────────────────────────

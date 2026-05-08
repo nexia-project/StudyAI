@@ -22,7 +22,7 @@ const app: Express = express();
 app.get("/api/healthz", (_req, res) => {
   res.status(200).json({
     status: "ok",
-    v: "voice-debug-v12",
+    v: "global-debug-v13",
     commit: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? "local",
     keys: {
       openai:    !!(process.env.AI_INTEGRATIONS_OPENAI_API_KEY   ?? process.env.OPENAI_API_KEY),
@@ -245,9 +245,11 @@ app.use((err: any, req: express.Request, res: express.Response, _next: express.N
     }, `[OPERATIONAL ERROR] ${err.message}`);
   }
 
-  // Nunca expõe stack trace em produção
+  // Always include _debug so the frontend can show the real cause
+  const debugMsg = err?.message ?? String(err ?? "unknown");
   res.status(statusCode).json({
     error: isOperational ? err.message : "Erro interno do servidor",
+    _debug: `global:${statusCode}: ${debugMsg}`,
     ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
   });
 });

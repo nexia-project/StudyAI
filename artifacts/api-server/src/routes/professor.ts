@@ -706,6 +706,9 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.
       temperature: 0.85,
     });
 
+    if (!firstCall?.choices?.length) {
+      throw new Error(`OpenRouter retornou choices vazio: ${JSON.stringify(firstCall).slice(0, 200)}`);
+    }
     const firstMsg = firstCall.choices[0].message;
     const frontendActions: Record<string, any>[] = [];
 

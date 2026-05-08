@@ -179,11 +179,14 @@ export default function LousaImersiva() {
         credentials: "include",
         body: JSON.stringify({ topic: topic.trim(), subject, difficulty }),
       });
-      if (!r.ok) throw new Error("Erro ao criar aula");
-      const { lessonId } = await r.json();
-      openPlayer(lessonId);
-    } catch {
-      setCreateError("Não consegui criar a aula. Tente novamente.");
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        const dbg = body?._debug ? ` (${body._debug})` : "";
+        throw new Error((body?.error || "Erro ao criar aula") + dbg);
+      }
+      openPlayer(body.lessonId);
+    } catch (err: any) {
+      setCreateError(err?.message || "Não consegui criar a aula. Tente novamente.");
     } finally {
       setCreating(false);
     }

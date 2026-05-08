@@ -125,13 +125,23 @@ export default function HistoryPage() {
     if (!isAuthenticated) return;
     setLoading(true);
     fetch("/api/history", { credentials: "include" })
-      .then((r) => r.json())
-      .then((d) => {
-        setData(d);
+      .then(async (r) => {
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          setError(d?.erro || d?.error || "Não foi possível carregar seu histórico.");
+          setData({ plans: [], simulados: [], flashcards: [] });
+        } else {
+          setData({
+            plans: Array.isArray(d?.plans) ? d.plans : [],
+            simulados: Array.isArray(d?.simulados) ? d.simulados : [],
+            flashcards: Array.isArray(d?.flashcards) ? d.flashcards : [],
+          });
+        }
         setLoading(false);
       })
       .catch(() => {
         setError("Erro ao carregar histórico.");
+        setData({ plans: [], simulados: [], flashcards: [] });
         setLoading(false);
       });
   }, [isAuthenticated, authLoading]);

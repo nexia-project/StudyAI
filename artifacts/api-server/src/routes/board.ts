@@ -147,9 +147,10 @@ router.post("/board/generate", requireAuth, async (req: Request, res: Response) 
       style: String(style),
     });
     res.json({ lessonId });
-  } catch (err) {
-    logger.error({ err }, "[board] generate error");
-    res.status(500).json({ error: "Erro ao gerar aula" });
+  } catch (err: any) {
+    const msg = err?.message ?? String(err);
+    logger.error({ err, msg, userId, topic }, "[board] generate error");
+    res.status(500).json({ error: "Erro ao gerar aula", _debug: msg });
   }
 });
 

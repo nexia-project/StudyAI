@@ -941,12 +941,12 @@ router.post("/transcribe", upload.single("audio"), async (req, res) => {
       type: file.mimetype || "audio/m4a",
     });
 
-    // STT via proxy Replit — evita chave direta sem quota
-    const transcription = await gptChat.audio.transcriptions.create({
+    // STT via whisperClient — aponta para api.openai.com com chave real
+    const transcription = await openaiProxy.audio.transcriptions.create({
       file: audioFile,
-      model: "gpt-4o-mini-transcribe",
+      model: "whisper-1",
       language: "pt",
-    } as any);
+    });
 
     res.json({ text: transcription.text });
   } catch (err) {

@@ -1,3 +1,9 @@
+// Clerk Express SDK needs CLERK_PUBLISHABLE_KEY (not VITE_ prefixed).
+// Railway only has VITE_CLERK_PUBLISHABLE_KEY — copy it over before any import uses it.
+if (!process.env.CLERK_PUBLISHABLE_KEY && process.env.VITE_CLERK_PUBLISHABLE_KEY) {
+  process.env.CLERK_PUBLISHABLE_KEY = process.env.VITE_CLERK_PUBLISHABLE_KEY;
+}
+
 import express, { type Express } from "express";
 import cors from "cors";
 import path from "path";
@@ -22,7 +28,7 @@ const app: Express = express();
 app.get("/api/healthz", (_req, res) => {
   res.status(200).json({
     status: "ok",
-    v: "auth-fix-v14",
+    v: "clerk-pubkey-v15",
     commit: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? "local",
     keys: {
       openai:    !!(process.env.AI_INTEGRATIONS_OPENAI_API_KEY   ?? process.env.OPENAI_API_KEY),

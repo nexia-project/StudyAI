@@ -5842,7 +5842,7 @@ ${t}
     .slice(0, 3);
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#f3e8ff", backgroundImage: "radial-gradient(at 0% 0%, hsla(262,83%,58%,0.15) 0px, transparent 50%), radial-gradient(at 100% 100%, hsla(290,85%,60%,0.15) 0px, transparent 50%)", backgroundAttachment: "fixed" }}>
+    <div className="min-h-screen flex flex-col md:pl-64 pt-14 md:pt-0" style={{ background: "#f3e8ff", backgroundImage: "radial-gradient(at 0% 0%, hsla(262,83%,58%,0.15) 0px, transparent 50%), radial-gradient(at 100% 100%, hsla(290,85%,60%,0.15) 0px, transparent 50%)", backgroundAttachment: "fixed" }}>
       <AppNav />
 
       {/* ═══ HOME VIEW ═══ */}

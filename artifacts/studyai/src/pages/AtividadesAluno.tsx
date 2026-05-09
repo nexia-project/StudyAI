@@ -262,7 +262,7 @@ export default function AtividadesAlunoPage() {
   const doneCount = activities.filter(a => a.submitted).length;
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 md:pl-64 pt-14 md:pt-0">
       <AppNav />
       <div className="max-w-3xl mx-auto px-4 py-8">
         {/* Header */}

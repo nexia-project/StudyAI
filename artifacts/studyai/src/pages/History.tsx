@@ -162,9 +162,9 @@ export default function HistoryPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen md:pl-64 pt-14 md:pt-0">
         <AppNav />
-        <div className="flex flex-col items-center justify-center gap-6 px-4 pt-28">
+        <div className="flex flex-col items-center justify-center gap-6 px-4 pt-8 md:pt-16">
           <div className="text-center space-y-3">
             <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center mx-auto">
               <History className="w-8 h-8 text-primary" />
@@ -200,7 +200,7 @@ export default function HistoryPage() {
     : 0;
 
   return (
-    <div className="min-h-screen pb-20">
+    <div className="min-h-screen pb-20 md:pl-64 pt-14 md:pt-0">
       <AppNav />
       <div className="pt-6 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
       {/* Header */}

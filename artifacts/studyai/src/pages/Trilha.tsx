@@ -245,7 +245,7 @@ export default function TrilhaPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 md:pl-64 pt-14 md:pt-0">
         <AppNav />
         <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4 px-6 text-center">
           <Lock className="w-12 h-12 text-gray-300" />
@@ -263,7 +263,7 @@ export default function TrilhaPage() {
   const allAnswered = questions.length > 0 && Object.keys(submitted).length === questions.length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 md:pl-64 pt-14 md:pt-0">
       <AppNav />
 
       <div className="max-w-3xl mx-auto px-4 py-8">

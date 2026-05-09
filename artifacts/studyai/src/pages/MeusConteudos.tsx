@@ -156,7 +156,7 @@ export default function MeusConteudosPage() {
   }, [items, search]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/40">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/40 md:pl-64 pt-14 md:pt-0">
       <AppNav />
       <div className="max-w-6xl mx-auto px-4 py-6 lg:py-10">
         <button onClick={() => navigate(-1 as any)} className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-6 text-sm font-semibold transition-colors">

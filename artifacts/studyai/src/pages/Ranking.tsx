@@ -191,9 +191,9 @@ export default function RankingPage() {
 
   if (!isPremium) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-indigo-50">
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-indigo-50 md:pl-64 pt-14 md:pt-0">
         <AppNav />
-        <div className="flex flex-col items-center justify-center gap-6 p-8 pt-28">
+        <div className="flex flex-col items-center justify-center gap-6 p-8 pt-8 md:pt-16">
           <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center shadow-xl shadow-amber-200">
             <Trophy className="w-10 h-10 text-white" />
           </div>
@@ -215,7 +215,7 @@ export default function RankingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-indigo-50 md:pl-64 pt-14 md:pt-0">
       <AppNav />
       {/* Header */}
       <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 px-4 py-6 shadow-xl shadow-indigo-200">

@@ -538,9 +538,9 @@ export default function BaseConhecimento() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen md:pl-64 pt-14 md:pt-0">
         <AppNav />
-        <div className="flex flex-col items-center justify-center p-6 pt-28 text-center">
+        <div className="flex flex-col items-center justify-center p-6 pt-8 md:pt-16 text-center">
           <BookOpen className="w-12 h-12 text-indigo-400 mb-4" />
           <h1 className="text-xl font-black text-foreground mb-2">Base de Conhecimento</h1>
           <p className="text-muted-foreground mb-4">Faça login para acessar sua base de conhecimento pessoal.</p>
@@ -555,7 +555,7 @@ export default function BaseConhecimento() {
   const displayDocs = searchResults !== null ? searchResults : docs;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background md:pl-64 pt-14 md:pt-0">
       <AppNav />
       {/* Toast */}
       <AnimatePresence>
@@ -577,7 +577,7 @@ export default function BaseConhecimento() {
       </AnimatePresence>
 
       {/* Sub-header */}
-      <div className="sticky top-[53px] z-10 bg-white/95 backdrop-blur-sm border-b border-border">
+      <div className="sticky top-14 md:top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-border">
         <div className="max-w-3xl mx-auto px-4 py-2.5 flex items-center gap-2">
           <Database className="w-4 h-4 text-indigo-600" />
           <h1 className="text-sm font-black text-foreground flex-1">Base de Conhecimento</h1>

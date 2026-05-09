@@ -159,9 +159,9 @@ export default function Mapa() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-indigo-50">
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-indigo-50 md:pl-64 pt-14 md:pt-0">
         <AppNav />
-        <div className="flex flex-col items-center justify-center gap-6 p-8 pt-28">
+        <div className="flex flex-col items-center justify-center gap-6 p-8 pt-8 md:pt-16">
           <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-200">
             <Map className="w-10 h-10 text-white" />
           </div>
@@ -183,9 +183,9 @@ export default function Mapa() {
 
   if (!isPremium) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-indigo-50">
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-indigo-50 md:pl-64 pt-14 md:pt-0">
         <AppNav />
-        <div className="flex flex-col items-center justify-center gap-6 p-8 pt-28">
+        <div className="flex flex-col items-center justify-center gap-6 p-8 pt-8 md:pt-16">
           <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-200">
             <BarChart2 className="w-10 h-10 text-white" />
           </div>
@@ -214,10 +214,10 @@ export default function Mapa() {
     : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-indigo-50/40">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-indigo-50/40 md:pl-64 pt-14 md:pt-0">
       <AppNav />
       {/* Sub-header */}
-      <div className="sticky top-[53px] z-10 bg-white/80 backdrop-blur-xl border-b border-slate-100">
+      <div className="sticky top-14 md:top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-slate-100">
         <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
             <Map className="w-3.5 h-3.5 text-white" />

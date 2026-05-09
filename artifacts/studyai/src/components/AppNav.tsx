@@ -126,76 +126,6 @@ const QUICK_LINKS_MAP: Record<AppMode, NavItem[]> = {
   ],
 };
 
-function DropdownMenu({
-  group, isOpen, onClose, onNavigate, currentPath,
-}: {
-  group: { label: string; items: NavItem[] };
-  isOpen: boolean;
-  onClose: () => void;
-  onNavigate: (path: string) => void;
-  currentPath: string;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!isOpen) return;
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [isOpen, onClose]);
-
-  const isGroupActive = group.items.some(item => currentPath === item.path || currentPath.startsWith(item.path + "/"));
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        className={cn(
-          "flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all",
-          isGroupActive ? "bg-slate-100 text-slate-900" : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-        )}
-      >
-        {group.label}
-        <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", isOpen && "rotate-180")} />
-      </button>
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 4, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 4, scale: 0.97 }}
-            transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 mt-1.5 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50"
-          >
-            <div className="py-1.5">
-              {group.items.map(item => {
-                const isActive = currentPath === item.path || currentPath.startsWith(item.path + "/");
-                return (
-                  <button
-                    key={item.path + item.label}
-                    onClick={() => { onNavigate(item.path); onClose(); }}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors text-left",
-                      isActive ? "bg-slate-50 font-bold text-slate-900" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                    )}
-                  >
-                    <item.icon className={cn("w-4 h-4 flex-shrink-0", item.color)} />
-                    {item.label}
-                    {item.badge && !isActive && (
-                      <span className="ml-auto text-[9px] font-black px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-600">{item.badge}</span>
-                    )}
-                    {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-500" />}
-                  </button>
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
 function ModeSwitcher() {
   const { mode, setMode } = useMode();
   const [, navigate] = useLocation();
@@ -292,7 +222,7 @@ interface AppNavProps {
 
 export function AppNav({ onHome }: AppNavProps) {
   const [location, navigate] = useLocation();
-  const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [mobileOpen, setMobileOpen] = useState(false);
   const { mode } = useMode();
 
@@ -300,59 +230,106 @@ export function AppNav({ onHome }: AppNavProps) {
   const navGroups = getNavGroups(mode);
   const quickLinks = QUICK_LINKS_MAP[mode];
 
+  useEffect(() => {
+    const g = getNavGroups(mode);
+    setExpandedGroups(Object.fromEntries(g.map(gr => [gr.label, true])));
+  }, [mode]);
+
   function handleNavigate(path: string) {
     if (path === "/app" && onHome) { onHome(); } else { navigate(path); }
     setMobileOpen(false);
   }
 
+  function toggleNavGroup(label: string) {
+    setExpandedGroups(prev => ({ ...prev, [label]: !(prev[label] ?? true) }));
+  }
+
   return (
     <>
-      {/* ── Desktop/Tablet Top Nav ── */}
-      <div className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-sm">
+      {/* ── Desktop: fixed left sidebar ── */}
+      <aside className="hidden md:flex fixed top-0 left-0 bottom-0 w-64 z-40 flex-col border-r border-slate-200 bg-gradient-to-b from-slate-50 via-white to-slate-50 shadow-[4px_0_24px_-12px_rgba(15,23,42,0.15)]">
+        <div className="p-3 border-b border-slate-100 flex-shrink-0">
+          <button type="button" onClick={() => handleNavigate("/app")} className="flex items-center gap-2.5 w-full rounded-xl p-1 hover:bg-slate-100/80 transition-colors">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500 to-indigo-600 flex items-center justify-center text-white font-black text-sm shadow-sm">S</div>
+            <span className="font-black text-slate-800 text-base tracking-tight">StudyAI</span>
+          </button>
+          <div className="mt-3">
+            <ModeSwitcher />
+          </div>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto py-3 px-2 min-h-0">
+          {navGroups.map(group => {
+            const expanded = expandedGroups[group.label] ?? true;
+            return (
+              <div key={group.label} className="mb-2">
+                <button
+                  type="button"
+                  onClick={() => toggleNavGroup(group.label)}
+                  className="w-full flex items-center justify-between gap-2 px-2 py-2 rounded-lg text-[11px] font-black text-slate-400 uppercase tracking-wider hover:bg-slate-100/80 transition-colors text-left"
+                >
+                  <span className="truncate">{group.label}</span>
+                  <ChevronDown className={cn("w-3.5 h-3.5 flex-shrink-0 transition-transform text-slate-400", expanded && "rotate-180")} />
+                </button>
+                {expanded && (
+                  <div className="mt-1 space-y-0.5 pl-0.5">
+                    {group.items.map(item => {
+                      const isActive = currentPath === item.path || currentPath.startsWith(item.path + "/");
+                      return (
+                        <button
+                          key={item.path + item.label}
+                          type="button"
+                          onClick={() => handleNavigate(item.path)}
+                          className={cn(
+                            "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-left transition-colors",
+                            isActive
+                              ? "bg-indigo-50 text-indigo-900 font-bold shadow-sm border border-indigo-100/80"
+                              : "text-slate-600 hover:bg-white hover:text-slate-900 border border-transparent"
+                          )}
+                        >
+                          <item.icon className={cn("w-4 h-4 flex-shrink-0", item.color)} />
+                          <span className="truncate flex-1">{item.label}</span>
+                          {item.badge && !isActive && (
+                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-600 flex-shrink-0">{item.badge}</span>
+                          )}
+                          {isActive && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </nav>
+
+        <div className="p-3 border-t border-slate-100 flex-shrink-0 bg-white/90 backdrop-blur-sm">
+          <UserMenu />
+        </div>
+      </aside>
+
+      {/* ── Mobile: top bar ── */}
+      <div className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-sm md:hidden">
         <div className="max-w-screen-2xl mx-auto px-3 py-2 flex items-center gap-2">
 
           {/* Logo */}
-          <button onClick={() => handleNavigate("/app")} className="flex items-center gap-2 flex-shrink-0 mr-1">
+          <button type="button" onClick={() => handleNavigate("/app")} className="flex items-center gap-2 flex-shrink-0 mr-1">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-orange-500 to-indigo-600 flex items-center justify-center text-white font-black text-xs">S</div>
             <span className="font-black text-slate-800 text-sm hidden sm:block">StudyAI</span>
           </button>
 
-          {/* Mode switcher */}
-          <div className="hidden md:block">
-            <ModeSwitcher />
-          </div>
-
-          <div className="h-5 w-px bg-slate-200 hidden md:block" />
-
-          {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-0.5 flex-1">
-            {navGroups.map(group => (
-              <div key={group.label}
-                onMouseEnter={() => setOpenGroup(group.label)}
-                onMouseLeave={() => setOpenGroup(null)}
-              >
-                <DropdownMenu
-                  group={group}
-                  isOpen={openGroup === group.label}
-                  onClose={() => setOpenGroup(null)}
-                  onNavigate={handleNavigate}
-                  currentPath={currentPath}
-                />
-              </div>
-            ))}
-          </div>
-
           {/* Mobile hamburger */}
-          <button className="md:hidden p-2 rounded-xl text-slate-500 hover:bg-slate-100 transition-colors" onClick={() => setMobileOpen(v => !v)}>
+          <button type="button" className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 transition-colors" onClick={() => setMobileOpen(v => !v)}>
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
 
           {/* Mobile quick tabs */}
-          <div className="flex md:hidden items-center gap-1 overflow-x-auto scrollbar-none flex-1 px-1">
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-none flex-1 px-1">
             {quickLinks.map(link => {
               const isActive = currentPath === link.path || (link.path !== "/" && currentPath.startsWith(link.path + "/"));
               return (
                 <button key={link.path + link.label}
+                  type="button"
                   onClick={() => handleNavigate(link.path)}
                   className={cn(
                     "flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex-shrink-0",

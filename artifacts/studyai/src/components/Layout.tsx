@@ -11,7 +11,7 @@ export function Layout({ children, className, onHome }: LayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       <AppNav onHome={onHome} />
-      <main className={cn("pt-[53px] pb-24 md:pb-8", className)}>
+      <main className={cn("pt-14 pb-24 md:pb-8 md:pl-64 md:pt-6", className)}>
         {children}
       </main>
     </div>
@@ -31,7 +31,7 @@ export function PageHeader({ icon, title, subtitle, actions, sticky = true, clas
   return (
     <div className={cn(
       "bg-white/80 backdrop-blur-xl border-b border-gray-100 z-20",
-      sticky && "sticky top-[53px]",
+      sticky && "sticky top-14 md:top-0",
       className
     )}>
       <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">

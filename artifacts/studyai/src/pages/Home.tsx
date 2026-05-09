@@ -767,7 +767,7 @@ export default function Home() {
         }}
       />
     )}
-    <div className="min-h-screen pb-20 pt-16 px-4 sm:px-6 lg:px-8 flex flex-col items-center overflow-x-hidden relative">
+    <div className="min-h-screen pb-20 pt-14 md:pt-8 md:pl-64 px-4 sm:px-6 lg:px-8 flex flex-col items-center overflow-x-hidden relative">
 
       {/* ── Shared App Navigation ── */}
       <AppNav onHome={() => { setStep("form"); window.scrollTo({ top: 0, behavior: "smooth" }); }} />

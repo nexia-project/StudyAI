@@ -1,7 +1,8 @@
 /**
  * StudyAI — Cache-backed AI chat routes
- * POST /api/chat/openai  — GPT via OpenRouter (DeepSeek) com cache PostgreSQL
- * POST /api/chat/claude  — Claude via OpenRouter com cache PostgreSQL
+ * Router is mounted at /api — paths below are relative (final URLs: /api/chat/…).
+ * POST /chat/openai  — GPT via OpenRouter (DeepSeek) com cache PostgreSQL
+ * POST /chat/claude  — Claude via OpenRouter com cache PostgreSQL
  *
  * Cache: SHA-256(provider + type + message) → ai_cache table
  * TTL infinito — conteúdo educacional é estável o suficiente.
@@ -133,7 +134,7 @@ async function handleChat(
 }
 
 // ── Routes ───────────────────────────────────────────────────────────────────
-router.post("/api/chat/openai", async (req, res) => {
+router.post("/chat/openai", async (req, res) => {
   const { message, type = "fast" } = req.body as { message?: string; type?: TaskType };
   if (!message?.trim()) {
     res.status(400).json({ error: "message é obrigatório" });
@@ -143,7 +144,7 @@ router.post("/api/chat/openai", async (req, res) => {
   res.json(result);
 });
 
-router.post("/api/chat/claude", async (req, res) => {
+router.post("/chat/claude", async (req, res) => {
   const { message, type = "fast" } = req.body as { message?: string; type?: TaskType };
   if (!message?.trim()) {
     res.status(400).json({ error: "message é obrigatório" });
@@ -154,7 +155,7 @@ router.post("/api/chat/claude", async (req, res) => {
 });
 
 // Stats endpoint — how many cache entries exist
-router.get("/api/chat/cache/stats", async (_req, res) => {
+router.get("/chat/cache/stats", async (_req, res) => {
   const rows = await db.select({ hash: aiCacheTable.questionHash }).from(aiCacheTable);
   res.json({ total_cached: rows.length });
 });

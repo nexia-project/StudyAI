@@ -28,6 +28,14 @@ import {
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 
+const ALLOWED_TTS_VOICES = new Set(["alloy", "echo", "fable", "onyx", "nova", "shimmer"]);
+
+function resolveTtsVoice(requested?: string): string {
+  const fromEnv = (process.env.OPENAI_TTS_VOICE ?? process.env.TIAGAO_TTS_VOICE ?? "onyx").toLowerCase().trim();
+  const candidate = (requested?.trim().toLowerCase() || fromEnv);
+  return ALLOWED_TTS_VOICES.has(candidate) ? candidate : "onyx";
+}
+
 const router: IRouter = Router();
 // Whisper client (OpenAI proxy — only for audio transcription)
 const openai = new OpenAI({
@@ -888,7 +896,7 @@ ${richContext}`;
 
 router.post("/voice-tts", async (req, res) => {
   try {
-    const { text } = req.body as { text: string; voice?: string };
+    const { text, voice: voiceReq } = req.body as { text: string; voice?: string };
     if (!text?.trim()) { res.status(400).json({ erro: "text é obrigatório" }); return; }
 
     let ttsText = text.replace(/\.\.\./g, ". ").replace(/—/g, ", ")
@@ -915,7 +923,7 @@ router.post("/voice-tts", async (req, res) => {
         "Authorization": `Bearer ${ttsApiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ model: "tts-1", voice: "nova", input: ttsText, speed: 1.15 }),
+      body: JSON.stringify({ model: "tts-1", voice: resolveTtsVoice(voiceReq), input: ttsText, speed: 1.15 }),
     });
     if (!ttsRes.ok) {
       const errBody = await ttsRes.text().catch(() => "");

@@ -69,6 +69,27 @@ function detectEmotion(text: string): string {
 }
 
 // ─── SpeechSynthesis fallback (quando servidor TTS indisponível) ──────────────
+function pickPtBrVoicePreferMale(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | undefined {
+  const pt = voices.filter(v => v.lang === "pt-BR" || v.lang.startsWith("pt"));
+  if (pt.length === 0) return undefined;
+  const maleHints = /male|masculin|homem|antonio|daniel|thiago|felipe|ricardo|marcos|onyx|brasil\s*i\b/i;
+  const femaleHints = /female|feminina|microsoft\s*maria|francisca|helena|camila/i;
+  let best = pt[0];
+  let bestScore = -99;
+  for (const v of pt) {
+    const n = `${v.name} ${v.voiceURI}`.toLowerCase();
+    let s = 0;
+    if (maleHints.test(n)) s += 4;
+    if (femaleHints.test(n)) s -= 4;
+    if (v.lang === "pt-BR") s += 1;
+    if (s > bestScore) {
+      bestScore = s;
+      best = v;
+    }
+  }
+  return best;
+}
+
 function playSpeechSynthesisFallback(text: string, onStart?: () => void, signal?: AbortSignal): Promise<void> {
   return new Promise<void>((resolve) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) { resolve(); return; }
@@ -79,10 +100,12 @@ function playSpeechSynthesisFallback(text: string, onStart?: () => void, signal?
     utt.lang = "pt-BR";
     utt.rate = 1.1;
     utt.pitch = 0.95;
-    // Tenta voz em pt-BR, fallback para qualquer pt, fallback padrão
-    const voices = window.speechSynthesis.getVoices();
-    const ptBR = voices.find(v => v.lang === "pt-BR") ?? voices.find(v => v.lang.startsWith("pt"));
-    if (ptBR) utt.voice = ptBR;
+    const applyVoice = () => {
+      const v = pickPtBrVoicePreferMale(window.speechSynthesis.getVoices());
+      if (v) utt.voice = v;
+    };
+    applyVoice();
+    window.speechSynthesis.addEventListener("voiceschanged", applyVoice, { once: true });
     utt.onstart = () => onStart?.();
     utt.onend = () => resolve();
     utt.onerror = () => resolve();

@@ -1,7 +1,7 @@
 /**
  * OpenRouter — fallback entre modelos + último recurso OpenAI direto (API oficial).
  */
-import { openrouter, whisperClient, hasDirectOpenAiKey } from "./aiClient";
+import { openrouter, whisperClient, hasDirectOpenAiKey, OR } from "./aiClient";
 
 /** Extrai texto pesquisável de qualquer erro do SDK / OpenRouter */
 export function stringifyOpenRouterError(err: unknown): string {
@@ -98,9 +98,9 @@ export function completionFallbackChain(primary: string, hasVision: boolean): st
     return [
       primary,
       process.env.OPENROUTER_MODEL_VISION,
-      "openai/gpt-4o",
+      OR.pro,
       "openai/gpt-4-turbo",
-      "openai/gpt-4o-mini",
+      OR.mini,
     ]
       .filter((x): x is string => !!x)
       .filter((x, i, a) => a.indexOf(x) === i);
@@ -113,9 +113,9 @@ export function completionFallbackChain(primary: string, hasVision: boolean): st
     "anthropic/claude-sonnet-latest",
     "anthropic/claude-3.5-haiku",
     "anthropic/claude-3-haiku",
-    "openai/gpt-4o",
+    OR.pro,
     "openai/gpt-4-turbo",
-    "openai/gpt-4o-mini",
+    OR.mini,
   ]
     .filter((x): x is string => !!x)
     .filter((x, i, a) => a.indexOf(x) === i);

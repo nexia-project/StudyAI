@@ -1,16 +1,23 @@
 /**
  * StudyAI — Central AI Client
  *
- * Distribuição de modelos (custo-benefício):
- *   mini / fast  → openai/gpt-4o-mini      — chat, Q&A, flashcards, resumos, materiais (barato)
- *   pro / premium→ openai/gpt-4o           — redação, visão, análise de documentos (qualidade)
- *   reasoning    → deepseek/deepseek-r1-0528 — matemática, física, química (raciocínio)
- *   claude       → anthropic/claude-sonnet-4 — conteúdo educacional pesado (máxima qualidade)
- *   claudeFast   → anthropic/claude-3-haiku  — Claude rápido e barato
+ * Slugs são sempre os da UI OpenRouter (`provedor/modelo`). Para Anthropic use `claude-3.5-*`
+ * (ponto), nunca `claude-3-5-*` — senão 400 "not a valid model ID".
+ *
+ * Overrides opcionais (Railway): só defina se a OpenRouter mudar o nome do modelo.
+ *   OPENROUTER_MODEL_MINI, OPENROUTER_MODEL_PRO, OPENROUTER_MODEL_VISION,
+ *   OPENROUTER_MODEL_CLAUDE, OPENROUTER_MODEL_CLAUDE_FAST, OPENROUTER_MODEL_REASONING
+ *
+ * Distribuição (custo-benefício):
+ *   mini / fast   → gpt-4o-mini (OpenRouter: openai/gpt-4o-mini)
+ *   pro / premium → gpt-4o
+ *   reasoning     → deepseek-r1
+ *   claude        → Claude Sonnet (qualidade educacional)
+ *   claudeFast    → Claude Haiku (rápido / barato)
  *
  * Dois clientes apenas:
- *   openrouter   — TODOS os chat.completions (GPT, Claude, DeepSeek via OpenRouter)
- *   whisperClient— APENAS Whisper (STT) e TTS (OpenAI direto)
+ *   openrouter    — TODOS os chat.completions (GPT, Claude, DeepSeek via OpenRouter)
+ *   whisperClient — APENAS Whisper (STT) e TTS (OpenAI direto)
  */
 import OpenAI from "openai";
 
@@ -48,31 +55,25 @@ export function hasDirectOpenAiKey(): boolean {
   return Boolean(k && k !== "dummy" && k.length > 12);
 }
 
-// ── Model constants ───────────────────────────────────────────────────────────
+// ── Model constants (uma fonte de verdade — rotas usam OR.*) ─────────────────
 export const OR = {
-  // Rápido e barato — maioria das tarefas
-  mini:       "openai/gpt-4o-mini",
-  fast:       "openai/gpt-4o-mini",          // alias de mini
-  materials:  "openai/gpt-4o-mini",          // resumos e materiais
+  mini: process.env.OPENROUTER_MODEL_MINI ?? "openai/gpt-4o-mini",
+  fast: process.env.OPENROUTER_MODEL_MINI ?? "openai/gpt-4o-mini",
+  materials: process.env.OPENROUTER_MODEL_MINI ?? "openai/gpt-4o-mini",
 
-  // Qualidade — análise complexa, redação
-  pro:        "openai/gpt-4o",
-  premium:    "openai/gpt-4o",               // alias de pro
+  pro: process.env.OPENROUTER_MODEL_PRO ?? "openai/gpt-4o",
+  premium: process.env.OPENROUTER_MODEL_PRO ?? "openai/gpt-4o",
 
-  // Visão — apenas GPT (pedido do produto: só OpenAI + Anthropic na OpenRouter)
-  vision:     process.env.OPENROUTER_MODEL_VISION ?? "openai/gpt-4o",
+  vision: process.env.OPENROUTER_MODEL_VISION ?? "openai/gpt-4o",
 
-  // Raciocínio — matemática, física, química
-  reasoning:  "deepseek/deepseek-r1-0528",
+  reasoning:
+    process.env.OPENROUTER_MODEL_REASONING ?? "deepseek/deepseek-r1-0528",
 
-  // Claude via OpenRouter — slug canónico da documentação OpenRouter (não confundir com 3-5-sonnet-20241022)
-  claude:
-    process.env.OPENROUTER_MODEL_CLAUDE ??
-    "anthropic/claude-3.5-sonnet",
-  claudeFast: "anthropic/claude-3-haiku",
-} as const;
-
-export type ORModel = (typeof OR)[keyof typeof OR];
+  claude: process.env.OPENROUTER_MODEL_CLAUDE ?? "anthropic/claude-3.5-sonnet",
+  claudeFast:
+    process.env.OPENROUTER_MODEL_CLAUDE_FAST ??
+    "anthropic/claude-3.5-haiku",
+};
 
 // Aliases para compatibilidade
 export const openai = openrouter;

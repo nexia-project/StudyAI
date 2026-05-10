@@ -1,3 +1,5 @@
+import { OR } from "./aiClient";
+
 /**
  * StudyAI — Model Router
  * Seleção centralizada de modelos por tipo de tarefa.
@@ -36,9 +38,7 @@ export type ModelConfig = {
 export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
   "lesson-generation": {
     provider: "openrouter",
-    model:
-      process.env.OPENROUTER_MODEL_CLAUDE ??
-      "anthropic/claude-3.5-sonnet",
+    model: OR.claude,
     maxTokens: 2500,
     temperature: 0.8,
     supportsSystemRole: true,
@@ -47,9 +47,7 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
   },
   "creative": {
     provider: "openrouter",
-    model:
-      process.env.OPENROUTER_MODEL_CLAUDE ??
-      "anthropic/claude-3.5-sonnet",
+    model: OR.claude,
     maxTokens: 2000,
     temperature: 0.9,
     supportsSystemRole: true,
@@ -58,7 +56,7 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
   },
   "essay-correction": {
     provider: "openrouter",
-    model: "openai/gpt-4o",
+    model: OR.pro,
     maxTokens: 2048,
     temperature: 0.4,
     supportsSystemRole: true,
@@ -67,7 +65,7 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
   },
   "document-analysis": {
     provider: "openrouter",
-    model: "openai/gpt-4o",
+    model: OR.pro,
     maxTokens: 2048,
     temperature: 0.3,
     supportsSystemRole: true,
@@ -76,7 +74,7 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
   },
   "math-reasoning": {
     provider: "openrouter",
-    model: "deepseek/deepseek-r1-0528",
+    model: OR.reasoning,
     maxTokens: 3000,
     supportsSystemRole: true,
     supportsJsonMode: false,
@@ -84,7 +82,7 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
   },
   "deep-reasoning": {
     provider: "openrouter",
-    model: "openai/gpt-4o",
+    model: OR.pro,
     maxTokens: 4096,
     temperature: 0.4,
     supportsSystemRole: true,
@@ -93,7 +91,7 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
   },
   "fast-qa": {
     provider: "openrouter",
-    model: "openai/gpt-4o-mini",
+    model: OR.mini,
     maxTokens: 1024,
     temperature: 0.7,
     supportsSystemRole: true,
@@ -102,7 +100,7 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
   },
   "flashcard": {
     provider: "openrouter",
-    model: "openai/gpt-4o-mini",
+    model: OR.mini,
     maxTokens: 1200,
     temperature: 0.7,
     supportsSystemRole: true,
@@ -111,7 +109,7 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
   },
   "summary": {
     provider: "openrouter",
-    model: "openai/gpt-4o-mini",
+    model: OR.mini,
     maxTokens: 1500,
     temperature: 0.5,
     supportsSystemRole: true,
@@ -120,7 +118,7 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
   },
   "chat": {
     provider: "openrouter",
-    model: "openai/gpt-4o-mini",
+    model: OR.mini,
     maxTokens: 1024,
     temperature: 0.7,
     supportsSystemRole: true,

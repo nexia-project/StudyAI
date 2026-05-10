@@ -12,7 +12,8 @@ import crypto from "node:crypto";
 import { db } from "@workspace/db";
 import { aiCacheTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
-import { openrouter, OR } from "../lib/aiClient";
+import { OR } from "../lib/aiClient";
+import { chatCompletionCreateWithFallback } from "../lib/openrouterFallback";
 
 const router = Router();
 
@@ -94,14 +95,18 @@ async function handleChat(
        Responda em português brasileiro, de forma clara e educativa.
        ${type === "deep" ? "Aprofunde-se no tema com exemplos, contexto histórico e conexões interdisciplinares." : "Seja conciso e direto."}`;
 
-  const completion = await openrouter.chat.completions.create({
+  const temperature = type === "fast" ? 0.3 : 0.6;
+  const max_tokens = type === "slides" ? 2000 : type === "deep" ? 1500 : 600;
+
+  const { response: completion, modelUsed } = await chatCompletionCreateWithFallback({
     model,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user",   content: prompt },
     ],
-    temperature: type === "fast" ? 0.3 : 0.6,
-    max_tokens:  type === "slides" ? 2000 : type === "deep" ? 1500 : 600,
+    max_tokens,
+    hasVision: false,
+    temperature,
   });
 
   const text = completion.choices[0]?.message?.content ?? "";
@@ -126,11 +131,11 @@ async function handleChat(
     questionText: message,
     responseText,
     slidesJson:   slidesData ? JSON.stringify(slidesData) : null,
-    modelUsed:    model,
+    modelUsed:    modelUsed,
     taskType:     type,
   }).onConflictDoNothing();
 
-  return { response: responseText, slides: slidesData, model_used: model, cached: false };
+  return { response: responseText, slides: slidesData, model_used: modelUsed, cached: false };
 }
 
 // ── Routes ───────────────────────────────────────────────────────────────────
@@ -140,8 +145,14 @@ router.post("/chat/openai", async (req, res) => {
     res.status(400).json({ error: "message é obrigatório" });
     return;
   }
-  const result = await handleChat("openai", OPENAI_MODELS, message.trim(), type);
-  res.json(result);
+  try {
+    const result = await handleChat("openai", OPENAI_MODELS, message.trim(), type);
+    res.json(result);
+  } catch (err) {
+    (req as any).log?.error?.({ err }, "ai-cache-chat openai");
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(503).json({ error: "Serviço de IA indisponível. Tente novamente.", _debug: msg });
+  }
 });
 
 router.post("/chat/claude", async (req, res) => {
@@ -150,8 +161,14 @@ router.post("/chat/claude", async (req, res) => {
     res.status(400).json({ error: "message é obrigatório" });
     return;
   }
-  const result = await handleChat("claude", CLAUDE_MODELS, message.trim(), type);
-  res.json(result);
+  try {
+    const result = await handleChat("claude", CLAUDE_MODELS, message.trim(), type);
+    res.json(result);
+  } catch (err) {
+    (req as any).log?.error?.({ err }, "ai-cache-chat claude");
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(503).json({ error: "Serviço de IA indisponível. Tente novamente.", _debug: msg });
+  }
 });
 
 // Stats endpoint — how many cache entries exist

@@ -69,6 +69,11 @@ export function isMissingModelError(err: unknown): boolean {
   const e = err as { status?: number };
   return (
     e?.status === 404 ||
+    /* OpenRouter devolve 400 quando o slug está errado (ex.: claude-3-5 vs claude-3.5) */
+    (e?.status === 400 &&
+      (s.includes("not a valid model") ||
+        s.includes("invalid model id") ||
+        s.includes("unknown model"))) ||
     s.includes("no endpoints") ||
     /\b404\b/.test(s) ||
     s.includes("not found") ||
@@ -103,10 +108,10 @@ export function completionFallbackChain(primary: string, hasVision: boolean): st
   return [
     primary,
     process.env.OPENROUTER_MODEL_CLAUDE,
-    /** Slug oficial na UI OpenRouter; não usar só o ID datado — pode dar 404 mesmo com conta OK */
+    /** IDs OpenRouter usam `claude-3.5-*` (ponto), nunca `claude-3-5-*` — 400 "not a valid model ID" */
     "anthropic/claude-3.5-sonnet",
-    "anthropic/claude-3-5-sonnet-20241022",
-    "anthropic/claude-3-5-sonnet-20240620",
+    "anthropic/claude-sonnet-latest",
+    "anthropic/claude-3.5-haiku",
     "anthropic/claude-3-haiku",
     "openai/gpt-4o",
     "openai/gpt-4-turbo",

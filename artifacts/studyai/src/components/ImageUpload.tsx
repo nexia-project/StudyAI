@@ -24,7 +24,7 @@ function getFileKind(file: File): FileKind {
 
 function FileIcon({ kind, className }: { kind: FileKind; className?: string }) {
   if (kind === "pdf") return <FileType2 className={cn("text-red-500", className)} />;
-  if (kind === "word") return <FileText className={cn("text-blue-500", className)} />;
+  if (kind === "word") return <FileText className={cn("text-violet-500", className)} />;
   return <ImageIcon className={cn("text-muted-foreground", className)} />;
 }
 
@@ -52,9 +52,9 @@ const KIND_LABELS: Record<FileKind, string> = {
 };
 
 const KIND_BADGE: Record<FileKind, string> = {
-  image: "bg-indigo-100 text-gray-700",
+  image: "bg-violet-100 text-gray-700",
   pdf: "bg-red-100 text-red-700",
-  word: "bg-blue-100 text-blue-700",
+  word: "bg-violet-100 text-violet-700",
   unknown: "bg-gray-100 text-gray-600",
 };
 
@@ -228,13 +228,13 @@ export function ImageUpload({ onFilesSelect, selectedFiles }: ImageUploadProps) 
           </p>
           {/* Supported formats badges */}
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <span className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-indigo-100 text-gray-700">
+            <span className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-violet-100 text-gray-700">
               <ImageIcon className="w-3.5 h-3.5" /> Imagens
             </span>
             <span className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-red-100 text-red-700">
               <FileType2 className="w-3.5 h-3.5" /> PDF
             </span>
-            <span className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-blue-100 text-blue-700">
+            <span className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-violet-100 text-violet-700">
               <FileText className="w-3.5 h-3.5" /> Word (.doc/.docx)
             </span>
           </div>

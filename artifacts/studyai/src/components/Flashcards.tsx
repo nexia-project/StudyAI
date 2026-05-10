@@ -215,8 +215,8 @@ export function FlashcardsModal({
         {/* Header */}
         <div className="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-6 py-4 rounded-t-[2.5rem] flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center">
-              <Layers className="w-5 h-5 text-indigo-600" />
+            <div className="w-10 h-10 rounded-2xl bg-violet-100 flex items-center justify-center">
+              <Layers className="w-5 h-5 text-violet-600" />
             </div>
             <div>
               <h2 className="text-lg font-black text-gray-900">Flashcards</h2>
@@ -237,8 +237,8 @@ export function FlashcardsModal({
           {/* Landing */}
           {!started && !loading && (
             <div className="text-center py-8 flex flex-col items-center gap-6">
-              <div className="w-24 h-24 rounded-[2rem] bg-indigo-100 flex items-center justify-center">
-                <Layers className="w-12 h-12 text-indigo-600" />
+              <div className="w-24 h-24 rounded-[2rem] bg-violet-100 flex items-center justify-center">
+                <Layers className="w-12 h-12 text-violet-600" />
               </div>
               <div>
                 <h3 className="text-2xl font-black text-gray-900 mb-2">Flashcards com Active Recall</h3>
@@ -262,7 +262,7 @@ export function FlashcardsModal({
               </div>
               <button
                 onClick={generate}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-black text-lg px-8 py-4 rounded-2xl transition-all hover:scale-105 active:scale-95 shadow-lg shadow-indigo-200"
+                className="bg-violet-600 hover:bg-violet-700 text-white font-black text-lg px-8 py-4 rounded-2xl transition-all hover:scale-105 active:scale-95 shadow-lg shadow-violet-200"
               >
                 Gerar Flashcards ⚡
               </button>
@@ -273,7 +273,7 @@ export function FlashcardsModal({
           {/* Loading */}
           {loading && (
             <div className="flex flex-col items-center justify-center py-16 gap-4">
-              <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
+              <Loader2 className="w-10 h-10 text-violet-600 animate-spin" />
               <p className="font-bold text-gray-700">Gerando 15 flashcards...</p>
               <p className="text-sm text-gray-400">A IA está criando âncoras mnemônicas únicas</p>
             </div>
@@ -326,7 +326,7 @@ export function FlashcardsModal({
               </div>
               <button
                 onClick={generate}
-                className="text-indigo-600 hover:text-indigo-800 font-bold text-sm underline underline-offset-2"
+                className="text-violet-600 hover:text-violet-800 font-bold text-sm underline underline-offset-2"
               >
                 Gerar novos flashcards
               </button>
@@ -340,7 +340,7 @@ export function FlashcardsModal({
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                   <div
-                    className="h-2 bg-indigo-500 rounded-full transition-all"
+                    className="h-2 bg-violet-500 rounded-full transition-all"
                     style={{ width: `${((current) / cards.length) * 100}%` }}
                   />
                 </div>
@@ -398,12 +398,12 @@ export function FlashcardsModal({
 
                   {/* Back */}
                   <div
-                    className="absolute inset-0 backface-hidden rounded-[2rem] border-2 border-indigo-200 bg-indigo-50 p-6 sm:p-8 flex flex-col gap-4 shadow-lg min-h-[220px]"
+                    className="absolute inset-0 backface-hidden rounded-[2rem] border-2 border-violet-200 bg-violet-50 p-6 sm:p-8 flex flex-col gap-4 shadow-lg min-h-[220px]"
                     style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
                   >
                     <div className="flex items-center gap-2">
-                      <Zap className="w-4 h-4 text-indigo-500" />
-                      <span className="text-xs font-black text-indigo-600 uppercase tracking-wider">Resposta</span>
+                      <Zap className="w-4 h-4 text-violet-500" />
+                      <span className="text-xs font-black text-violet-600 uppercase tracking-wider">Resposta</span>
                     </div>
                     <p className="text-lg sm:text-xl font-bold text-gray-900 leading-relaxed flex-1">
                       {card.verso}
@@ -429,7 +429,7 @@ export function FlashcardsModal({
                     className="flex flex-col gap-2"
                   >
                     {cardImages[card.id] ? (
-                      <div className="rounded-2xl overflow-hidden border border-indigo-100 shadow-sm">
+                      <div className="rounded-2xl overflow-hidden border border-violet-100 shadow-sm">
                         <img
                           src={cardImages[card.id]}
                           alt={`Ilustração: ${card.frente}`}
@@ -443,7 +443,7 @@ export function FlashcardsModal({
                       <button
                         onClick={() => generateCardImage(card.id, card.frente, card.verso)}
                         disabled={loadingImageId !== null}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl border-2 border-dashed border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50 text-indigo-500 font-bold text-sm transition-all disabled:opacity-50"
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl border-2 border-dashed border-violet-200 hover:border-violet-400 hover:bg-violet-50 text-violet-500 font-bold text-sm transition-all disabled:opacity-50"
                       >
                         {loadingImageId === card.id ? (
                           <><Loader2 className="w-4 h-4 animate-spin" /> Gerando ilustração...</>
@@ -542,7 +542,7 @@ export function FlashcardsButton({
     <>
       <button
         onClick={() => setOpen(true)}
-        className="w-full group relative overflow-hidden rounded-2xl border-2 border-indigo-300 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 shadow-lg shadow-indigo-200 hover:shadow-xl hover:shadow-indigo-300 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 text-left"
+        className="w-full group relative overflow-hidden rounded-2xl border-2 border-violet-300 bg-gradient-to-r from-violet-500 to-violet-600 hover:from-violet-600 hover:to-violet-700 shadow-lg shadow-violet-200 hover:shadow-xl hover:shadow-violet-300 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 text-left"
       >
         {/* Shine effect */}
         <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 skew-x-12 pointer-events-none" />
@@ -556,7 +556,7 @@ export function FlashcardsButton({
               <span className="text-base font-black text-white">Praticar com Flashcards</span>
               <span className="text-[10px] font-bold bg-white/25 text-white px-2 py-0.5 rounded-full uppercase tracking-wider">Método Anki</span>
             </div>
-            <p className="text-sm text-indigo-100 mt-0.5">15 cards gerados com IA • Repetição espaçada • Marque o que já sabe</p>
+            <p className="text-sm text-violet-100 mt-0.5">15 cards gerados com IA • Repetição espaçada • Marque o que já sabe</p>
           </div>
           <Zap className="w-5 h-5 text-yellow-300 flex-shrink-0 group-hover:animate-bounce" />
         </div>

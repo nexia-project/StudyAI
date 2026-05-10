@@ -106,16 +106,16 @@ function getGrade(score: number, total: number) {
   const pct = total > 0 ? score / total : 0;
   if (pct >= 0.9) return { nota: "10", label: "Excelente!", emoji: "🏆", color: "#10b981", bg: "from-emerald-400 to-teal-500", ring: "#10b981", tier: "S" };
   if (pct >= 0.8) return { nota: "9", label: "Ótimo!", emoji: "🌟", color: "#059669", bg: "from-emerald-500 to-green-600", ring: "#059669", tier: "A" };
-  if (pct >= 0.7) return { nota: "8", label: "Muito Bom!", emoji: "👏", color: "#3b82f6", bg: "from-blue-400 to-indigo-500", ring: "#3b82f6", tier: "B" };
-  if (pct >= 0.6) return { nota: "7", label: "Bom!", emoji: "👍", color: "#6366f1", bg: "from-indigo-400 to-violet-500", ring: "#6366f1", tier: "C" };
+  if (pct >= 0.7) return { nota: "8", label: "Muito Bom!", emoji: "👏", color: "#3b82f6", bg: "from-violet-400 to-violet-500", ring: "#3b82f6", tier: "B" };
+  if (pct >= 0.6) return { nota: "7", label: "Bom!", emoji: "👍", color: "#6366f1", bg: "from-violet-400 to-violet-500", ring: "#6366f1", tier: "C" };
   if (pct >= 0.5) return { nota: "6", label: "Passou!", emoji: "😅", color: "#f59e0b", bg: "from-yellow-400 to-orange-400", ring: "#f59e0b", tier: "D" };
   if (pct >= 0.4) return { nota: "5", label: "Quase lá!", emoji: "💪", color: "#f97316", bg: "from-orange-400 to-red-400", ring: "#f97316", tier: "E" };
   return { nota: "< 5", label: "Precisa revisar!", emoji: "📚", color: "#ef4444", bg: "from-red-400 to-rose-500", ring: "#ef4444", tier: "F" };
 }
 
 const OPTION_COLORS: Record<string, { idle: string; selected: string; badge: string }> = {
-  A: { idle: "border-slate-200 hover:border-indigo-300 hover:bg-indigo-50", selected: "border-indigo-500 bg-indigo-50 shadow-md shadow-indigo-100", badge: "bg-indigo-100 text-indigo-700" },
-  B: { idle: "border-slate-200 hover:border-blue-300 hover:bg-blue-50", selected: "border-blue-500 bg-blue-50 shadow-md shadow-blue-100", badge: "bg-blue-100 text-blue-700" },
+  A: { idle: "border-slate-200 hover:border-violet-300 hover:bg-violet-50", selected: "border-violet-500 bg-violet-50 shadow-md shadow-violet-100", badge: "bg-violet-100 text-violet-700" },
+  B: { idle: "border-slate-200 hover:border-violet-300 hover:bg-violet-50", selected: "border-violet-500 bg-violet-50 shadow-md shadow-violet-100", badge: "bg-violet-100 text-violet-700" },
   C: { idle: "border-slate-200 hover:border-emerald-300 hover:bg-emerald-50", selected: "border-emerald-500 bg-emerald-50 shadow-md shadow-emerald-100", badge: "bg-emerald-100 text-emerald-700" },
   D: { idle: "border-slate-200 hover:border-orange-300 hover:bg-orange-50", selected: "border-orange-500 bg-orange-50 shadow-md shadow-orange-100", badge: "bg-orange-100 text-orange-700" },
 };
@@ -176,7 +176,7 @@ function LoadingSimulado({ adaptativo, diagnosticoTotal }: { adaptativo?: boolea
           "w-20 h-20 rounded-full flex items-center justify-center shadow-2xl",
           diagnosticoTotal
             ? "bg-gradient-to-br from-rose-500 to-orange-500 shadow-orange-200"
-            : "bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-indigo-200"
+            : "bg-gradient-to-br from-violet-500 to-violet-600 shadow-violet-200"
         )}>
           <Loader2 className="w-10 h-10 text-white animate-spin" />
         </div>
@@ -184,7 +184,7 @@ function LoadingSimulado({ adaptativo, diagnosticoTotal }: { adaptativo?: boolea
           key={step}
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          className="absolute -bottom-1 -right-1 w-8 h-8 bg-white rounded-full border-2 border-indigo-200 flex items-center justify-center text-lg shadow-sm"
+          className="absolute -bottom-1 -right-1 w-8 h-8 bg-white rounded-full border-2 border-violet-200 flex items-center justify-center text-lg shadow-sm"
         >
           {steps[step].icon}
         </motion.div>
@@ -211,7 +211,7 @@ function LoadingSimulado({ adaptativo, diagnosticoTotal }: { adaptativo?: boolea
         </div>
         <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
           <motion.div
-            className="h-full bg-gradient-to-r from-indigo-500 to-indigo-500 rounded-full"
+            className="h-full bg-gradient-to-r from-violet-500 to-purple-600 rounded-full"
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.08, ease: "linear" }}
           />
@@ -248,7 +248,7 @@ export function SimuladoAdaptativoButton({ plan, serie, conteudoTexto }: { plan:
     <ErrorBoundary>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 px-5 py-2.5 rounded-2xl font-black text-white bg-gradient-to-r from-indigo-500 via-indigo-500 to-indigo-600 hover:from-indigo-600 hover:via-indigo-600 hover:to-indigo-700 shadow-lg shadow-indigo-200 hover:shadow-xl hover:shadow-indigo-300 transition-all duration-200 hover:-translate-y-0.5 text-sm"
+        className="flex items-center gap-2 px-5 py-2.5 rounded-2xl font-black text-white bg-gradient-to-r from-violet-500 via-violet-500 to-violet-600 hover:from-violet-600 hover:via-violet-600 hover:to-violet-700 shadow-lg shadow-violet-200 hover:shadow-xl hover:shadow-violet-300 transition-all duration-200 hover:-translate-y-0.5 text-sm"
         title="Simulado inteligente que foca nas suas fraquezas com base no seu histórico"
       >
         <Zap className="w-4 h-4" />
@@ -518,7 +518,7 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, diagnosticoTotal, on
             <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-xl font-bold border-2 border-slate-200 hover:bg-slate-50 transition-colors text-slate-600">
               Fechar
             </button>
-            <button onClick={generateSimulado} className="flex-1 px-4 py-2.5 rounded-xl font-black text-white bg-gradient-to-r from-indigo-500 to-indigo-600 hover:opacity-90 transition-opacity">
+            <button onClick={generateSimulado} className="flex-1 px-4 py-2.5 rounded-xl font-black text-white bg-gradient-to-r from-violet-500 to-violet-600 hover:opacity-90 transition-opacity">
               Tentar novamente
             </button>
           </div>
@@ -552,7 +552,7 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, diagnosticoTotal, on
         {/* ── HEADER ── */}
         <div className={cn(
           "relative px-6 py-4 flex-shrink-0 overflow-hidden",
-          phase === "loading" ? "bg-gradient-to-r from-indigo-600 to-indigo-700"
+          phase === "loading" ? "bg-gradient-to-r from-violet-600 to-violet-700"
           : phase === "results" && grade ? `bg-gradient-to-r ${grade.bg}`
           : timeCritical ? "bg-gradient-to-r from-red-600 to-rose-700"
           : timeWarning ? "bg-gradient-to-r from-orange-500 to-red-500"
@@ -647,10 +647,10 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, diagnosticoTotal, on
                     className={cn(
                       "w-7 h-7 rounded-lg text-xs font-black transition-all duration-150",
                       i === current
-                        ? "bg-indigo-600 text-white scale-115 shadow-md shadow-indigo-200 ring-2 ring-indigo-300 ring-offset-1"
+                        ? "bg-violet-600 text-white scale-115 shadow-md shadow-violet-200 ring-2 ring-violet-300 ring-offset-1"
                         : answers[p.id]
                         ? "bg-emerald-400 text-white shadow-sm"
-                        : "bg-white border border-slate-200 text-slate-400 hover:border-indigo-300 hover:text-indigo-600"
+                        : "bg-white border border-slate-200 text-slate-400 hover:border-violet-300 hover:text-violet-600"
                     )}
                   >
                     {i + 1}
@@ -677,7 +677,7 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, diagnosticoTotal, on
                       </div>
                     )}
                     <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white text-sm font-black flex items-center justify-center flex-shrink-0 mt-0.5 shrink-0">
+                      <div className="w-8 h-8 rounded-xl bg-violet-600 text-white text-sm font-black flex items-center justify-center flex-shrink-0 mt-0.5 shrink-0">
                         {current + 1}
                       </div>
                       <p className="text-slate-800 font-semibold leading-relaxed text-[15px] whitespace-pre-wrap break-words">{currentQ.enunciado}</p>
@@ -824,7 +824,7 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, diagnosticoTotal, on
                     });
                   }
                 }}
-                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl border-2 border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black text-sm transition-all"
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl border-2 border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 font-black text-sm transition-all"
               >
                 {copied ? <Check className="w-4 h-4 text-green-500" /> : <Share2 className="w-4 h-4" />}
                 {copied ? "Copiado! Cole no WhatsApp 💬" : "Compartilhar meu resultado"}
@@ -832,21 +832,21 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, diagnosticoTotal, on
 
               {/* Adaptive diagnostic comparison panel */}
               {adaptativo && diagnosticoData && (
-                <div className="rounded-2xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 to-violet-50 p-4 space-y-3">
+                <div className="rounded-2xl border-2 border-violet-200 bg-gradient-to-br from-violet-50 to-violet-50 p-4 space-y-3">
                   <div className="flex items-center gap-2 mb-1">
-                    <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center">
-                      <Zap className="w-4 h-4 text-indigo-600" />
+                    <div className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center">
+                      <Zap className="w-4 h-4 text-violet-600" />
                     </div>
                     <h4 className="font-black text-slate-800 text-sm">Análise Adaptativa</h4>
-                    <span className="ml-auto text-[10px] font-black px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700 uppercase tracking-wide">⚡ Personalizado</span>
+                    <span className="ml-auto text-[10px] font-black px-1.5 py-0.5 rounded-md bg-violet-100 text-violet-700 uppercase tracking-wide">⚡ Personalizado</span>
                   </div>
                   {diagnosticoData.totalSimulados > 0 ? (
                     <div className="grid grid-cols-3 gap-2">
-                      <div className="bg-white rounded-xl p-2.5 text-center border border-indigo-100">
-                        <p className="text-indigo-700 font-black text-lg">{diagnosticoData.avgScore}%</p>
+                      <div className="bg-white rounded-xl p-2.5 text-center border border-violet-100">
+                        <p className="text-violet-700 font-black text-lg">{diagnosticoData.avgScore}%</p>
                         <p className="text-slate-500 text-[10px] font-semibold leading-tight">Média anterior</p>
                       </div>
-                      <div className="bg-white rounded-xl p-2.5 text-center border border-indigo-100">
+                      <div className="bg-white rounded-xl p-2.5 text-center border border-violet-100">
                         <p className={cn(
                           "font-black text-lg",
                           total > 0 && Math.round((score / total) * 100) > diagnosticoData.avgScore ? "text-emerald-600" : "text-orange-600"
@@ -855,7 +855,7 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, diagnosticoTotal, on
                         </p>
                         <p className="text-slate-500 text-[10px] font-semibold leading-tight">Agora</p>
                       </div>
-                      <div className="bg-white rounded-xl p-2.5 text-center border border-indigo-100">
+                      <div className="bg-white rounded-xl p-2.5 text-center border border-violet-100">
                         <p className={cn(
                           "font-black text-lg",
                           diagnosticoData.tendencia === "melhorando" ? "text-emerald-600"
@@ -894,8 +894,8 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, diagnosticoTotal, on
               {/* Review section */}
               <div>
                 <h3 className="font-black text-slate-800 text-base mb-1 flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center">
-                    <BookOpen className="w-4 h-4 text-indigo-600" />
+                  <div className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center">
+                    <BookOpen className="w-4 h-4 text-violet-600" />
                   </div>
                   Revisão Interativa
                 </h3>
@@ -915,7 +915,7 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, diagnosticoTotal, on
                         key={p.id}
                         className={cn(
                           "rounded-2xl border overflow-hidden transition-all duration-200",
-                          isOpen ? "border-indigo-300 shadow-md shadow-indigo-100" : "border-slate-200",
+                          isOpen ? "border-violet-300 shadow-md shadow-violet-100" : "border-slate-200",
                           !isOpen && (examCorrect ? "bg-emerald-50/40" : "bg-red-50/30")
                         )}
                       >
@@ -945,7 +945,7 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, diagnosticoTotal, on
                                 </span>
                               )}
                               {isOpen && !revealed && (
-                                <span className="text-[11px] font-bold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full animate-pulse">
+                                <span className="text-[11px] font-bold text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full animate-pulse">
                                   Escolha uma alternativa →
                                 </span>
                               )}
@@ -983,7 +983,7 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, diagnosticoTotal, on
                                 {(["A", "B", "C", "D"] as const).map((letra) => {
                                   const isPick = reviewPick === letra;
                                   const isCorrect = letra === p.correta;
-                                  let style = "bg-white border-slate-200 text-slate-700 hover:border-indigo-300 hover:bg-indigo-50 cursor-pointer";
+                                  let style = "bg-white border-slate-200 text-slate-700 hover:border-violet-300 hover:bg-violet-50 cursor-pointer";
                                   let badgeStyle = "bg-slate-100 text-slate-500";
                                   if (revealed) {
                                     if (isCorrect) {
@@ -1031,7 +1031,7 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, diagnosticoTotal, on
 
                               {/* Prompt before selection */}
                               {!revealed && (
-                                <div className="flex items-center justify-center gap-2 py-2 text-xs text-indigo-500 font-bold">
+                                <div className="flex items-center justify-center gap-2 py-2 text-xs text-violet-500 font-bold">
                                   <Zap className="w-3.5 h-3.5" />
                                   Selecione uma alternativa para ver o gabarito
                                 </div>
@@ -1039,8 +1039,8 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, diagnosticoTotal, on
 
                               {/* Explanation — shown after pick, simple fade via CSS */}
                               {revealed && (
-                                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3.5">
-                                  <p className="text-[11px] font-black uppercase tracking-wider text-indigo-500 mb-1.5 flex items-center gap-1">
+                                <div className="bg-violet-50 border border-violet-200 rounded-xl p-3.5">
+                                  <p className="text-[11px] font-black uppercase tracking-wider text-violet-500 mb-1.5 flex items-center gap-1">
                                     <Star className="w-3 h-3" /> Explicação do Professor
                                   </p>
                                   <p className="text-sm text-slate-700 leading-relaxed">{p.explicacao}</p>
@@ -1052,7 +1052,7 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, diagnosticoTotal, on
                                         return next;
                                       })
                                     }
-                                    className="mt-3 text-xs text-indigo-500 hover:text-indigo-700 font-bold flex items-center gap-1 transition-colors"
+                                    className="mt-3 text-xs text-violet-500 hover:text-violet-700 font-bold flex items-center gap-1 transition-colors"
                                   >
                                     <RotateCcw className="w-3 h-3" /> Tentar de novo
                                   </button>
@@ -1105,7 +1105,7 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, diagnosticoTotal, on
                   "flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-white text-sm transition-all shadow-lg",
                   answeredCount === total
                     ? "bg-gradient-to-r from-emerald-500 to-teal-500 hover:opacity-90 shadow-emerald-200"
-                    : "bg-gradient-to-r from-indigo-600 to-indigo-600 hover:opacity-90 shadow-indigo-200"
+                    : "bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:opacity-90 shadow-violet-200"
                 )}
               >
                 {answeredCount === total
@@ -1126,7 +1126,7 @@ function Simulado({ plan, serie, conteudoTexto, adaptativo, diagnosticoTotal, on
               </button>
               <button
                 onClick={generateSimulado}
-                className="flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-black text-white text-sm bg-gradient-to-r from-indigo-600 to-indigo-600 hover:opacity-90 transition-opacity shadow-lg shadow-indigo-200"
+                className="flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-black text-white text-sm bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:opacity-90 transition-opacity shadow-lg shadow-violet-200"
               >
                 <RotateCcw className="w-4 h-4" /> Novo Simulado
               </button>

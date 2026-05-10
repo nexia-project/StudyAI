@@ -9,10 +9,10 @@ import { cn } from "@/lib/utils";
 import { useSubscription, startCheckout } from "@/hooks/useSubscription";
 
 const DIAS_INFO = [
-  { dia: 1, nome: "Linguagens", cor: "from-blue-500 to-indigo-600", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200", emoji: "📝", materias: "Língua Portuguesa, Literatura, Inglês, Arte, Educação Física" },
+  { dia: 1, nome: "Linguagens", cor: "from-violet-500 to-violet-600", bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-200", emoji: "📝", materias: "Língua Portuguesa, Literatura, Inglês, Arte, Educação Física" },
   { dia: 2, nome: "Ciências Humanas", cor: "from-amber-500 to-orange-600", bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200", emoji: "🌍", materias: "História, Geografia, Filosofia, Sociologia" },
   { dia: 3, nome: "Ciências Naturais", cor: "from-emerald-500 to-teal-600", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", emoji: "🔬", materias: "Física, Química, Biologia" },
-  { dia: 4, nome: "Matemática", cor: "from-indigo-500 to-indigo-600", bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-200", emoji: "📐", materias: "Matemática — 45 questões" },
+  { dia: 4, nome: "Matemática", cor: "from-violet-500 to-violet-600", bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-200", emoji: "📐", materias: "Matemática — 45 questões" },
 ];
 
 interface Questao {
@@ -108,7 +108,7 @@ export default function SimuladoEnemPage() {
 
   if (!isPremium) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/40 to-indigo-50/40">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50/40 to-violet-50/40">
         {/* Header */}
         <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-slate-100">
           <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
@@ -122,7 +122,7 @@ export default function SimuladoEnemPage() {
         <div className="max-w-5xl mx-auto px-4 py-12">
           {/* Hero */}
           <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1.5 rounded-full mb-6 uppercase tracking-wider">
+            <div className="inline-flex items-center gap-2 bg-violet-100 text-violet-700 text-xs font-bold px-3 py-1.5 rounded-full mb-6 uppercase tracking-wider">
               <Lock className="w-3.5 h-3.5" />
               Recurso Premium
             </div>
@@ -158,8 +158,8 @@ export default function SimuladoEnemPage() {
                 { icon: RefreshCw, title: "Simulados ilimitados", desc: "Refaça quantas vezes quiser com novas questões geradas pela IA" },
               ].map(({ icon: Icon, title, desc }) => (
                 <div key={title} className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                    <Icon className="w-5 h-5 text-indigo-600" />
+                  <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-5 h-5 text-violet-600" />
                   </div>
                   <div>
                     <p className="font-bold text-slate-800 text-sm">{title}</p>
@@ -170,9 +170,9 @@ export default function SimuladoEnemPage() {
             </div>
 
             {/* Pricing card */}
-            <div className="bg-white rounded-3xl border border-indigo-100 shadow-xl shadow-indigo-100/50 p-8 sticky top-24">
+            <div className="bg-white rounded-3xl border border-violet-100 shadow-xl shadow-violet-100/50 p-8 sticky top-24">
               <div className="text-center mb-6">
-                <p className="text-sm font-bold text-indigo-600 uppercase tracking-wider mb-2">StudyAI Premium</p>
+                <p className="text-sm font-bold text-violet-600 uppercase tracking-wider mb-2">StudyAI Premium</p>
                 <div className="flex items-end justify-center gap-1 mb-1">
                   <span className="text-5xl font-black text-slate-800">R$29</span>
                   <span className="text-2xl font-black text-slate-800">,90</span>
@@ -191,7 +191,7 @@ export default function SimuladoEnemPage() {
                   "Aula com Professor na lousa interativa",
                 ].map((f) => (
                   <div key={f} className="flex items-center gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-violet-500 flex-shrink-0" />
                     <span className="text-sm text-slate-700">{f}</span>
                   </div>
                 ))}
@@ -200,7 +200,7 @@ export default function SimuladoEnemPage() {
               <button
                 onClick={async () => { setCheckoutLoading(true); try { await startCheckout(); } catch { navigate("/pricing"); } finally { setCheckoutLoading(false); } }}
                 disabled={checkoutLoading}
-                className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-600 text-white font-black text-base shadow-lg shadow-indigo-200 hover:opacity-90 transition-opacity disabled:opacity-60"
+                className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black text-base shadow-lg shadow-violet-200 hover:opacity-90 transition-opacity disabled:opacity-60"
               >
                 {checkoutLoading ? (
                   <><Loader2 className="w-5 h-5 animate-spin" /> Aguarde...</>
@@ -222,7 +222,7 @@ export default function SimuladoEnemPage() {
   // ── SELEÇÃO DE DIA ────────────────────────────────────────────────────────
   if (fase === "selecionar") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/40">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50/30 to-purple-50/40">
         <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-slate-100">
           <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
             <button onClick={() => navigate("/app")} className="flex items-center gap-2 px-3 py-2 rounded-2xl hover:bg-slate-100 text-slate-600 font-bold text-sm">
@@ -274,7 +274,7 @@ export default function SimuladoEnemPage() {
                   className={cn(
                     "px-4 py-2 rounded-xl font-bold text-sm transition-all",
                     qtd === n
-                      ? "bg-indigo-600 text-white shadow-md"
+                      ? "bg-violet-600 text-white shadow-md"
                       : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                   )}
                 >
@@ -297,7 +297,7 @@ export default function SimuladoEnemPage() {
           <button
             onClick={gerarSimulado}
             disabled={!diaSelecionado}
-            className="w-full py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-600 text-white font-black text-lg shadow-lg hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black text-lg shadow-lg hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
           >
             🚀 Iniciar Simulado
           </button>
@@ -310,12 +310,12 @@ export default function SimuladoEnemPage() {
   if (fase === "gerando") {
     const diaInfo = DIAS_INFO.find(d => d.dia === diaSelecionado)!;
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-indigo-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-violet-50">
         <div className="text-center">
           <div className={cn("w-20 h-20 rounded-3xl bg-gradient-to-br mx-auto mb-6 flex items-center justify-center shadow-xl text-4xl", diaInfo.cor)}>
             {diaInfo.emoji}
           </div>
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mx-auto mb-4" />
+          <Loader2 className="w-8 h-8 animate-spin text-violet-600 mx-auto mb-4" />
           <h2 className="text-xl font-black text-slate-800 mb-2">Gerando seu simulado...</h2>
           <p className="text-slate-500">Criando {qtd} questões de {diaInfo.nome}</p>
         </div>
@@ -406,13 +406,13 @@ export default function SimuladoEnemPage() {
                     className={cn(
                       "w-full flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all",
                       respondida === letra
-                        ? "border-indigo-500 bg-indigo-50 shadow-sm"
-                        : "border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/30"
+                        ? "border-violet-500 bg-violet-50 shadow-sm"
+                        : "border-slate-200 bg-white hover:border-violet-300 hover:bg-violet-50/30"
                     )}
                   >
                     <span className={cn(
                       "flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-sm font-black",
-                      respondida === letra ? "bg-indigo-500 text-white" : "bg-slate-100 text-slate-600"
+                      respondida === letra ? "bg-violet-500 text-white" : "bg-slate-100 text-slate-600"
                     )}>
                       {letra}
                     </span>
@@ -434,7 +434,7 @@ export default function SimuladoEnemPage() {
                 {atual < questoes.length - 1 ? (
                   <button
                     onClick={() => setAtual(a => a + 1)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition-all"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 text-white font-bold text-sm hover:bg-violet-700 transition-all"
                   >
                     Próxima
                     <ChevronRight className="w-4 h-4" />
@@ -460,8 +460,8 @@ export default function SimuladoEnemPage() {
                       onClick={() => setAtual(i)}
                       className={cn(
                         "w-7 h-7 rounded-lg text-xs font-bold transition-all",
-                        i === atual ? "ring-2 ring-indigo-500 ring-offset-1" : "",
-                        respostas[q2.numero] ? "bg-indigo-500 text-white" : "bg-slate-100 text-slate-500"
+                        i === atual ? "ring-2 ring-violet-500 ring-offset-1" : "",
+                        respostas[q2.numero] ? "bg-violet-500 text-white" : "bg-slate-100 text-slate-500"
                       )}
                     >
                       {q2.numero}
@@ -481,12 +481,12 @@ export default function SimuladoEnemPage() {
     const { acertos, erros, pct, total } = calcularResultado();
     const diaInfo = DIAS_INFO.find(d => d.dia === diaSelecionado)!;
     const nivel = pct >= 80 ? { label: "Excelente! 🏆", cor: "text-emerald-700", bg: "bg-emerald-50" }
-      : pct >= 60 ? { label: "Bom! 📈", cor: "text-blue-700", bg: "bg-blue-50" }
+      : pct >= 60 ? { label: "Bom! 📈", cor: "text-violet-700", bg: "bg-violet-50" }
       : pct >= 40 ? { label: "Regular ✏️", cor: "text-amber-700", bg: "bg-amber-50" }
       : { label: "Precisa Melhorar 💪", cor: "text-rose-700", bg: "bg-rose-50" };
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-violet-50">
         <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-slate-100">
           <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
             <button onClick={() => setFase("selecionar")} className="flex items-center gap-2 px-3 py-2 rounded-2xl hover:bg-slate-100 text-slate-600 font-bold text-sm">
@@ -516,7 +516,7 @@ export default function SimuladoEnemPage() {
               className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors"
             >
               <span className="font-bold text-slate-800 flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-indigo-500" />
+                <BookOpen className="w-4 h-4 text-violet-500" />
                 Ver gabarito e explicações ({erros.length} erro{erros.length !== 1 ? "s" : ""})
               </span>
               <ChevronRight className={cn("w-4 h-4 text-slate-400 transition-transform", mostrarGabarito && "rotate-90")} />
@@ -565,7 +565,7 @@ export default function SimuladoEnemPage() {
           <div className="flex gap-3">
             <button
               onClick={() => setFase("selecionar")}
-              className="flex-1 py-3 rounded-2xl bg-indigo-600 text-white font-black hover:bg-indigo-700 transition-all"
+              className="flex-1 py-3 rounded-2xl bg-violet-600 text-white font-black hover:bg-violet-700 transition-all"
             >
               Fazer outro simulado
             </button>

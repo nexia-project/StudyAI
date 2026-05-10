@@ -202,7 +202,7 @@ function VolumeBar({ level }: { level: number }) {
             transition={{ duration: 0.08, ease: "easeOut" }}
             className={`w-1.5 rounded-full transition-colors duration-75 ${
               active
-                ? level > 70 ? "bg-emerald-400" : level > 40 ? "bg-indigo-400" : "bg-indigo-300"
+                ? level > 70 ? "bg-emerald-400" : level > 40 ? "bg-violet-400" : "bg-violet-300"
                 : "bg-slate-200"
             }`}
           />
@@ -711,11 +711,11 @@ export function VoiceProfessor() {
             initial={{ opacity: 0, y: 12, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.95 }}
-            className="fixed bottom-24 left-4 right-4 sm:left-6 sm:right-auto sm:w-80 z-40 bg-white rounded-2xl shadow-xl border border-indigo-100 p-3">
+            className="fixed bottom-24 left-4 right-4 sm:left-6 sm:right-auto sm:w-80 z-40 bg-white rounded-2xl shadow-xl border border-violet-100 p-3">
             <div className="flex items-center gap-3">
               <TiagaoCharacter state={phase as CharacterState} size={48} showLabel={false} />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-black text-indigo-600 mb-1">Professor Tiagão</p>
+                <p className="text-xs font-black text-violet-600 mb-1">Professor Tiagão</p>
                 {phase === "thinking"
                   ? <div className="flex gap-1 items-center h-4">
                       {[0,150,300].map(d=><span key={d} className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{animationDelay:`${d}ms`}}/>)}
@@ -766,7 +766,7 @@ export function VoiceProfessor() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.96 }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className={`fixed z-50 bg-white rounded-3xl shadow-2xl border border-indigo-100 overflow-hidden flex flex-col transition-all duration-300 ${
+            className={`fixed z-50 bg-white rounded-3xl shadow-2xl border border-violet-100 overflow-hidden flex flex-col transition-all duration-300 ${
               focusMode
                 ? "inset-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[520px] sm:max-h-[90vh]"
                 : "bottom-[8.5rem] md:bottom-24 left-4 right-4 sm:left-6 sm:right-auto sm:w-[360px] max-h-[70vh]"
@@ -782,9 +782,9 @@ export function VoiceProfessor() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-white font-black text-sm leading-none">Professor Tiagão</p>
-                <p className="text-indigo-200 text-[11px] mt-0.5">{phaseLabel[phase]}</p>
+                <p className="text-violet-200 text-[11px] mt-0.5">{phaseLabel[phase]}</p>
                 {focusMode && (
-                  <span className="inline-flex items-center gap-1 text-indigo-200 text-[10px] bg-white/10 px-2 py-0.5 rounded-full mt-1">
+                  <span className="inline-flex items-center gap-1 text-violet-200 text-[10px] bg-white/10 px-2 py-0.5 rounded-full mt-1">
                     <Timer className="w-2.5 h-2.5" /> {fmtFocusTime(focusSeconds)}
                   </span>
                 )}
@@ -818,13 +818,13 @@ export function VoiceProfessor() {
                 <button key={t.key} onClick={() => setTab(t.key)}
                   className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold transition-all border-b-2 ${
                     tab === t.key
-                      ? "border-indigo-500 text-indigo-700 bg-white"
+                      ? "border-violet-500 text-violet-700 bg-white"
                       : "border-transparent text-slate-400 hover:text-slate-600"
                   }`}>
                   <t.icon className="w-3.5 h-3.5" />
                   {t.label}
                   {t.key === "conversa" && history.length > 0 && (
-                    <span className="min-w-[16px] h-4 px-1 rounded-full bg-indigo-600 text-white text-[9px] font-black flex items-center justify-center">
+                    <span className="min-w-[16px] h-4 px-1 rounded-full bg-violet-600 text-white text-[9px] font-black flex items-center justify-center">
                       {Math.min(99, history.length)}
                     </span>
                   )}
@@ -846,8 +846,8 @@ export function VoiceProfessor() {
                         <p className="text-xs text-slate-400 text-center">Fale ou escreva para começar</p>
                       )}
                       {phase === "thinking" && (
-                        <div className="flex gap-1.5 items-center text-indigo-400 text-xs">
-                          {[0,150,300].map(d => <span key={d} className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{animationDelay:`${d}ms`}}/>)}
+                        <div className="flex gap-1.5 items-center text-violet-400 text-xs">
+                          {[0,150,300].map(d => <span key={d} className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{animationDelay:`${d}ms`}}/>)}
                           <span className="text-gray-400 ml-1">pensando...</span>
                         </div>
                       )}
@@ -868,11 +868,11 @@ export function VoiceProfessor() {
                           )}
                           <div className={`max-w-[80%] px-3 py-2.5 rounded-2xl text-xs leading-relaxed ${
                             msg.role === "user"
-                              ? "bg-indigo-600 text-white rounded-tr-sm"
-                              : "bg-indigo-50 border border-indigo-100 text-slate-700 rounded-tl-sm"
+                              ? "bg-violet-600 text-white rounded-tr-sm"
+                              : "bg-violet-50 border border-violet-100 text-slate-700 rounded-tl-sm"
                           }`}>
                             <p className="whitespace-pre-wrap">{msg.text}</p>
-                            <p className={`text-[9px] mt-1 ${msg.role === "user" ? "text-indigo-200" : "text-slate-400"}`}>
+                            <p className={`text-[9px] mt-1 ${msg.role === "user" ? "text-violet-200" : "text-slate-400"}`}>
                               {new Date(msg.ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                             </p>
                           </div>
@@ -883,8 +883,8 @@ export function VoiceProfessor() {
                       {phase === "thinking" && (
                         <div className="flex gap-2 justify-start">
                           <TiagaoCharacter state="thinking" size={28} showLabel={false} />
-                          <div className="bg-indigo-50 border border-indigo-100 px-3 py-2.5 rounded-2xl flex items-center gap-1.5">
-                            {[0,150,300].map(d => <span key={d} className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{animationDelay:`${d}ms`}}/>)}
+                          <div className="bg-violet-50 border border-violet-100 px-3 py-2.5 rounded-2xl flex items-center gap-1.5">
+                            {[0,150,300].map(d => <span key={d} className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{animationDelay:`${d}ms`}}/>)}
                           </div>
                         </div>
                       )}
@@ -950,7 +950,7 @@ export function VoiceProfessor() {
                       <button key={i}
                         onClick={() => { sendMessage(cmd.text); setTab("conversa"); }}
                         disabled={phase !== "idle"}
-                        className="text-left px-3 py-2.5 rounded-2xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-xs font-bold text-indigo-800 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 leading-snug">
+                        className="text-left px-3 py-2.5 rounded-2xl bg-violet-50 hover:bg-violet-100 border border-violet-100 text-xs font-bold text-violet-800 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 leading-snug">
                         {cmd.label}
                       </button>
                     ))}
@@ -981,7 +981,7 @@ export function VoiceProfessor() {
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">Microfone</p>
                     {audioCapture.devices.length === 0 ? (
                       <button onClick={audioCapture.refreshDevices}
-                        className="w-full py-2 bg-slate-50 text-slate-500 text-xs rounded-xl border border-dashed border-slate-300 hover:border-indigo-300 transition-colors flex items-center justify-center gap-2">
+                        className="w-full py-2 bg-slate-50 text-slate-500 text-xs rounded-xl border border-dashed border-slate-300 hover:border-violet-300 transition-colors flex items-center justify-center gap-2">
                         <RefreshCw className="w-3.5 h-3.5" /> Detectar microfones
                       </button>
                     ) : (
@@ -991,7 +991,7 @@ export function VoiceProfessor() {
                             onClick={() => audioCapture.setSelectedDeviceId(d.deviceId)}
                             className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                               audioCapture.selectedDeviceId === d.deviceId
-                                ? "bg-indigo-600 text-white"
+                                ? "bg-violet-600 text-white"
                                 : "bg-slate-50 text-slate-600 hover:bg-slate-100"
                             }`}>
                             🎙️ {d.label}
@@ -1019,7 +1019,7 @@ export function VoiceProfessor() {
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">Experiência</p>
                     <button onClick={() => setVoicePure(v => !v)}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-xs font-bold transition-all ${
-                        voicePure ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300"
+                        voicePure ? "bg-violet-600 text-white border-violet-600" : "bg-white text-slate-600 border-slate-200 hover:border-violet-300"
                       }`}>
                       {voicePure ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                       <span className="flex-1 text-left">Modo voz pura (sem texto)</span>
@@ -1038,7 +1038,7 @@ export function VoiceProfessor() {
                         { label: "No histórico", value: history.length },
                       ].map(s => (
                         <div key={s.label} className="bg-slate-50 rounded-xl px-3 py-2 text-center">
-                          <p className="text-lg font-black text-indigo-600">{s.value}</p>
+                          <p className="text-lg font-black text-violet-600">{s.value}</p>
                           <p className="text-[10px] text-slate-400">{s.label}</p>
                         </div>
                       ))}
@@ -1090,10 +1090,10 @@ export function VoiceProfessor() {
                     <input type="text" value={textInput} onChange={e => setTextInput(e.target.value)}
                       onKeyDown={e => { if (e.key === "Enter" && textInput.trim()) { sendMessage(textInput); setTextInput(""); } }}
                       placeholder="Ou escreva sua dúvida..."
-                      className="flex-1 text-xs bg-slate-50 rounded-xl px-3 py-2 text-slate-700 placeholder-slate-400 border border-slate-200 focus:outline-none focus:border-indigo-300 transition-colors" />
+                      className="flex-1 text-xs bg-slate-50 rounded-xl px-3 py-2 text-slate-700 placeholder-slate-400 border border-slate-200 focus:outline-none focus:border-violet-300 transition-colors" />
                     <button onClick={() => { if (textInput.trim()) { sendMessage(textInput); setTextInput(""); } }}
                       disabled={!textInput.trim()}
-                      className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 transition-colors">
+                      className="p-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white disabled:opacity-40 transition-colors">
                       <Send className="w-3.5 h-3.5" />
                     </button>
                   </div>

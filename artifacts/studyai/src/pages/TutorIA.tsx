@@ -19,7 +19,7 @@ export default function TutorIA() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-violet-600 flex items-center justify-center">
               <Bot className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -39,8 +39,8 @@ export default function TutorIA() {
         <div className="space-y-6 mb-6">
           {messages.length === 0 && !loading && (
             <div className="text-center py-16">
-              <div className="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center mx-auto mb-4">
-                <Bot className="w-8 h-8 text-indigo-400" />
+              <div className="w-16 h-16 rounded-2xl bg-violet-50 flex items-center justify-center mx-auto mb-4">
+                <Bot className="w-8 h-8 text-violet-400" />
               </div>
               <h2 className="text-slate-800 font-semibold mb-1">Olá! Sou o Tiagão</h2>
               <p className="text-slate-500 text-sm max-w-sm mx-auto">
@@ -54,7 +54,7 @@ export default function TutorIA() {
             <div key={msg.id}>
               {msg.role === "user" ? (
                 <div className="flex justify-end">
-                  <div className="max-w-[80%] bg-indigo-600 text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm leading-relaxed">
+                  <div className="max-w-[80%] bg-violet-600 text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm leading-relaxed">
                     {msg.content}
                   </div>
                 </div>

@@ -109,7 +109,7 @@ function triggerConfetti() {
     particleCount: 100,
     spread: 70,
     origin: { y: 0.6 },
-    colors: ['#8B5CF6', '#D946EF', '#F59E0B', '#10B981']
+    colors: ["#7c3aed", "#a855f7", "#c084fc", "#e879f9", "#ddd6fe"]
   });
 }
 
@@ -929,7 +929,7 @@ export default function Home() {
                 })();
                 return (
                   <div key={ev.id} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white text-sm font-black flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-violet-600 flex items-center justify-center text-white text-sm font-black flex-shrink-0">
                       {ev.profileImageUrl
                         ? <img src={ev.profileImageUrl} className="w-8 h-8 rounded-full object-cover" alt="" />
                         : ev.displayName.charAt(0).toUpperCase()}
@@ -1072,11 +1072,11 @@ export default function Home() {
                       Você tem duas formas de alimentar a IA — escolha a que faz mais sentido para você:
                     </p>
                     <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="flex items-start gap-3 bg-indigo-50 border border-indigo-200 rounded-2xl px-4 py-3">
+                      <div className="flex items-start gap-3 bg-violet-50 border border-violet-200 rounded-2xl px-4 py-3">
                         <span className="text-2xl mt-0.5">📎</span>
                         <div>
-                          <p className="text-sm font-bold text-indigo-800">Suba seu material</p>
-                          <p className="text-xs text-indigo-600 leading-relaxed mt-0.5">PDF, DOCX ou foto do caderno. A IA lê tudo e monta o plano em cima exatamente do que você vai cair na prova. <strong>Quanto mais detalhado o material, mais preciso e cirúrgico será o plano.</strong></p>
+                          <p className="text-sm font-bold text-violet-800">Suba seu material</p>
+                          <p className="text-xs text-violet-600 leading-relaxed mt-0.5">PDF, DOCX ou foto do caderno. A IA lê tudo e monta o plano em cima exatamente do que você vai cair na prova. <strong>Quanto mais detalhado o material, mais preciso e cirúrgico será o plano.</strong></p>
                         </div>
                       </div>
                       <div className="flex items-start gap-3 bg-pink-50 border border-pink-200 rounded-2xl px-4 py-3">
@@ -1304,7 +1304,7 @@ export default function Home() {
                 <div className="rounded-[2rem] overflow-hidden shadow-xl border border-white/10 relative">
                   {loadingPlanBanner && !planBanner && (
                     <div className="flex items-center justify-center gap-3 py-16 bg-gradient-to-r from-slate-100 to-slate-50">
-                      <div className="w-8 h-8 rounded-full border-4 border-indigo-400 border-t-transparent animate-spin" />
+                      <div className="w-8 h-8 rounded-full border-4 border-violet-400 border-t-transparent animate-spin" />
                       <p className="text-sm font-bold text-slate-500">Gerando ilustração do seu plano...</p>
                     </div>
                   )}
@@ -1518,20 +1518,20 @@ export default function Home() {
 
                         {/* Conexões + Estratégia */}
                         {resumaoData.conexoes && (
-                          <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-5 space-y-2">
-                            <h4 className="font-black text-indigo-800 flex items-center gap-2 text-sm uppercase tracking-wide">
-                              <Zap className="w-4 h-4 text-indigo-600" /> Conexões entre os tópicos
+                          <div className="rounded-2xl border border-violet-200 bg-violet-50 p-5 space-y-2">
+                            <h4 className="font-black text-violet-800 flex items-center gap-2 text-sm uppercase tracking-wide">
+                              <Zap className="w-4 h-4 text-violet-600" /> Conexões entre os tópicos
                             </h4>
                             <p className="text-sm text-gray-900 leading-relaxed">{resumaoData.conexoes}</p>
                           </div>
                         )}
 
                         {resumaoData.estrategiaRevisao && (
-                          <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 space-y-2">
-                            <h4 className="font-black text-blue-800 flex items-center gap-2 text-sm uppercase tracking-wide">
-                              <Dumbbell className="w-4 h-4 text-blue-600" /> Estratégia de estudo
+                          <div className="rounded-2xl border border-violet-200 bg-violet-50 p-5 space-y-2">
+                            <h4 className="font-black text-violet-800 flex items-center gap-2 text-sm uppercase tracking-wide">
+                              <Dumbbell className="w-4 h-4 text-violet-600" /> Estratégia de estudo
                             </h4>
-                            <p className="text-sm text-blue-900 leading-relaxed">{resumaoData.estrategiaRevisao}</p>
+                            <p className="text-sm text-violet-900 leading-relaxed">{resumaoData.estrategiaRevisao}</p>
                           </div>
                         )}
 
@@ -1877,10 +1877,10 @@ export default function Home() {
 
               {/* NEXT LEVEL */}
               {planResult.proximoNivel && (
-                <div className="mt-12 bg-gradient-to-r from-blue-600 to-indigo-600 p-8 sm:p-10 rounded-[3rem] text-white text-center shadow-xl relative overflow-hidden">
+                <div className="mt-12 bg-gradient-to-r from-violet-600 to-fuchsia-600 p-8 sm:p-10 rounded-[3rem] text-white text-center shadow-xl relative overflow-hidden">
                   <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
                   <div className="relative z-10">
-                    <h3 className="text-lg font-bold uppercase tracking-widest text-blue-200 mb-2">Próximo Nível</h3>
+                    <h3 className="text-lg font-bold uppercase tracking-widest text-violet-200 mb-2">Próximo Nível</h3>
                     <h2 className="text-3xl sm:text-4xl font-black font-display mb-4">O que vem depois?</h2>
                     <p className="text-xl font-medium max-w-2xl mx-auto opacity-90">{planResult.proximoNivel}</p>
                   </div>

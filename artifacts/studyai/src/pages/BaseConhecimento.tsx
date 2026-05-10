@@ -51,9 +51,9 @@ interface BnccHabilidade {
 
 const AREA_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   LGG: { bg: "bg-orange-50", text: "text-orange-700", border: "border-orange-200" },
-  MAT: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
+  MAT: { bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-200" },
   CNT: { bg: "bg-green-50", text: "text-green-700", border: "border-green-200" },
-  CHS: { bg: "bg-indigo-50", text: "text-gray-700", border: "border-indigo-200" },
+  CHS: { bg: "bg-violet-50", text: "text-gray-700", border: "border-violet-200" },
 };
 
 const AREA_NAMES: Record<string, string> = {
@@ -153,7 +153,7 @@ function UploadFileModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Drop area */}
           <div
-            className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-colors ${dragging ? "border-indigo-500 bg-indigo-50" : file ? "border-green-400 bg-green-50" : "border-border hover:border-indigo-300 hover:bg-indigo-50/50"}`}
+            className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-colors ${dragging ? "border-violet-500 bg-violet-50" : file ? "border-green-400 bg-green-50" : "border-border hover:border-violet-300 hover:bg-violet-50/50"}`}
             onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
             onDragLeave={() => setDragging(false)}
             onDrop={handleDrop}
@@ -170,7 +170,7 @@ function UploadFileModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               </div>
             ) : (
               <>
-                <Upload className="w-8 h-8 text-indigo-400 mx-auto mb-2" />
+                <Upload className="w-8 h-8 text-violet-400 mx-auto mb-2" />
                 <p className="font-semibold text-sm text-foreground">Arraste ou clique para selecionar</p>
                 <p className="text-xs text-muted-foreground mt-1">PDF, Word, TXT, imagens · Máx. 50 MB</p>
               </>
@@ -179,10 +179,10 @@ function UploadFileModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           <input
             value={title} onChange={e => setTitle(e.target.value)}
             placeholder="Título do documento (opcional)"
-            className="w-full border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="w-full border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300"
           />
           <select value={subject} onChange={e => setSubject(e.target.value)}
-            className="w-full border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
+            className="w-full border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white"
           >
             <option value="">Matéria (opcional)</option>
             {SUBJECT_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
@@ -190,11 +190,11 @@ function UploadFileModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           <input
             value={tags} onChange={e => setTags(e.target.value)}
             placeholder="Tags (opcional, separar por vírgula)"
-            className="w-full border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="w-full border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300"
           />
           {error && <p className="text-red-600 text-sm font-medium flex items-center gap-1"><AlertCircle className="w-4 h-4" />{error}</p>}
           <button type="submit" disabled={loading || !file}
-            className="w-full py-3 rounded-2xl font-bold text-sm text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-2xl font-bold text-sm text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Processando...</> : <><Upload className="w-4 h-4" />Enviar ao banco de dados</>}
           </button>
@@ -249,7 +249,7 @@ function UploadUrlModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 block">URL do site ou artigo</label>
-            <div className="flex items-center gap-2 border border-border rounded-xl px-3 focus-within:ring-2 focus-within:ring-indigo-300">
+            <div className="flex items-center gap-2 border border-border rounded-xl px-3 focus-within:ring-2 focus-within:ring-violet-300">
               <Globe className="w-4 h-4 text-muted-foreground shrink-0" />
               <input
                 value={url} onChange={e => setUrl(e.target.value)}
@@ -264,17 +264,17 @@ function UploadUrlModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
           <input
             value={title} onChange={e => setTitle(e.target.value)}
             placeholder="Título (opcional)"
-            className="w-full border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="w-full border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300"
           />
           <select value={subject} onChange={e => setSubject(e.target.value)}
-            className="w-full border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
+            className="w-full border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white"
           >
             <option value="">Matéria (opcional)</option>
             {SUBJECT_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
           {error && <p className="text-red-600 text-sm font-medium flex items-center gap-1"><AlertCircle className="w-4 h-4" />{error}</p>}
           <button type="submit" disabled={loading || !url}
-            className="w-full py-3 rounded-2xl font-bold text-sm text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-2xl font-bold text-sm text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Processando link...</> : <><Link2 className="w-4 h-4" />Salvar conteúdo</>}
           </button>
@@ -304,7 +304,7 @@ function DocCard({ doc, onDelete, onMindMap }: { doc: Doc; onDelete: (id: number
               <h3 className="font-bold text-sm text-foreground truncate">{doc.title}</h3>
               <div className="flex items-center gap-2 flex-wrap mt-0.5">
                 {doc.subject && (
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">{doc.subject}</span>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700">{doc.subject}</span>
                 )}
                 {doc.page_count && <span className="text-xs text-muted-foreground">{doc.page_count} págs.</span>}
                 {doc.file_size_kb && <span className="text-xs text-muted-foreground">{formatSize(doc.file_size_kb)}</span>}
@@ -325,7 +325,7 @@ function DocCard({ doc, onDelete, onMindMap }: { doc: Doc; onDelete: (id: number
           <div className="flex items-center gap-2 mt-3">
             <button
               onClick={() => onMindMap(doc)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-violet-50 text-violet-700 hover:bg-violet-100 transition-colors"
             >
               <Brain className="w-3.5 h-3.5" />
               Mapa Mental
@@ -531,7 +531,7 @@ export default function BaseConhecimento() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-violet-600" />
       </div>
     );
   }
@@ -541,10 +541,10 @@ export default function BaseConhecimento() {
       <div className="min-h-screen md:pl-64 pt-14 md:pt-0">
         <AppNav />
         <div className="flex flex-col items-center justify-center p-6 pt-8 md:pt-16 text-center">
-          <BookOpen className="w-12 h-12 text-indigo-400 mb-4" />
+          <BookOpen className="w-12 h-12 text-violet-400 mb-4" />
           <h1 className="text-xl font-black text-foreground mb-2">Base de Conhecimento</h1>
           <p className="text-muted-foreground mb-4">Faça login para acessar sua base de conhecimento pessoal.</p>
-          <button onClick={() => navigate("/sign-in")} className="px-6 py-3 rounded-2xl font-bold text-white bg-indigo-600 hover:bg-indigo-700">
+          <button onClick={() => navigate("/sign-in")} className="px-6 py-3 rounded-2xl font-bold text-white bg-violet-600 hover:bg-violet-700">
             Entrar
           </button>
         </div>
@@ -579,7 +579,7 @@ export default function BaseConhecimento() {
       {/* Sub-header */}
       <div className="sticky top-14 md:top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-border">
         <div className="max-w-3xl mx-auto px-4 py-2.5 flex items-center gap-2">
-          <Database className="w-4 h-4 text-indigo-600" />
+          <Database className="w-4 h-4 text-violet-600" />
           <h1 className="text-sm font-black text-foreground flex-1">Base de Conhecimento</h1>
           <button onClick={loadDocs} className="p-1.5 rounded-xl hover:bg-secondary transition-colors" title="Atualizar">
             <RefreshCw className={`w-4 h-4 text-muted-foreground ${loadingDocs ? "animate-spin" : ""}`} />
@@ -589,18 +589,18 @@ export default function BaseConhecimento() {
 
       <div className="max-w-3xl mx-auto px-4 py-5 space-y-5">
         {/* Stats banner */}
-        <div className="bg-gradient-to-r from-indigo-600 to-indigo-600 rounded-3xl p-5 text-white">
+        <div className="bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-3xl p-5 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-indigo-200 text-xs font-semibold uppercase tracking-wider mb-1">Seus documentos</p>
+              <p className="text-violet-200 text-xs font-semibold uppercase tracking-wider mb-1">Seus documentos</p>
               <p className="text-3xl font-black">{docs.length}</p>
-              <p className="text-indigo-200 text-sm mt-0.5">
+              <p className="text-violet-200 text-sm mt-0.5">
                 {docs.length === 0 ? "Ainda não há documentos" : `${docs.reduce((a, d) => a + (d.content_length || 0), 0).toLocaleString()} caracteres indexados`}
               </p>
             </div>
             <div className="flex flex-col items-end gap-1">
-              <Database className="w-10 h-10 text-indigo-300" />
-              <p className="text-xs text-indigo-200 font-medium">Backup diário ativo</p>
+              <Database className="w-10 h-10 text-violet-300" />
+              <p className="text-xs text-violet-200 font-medium">Backup diário ativo</p>
             </div>
           </div>
         </div>
@@ -609,19 +609,19 @@ export default function BaseConhecimento() {
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => setModal("file")}
-            className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors font-bold shadow-sm"
+            className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-violet-600 text-white hover:bg-violet-700 transition-colors font-bold shadow-sm"
           >
             <Upload className="w-6 h-6" />
             <span className="text-sm">Enviar arquivo</span>
-            <span className="text-xs font-normal text-indigo-200">PDF, Word, imagens</span>
+            <span className="text-xs font-normal text-violet-200">PDF, Word, imagens</span>
           </button>
           <button
             onClick={() => setModal("url")}
-            className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors font-bold shadow-sm"
+            className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-violet-600 text-white hover:bg-violet-700 transition-colors font-bold shadow-sm"
           >
             <Globe className="w-6 h-6" />
             <span className="text-sm">Salvar link</span>
-            <span className="text-xs font-normal text-indigo-200">Sites e artigos</span>
+            <span className="text-xs font-normal text-violet-200">Sites e artigos</span>
           </button>
         </div>
 
@@ -649,13 +649,13 @@ export default function BaseConhecimento() {
             }}
             onKeyDown={e => e.key === "Enter" && handleSearch(search)}
             placeholder="Buscar nos seus documentos..."
-            className="w-full pl-10 pr-4 py-3 border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
+            className="w-full pl-10 pr-4 py-3 border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white"
           />
           {search && (
             <button
               onClick={() => handleSearch(search)}
               disabled={searching}
-              className="absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60"
+              className="absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-xl text-xs font-bold bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-60"
             >
               {searching ? <Loader2 className="w-3 h-3 animate-spin" /> : "Buscar"}
             </button>
@@ -671,7 +671,7 @@ export default function BaseConhecimento() {
                 : `${docs.length} documento${docs.length !== 1 ? "s" : ""}`}
             </p>
             {searchResults !== null && (
-              <button onClick={() => { setSearch(""); setSearchResults(null); }} className="text-xs text-indigo-600 font-semibold hover:underline">
+              <button onClick={() => { setSearch(""); setSearchResults(null); }} className="text-xs text-violet-600 font-semibold hover:underline">
                 Limpar busca
               </button>
             )}
@@ -679,7 +679,7 @@ export default function BaseConhecimento() {
 
           {loadingDocs ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+              <Loader2 className="w-6 h-6 animate-spin text-violet-600" />
             </div>
           ) : displayDocs.length === 0 ? (
             <div className="text-center py-12 bg-secondary/20 rounded-3xl">
@@ -693,7 +693,7 @@ export default function BaseConhecimento() {
               {searchResults === null && (
                 <button
                   onClick={() => setModal("file")}
-                  className="mt-4 px-5 py-2.5 rounded-2xl font-bold text-sm text-white bg-indigo-600 hover:bg-indigo-700"
+                  className="mt-4 px-5 py-2.5 rounded-2xl font-bold text-sm text-white bg-violet-600 hover:bg-violet-700"
                 >
                   Enviar primeiro documento
                 </button>
@@ -711,12 +711,12 @@ export default function BaseConhecimento() {
         </div>
 
         {/* Wikipedia PT integration panel */}
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 space-y-3">
+        <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4 space-y-3">
           <div className="flex items-center gap-2">
-            <Globe className="w-5 h-5 text-blue-600 shrink-0" />
-            <p className="text-sm font-bold text-blue-800">Wikipedia em Português — base de conhecimento pública</p>
+            <Globe className="w-5 h-5 text-violet-600 shrink-0" />
+            <p className="text-sm font-bold text-violet-800">Wikipedia em Português — base de conhecimento pública</p>
           </div>
-          <p className="text-xs text-blue-700 leading-relaxed">
+          <p className="text-xs text-violet-700 leading-relaxed">
             Busque qualquer assunto diretamente na Wikipedia PT. O Tiagão também usa esses artigos automaticamente quando você faz perguntas. Salve artigos na sua base para estudar depois.
           </p>
 
@@ -728,12 +728,12 @@ export default function BaseConhecimento() {
               onChange={e => setWikiQuery(e.target.value)}
               onKeyDown={e => e.key === "Enter" && handleWikiSearch(wikiQuery)}
               placeholder="Ex: fotossíntese, Segunda Guerra Mundial, álgebra linear..."
-              className="flex-1 px-3 py-2 rounded-xl border border-blue-200 bg-white text-sm placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="flex-1 px-3 py-2 rounded-xl border border-violet-200 bg-white text-sm placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-violet-400"
             />
             <button
               onClick={() => handleWikiSearch(wikiQuery)}
               disabled={wikiLoading}
-              className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1.5"
+              className="px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-700 disabled:opacity-50 flex items-center gap-1.5"
             >
               {wikiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
               Buscar
@@ -746,18 +746,18 @@ export default function BaseConhecimento() {
               {wikiResults.map(r => (
                 <div
                   key={r.pageid}
-                  className="bg-white border border-blue-100 rounded-xl p-3"
+                  className="bg-white border border-violet-100 rounded-xl p-3"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <button
                         onClick={() => handleWikiSummary(r.title)}
-                        className="text-sm font-bold text-blue-700 hover:underline text-left"
+                        className="text-sm font-bold text-violet-700 hover:underline text-left"
                       >
                         {r.title}
                       </button>
                       {r.snippet && (
-                        <p className="text-xs text-blue-600/80 mt-0.5 line-clamp-2">{r.snippet}</p>
+                        <p className="text-xs text-violet-600/80 mt-0.5 line-clamp-2">{r.snippet}</p>
                       )}
                     </div>
                     <div className="flex gap-1.5 shrink-0">
@@ -765,7 +765,7 @@ export default function BaseConhecimento() {
                         href={r.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-100"
+                        className="p-1.5 rounded-lg text-violet-500 hover:bg-violet-100"
                         title="Abrir na Wikipedia"
                       >
                         <ChevronRight className="w-4 h-4" />
@@ -775,9 +775,9 @@ export default function BaseConhecimento() {
 
                   {/* Expanded summary */}
                   {wikiSummaryTitle === r.title && (
-                    <div className="mt-2 pt-2 border-t border-blue-100">
+                    <div className="mt-2 pt-2 border-t border-violet-100">
                       {!wikiSummary ? (
-                        <div className="flex items-center gap-2 text-xs text-blue-500">
+                        <div className="flex items-center gap-2 text-xs text-violet-500">
                           <Loader2 className="w-3 h-3 animate-spin" /> Carregando artigo...
                         </div>
                       ) : (
@@ -790,13 +790,13 @@ export default function BaseConhecimento() {
                             />
                           )}
                           {wikiSummary.description && (
-                            <p className="text-xs font-semibold text-blue-700">{wikiSummary.description}</p>
+                            <p className="text-xs font-semibold text-violet-700">{wikiSummary.description}</p>
                           )}
-                          <p className="text-xs text-blue-800/80 leading-relaxed line-clamp-6">{wikiSummary.extract}</p>
+                          <p className="text-xs text-violet-800/80 leading-relaxed line-clamp-6">{wikiSummary.extract}</p>
                           <div className="flex items-center gap-2 pt-1 clear-both">
                             <button
                               onClick={() => handleSaveWikiToBase(wikiSummary)}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-violet-600 text-white hover:bg-violet-700"
                             >
                               <Database className="w-3.5 h-3.5" />
                               Salvar na minha base
@@ -805,7 +805,7 @@ export default function BaseConhecimento() {
                               href={wikiSummary.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-100 text-blue-700 hover:bg-blue-200"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-violet-100 text-violet-700 hover:bg-violet-200"
                             >
                               <Globe className="w-3.5 h-3.5" />
                               Ver artigo completo
@@ -821,8 +821,8 @@ export default function BaseConhecimento() {
           )}
 
           {/* INEP/MEC links */}
-          <div className="pt-1 border-t border-blue-200">
-            <p className="text-xs font-bold text-blue-700 mb-1.5">Fontes educacionais oficiais:</p>
+          <div className="pt-1 border-t border-violet-200">
+            <p className="text-xs font-bold text-violet-700 mb-1.5">Fontes educacionais oficiais:</p>
             <div className="flex flex-wrap gap-2">
               {[
                 { label: "INEP / ENEM", url: "https://www.gov.br/inep/pt-br/areas-de-atuacao/avaliacao-e-exames-educacionais/enem" },
@@ -835,7 +835,7 @@ export default function BaseConhecimento() {
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200"
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-violet-100 text-violet-700 hover:bg-violet-200"
                 >
                   <ChevronRight className="w-3 h-3" />
                   {link.label}

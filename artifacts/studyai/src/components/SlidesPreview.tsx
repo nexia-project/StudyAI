@@ -21,10 +21,10 @@ export default function SlidesPreview({ slides }: SlidesPreviewProps) {
   const next = () => setCurrent(i => Math.min(slides.length - 1, i + 1));
 
   const Card = ({ full = false }: { full?: boolean }) => (
-    <div className={`bg-gradient-to-br from-indigo-600 to-violet-700 rounded-2xl text-white flex flex-col ${
+    <div className={`bg-gradient-to-br from-violet-600 to-violet-700 rounded-2xl text-white flex flex-col ${
       full ? "h-full p-12" : "p-8 min-h-[220px]"
     }`}>
-      <div className="text-xs font-semibold uppercase tracking-widest text-indigo-200 mb-4">
+      <div className="text-xs font-semibold uppercase tracking-widest text-violet-200 mb-4">
         Slide {current + 1} / {slides.length}
       </div>
       <h2 className={`font-bold leading-tight mb-6 ${full ? "text-3xl" : "text-xl"}`}>
@@ -32,8 +32,8 @@ export default function SlidesPreview({ slides }: SlidesPreviewProps) {
       </h2>
       <ul className="space-y-2 flex-1">
         {slide.content.map((item, i) => (
-          <li key={i} className={`flex items-start gap-2 ${full ? "text-base" : "text-sm"} text-indigo-100`}>
-            <span className="mt-1 w-1.5 h-1.5 rounded-full bg-indigo-300 shrink-0" />
+          <li key={i} className={`flex items-start gap-2 ${full ? "text-base" : "text-sm"} text-violet-100`}>
+            <span className="mt-1 w-1.5 h-1.5 rounded-full bg-violet-300 shrink-0" />
             {item}
           </li>
         ))}
@@ -57,7 +57,7 @@ export default function SlidesPreview({ slides }: SlidesPreviewProps) {
           <div className="flex gap-1">
             {slides.map((_, i) => (
               <button key={i} onClick={() => setCurrent(i)}
-                className={`w-2 h-2 rounded-full transition-all ${i === current ? "bg-indigo-600 w-4" : "bg-slate-300"}`} />
+                className={`w-2 h-2 rounded-full transition-all ${i === current ? "bg-violet-600 w-4" : "bg-slate-300"}`} />
             ))}
           </div>
           <button onClick={next} disabled={current === slides.length - 1}

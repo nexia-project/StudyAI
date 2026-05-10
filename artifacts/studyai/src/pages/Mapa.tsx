@@ -152,17 +152,17 @@ export default function Mapa() {
   if (isLoading || subLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-indigo-50 md:pl-64 pt-14 md:pt-0">
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-violet-50 md:pl-64 pt-14 md:pt-0">
         <AppNav />
         <div className="flex flex-col items-center justify-center gap-6 p-8 pt-8 md:pt-16">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-200">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-xl shadow-violet-200">
             <Map className="w-10 h-10 text-white" />
           </div>
           <div className="text-center">
@@ -171,7 +171,7 @@ export default function Mapa() {
           </div>
           <button
             onClick={login}
-            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-500 to-indigo-600 text-white font-black shadow-lg shadow-indigo-200 hover:opacity-90 transition-opacity"
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-violet-600 text-white font-black shadow-lg shadow-violet-200 hover:opacity-90 transition-opacity"
           >
             <LogIn className="w-5 h-5" />
             Entrar para ver o Radar
@@ -183,10 +183,10 @@ export default function Mapa() {
 
   if (!isPremium) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-indigo-50 md:pl-64 pt-14 md:pt-0">
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-violet-50 md:pl-64 pt-14 md:pt-0">
         <AppNav />
         <div className="flex flex-col items-center justify-center gap-6 p-8 pt-8 md:pt-16">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-200">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-xl shadow-violet-200">
             <BarChart2 className="w-10 h-10 text-white" />
           </div>
           <div className="text-center">
@@ -196,7 +196,7 @@ export default function Mapa() {
           <button
             onClick={async () => { setCheckoutLoading(true); try { await startCheckout(); } catch { navigate("/pricing"); } finally { setCheckoutLoading(false); } }}
             disabled={checkoutLoading}
-            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-600 text-white font-black shadow-lg hover:opacity-90 transition-opacity disabled:opacity-60"
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black shadow-lg hover:opacity-90 transition-opacity disabled:opacity-60"
           >
             <Sparkles className="w-5 h-5" />
             {checkoutLoading ? "Aguarde..." : "Assinar Premium — R$29,90/mês"}
@@ -214,7 +214,7 @@ export default function Mapa() {
     : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-indigo-50/40 md:pl-64 pt-14 md:pt-0">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50/30 to-violet-50/40 md:pl-64 pt-14 md:pt-0">
       <AppNav />
       {/* Sub-header */}
       <div className="sticky top-14 md:top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-slate-100">
@@ -233,7 +233,7 @@ export default function Mapa() {
 
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 gap-4">
-            <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-10 h-10 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
             <p className="text-slate-400 font-semibold text-sm">Analisando sua trajetória...</p>
           </div>
         ) : error ? (
@@ -243,8 +243,8 @@ export default function Mapa() {
           </div>
         ) : !data || data.subjects.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center gap-5">
-            <div className="w-20 h-20 rounded-2xl bg-indigo-50 border-2 border-indigo-200 flex items-center justify-center">
-              <Map className="w-10 h-10 text-indigo-300" />
+            <div className="w-20 h-20 rounded-2xl bg-violet-50 border-2 border-violet-200 flex items-center justify-center">
+              <Map className="w-10 h-10 text-violet-300" />
             </div>
             <div>
               <h2 className="font-black text-slate-700 text-xl mb-2">Mapa vazio por enquanto</h2>
@@ -254,7 +254,7 @@ export default function Mapa() {
             </div>
             <button
               onClick={() => navigate("/app")}
-              className="px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-500 to-indigo-600 text-white font-black shadow-lg hover:opacity-90 transition-opacity text-sm"
+              className="px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-500 to-violet-600 text-white font-black shadow-lg hover:opacity-90 transition-opacity text-sm"
             >
               Iniciar estudos agora
             </button>
@@ -277,7 +277,7 @@ export default function Mapa() {
                   label: "Matérias",
                   value: String(withData.length),
                   sub: "com dados",
-                  color: "text-indigo-600",
+                  color: "text-violet-600",
                   bg: "bg-white",
                 },
                 {
@@ -411,8 +411,8 @@ export default function Mapa() {
             )}
 
             {/* Tip */}
-            <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-5">
-              <p className="text-xs font-black text-indigo-600 uppercase tracking-wider mb-2">💡 Como melhorar seu mapa</p>
+            <div className="bg-violet-50 border border-violet-200 rounded-2xl p-5">
+              <p className="text-xs font-black text-violet-600 uppercase tracking-wider mb-2">💡 Como melhorar seu mapa</p>
               <ul className="space-y-1.5">
                 {[
                   "Faça simulados frequentes — cada resultado atualiza o mapa em tempo real",
@@ -420,8 +420,8 @@ export default function Mapa() {
                   "Use flashcards regularmente — eles também impactam a nota de cada matéria",
                   "Matérias com tendência ↑ (melhorando) mostram que seu método está funcionando — continue!",
                 ].map((tip) => (
-                  <li key={tip} className="text-xs text-indigo-700 font-semibold flex items-start gap-2">
-                    <span className="text-indigo-400 shrink-0">→</span>
+                  <li key={tip} className="text-xs text-violet-700 font-semibold flex items-start gap-2">
+                    <span className="text-violet-400 shrink-0">→</span>
                     {tip}
                   </li>
                 ))}

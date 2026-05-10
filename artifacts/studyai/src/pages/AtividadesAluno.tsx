@@ -158,7 +158,7 @@ function ActivityModal({
                             className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm transition-all border
                               ${showCorrect ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
                                 : showWrong ? "bg-red-500/15 border-red-500/40 text-red-300"
-                                : selected ? "bg-indigo-500/20 border-indigo-500/40 text-indigo-200"
+                                : selected ? "bg-violet-500/20 border-violet-500/40 text-violet-200"
                                 : result ? "bg-white/[0.02] border-white/[0.06] text-white/40"
                                 : "bg-white/[0.03] border-white/[0.07] text-white/70 hover:bg-white/[0.07] hover:border-white/[0.15] hover:text-white cursor-pointer"}`}
                           >
@@ -190,7 +190,7 @@ function ActivityModal({
             <button
               onClick={handleSubmit}
               disabled={!allAnswered || submitting}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-600 hover:from-indigo-500 hover:to-indigo-500 text-white text-sm font-black transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-violet-500 text-white text-sm font-black transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
               Enviar ({Object.keys(answers).length}/{questions.length})
@@ -268,7 +268,7 @@ export default function AtividadesAlunoPage() {
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-black text-slate-800 flex items-center gap-2.5">
-            <ClipboardList className="w-6 h-6 text-indigo-600" /> Minhas Atividades
+            <ClipboardList className="w-6 h-6 text-violet-600" /> Minhas Atividades
           </h1>
           <p className="text-slate-500 text-sm mt-1">Atividades enviadas pelo seu professor</p>
         </div>
@@ -299,7 +299,7 @@ export default function AtividadesAlunoPage() {
               onClick={() => setFilter(f.id)}
               className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all ${
                 filter === f.id
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
+                  ? "bg-violet-600 text-white shadow-md shadow-violet-200"
                   : "bg-white text-slate-500 hover:text-slate-700 border border-slate-200"
               }`}
             >
@@ -311,7 +311,7 @@ export default function AtividadesAlunoPage() {
         {/* Activities list */}
         {loading ? (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+            <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-2xl border border-slate-100 shadow-sm">
@@ -332,16 +332,16 @@ export default function AtividadesAlunoPage() {
                   key={activity.id}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer"
+                  className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-violet-200 transition-all cursor-pointer"
                   onClick={() => setSelected(activity)}
                 >
                   <div className="p-4 flex items-center gap-4">
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                      activity.submitted ? "bg-emerald-100" : "bg-indigo-100"
+                      activity.submitted ? "bg-emerald-100" : "bg-violet-100"
                     }`}>
                       {activity.submitted
                         ? <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                        : <ClipboardList className="w-5 h-5 text-indigo-600" />
+                        : <ClipboardList className="w-5 h-5 text-violet-600" />
                       }
                     </div>
                     <div className="flex-1 min-w-0">

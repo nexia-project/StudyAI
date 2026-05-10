@@ -134,7 +134,7 @@ export default function CronogramaPage() {
       <div className="min-h-screen bg-[#0a0a12] md:pl-64 pt-14 md:pt-0">
         <AppNav />
         <div className="flex justify-center items-center h-64">
-          <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
+          <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
         </div>
       </div>
     );
@@ -148,7 +148,7 @@ export default function CronogramaPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-black text-white flex items-center gap-2">
-              <Calendar className="w-6 h-6 text-indigo-400" /> Cronograma de Estudos
+              <Calendar className="w-6 h-6 text-violet-400" /> Cronograma de Estudos
             </h1>
             <p className="text-white/40 text-sm mt-1">Plano adaptativo personalizado com IA</p>
           </div>
@@ -168,12 +168,12 @@ export default function CronogramaPage() {
                 {/* Objetivo */}
                 <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-5">
                   <h3 className="font-bold text-white text-sm mb-4 flex items-center gap-2">
-                    <Target className="w-4 h-4 text-indigo-400" /> Qual é seu objetivo?
+                    <Target className="w-4 h-4 text-violet-400" /> Qual é seu objetivo?
                   </h3>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {OBJETIVOS.map(o => (
                       <button key={o.id} type="button" onClick={() => setForm(f => ({ ...f, objetivo: o.id }))}
-                        className={`p-4 rounded-xl border text-left transition-all ${form.objetivo === o.id ? "bg-indigo-600/25 border-indigo-500/50 text-white" : "bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10"}`}>
+                        className={`p-4 rounded-xl border text-left transition-all ${form.objetivo === o.id ? "bg-violet-600/25 border-violet-500/50 text-white" : "bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10"}`}>
                         <div className="text-2xl mb-1.5">{o.emoji}</div>
                         <p className="font-bold text-xs">{o.label}</p>
                         <p className="text-[10px] text-white/35 mt-0.5">{o.desc}</p>
@@ -192,19 +192,19 @@ export default function CronogramaPage() {
                       <label className="text-white/40 text-xs mb-1.5 block">Data da Prova *</label>
                       <input type="date" required value={form.targetDate} onChange={e => setForm(f => ({ ...f, targetDate: e.target.value }))}
                         min={new Date().toISOString().split("T")[0]}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500" />
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500" />
                     </div>
                     <div>
                       <label className="text-white/40 text-xs mb-1.5 block">Nota Alvo: {form.targetScore}/1000</label>
                       <input type="range" min={400} max={1000} step={50} value={form.targetScore}
                         onChange={e => setForm(f => ({ ...f, targetScore: Number(e.target.value) }))}
-                        className="w-full mt-3 accent-indigo-500" />
+                        className="w-full mt-3 accent-violet-500" />
                     </div>
                     <div>
                       <label className="text-white/40 text-xs mb-1.5 block">Horas por dia: {form.hoursPerDay}h</label>
                       <input type="range" min={1} max={8} value={form.hoursPerDay}
                         onChange={e => setForm(f => ({ ...f, hoursPerDay: Number(e.target.value) }))}
-                        className="w-full mt-3 accent-indigo-500" />
+                        className="w-full mt-3 accent-violet-500" />
                     </div>
                   </div>
                 </div>
@@ -219,7 +219,7 @@ export default function CronogramaPage() {
                     {MATERIAS.map(m => (
                       <button key={m} type="button" onClick={() => toggleMateria(m)}
                         className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border
-                          ${form.materiasFocais.includes(m) ? "bg-indigo-600/30 border-indigo-500/50 text-indigo-300" : "bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10"}`}>
+                          ${form.materiasFocais.includes(m) ? "bg-violet-600/30 border-violet-500/50 text-violet-300" : "bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10"}`}>
                         <span>{MATERIA_ICONS[m] ?? "📚"}</span>{m}
                       </button>
                     ))}
@@ -227,7 +227,7 @@ export default function CronogramaPage() {
                 </div>
 
                 <button type="submit" disabled={generating || !form.targetDate || form.materiasFocais.length === 0}
-                  className="w-full py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-600 hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50 text-white font-black text-base flex items-center justify-center gap-2 transition-all hover:scale-[1.01]">
+                  className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-violet-500 disabled:opacity-50 text-white font-black text-base flex items-center justify-center gap-2 transition-all hover:scale-[1.01]">
                   {generating ? <><Loader2 className="w-5 h-5 animate-spin" />Criando seu cronograma personalizado...</> : <><Sparkles className="w-5 h-5" />Gerar Meu Cronograma com IA</>}
                 </button>
               </form>
@@ -238,22 +238,22 @@ export default function CronogramaPage() {
           {!showForm && cronograma && schedule && (
             <motion.div key="schedule" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
               {/* Plan header */}
-              <div className="rounded-2xl border border-indigo-500/20 bg-gradient-to-br from-indigo-900/30 to-violet-900/20 p-5">
+              <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-900/30 to-violet-900/20 p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-xl font-black text-white">{schedule.titulo}</h2>
                     <p className="text-white/60 text-sm mt-2 leading-relaxed">{schedule.resumo}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <div className="bg-indigo-600/20 rounded-xl px-4 py-2.5 text-center">
-                      <p className="text-indigo-300 font-black text-xl">{cronograma.targetScore}</p>
+                    <div className="bg-violet-600/20 rounded-xl px-4 py-2.5 text-center">
+                      <p className="text-violet-300 font-black text-xl">{cronograma.targetScore}</p>
                       <p className="text-white/40 text-xs">nota alvo</p>
                     </div>
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2 mt-4">
                   <div className="bg-white/5 rounded-xl px-2 py-2 text-center">
-                    <Target className="w-4 h-4 text-indigo-400 mx-auto mb-1" />
+                    <Target className="w-4 h-4 text-violet-400 mx-auto mb-1" />
                     <p className="text-white/60 text-[11px] leading-tight truncate px-1">{cronograma.objetivo}</p>
                   </div>
                   <div className="bg-white/5 rounded-xl px-2 py-2 text-center">
@@ -277,7 +277,7 @@ export default function CronogramaPage() {
                   <div className="flex gap-2 justify-center">
                     {semanas.map((w, i) => (
                       <button key={i} onClick={() => setCurrentWeek(i)}
-                        className={`flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${currentWeek === i ? "bg-indigo-600 text-white" : "bg-white/5 text-white/30 hover:text-white hover:bg-white/10"}`}>
+                        className={`flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${currentWeek === i ? "bg-violet-600 text-white" : "bg-white/5 text-white/30 hover:text-white hover:bg-white/10"}`}>
                         S{w.numero}
                       </button>
                     ))}
@@ -294,8 +294,8 @@ export default function CronogramaPage() {
                   {/* Week header */}
                   <div className="rounded-2xl border border-white/[0.06] bg-[#0f0f1a] p-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-600/25 flex items-center justify-center">
-                        <span className="text-indigo-300 font-black text-sm">S{week.numero}</span>
+                      <div className="w-10 h-10 rounded-xl bg-violet-600/25 flex items-center justify-center">
+                        <span className="text-violet-300 font-black text-sm">S{week.numero}</span>
                       </div>
                       <div>
                         <h3 className="font-bold text-white">{week.tema}</h3>
@@ -310,15 +310,15 @@ export default function CronogramaPage() {
                       const isToday = day.dia === todayDay && currentWeek === 0;
                       return (
                         <motion.div key={di} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: di * 0.04 }}
-                          className={`rounded-2xl border p-4 ${isToday ? "border-indigo-500/40 bg-indigo-600/10" : "border-white/[0.06] bg-[#0f0f1a]"}`}>
+                          className={`rounded-2xl border p-4 ${isToday ? "border-violet-500/40 bg-violet-600/10" : "border-white/[0.06] bg-[#0f0f1a]"}`}>
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0 text-base">
                               {DIA_EMOJIS[day.dia] ?? "📅"}
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className={`text-xs font-black ${isToday ? "text-indigo-300" : "text-white/50"}`}>{day.dia}</span>
-                                {isToday && <span className="text-[10px] bg-indigo-500/30 text-indigo-300 px-2 py-0.5 rounded-full font-bold">HOJE</span>}
+                                <span className={`text-xs font-black ${isToday ? "text-violet-300" : "text-white/50"}`}>{day.dia}</span>
+                                {isToday && <span className="text-[10px] bg-violet-500/30 text-violet-300 px-2 py-0.5 rounded-full font-bold">HOJE</span>}
                                 <span className="text-xs font-bold text-white">{MATERIA_ICONS[day.materia] ?? "📚"} {day.materia}</span>
                               </div>
                               <p className="text-white/70 text-xs mt-1">{day.topico}</p>
@@ -380,7 +380,7 @@ export default function CronogramaPage() {
                   { label: "Caderno Digital", path: "/app", emoji: "📓" },
                 ].map(a => (
                   <button key={a.label} onClick={() => navigate(a.path)}
-                    className="flex items-center gap-2.5 p-4 rounded-xl border border-white/[0.06] bg-[#0f0f1a] hover:border-indigo-500/30 hover:bg-indigo-600/5 transition-all text-left">
+                    className="flex items-center gap-2.5 p-4 rounded-xl border border-white/[0.06] bg-[#0f0f1a] hover:border-violet-500/30 hover:bg-violet-600/5 transition-all text-left">
                     <span className="text-xl">{a.emoji}</span>
                     <span className="text-white/60 hover:text-white text-xs font-semibold transition-colors">{a.label}</span>
                   </button>

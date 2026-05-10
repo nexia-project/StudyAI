@@ -42,14 +42,14 @@ export function FreeLimitModal() {
             onClick={() => setOpen(false)}
           />
           <motion.div
-            className="relative bg-gray-900 border border-indigo-500/40 rounded-2xl p-8 max-w-md w-full shadow-2xl shadow-indigo-500/20 text-center"
+            className="relative bg-gray-900 border border-violet-500/40 rounded-2xl p-8 max-w-md w-full shadow-2xl shadow-violet-500/20 text-center"
             initial={{ scale: 0.85, opacity: 0, y: 30 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.85, opacity: 0, y: 30 }}
             transition={{ type: "spring", duration: 0.4 }}
           >
-            <div className="w-16 h-16 bg-indigo-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Lock className="w-8 h-8 text-indigo-400" />
+            <div className="w-16 h-16 bg-violet-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-8 h-8 text-violet-400" />
             </div>
 
             <h2 className="text-2xl font-bold text-white mb-2">
@@ -64,7 +64,7 @@ export function FreeLimitModal() {
               {[
                 { icon: <BookOpen className="w-4 h-4 text-green-400" />, text: "Planos ilimitados" },
                 { icon: <Zap className="w-4 h-4 text-yellow-400" />, text: "Flashcards ilimitados" },
-                { icon: <Star className="w-4 h-4 text-blue-400" />, text: "Simulados ilimitados" },
+                { icon: <Star className="w-4 h-4 text-violet-400" />, text: "Simulados ilimitados" },
                 { icon: <Zap className="w-4 h-4 text-pink-400" />, text: "Professor Tiagão voz" },
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
@@ -77,7 +77,7 @@ export function FreeLimitModal() {
             <button
               onClick={handleUpgrade}
               disabled={loading}
-              className="w-full py-3 px-6 bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold rounded-xl transition-all disabled:opacity-60"
+              className="w-full py-3 px-6 bg-gradient-to-r from-violet-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold rounded-xl transition-all disabled:opacity-60"
             >
               {loading ? "Redirecionando..." : "Assinar por R$29,90/mês →"}
             </button>

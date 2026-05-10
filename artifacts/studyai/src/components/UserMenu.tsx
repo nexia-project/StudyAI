@@ -82,7 +82,7 @@ export function UserMenu() {
       {isPremium ? (
         <button
           onClick={() => navigate("/pricing")}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-600 to-indigo-600 text-white text-xs font-black shadow-md hover:shadow-lg hover:scale-105 transition-all"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white text-xs font-black shadow-md hover:shadow-lg hover:scale-105 transition-all"
         >
           <Crown className="w-3 h-3 text-yellow-300" />
           Premium
@@ -154,11 +154,11 @@ export function UserMenu() {
                     setOpen(false);
                     navigate("/pricing");
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors mb-1"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-violet-700 bg-violet-50 hover:bg-violet-100 transition-colors mb-1"
                 >
-                  <Crown className="w-4 h-4 text-indigo-600" />
+                  <Crown className="w-4 h-4 text-violet-600" />
                   Assinar Premium
-                  <span className="ml-auto text-[10px] font-black bg-indigo-600 text-white px-2 py-0.5 rounded-full">R$29,90/mês</span>
+                  <span className="ml-auto text-[10px] font-black bg-violet-600 text-white px-2 py-0.5 rounded-full">R$29,90/mês</span>
                 </button>
               )}
               <button
@@ -166,9 +166,9 @@ export function UserMenu() {
                   setOpen(false);
                   navigate("/perfil");
                 }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-foreground hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-foreground hover:bg-violet-50 hover:text-violet-600 transition-colors"
               >
-                <UserCircle className="w-4 h-4 text-blue-500" />
+                <UserCircle className="w-4 h-4 text-violet-500" />
                 Meus Dados
               </button>
               <button
@@ -176,9 +176,9 @@ export function UserMenu() {
                   setOpen(false);
                   navigate("/mapa-mental");
                 }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-foreground hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-foreground hover:bg-violet-50 hover:text-violet-600 transition-colors"
               >
-                <Brain className="w-4 h-4 text-indigo-500" />
+                <Brain className="w-4 h-4 text-violet-500" />
                 Mapa Mental
               </button>
               <button
@@ -196,9 +196,9 @@ export function UserMenu() {
                   setOpen(false);
                   navigate("/dashboard");
                 }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-foreground hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-foreground hover:bg-violet-50 hover:text-violet-600 transition-colors"
               >
-                <BarChart2 className="w-4 h-4 text-indigo-500" />
+                <BarChart2 className="w-4 h-4 text-violet-500" />
                 Dashboard
               </button>
               <button
@@ -236,9 +236,9 @@ export function UserMenu() {
               {["teacher", "institution_admin", "admin"].includes(userRole) && (
                 <button
                   onClick={() => { setOpen(false); navigate("/professor"); }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-foreground hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-foreground hover:bg-violet-50 hover:text-violet-700 transition-colors"
                 >
-                  <GraduationCap className="w-4 h-4 text-indigo-600" />
+                  <GraduationCap className="w-4 h-4 text-violet-600" />
                   Módulo Professor
                 </button>
               )}

@@ -770,9 +770,9 @@ function NodeDrawer({ node, onClose }: { node: MindNode | null; onClose: () => v
                   {node.contentMeta && (
                     <div className="grid grid-cols-3 gap-3">
                       {node.contentMeta.plans !== undefined && (
-                        <div className="bg-indigo-50 rounded-2xl p-3 text-center">
-                          <p className="text-2xl font-black text-indigo-600">{node.contentMeta.plans}</p>
-                          <p className="text-xs text-indigo-500 font-semibold mt-0.5">planos</p>
+                        <div className="bg-violet-50 rounded-2xl p-3 text-center">
+                          <p className="text-2xl font-black text-violet-600">{node.contentMeta.plans}</p>
+                          <p className="text-xs text-violet-500 font-semibold mt-0.5">planos</p>
                         </div>
                       )}
                       {node.contentMeta.simulados !== undefined && (
@@ -1357,7 +1357,7 @@ export default function MapaMentalPage() {
                   <div key={dm.id} className="flex items-center gap-1">
                     <button
                       onClick={() => switchDoc(dm.id)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${activeDocId === dm.id ? "bg-indigo-600 text-white" : "bg-white border border-border text-foreground hover:bg-secondary"}`}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${activeDocId === dm.id ? "bg-violet-600 text-white" : "bg-white border border-border text-foreground hover:bg-secondary"}`}
                     >
                       📄 {dm.doc_title}
                     </button>
@@ -1405,7 +1405,7 @@ export default function MapaMentalPage() {
                     ))}
                   </div>
                   <div className="flex items-center gap-4 text-xs text-muted-foreground shrink-0">
-                    <span className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-full bg-indigo-500" /> clicável</span>
+                    <span className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-full bg-violet-500" /> clicável</span>
                     <span className="flex items-center gap-1"><Lock className="w-2.5 h-2.5" /> sem estudo</span>
                   </div>
                 </div>
@@ -1527,7 +1527,7 @@ export default function MapaMentalPage() {
               <p className="text-sm text-muted-foreground">Seus mapas mentais de planos de aula, provas e trabalhos</p>
               <button
                 onClick={() => setShowProfUpload(true)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-600 text-white text-xs font-bold hover:bg-violet-700 transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" /> Novo Material
               </button>
@@ -1562,8 +1562,8 @@ export default function MapaMentalPage() {
               </div>
             ) : profMaps.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-                <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center">
-                  <FolderOpen className="w-8 h-8 text-indigo-400" />
+                <div className="w-16 h-16 bg-violet-50 rounded-full flex items-center justify-center">
+                  <FolderOpen className="w-8 h-8 text-violet-400" />
                 </div>
                 <h3 className="font-black text-foreground text-lg">Nenhum mapa ainda</h3>
                 <p className="text-muted-foreground text-sm max-w-xs">
@@ -1571,7 +1571,7 @@ export default function MapaMentalPage() {
                 </p>
                 <button
                   onClick={() => setShowProfUpload(true)}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-indigo-600 text-white font-bold text-sm"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-violet-600 text-white font-bold text-sm"
                 >
                   <Upload className="w-4 h-4" /> Carregar material
                 </button>

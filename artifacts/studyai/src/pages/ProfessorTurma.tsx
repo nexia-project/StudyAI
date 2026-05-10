@@ -39,7 +39,7 @@ const STATUS_CFG = {
   risco:     { label: "Em risco",  color: "text-red-500",     bg: "bg-red-50 border-red-200",     dot: "bg-red-500" },
   iniciante: { label: "Iniciante", color: "text-amber-600",   bg: "bg-amber-50 border-amber-200", dot: "bg-amber-500" },
   ativo:     { label: "Ativo",     color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-200", dot: "bg-emerald-500" },
-  destaque:  { label: "Destaque",  color: "text-indigo-600",  bg: "bg-indigo-50 border-indigo-200", dot: "bg-indigo-500" },
+  destaque:  { label: "Destaque",  color: "text-violet-600",  bg: "bg-violet-50 border-violet-200", dot: "bg-violet-500" },
 };
 
 const TASK_TYPES = [
@@ -88,7 +88,7 @@ function StudentDetail({ student, onClose }: StudentDetailProps) {
           <X className="w-5 h-5" />
         </button>
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center text-2xl font-black text-indigo-600">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-100 to-violet-100 flex items-center justify-center text-2xl font-black text-violet-600">
             {student.name.charAt(0).toUpperCase()}
           </div>
           <div>
@@ -137,7 +137,7 @@ function StudentDetail({ student, onClose }: StudentDetailProps) {
         <div className="mt-4 flex flex-col gap-2">
           {student.email && (
             <a href={`mailto:${student.email}`}
-              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-500 transition-colors">
+              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-500 transition-colors">
               <Mail className="w-4 h-4" /> Enviar e-mail
             </a>
           )}
@@ -324,9 +324,9 @@ export default function ProfessorTurmaPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50 flex items-center justify-center">
         <div className="text-center">
-          <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mx-auto mb-3" />
+          <RefreshCw className="w-8 h-8 text-violet-500 animate-spin mx-auto mb-3" />
           <p className="text-slate-500 text-sm">Carregando turma...</p>
         </div>
       </div>
@@ -338,7 +338,7 @@ export default function ProfessorTurmaPage() {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <p className="text-slate-400 mb-4">Turma não encontrada</p>
-          <Button onClick={() => navigate("/professor")} className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl">Voltar</Button>
+          <Button onClick={() => navigate("/professor")} className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl">Voltar</Button>
         </div>
       </div>
     );
@@ -373,11 +373,11 @@ export default function ProfessorTurmaPage() {
   const atRiskStudents = students.filter(s => s.status === "risco");
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50 pb-24">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50 pb-24">
       {/* Blobs */}
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-5%] right-[-5%] w-[30%] h-[30%] bg-indigo-200/20 rounded-full blur-[80px]" />
-        <div className="absolute bottom-[-5%] left-[-5%] w-[30%] h-[30%] bg-indigo-200/20 rounded-full blur-[80px]" />
+        <div className="absolute top-[-5%] right-[-5%] w-[30%] h-[30%] bg-violet-200/20 rounded-full blur-[80px]" />
+        <div className="absolute bottom-[-5%] left-[-5%] w-[30%] h-[30%] bg-violet-200/20 rounded-full blur-[80px]" />
       </div>
 
       {/* Student Detail Modal */}
@@ -396,13 +396,13 @@ export default function ProfessorTurmaPage() {
             <div className="h-4 w-px bg-slate-200" />
             <h1 className="font-black text-slate-800 text-base truncate">{turma.name}</h1>
             <div className="flex items-center gap-2 ml-auto">
-              {turma.serie && <span className="text-xs bg-indigo-100 text-indigo-700 font-bold px-2.5 py-0.5 rounded-full">{turma.serie}</span>}
+              {turma.serie && <span className="text-xs bg-violet-100 text-violet-700 font-bold px-2.5 py-0.5 rounded-full">{turma.serie}</span>}
               {turma.subject && <span className="text-xs bg-slate-100 text-slate-600 font-bold px-2.5 py-0.5 rounded-full hidden sm:inline">{turma.subject}</span>}
               {/* Invite code */}
               <button onClick={copyCode}
                 className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 transition-colors rounded-xl px-3 py-1.5">
                 <span className="text-xs text-slate-500">Código:</span>
-                <span className="font-mono font-black text-indigo-700 text-xs tracking-widest">{turma.inviteCode}</span>
+                <span className="font-mono font-black text-violet-700 text-xs tracking-widest">{turma.inviteCode}</span>
                 {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
               </button>
             </div>
@@ -414,12 +414,12 @@ export default function ProfessorTurmaPage() {
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-2 text-sm font-bold border-b-2 transition-colors",
-                  activeTab === tab.id ? "border-indigo-500 text-indigo-700" : "border-transparent text-slate-400 hover:text-slate-700"
+                  activeTab === tab.id ? "border-violet-500 text-violet-700" : "border-transparent text-slate-400 hover:text-slate-700"
                 )}>
                 <tab.icon className="w-4 h-4" />
                 <span className="hidden sm:inline">{tab.label}</span>
                 {"count" in tab && (tab.count ?? 0) > 0 && (
-                  <span className={cn("text-xs px-1.5 py-0.5 rounded-full font-black", activeTab === tab.id ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-500")}>
+                  <span className={cn("text-xs px-1.5 py-0.5 rounded-full font-black", activeTab === tab.id ? "bg-violet-100 text-violet-700" : "bg-slate-100 text-slate-500")}>
                     {tab.count}
                   </span>
                 )}
@@ -465,7 +465,7 @@ export default function ProfessorTurmaPage() {
               {/* 6 KPI Cards */}
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {[
-                  { label: "Total de Alunos", value: dashboard.totalStudents, icon: Users, color: "text-indigo-500", bg: "bg-indigo-50 border-indigo-100", sub: "na turma" },
+                  { label: "Total de Alunos", value: dashboard.totalStudents, icon: Users, color: "text-violet-500", bg: "bg-violet-50 border-violet-100", sub: "na turma" },
                   { label: "XP Médio", value: dashboard.avgXp, icon: Zap, color: "text-amber-500", bg: "bg-amber-50 border-amber-100", sub: "por aluno" },
                   { label: "Engajamento", value: `${dashboard.engagementRate}%`, icon: TrendingUp, color: "text-emerald-500", bg: "bg-emerald-50 border-emerald-100", sub: "últimos 7 dias" },
                   { label: "Simulados", value: dashboard.simCompleted, icon: Target, color: "text-red-500", bg: "bg-red-50 border-red-100", sub: "realizados" },
@@ -500,7 +500,7 @@ export default function ProfessorTurmaPage() {
                           content={({ active, payload, label }) => active && payload?.length ? (
                             <div className="bg-white border border-slate-200 rounded-xl px-3 py-2 shadow text-xs">
                               <p className="font-bold text-slate-700">{label} XP</p>
-                              <p className="text-indigo-600">{payload[0].value} aluno{(payload[0].value as number) !== 1 ? "s" : ""}</p>
+                              <p className="text-violet-600">{payload[0].value} aluno{(payload[0].value as number) !== 1 ? "s" : ""}</p>
                             </div>
                           ) : null} />
                         <Bar dataKey="alunos" radius={[6, 6, 0, 0]} maxBarSize={40}>
@@ -551,7 +551,7 @@ export default function ProfessorTurmaPage() {
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
                   <div className="flex items-center justify-between mb-1">
                     <h3 className="font-black text-slate-800">Top Alunos por Acertos</h3>
-                    <button onClick={() => setActiveTab("alunos")} className="text-xs text-indigo-500 font-bold hover:text-indigo-700">Ver todos →</button>
+                    <button onClick={() => setActiveTab("alunos")} className="text-xs text-violet-500 font-bold hover:text-violet-700">Ver todos →</button>
                   </div>
                   <p className="text-xs text-slate-400 mb-4">Média de acertos nos simulados (máximo 10 alunos com simulados)</p>
                   <ResponsiveContainer width="100%" height={180}>
@@ -589,11 +589,11 @@ export default function ProfessorTurmaPage() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input type="text" placeholder="Buscar aluno por nome ou e-mail..." value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white" />
+                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white" />
                 </div>
                 <div className="flex gap-2">
                   <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-                    className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
+                    className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white">
                     <option value="todos">Todos os status</option>
                     <option value="risco">Em risco</option>
                     <option value="iniciante">Iniciante</option>
@@ -621,7 +621,7 @@ export default function ProfessorTurmaPage() {
                   {students.length === 0 ? (
                     <>
                       <p className="font-semibold mb-1">Nenhum aluno ainda</p>
-                      <p className="text-sm">Compartilhe o código <span className="text-indigo-600 font-mono font-black">{turma.inviteCode}</span></p>
+                      <p className="text-sm">Compartilhe o código <span className="text-violet-600 font-mono font-black">{turma.inviteCode}</span></p>
                     </>
                   ) : (
                     <p>Nenhum aluno encontrado para os filtros selecionados</p>
@@ -652,11 +652,11 @@ export default function ProfessorTurmaPage() {
                       const cfg = STATUS_CFG[student.status];
                       return (
                         <motion.div key={student.id} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
-                          className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-indigo-100 transition-all group">
+                          className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-violet-100 transition-all group">
                           <div className="p-4 grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
                             {/* Name + avatar */}
                             <div className="col-span-4 flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center text-indigo-600 font-black text-sm flex-shrink-0">
+                              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-100 to-violet-100 flex items-center justify-center text-violet-600 font-black text-sm flex-shrink-0">
                                 {student.name.charAt(0).toUpperCase()}
                               </div>
                               <div className="min-w-0">
@@ -699,7 +699,7 @@ export default function ProfessorTurmaPage() {
                               </span>
                               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button onClick={() => setSelectedStudent(student)}
-                                  className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors">
                                   <Eye className="w-4 h-4" />
                                 </button>
                                 <button onClick={() => kickStudent(student.id, student.name)}
@@ -725,7 +725,7 @@ export default function ProfessorTurmaPage() {
             <motion.div key="ia" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
               {insightsLoading && (
                 <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center">
-                  <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mx-auto mb-3" />
+                  <Loader2 className="w-8 h-8 animate-spin text-violet-500 mx-auto mb-3" />
                   <p className="text-sm text-slate-500 font-semibold">Analisando dados da turma com IA…</p>
                 </div>
               )}
@@ -734,15 +734,15 @@ export default function ProfessorTurmaPage() {
                 <>
                   {/* Summary */}
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-2xl p-4 shadow-lg">
+                    <div className="bg-gradient-to-br from-violet-500 to-violet-600 text-white rounded-2xl p-4 shadow-lg">
                       <GraduationCap className="w-5 h-5 opacity-80 mb-1" />
                       <p className="text-2xl font-black">{insights.summary?.diagnosticCompleted ?? 0}<span className="text-sm font-normal opacity-70">/{insights.summary?.totalStudents ?? 0}</span></p>
                       <p className="text-[11px] uppercase tracking-wide opacity-80 font-bold">Diagnóstico inicial</p>
                     </div>
                     <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] uppercase font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Trilha • Mat</span>
-                        <Brain className="w-4 h-4 text-blue-400" />
+                        <span className="text-[10px] uppercase font-black text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">Trilha • Mat</span>
+                        <Brain className="w-4 h-4 text-violet-400" />
                       </div>
                       <p className="text-2xl font-black text-slate-800">Nv. {insights.summary?.avgLevelMat ?? 0}</p>
                       <p className="text-[11px] text-slate-400">média da turma</p>
@@ -832,7 +832,7 @@ export default function ProfessorTurmaPage() {
                                     : <span className="text-[11px] text-slate-300">—</span>}
                                 </td>
                                 <td className="text-center px-2 py-2.5">
-                                  <div className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                                  <div className="inline-flex items-center gap-1.5 bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full">
                                     <span className="text-xs font-black">{s.trilha.mat.level || "—"}</span>
                                     {s.trilha.mat.sessions > 0 && (
                                       <span className="text-[10px] opacity-70">{s.trilha.mat.accuracy}%</span>
@@ -882,8 +882,8 @@ export default function ProfessorTurmaPage() {
                       className="bg-white rounded-3xl shadow-2xl p-6 max-w-lg w-full"
                       onClick={e => e.stopPropagation()}>
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center">
-                          <Sparkles className="w-5 h-5 text-indigo-600" />
+                        <div className="w-10 h-10 rounded-2xl bg-violet-100 flex items-center justify-center">
+                          <Sparkles className="w-5 h-5 text-violet-600" />
                         </div>
                         <div>
                           <p className="font-black text-slate-800">
@@ -895,7 +895,7 @@ export default function ProfessorTurmaPage() {
                         </div>
                       </div>
                       {aiActionLoading ? (
-                        <div className="flex items-center justify-center py-8 gap-2 text-indigo-600">
+                        <div className="flex items-center justify-center py-8 gap-2 text-violet-600">
                           <Loader2 className="w-5 h-5 animate-spin" />
                           <span className="text-sm font-semibold">Gerando com IA…</span>
                         </div>
@@ -907,7 +907,7 @@ export default function ProfessorTurmaPage() {
                       <div className="flex gap-2 mt-2">
                         {aiActionResult && (
                           <button onClick={() => { navigator.clipboard.writeText(aiActionResult!); }}
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-50 text-indigo-700 text-sm font-bold hover:bg-indigo-100 transition-colors">
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-violet-50 text-violet-700 text-sm font-bold hover:bg-violet-100 transition-colors">
                             <Copy className="w-4 h-4" /> Copiar
                           </button>
                         )}
@@ -922,14 +922,14 @@ export default function ProfessorTurmaPage() {
               </AnimatePresence>
 
               {perfLoading ? (
-                <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-indigo-400 animate-spin" /></div>
+                <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-violet-400 animate-spin" /></div>
               ) : !perfData ? (
                 <div className="text-center py-20 text-slate-400 text-sm">Erro ao carregar dados de desempenho</div>
               ) : (
                 <>
                   {/* KPI summary */}
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-2xl p-4 shadow-lg">
+                    <div className="bg-gradient-to-br from-violet-500 to-violet-600 text-white rounded-2xl p-4 shadow-lg">
                       <Target className="w-5 h-5 opacity-70 mb-1" />
                       <p className="text-2xl font-black">
                         {perfData.avgScoreOverall != null ? `${perfData.avgScoreOverall}%` : "—"}
@@ -937,7 +937,7 @@ export default function ProfessorTurmaPage() {
                       <p className="text-[11px] uppercase tracking-wide opacity-80 font-bold">Média geral turma</p>
                     </div>
                     <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
-                      <BookOpen className="w-5 h-5 text-indigo-400 mb-1" />
+                      <BookOpen className="w-5 h-5 text-violet-400 mb-1" />
                       <p className="text-2xl font-black text-slate-800">{perfData.totalActivities}</p>
                       <p className="text-[11px] text-slate-400">Atividades criadas</p>
                     </div>
@@ -961,7 +961,7 @@ export default function ProfessorTurmaPage() {
                   {(perfData.activities ?? []).length > 0 && (
                     <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
                       <h3 className="font-black text-slate-800 text-sm mb-4 flex items-center gap-2">
-                        <TrendingUp className="w-4 h-4 text-indigo-500" />
+                        <TrendingUp className="w-4 h-4 text-violet-500" />
                         Média da Turma por Avaliação
                       </h3>
                       <ResponsiveContainer width="100%" height={220}>
@@ -991,7 +991,7 @@ export default function ProfessorTurmaPage() {
                   {(perfData.distribution ?? []).length > 0 && (
                     <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
                       <h3 className="font-black text-slate-800 text-sm mb-4 flex items-center gap-2">
-                        <BarChart2 className="w-4 h-4 text-indigo-500" />
+                        <BarChart2 className="w-4 h-4 text-violet-500" />
                         Distribuição de Notas — Última Avaliação
                       </h3>
                       <ResponsiveContainer width="100%" height={180}>
@@ -1032,7 +1032,7 @@ export default function ProfessorTurmaPage() {
                           })
                           .map((s: any) => (
                           <div key={s.id} className="px-5 py-3.5 flex items-center gap-3 hover:bg-slate-50 transition-colors">
-                            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-black text-xs flex-shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 font-black text-xs flex-shrink-0">
                               {s.name.split(" ").map((p: string) => p[0]).slice(0, 2).join("")}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -1070,12 +1070,12 @@ export default function ProfessorTurmaPage() {
                               <div className="flex gap-1 flex-shrink-0">
                                 <button onClick={() => triggerAiAction("mensagem", s)}
                                   title="Mensagem de incentivo"
-                                  className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors">
+                                  className="p-1.5 rounded-lg bg-violet-50 text-violet-600 hover:bg-violet-100 transition-colors">
                                   <Mail className="w-3.5 h-3.5" />
                                 </button>
                                 <button onClick={() => triggerAiAction("reforco", s)}
                                   title="Atividade de reforço"
-                                  className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors">
+                                  className="p-1.5 rounded-lg bg-violet-50 text-violet-600 hover:bg-violet-100 transition-colors">
                                   <BookOpen className="w-3.5 h-3.5" />
                                 </button>
                                 <button onClick={() => triggerAiAction("revisao", s)}
@@ -1098,7 +1098,7 @@ export default function ProfessorTurmaPage() {
                       <p className="font-semibold text-sm">Nenhuma atividade aplicada ainda</p>
                       <p className="text-xs mt-1">Crie e aplique atividades para ver o desempenho da turma aqui</p>
                       <button onClick={() => setActiveTab("tarefas")}
-                        className="mt-4 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-colors">
+                        className="mt-4 px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-700 transition-colors">
                         Criar Atividade
                       </button>
                     </div>
@@ -1116,7 +1116,7 @@ export default function ProfessorTurmaPage() {
               <div className="flex justify-between items-center">
                 <p className="text-sm text-slate-500">{tasks.length} tarefa{tasks.length !== 1 ? "s" : ""} atribuída{tasks.length !== 1 ? "s" : ""}</p>
                 <Button onClick={() => setShowTaskForm(v => !v)}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl flex items-center gap-2 text-sm">
+                  className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl flex items-center gap-2 text-sm">
                   <Plus className="w-4 h-4" /> Nova tarefa
                 </Button>
               </div>
@@ -1124,14 +1124,14 @@ export default function ProfessorTurmaPage() {
               <AnimatePresence>
                 {showTaskForm && (
                   <motion.div initial={{ opacity: 0, y: -10, height: 0 }} animate={{ opacity: 1, y: 0, height: "auto" }} exit={{ opacity: 0, y: -10, height: 0 }}
-                    className="bg-white border border-indigo-100 rounded-2xl shadow-sm overflow-hidden">
+                    className="bg-white border border-violet-100 rounded-2xl shadow-sm overflow-hidden">
                     <div className="p-5">
                       <h4 className="font-black text-slate-800 mb-4">Nova tarefa para toda a turma</h4>
                       <form onSubmit={saveTask} className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="text-xs font-bold text-slate-500 mb-1 block">Tipo *</label>
                           <select value={taskForm.type} onChange={e => setTaskForm(f => ({ ...f, type: e.target.value }))}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-400">
                             {TASK_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                           </select>
                         </div>
@@ -1139,28 +1139,28 @@ export default function ProfessorTurmaPage() {
                           <label className="text-xs font-bold text-slate-500 mb-1 block">Matéria</label>
                           <input value={taskForm.materia} onChange={e => setTaskForm(f => ({ ...f, materia: e.target.value }))}
                             placeholder="Ex: Matemática"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
                         </div>
                         <div className="col-span-2">
                           <label className="text-xs font-bold text-slate-500 mb-1 block">Título *</label>
                           <input value={taskForm.title} onChange={e => setTaskForm(f => ({ ...f, title: e.target.value }))}
                             placeholder="Ex: Simulado de Funções — Cap. 3"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" required />
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" required />
                         </div>
                         <div>
                           <label className="text-xs font-bold text-slate-500 mb-1 block">Data de entrega</label>
                           <input type="date" value={taskForm.dueDate} onChange={e => setTaskForm(f => ({ ...f, dueDate: e.target.value }))}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
                         </div>
                         <div>
                           <label className="text-xs font-bold text-slate-500 mb-1 block">Observações</label>
                           <input value={taskForm.description} onChange={e => setTaskForm(f => ({ ...f, description: e.target.value }))}
                             placeholder="Instruções adicionais"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
                         </div>
                         <div className="col-span-2 flex gap-2 justify-end">
                           <Button type="button" onClick={() => setShowTaskForm(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm">Cancelar</Button>
-                          <Button type="submit" disabled={savingTask} className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm">
+                          <Button type="submit" disabled={savingTask} className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm">
                             {savingTask ? "Salvando..." : "Atribuir para turma"}
                           </Button>
                         </div>
@@ -1276,7 +1276,7 @@ export default function ProfessorTurmaPage() {
                         className={cn(
                           "flex items-center gap-4 p-4 rounded-2xl border transition-all",
                           entry.rank <= 3
-                            ? "bg-gradient-to-r from-indigo-50 to-white border-indigo-200"
+                            ? "bg-gradient-to-r from-violet-50 to-white border-violet-200"
                             : "bg-white border-slate-100"
                         )}>
                         <div className={cn(
@@ -1288,7 +1288,7 @@ export default function ProfessorTurmaPage() {
                         )}>
                           {entry.rank <= 3 ? ["👑","🥈","🥉"][entry.rank - 1] : `#${entry.rank}`}
                         </div>
-                        <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 font-black text-sm flex-shrink-0">
+                        <div className="w-9 h-9 rounded-xl bg-violet-50 flex items-center justify-center text-violet-600 font-black text-sm flex-shrink-0">
                           {entry.name.charAt(0).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -1380,12 +1380,12 @@ function CadernosTab({ turmaId }: { turmaId: string }) {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
-            <BookMarked className="w-5 h-5 text-indigo-500" /> Cadernos da Turma
+            <BookMarked className="w-5 h-5 text-violet-500" /> Cadernos da Turma
           </h3>
           <p className="text-slate-400 text-sm mt-0.5">Cadernos compartilhados com os alunos desta turma</p>
         </div>
         <button onClick={() => setShowForm(s => !s)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold transition-colors">
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold transition-colors">
           <Plus className="w-4 h-4" /> Novo Caderno
         </button>
       </div>
@@ -1393,7 +1393,7 @@ function CadernosTab({ turmaId }: { turmaId: string }) {
       {/* Create form */}
       {showForm && (
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-5">
+          className="rounded-2xl border border-violet-100 bg-violet-50/50 p-5">
           <h4 className="font-bold text-slate-700 text-sm mb-4">Criar Caderno para Turma</h4>
           {error && <p className="text-red-500 text-xs mb-3">{error}</p>}
           <form onSubmit={createNotebook} className="space-y-4">
@@ -1402,12 +1402,12 @@ function CadernosTab({ turmaId }: { turmaId: string }) {
                 <label className="text-slate-500 text-xs font-semibold block mb-1">Título *</label>
                 <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                   placeholder="Ex: Biologia — Células e Organismos"
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:border-indigo-500 outline-none bg-white" />
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:border-violet-500 outline-none bg-white" />
               </div>
               <div>
                 <label className="text-slate-500 text-xs font-semibold block mb-1">Visibilidade</label>
                 <select value={form.visibility} onChange={e => setForm(f => ({ ...f, visibility: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:border-indigo-500 outline-none bg-white">
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:border-violet-500 outline-none bg-white">
                   <option value="private">🔒 Privado (só você)</option>
                   <option value="public">🌐 Público (alunos podem ver)</option>
                 </select>
@@ -1430,7 +1430,7 @@ function CadernosTab({ turmaId }: { turmaId: string }) {
               <div className="flex gap-1.5 flex-wrap">
                 {EMOJIS.map(em => (
                   <button key={em} type="button" onClick={() => setForm(f => ({ ...f, emoji: em }))}
-                    className={`w-9 h-9 rounded-xl text-lg flex items-center justify-center transition-all ${form.emoji === em ? "bg-indigo-100 ring-2 ring-indigo-400" : "bg-slate-100 hover:bg-indigo-50"}`}>
+                    className={`w-9 h-9 rounded-xl text-lg flex items-center justify-center transition-all ${form.emoji === em ? "bg-violet-100 ring-2 ring-violet-400" : "bg-slate-100 hover:bg-violet-50"}`}>
                     {em}
                   </button>
                 ))}
@@ -1439,7 +1439,7 @@ function CadernosTab({ turmaId }: { turmaId: string }) {
 
             <div className="flex gap-2">
               <button type="submit" disabled={creating}
-                className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                className="flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                 {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Criar Caderno
               </button>
               <button type="button" onClick={() => setShowForm(false)}
@@ -1452,7 +1452,7 @@ function CadernosTab({ turmaId }: { turmaId: string }) {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 text-indigo-400 animate-spin" /></div>
+        <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 text-violet-400 animate-spin" /></div>
       ) : notebooks.length === 0 ? (
         <div className="text-center py-16 text-slate-400">
           <BookMarked className="w-10 h-10 mx-auto mb-3 opacity-30" />
@@ -1472,7 +1472,7 @@ function CadernosTab({ turmaId }: { turmaId: string }) {
                       <p className="font-bold text-slate-800 text-sm leading-tight">{nb.title}</p>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         {nb.visibility === "public"
-                          ? <><Globe className="w-3 h-3 text-indigo-500" /><span className="text-[10px] text-indigo-500 font-semibold">Público</span></>
+                          ? <><Globe className="w-3 h-3 text-violet-500" /><span className="text-[10px] text-violet-500 font-semibold">Público</span></>
                           : <><Lock className="w-3 h-3 text-slate-400" /><span className="text-[10px] text-slate-400">Privado</span></>
                         }
                       </div>
@@ -1489,7 +1489,7 @@ function CadernosTab({ turmaId }: { turmaId: string }) {
                     className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
                       nb.visibility === "public"
                         ? "bg-amber-50 text-amber-600 hover:bg-amber-100"
-                        : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+                        : "bg-violet-50 text-violet-600 hover:bg-violet-100"
                     }`}>
                     {nb.visibility === "public" ? <><Lock className="w-3 h-3" />Tornar Privado</> : <><Globe className="w-3 h-3" />Publicar</>}
                   </button>

@@ -47,8 +47,8 @@ const TIER_ORDER = [
 
 function getTierGradient(name: string) {
   switch (name) {
-    case "Diamante": return "from-cyan-400 to-sky-500";
-    case "Platina":  return "from-indigo-500 to-indigo-600";
+    case "Diamante": return "from-cyan-400 to-purple-500";
+    case "Platina":  return "from-violet-500 to-violet-600";
     case "Ouro":     return "from-amber-400 to-yellow-500";
     case "Prata":    return "from-slate-400 to-slate-500";
     default:         return "from-orange-400 to-amber-500";
@@ -184,14 +184,14 @@ export default function RankingPage() {
   if (subLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!isPremium) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-indigo-50 md:pl-64 pt-14 md:pt-0">
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-violet-50 md:pl-64 pt-14 md:pt-0">
         <AppNav />
         <div className="flex flex-col items-center justify-center gap-6 p-8 pt-8 md:pt-16">
           <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center shadow-xl shadow-amber-200">
@@ -204,7 +204,7 @@ export default function RankingPage() {
           <button
             onClick={async () => { setCheckoutLoading(true); try { await startCheckout(); } catch { navigate("/pricing"); } finally { setCheckoutLoading(false); } }}
             disabled={checkoutLoading}
-            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-600 text-white font-black shadow-lg hover:opacity-90 transition-opacity disabled:opacity-60"
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black shadow-lg hover:opacity-90 transition-opacity disabled:opacity-60"
           >
             <Sparkles className="w-5 h-5" />
             {checkoutLoading ? "Aguarde..." : "Assinar Premium — R$29,90/mês"}
@@ -215,10 +215,10 @@ export default function RankingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-indigo-50 md:pl-64 pt-14 md:pt-0">
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-violet-50 md:pl-64 pt-14 md:pt-0">
       <AppNav />
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 px-4 py-6 shadow-xl shadow-indigo-200">
+      <div className="bg-gradient-to-r from-violet-600 to-violet-700 px-4 py-6 shadow-xl shadow-violet-200">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center gap-4 mb-4">
             <div className="flex-1">
@@ -254,7 +254,7 @@ export default function RankingPage() {
                 className={cn(
                   "flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all",
                   segment === tab.key
-                    ? "bg-white text-indigo-700 shadow"
+                    ? "bg-white text-violet-700 shadow"
                     : "bg-white/20 text-white hover:bg-white/30"
                 )}
               >
@@ -273,7 +273,7 @@ export default function RankingPage() {
                 className={cn(
                   "flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-bold transition-all",
                   (uf === "todos" ? !estadoFilter || estadoFilter === "" : estadoFilter === uf)
-                    ? "bg-white text-indigo-700 shadow"
+                    ? "bg-white text-violet-700 shadow"
                     : "bg-white/20 text-white hover:bg-white/30"
                 )}
               >
@@ -325,8 +325,8 @@ export default function RankingPage() {
 
         {loading && (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <div className="w-14 h-14 rounded-full bg-indigo-100 flex items-center justify-center">
-              <Trophy className="w-7 h-7 text-indigo-500 animate-pulse" />
+            <div className="w-14 h-14 rounded-full bg-violet-100 flex items-center justify-center">
+              <Trophy className="w-7 h-7 text-violet-500 animate-pulse" />
             </div>
             <p className="text-slate-500 font-semibold">Carregando ranking...</p>
           </div>
@@ -346,7 +346,7 @@ export default function RankingPage() {
             <div className="text-5xl mb-4">🏆</div>
             <h3 className="font-black text-xl text-slate-800 mb-2">Ranking vazio por enquanto!</h3>
             <p className="text-slate-500 text-sm">Seja o primeiro a aparecer aqui. Faça simulados e estude com flashcards para ganhar XP!</p>
-            <button onClick={() => navigate("/app")} className="mt-4 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-600 text-white font-black text-sm hover:opacity-90">
+            <button onClick={() => navigate("/app")} className="mt-4 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black text-sm hover:opacity-90">
               Começar a estudar
             </button>
           </div>
@@ -370,7 +370,7 @@ export default function RankingPage() {
             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                 <h2 className="font-black text-slate-700 text-base flex items-center gap-2">
-                  <Users className="w-5 h-5 text-indigo-500" /> Classificação Completa
+                  <Users className="w-5 h-5 text-violet-500" /> Classificação Completa
                 </h2>
                 <span className="text-xs text-slate-400 font-semibold">{data?.leaderboard.length ?? 0} estudantes</span>
               </div>
@@ -387,7 +387,7 @@ export default function RankingPage() {
                       transition={{ delay: idx * 0.03 }}
                       className={cn(
                         "flex items-center gap-3 px-5 py-3.5 transition-colors",
-                        isMe ? "bg-indigo-50 border-l-4 border-indigo-500" : "hover:bg-slate-50"
+                        isMe ? "bg-violet-50 border-l-4 border-violet-500" : "hover:bg-slate-50"
                       )}
                     >
                       <div className="w-8 flex items-center justify-center flex-shrink-0">
@@ -400,10 +400,10 @@ export default function RankingPage() {
                         <div className="flex items-center gap-1.5">
                           <p className={cn(
                             "font-bold text-sm truncate",
-                            isMe ? "text-indigo-700" : "text-slate-800"
+                            isMe ? "text-violet-700" : "text-slate-800"
                           )}>
                             {entry.displayName}
-                            {isMe && <span className="ml-1 text-indigo-500 font-black text-xs">(você)</span>}
+                            {isMe && <span className="ml-1 text-violet-500 font-black text-xs">(você)</span>}
                           </p>
                         </div>
                         <div className="flex items-center gap-3 text-[11px] text-slate-400 font-semibold mt-0.5">
@@ -433,34 +433,34 @@ export default function RankingPage() {
             </div>
 
             {/* XP Guide */}
-            <div className="bg-gradient-to-br from-violet-50 to-indigo-50 rounded-3xl border border-indigo-100 p-5">
-              <h3 className="font-black text-indigo-800 text-sm mb-3 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-indigo-500" /> Como ganhar XP
+            <div className="bg-gradient-to-br from-violet-50 to-violet-50 rounded-3xl border border-violet-100 p-5">
+              <h3 className="font-black text-violet-800 text-sm mb-3 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-violet-500" /> Como ganhar XP
               </h3>
               <div className="grid grid-cols-1 gap-2 text-sm">
                 <div className="flex items-center justify-between bg-white/70 rounded-xl px-3 py-2.5">
                   <span className="flex items-center gap-2 text-slate-700 font-semibold">
                     <Target className="w-4 h-4 text-red-500" /> Por simulado realizado
                   </span>
-                  <span className="text-indigo-700 font-black">50–200 XP</span>
+                  <span className="text-violet-700 font-black">50–200 XP</span>
                 </div>
                 <div className="flex items-center justify-between bg-white/70 rounded-xl px-3 py-2.5">
                   <span className="flex items-center gap-2 text-slate-700 font-semibold">
                     <Zap className="w-4 h-4 text-amber-500" /> Por sessão de flashcards
                   </span>
-                  <span className="text-indigo-700 font-black">até 50 XP</span>
+                  <span className="text-violet-700 font-black">até 50 XP</span>
                 </div>
                 <div className="flex items-center justify-between bg-white/70 rounded-xl px-3 py-2.5">
                   <span className="flex items-center gap-2 text-slate-700 font-semibold">
-                    <BookOpen className="w-4 h-4 text-blue-500" /> Por plano de estudo criado
+                    <BookOpen className="w-4 h-4 text-violet-500" /> Por plano de estudo criado
                   </span>
-                  <span className="text-indigo-700 font-black">25 XP</span>
+                  <span className="text-violet-700 font-black">25 XP</span>
                 </div>
                 <div className="flex items-center justify-between bg-white/70 rounded-xl px-3 py-2.5">
                   <span className="flex items-center gap-2 text-slate-700 font-semibold">
                     <TrendingUp className="w-4 h-4 text-emerald-500" /> Bônus por acurácia alta
                   </span>
-                  <span className="text-indigo-700 font-black">+XP extra</span>
+                  <span className="text-violet-700 font-black">+XP extra</span>
                 </div>
               </div>
             </div>

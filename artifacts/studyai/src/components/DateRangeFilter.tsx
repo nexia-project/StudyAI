@@ -142,7 +142,7 @@ export function DateRangeFilter({ value, onChange, loading, className = "" }: Pr
               disabled={loading}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all border
                 ${active
-                  ? "bg-indigo-600 border-indigo-500 text-white shadow-sm shadow-violet-500/30"
+                  ? "bg-violet-600 border-violet-500 text-white shadow-sm shadow-violet-500/30"
                   : "bg-transparent border-white/[0.12] text-white/50 hover:border-white/30 hover:text-white/70"
                 }
                 ${loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
@@ -186,7 +186,7 @@ export function DateRangeFilter({ value, onChange, loading, className = "" }: Pr
           <button
             onClick={applyCustom}
             disabled={!customFrom || !customTo}
-            className="px-4 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-xl transition-colors"
+            className="px-4 py-2 text-xs font-bold bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-xl transition-colors"
           >
             Aplicar
           </button>
@@ -197,8 +197,8 @@ export function DateRangeFilter({ value, onChange, loading, className = "" }: Pr
       )}
 
       {loading && (
-        <div className="flex items-center gap-1.5 text-[10px] text-indigo-400">
-          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+        <div className="flex items-center gap-1.5 text-[10px] text-violet-400">
+          <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
           Atualizando dados...
         </div>
       )}

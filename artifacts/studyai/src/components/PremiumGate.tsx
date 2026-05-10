@@ -30,9 +30,9 @@ export function PremiumGate({ children, feature, description, className }: Premi
       <div className="pointer-events-none select-none blur-[3px] opacity-60">
         {children}
       </div>
-      <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 backdrop-blur-sm rounded-2xl border-2 border-dashed border-indigo-300 z-10">
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 backdrop-blur-sm rounded-2xl border-2 border-dashed border-violet-300 z-10">
         <div className="flex flex-col items-center gap-3 text-center px-4">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-lg">
             <Lock className="w-5 h-5 text-white" />
           </div>
           {feature && (
@@ -46,7 +46,7 @@ export function PremiumGate({ children, feature, description, className }: Premi
           <button
             onClick={handleUpgrade}
             disabled={loading}
-            className="mt-1 flex items-center gap-1.5 bg-gradient-to-r from-indigo-600 to-indigo-600 text-white text-xs font-semibold px-4 py-2 rounded-full shadow-md hover:shadow-lg hover:scale-105 transition-all disabled:opacity-60"
+            className="mt-1 flex items-center gap-1.5 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white text-xs font-semibold px-4 py-2 rounded-full shadow-md hover:shadow-lg hover:scale-105 transition-all disabled:opacity-60"
           >
             <Sparkles className="w-3.5 h-3.5" />
             {loading ? "Carregando..." : "Assinar Premium"}

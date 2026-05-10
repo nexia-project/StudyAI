@@ -29,14 +29,14 @@ const STATS = [
 ];
 
 const FEATURES = [
-  { icon: Target,    label: "Plano de Estudos IA",      desc: "Plano personalizado dia a dia com IA. PDF, foto ou tema digitado.", color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-200" },
-  { icon: Mic,       label: "Tutor Tiagão 24h",         desc: "Primeiro tutor de voz proativo do Brasil. Chama você, age no app.", color: "text-orange-500", bg: "bg-orange-50",  border: "border-orange-200" },
-  { icon: Layers,    label: "Notebook RAG",              desc: "Transforme qualquer material em aula interativa com IA.", color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-200" },
-  { icon: PenLine,   label: "Corretor de Redação",       desc: "Nota 0–1000 em 30s nas 5 competências ENEM.", color: "text-rose-500",   bg: "bg-rose-50",   border: "border-rose-200"   },
-  { icon: Zap,       label: "Simulado Adaptativo",       desc: "A IA detecta suas lacunas e gera questões cirúrgicas.", color: "text-blue-600",   bg: "bg-blue-50",   border: "border-blue-200"   },
-  { icon: Users,     label: "Aula ao Vivo 2.0",         desc: "Sala virtual com quadro colaborativo, quiz e gravação automática.", color: "text-emerald-500", bg: "bg-emerald-50", border: "border-emerald-200" },
-  { icon: BarChart2, label: "Análise Preditiva",         desc: "IA prevê risco de evasão e sugere intervenção em tempo real.", color: "text-cyan-600",   bg: "bg-cyan-50",   border: "border-cyan-200"   },
-  { icon: Trophy,    label: "Gamificação Natural",       desc: "Streaks, conquistas, ranking e desafios semanais por turma.", color: "text-amber-500", bg: "bg-amber-50",  border: "border-amber-200"  },
+  { icon: Target,    label: "Plano de Estudos IA",      desc: "Plano personalizado dia a dia com IA. PDF, foto ou tema digitado.", color: "text-violet-700", bg: "bg-violet-50", border: "border-violet-200/80" },
+  { icon: Mic,       label: "Tutor Tiagão 24h",         desc: "Primeiro tutor de voz proativo do Brasil. Chama você, age no app.", color: "text-fuchsia-700", bg: "bg-fuchsia-50/90",  border: "border-fuchsia-200/80" },
+  { icon: Layers,    label: "Notebook RAG",              desc: "Transforme qualquer material em aula interativa com IA.", color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-200/80" },
+  { icon: PenLine,   label: "Corretor de Redação",       desc: "Nota 0–1000 em 30s nas 5 competências ENEM.", color: "text-violet-800",   bg: "bg-violet-50",   border: "border-violet-200/80"   },
+  { icon: Zap,       label: "Simulado Adaptativo",       desc: "A IA detecta suas lacunas e gera questões cirúrgicas.", color: "text-purple-700",   bg: "bg-purple-50",   border: "border-purple-200/80"   },
+  { icon: Users,     label: "Aula ao Vivo 2.0",         desc: "Sala virtual com quadro colaborativo, quiz e gravação automática.", color: "text-violet-700", bg: "bg-violet-50", border: "border-violet-200/80" },
+  { icon: BarChart2, label: "Análise Preditiva",         desc: "IA prevê risco de evasão e sugere intervenção em tempo real.", color: "text-fuchsia-700",   bg: "bg-fuchsia-50/80",   border: "border-fuchsia-200/70"   },
+  { icon: Trophy,    label: "Gamificação Natural",       desc: "Streaks, conquistas, ranking e desafios semanais por turma.", color: "text-purple-800", bg: "bg-purple-50",  border: "border-purple-200/80"  },
 ];
 
 const STEPS = [
@@ -77,7 +77,7 @@ const PLANS = [
     period: "/mês",
     desc: "Para estudantes sérios",
     highlight: true,
-    color: "border-indigo-500",
+    color: "border-violet-500",
     features: [
       "Planos e simulados ilimitados",
       "Flashcards com IA avançada",
@@ -88,7 +88,7 @@ const PLANS = [
       "Histórico + ranking prioritário",
     ],
     cta: "Assinar Pro",
-    ctaStyle: "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/30",
+    ctaStyle: "bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/30",
   },
   {
     name: "Escola",
@@ -96,7 +96,7 @@ const PLANS = [
     period: "",
     desc: "Para instituições de ensino",
     highlight: false,
-    color: "border-emerald-300",
+    color: "border-violet-300",
     features: [
       "Todos os alunos ilimitados",
       "Dashboard de gestão institucional",
@@ -129,8 +129,8 @@ const VIDEOS = [
     subtitle: "Visão geral da plataforma",
     duration: "1:32",
     tag: "Institucional",
-    tagColor: "bg-indigo-50 text-indigo-700 border-indigo-200",
-    gradient: "from-indigo-500 via-violet-500 to-purple-600",
+    tagColor: "bg-violet-50 text-violet-700 border-violet-200",
+    gradient: "from-violet-500 via-violet-500 to-purple-600",
     icon: Sparkles,
     src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
     poster: "",
@@ -260,8 +260,8 @@ export default function Landing() {
       <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center gap-6">
           <a href="/" className="flex items-center gap-2 flex-shrink-0">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-indigo-500/30">S</div>
-            <span className="font-black text-lg tracking-tight text-gray-900">Study<span className="text-indigo-600">.IA</span></span>
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-violet-500/30">S</div>
+            <span className="font-black text-lg tracking-tight text-gray-900">Study<span className="text-violet-600">.IA</span></span>
           </a>
 
           <div className="hidden md:flex items-center gap-6 flex-1">
@@ -277,7 +277,7 @@ export default function Landing() {
           <div className="flex items-center gap-2.5">
             <button onClick={handleStart} className="hidden sm:block text-sm text-gray-600 hover:text-gray-900 transition-colors font-medium px-2">Entrar</button>
             <button onClick={handleStart}
-              className="text-sm font-bold px-5 py-2 rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-500/30 hover:scale-[1.02] active:scale-[0.98]">
+              className="text-sm font-bold px-5 py-2 rounded-xl text-white bg-violet-600 hover:bg-violet-500 transition-all shadow-lg shadow-violet-500/30 hover:scale-[1.02] active:scale-[0.98]">
               Começar grátis
             </button>
             <button onClick={() => setMobileMenuOpen(v => !v)} className="md:hidden p-2 rounded-xl text-gray-600 hover:text-gray-900">
@@ -303,18 +303,18 @@ export default function Landing() {
       </nav>
 
       {/* ── HERO ── */}
-      <section className="relative pt-24 pb-20 px-6 overflow-hidden bg-gradient-to-br from-indigo-50/50 via-white to-emerald-50/30">
+      <section className="relative pt-24 pb-20 px-6 overflow-hidden bg-gradient-to-br from-violet-50/50 via-white to-emerald-50/30">
         {/* Decoração suave: orbs gradientes flutuantes (estilo coreano clean) */}
         <div aria-hidden className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-32 -left-24 w-[480px] h-[480px] rounded-full bg-indigo-200/30 blur-3xl" />
+          <div className="absolute -top-32 -left-24 w-[480px] h-[480px] rounded-full bg-violet-200/30 blur-3xl" />
           <div className="absolute top-40 -right-24 w-[420px] h-[420px] rounded-full bg-emerald-200/25 blur-3xl" />
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-indigo-200/60 to-transparent" />
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-200/60 to-transparent" />
         </div>
 
         <div className="relative max-w-5xl mx-auto text-center">
           <motion.div variants={fadeUp} initial="hidden" animate="show" custom={0} className="flex flex-wrap items-center justify-center gap-2 mb-8">
-            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-white text-indigo-700 border border-indigo-200 shadow-sm shadow-indigo-100">
-              <Radio className="w-3 h-3 animate-pulse text-indigo-600" /> Novo: Tutor Tiagão — Voz proativa em PT-BR
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-white text-violet-700 border border-violet-200 shadow-sm shadow-violet-100">
+              <Radio className="w-3 h-3 animate-pulse text-violet-600" /> Novo: Tutor Tiagão — Voz proativa em PT-BR
             </span>
             <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
               <Award className="w-3 h-3" /> Top 10 EdTech Brasil 2025
@@ -324,7 +324,7 @@ export default function Landing() {
           <motion.h1 variants={fadeUp} initial="hidden" animate="show" custom={1}
             className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight leading-[1.04] mb-6 text-gray-900">
             A IA que entende{" "}
-            <span className="bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-violet-600 via-violet-600 to-purple-600 bg-clip-text text-transparent">
               como você aprende
             </span>
           </motion.h1>
@@ -338,13 +338,13 @@ export default function Landing() {
           <motion.div variants={fadeUp} initial="hidden" animate="show" custom={3}
             className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
             <button onClick={handleStart}
-              className="group flex items-center gap-2.5 px-8 py-4 rounded-2xl font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-all hover:scale-[1.03] active:scale-[0.97] shadow-xl shadow-indigo-500/30 text-base">
+              className="group flex items-center gap-2.5 px-8 py-4 rounded-2xl font-bold text-white bg-violet-600 hover:bg-violet-500 transition-all hover:scale-[1.03] active:scale-[0.97] shadow-xl shadow-violet-500/30 text-base">
               Começar grátis — 2 minutos
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
             <button onClick={(e) => openVideo(VIDEOS[0], e)}
               className="group flex items-center gap-2.5 px-8 py-4 rounded-2xl font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 transition-all text-base shadow-sm">
-              <span className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center group-hover:scale-110 transition-transform">
+              <span className="w-7 h-7 rounded-full bg-violet-600 text-white flex items-center justify-center group-hover:scale-110 transition-transform">
                 <Play className="w-3 h-3 ml-0.5" fill="currentColor" />
               </span>
               Ver demonstração — 1:32
@@ -356,7 +356,7 @@ export default function Landing() {
             className="flex flex-wrap items-center justify-center gap-8 text-sm">
             {STATS.map((s, i) => (
               <div key={i} className="flex items-center gap-2.5">
-                <span className="font-black text-indigo-600 text-xl">{s.v}</span>
+                <span className="font-black text-violet-600 text-xl">{s.v}</span>
                 <span className="text-gray-500">{s.l}</span>
               </div>
             ))}
@@ -393,15 +393,15 @@ export default function Landing() {
         <div className="max-w-5xl mx-auto">
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
             className="text-center mb-14">
-            <p className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-3">Como funciona</p>
+            <p className="text-xs font-black text-violet-600 uppercase tracking-widest mb-3">Como funciona</p>
             <h2 className="text-4xl font-black tracking-tight text-gray-900">3 passos para transformar seus estudos</h2>
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-6">
             {STEPS.map((step, i) => (
               <motion.div key={i} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i * 0.1}
-                className="relative p-6 rounded-2xl bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all group">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-xl mb-4">
+                className="relative p-6 rounded-2xl bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-violet-300 transition-all group">
+                <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center text-xl mb-4">
                   {step.icon}
                 </div>
                 <span className="absolute top-5 right-5 text-5xl font-black text-gray-100 group-hover:text-gray-200 transition-all">{step.num}</span>
@@ -416,12 +416,12 @@ export default function Landing() {
       {/* ── VÍDEOS INSTITUCIONAIS ── */}
       <section id="videos" className="relative py-24 px-6 bg-gradient-to-b from-white via-gray-50/40 to-white overflow-hidden">
         <div aria-hidden className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[700px] h-[420px] rounded-full bg-indigo-100/40 blur-3xl" />
+          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[700px] h-[420px] rounded-full bg-violet-100/40 blur-3xl" />
         </div>
         <div className="relative max-w-6xl mx-auto">
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
             className="text-center mb-14">
-            <p className="inline-flex items-center gap-1.5 text-xs font-black text-indigo-600 uppercase tracking-widest mb-3">
+            <p className="inline-flex items-center gap-1.5 text-xs font-black text-violet-600 uppercase tracking-widest mb-3">
               <Film className="w-3 h-3" /> Em ação
             </p>
             <h2 className="text-4xl md:text-5xl font-black tracking-tight text-gray-900">Veja o Study.IA por dentro</h2>
@@ -438,7 +438,7 @@ export default function Landing() {
                   key={video.id}
                   onClick={(e) => openVideo(video, e)}
                   variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i * 0.1}
-                  className="group text-left rounded-3xl bg-white border border-gray-200 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-indigo-500/10 hover:-translate-y-1 hover:border-indigo-300 transition-all duration-500"
+                  className="group text-left rounded-3xl bg-white border border-gray-200 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-violet-500/10 hover:-translate-y-1 hover:border-violet-300 transition-all duration-500"
                 >
                   {/* Thumbnail */}
                   <div className={`relative aspect-video overflow-hidden bg-gradient-to-br ${video.gradient}`}>
@@ -477,10 +477,10 @@ export default function Landing() {
                   {/* Meta */}
                   <div className="p-5">
                     <div className="flex items-start justify-between gap-3 mb-1.5">
-                      <h3 className="font-black text-gray-900 text-base leading-tight group-hover:text-indigo-600 transition-colors">
+                      <h3 className="font-black text-gray-900 text-base leading-tight group-hover:text-violet-600 transition-colors">
                         {video.title}
                       </h3>
-                      <ArrowUpRight className="w-4 h-4 text-gray-300 group-hover:text-indigo-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all flex-shrink-0 mt-0.5" />
+                      <ArrowUpRight className="w-4 h-4 text-gray-300 group-hover:text-violet-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all flex-shrink-0 mt-0.5" />
                     </div>
                     <p className="text-gray-500 text-sm leading-snug">{video.subtitle}</p>
                   </div>
@@ -493,7 +493,7 @@ export default function Landing() {
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
             className="mt-12 text-center">
             <a href="#para-alunos"
-              className="inline-flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-500 transition-colors">
+              className="inline-flex items-center gap-2 text-sm font-bold text-violet-600 hover:text-violet-500 transition-colors">
               Conhecer todos os recursos da plataforma <ArrowRight className="w-4 h-4" />
             </a>
           </motion.div>
@@ -505,7 +505,7 @@ export default function Landing() {
         <div className="max-w-5xl mx-auto">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}>
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 uppercase tracking-wide mb-4">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-violet-600 uppercase tracking-wide mb-4">
                 <Radio className="w-3 h-3 animate-pulse" /> Exclusivo Study.IA
               </span>
               <h2 className="text-4xl font-black tracking-tight text-gray-900 mb-4">
@@ -517,13 +517,13 @@ export default function Landing() {
               <div className="space-y-4">
                 {[
                   { icon: Radio,  title: "Fala primeiro, sem você pedir",    desc: "Percebe quando você ficou dias sem estudar e chama por voz.", color: "text-orange-500" },
-                  { icon: Cpu,    title: "Sabe tudo sobre seu progresso",     desc: "Acesso ao seu plano, XP, matérias e histórico completo.", color: "text-indigo-600" },
-                  { icon: Layers, title: "Age no app por você",              desc: "Peça para criar um plano ou navegar — ela executa.", color: "text-blue-600" },
+                  { icon: Cpu,    title: "Sabe tudo sobre seu progresso",     desc: "Acesso ao seu plano, XP, matérias e histórico completo.", color: "text-violet-600" },
+                  { icon: Layers, title: "Age no app por você",              desc: "Peça para criar um plano ou navegar — ela executa.", color: "text-violet-600" },
                   { icon: Shield, title: "Voz natural, zero robótica",        desc: "Voz calorosa e fluida, 100% exclusiva do Study.IA.", color: "text-emerald-500" },
                 ].map((b, i) => (
                   <motion.div key={i} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i * 0.1}
                     className="flex gap-3 items-start">
-                    <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                    <div className="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center flex-shrink-0">
                       <b.icon className={`w-4 h-4 ${b.color}`} />
                     </div>
                     <div>
@@ -534,7 +534,7 @@ export default function Landing() {
                 ))}
               </div>
               <button onClick={handleStart}
-                className="mt-8 flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-all text-sm shadow-lg shadow-indigo-500/30">
+                className="mt-8 flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white bg-violet-600 hover:bg-violet-500 transition-all text-sm shadow-lg shadow-violet-500/30">
                 Conhecer o Tiagão <ArrowRight className="w-4 h-4" />
               </button>
             </motion.div>
@@ -544,7 +544,7 @@ export default function Landing() {
               transition={{ delay: 0.3, duration: 0.6 }}>
               <div className="relative rounded-2xl bg-white border border-gray-200 p-6 shadow-lg">
                 <div className="flex items-center gap-3 mb-5 pb-4 border-b border-gray-200">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-indigo-600 flex items-center justify-center font-black text-white text-sm">T</div>
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-violet-600 flex items-center justify-center font-black text-white text-sm">T</div>
                   <div>
                     <p className="font-black text-gray-900 text-sm">Professor Tiagão</p>
                     <p className="text-xs text-emerald-500 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> Online agora</p>
@@ -561,7 +561,7 @@ export default function Landing() {
                   ].map((m, i) => (
                     <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                       <div className={`rounded-2xl px-3.5 py-2.5 max-w-[85%] text-xs leading-snug ${
-                        m.role === "tiagao" ? "bg-indigo-50 text-gray-800 rounded-tl-sm" : "bg-gray-100 text-gray-700 rounded-tr-sm"
+                        m.role === "tiagao" ? "bg-violet-50 text-gray-800 rounded-tl-sm" : "bg-gray-100 text-gray-700 rounded-tr-sm"
                       }`}>{m.msg}</div>
                     </div>
                   ))}
@@ -582,7 +582,7 @@ export default function Landing() {
       <section id="funcoes" className="py-24 px-6">
         <div className="max-w-5xl mx-auto">
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-14">
-            <p className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-3">Diferenciais</p>
+            <p className="text-xs font-black text-violet-600 uppercase tracking-widest mb-3">Diferenciais</p>
             <h2 className="text-4xl font-black tracking-tight text-gray-900">Tudo integrado. Uma única plataforma.</h2>
             <p className="text-gray-600 mt-3 max-w-2xl mx-auto">Cada módulo conversa com os outros. Seu erro no simulado vira flashcard, que vira plano de aula, que vira revisão programada automaticamente.</p>
           </motion.div>
@@ -611,10 +611,10 @@ export default function Landing() {
                 <p className="text-xs font-black text-gray-500 uppercase mb-4">Portal do Professor</p>
                 <div className="space-y-2">
                   {[
-                    { icon: Users,        label: "3 Turmas ativas",           sub: "90 alunos monitorados",    color: "text-indigo-600" },
+                    { icon: Users,        label: "3 Turmas ativas",           sub: "90 alunos monitorados",    color: "text-violet-600" },
                     { icon: AlertTriangle, label: "2 alunos em atenção",       sub: "Risco de abandono detectado", color: "text-amber-500" },
                     { icon: MessageSquare, label: "Comunicação automatizada",  sub: "12 mensagens enviadas hoje", color: "text-green-500" },
-                    { icon: Brain,        label: "Plano de Aula IA gerado",   sub: "Funções Logarítmicas — 9º B", color: "text-indigo-600" },
+                    { icon: Brain,        label: "Plano de Aula IA gerado",   sub: "Funções Logarítmicas — 9º B", color: "text-violet-600" },
                     { icon: TrendingUp,   label: "Desempenho da turma",       sub: "+8% vs semana anterior",  color: "text-emerald-500" },
                   ].map((item, i) => {
                     const Icon = item.icon;
@@ -633,7 +633,7 @@ export default function Landing() {
             </motion.div>
 
             <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}>
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 uppercase tracking-wide mb-4">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-violet-600 uppercase tracking-wide mb-4">
                 <BookOpen className="w-3 h-3" /> Para Professores
               </span>
               <h2 className="text-4xl font-black tracking-tight text-gray-900 mb-4">
@@ -652,13 +652,13 @@ export default function Landing() {
                   "Gerador de provas e atividades",
                 ].map((item, i) => (
                   <li key={i} className="flex items-start gap-2.5 text-sm text-gray-700">
-                    <CheckCircle className="w-4 h-4 text-indigo-500 flex-shrink-0 mt-0.5" />
+                    <CheckCircle className="w-4 h-4 text-violet-500 flex-shrink-0 mt-0.5" />
                     {item}
                   </li>
                 ))}
               </ul>
               <button onClick={() => navigate("/professor")}
-                className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-all text-sm shadow-lg shadow-violet-500/30">
+                className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white bg-violet-600 hover:bg-violet-500 transition-all text-sm shadow-lg shadow-violet-500/30">
                 Acessar portal do professor <ArrowRight className="w-4 h-4" />
               </button>
             </motion.div>
@@ -718,7 +718,7 @@ export default function Landing() {
                   </div>
                   <p className="text-[11px] text-gray-500 mb-2">{aluno.motivo}</p>
                   <div className="flex gap-2">
-                    <button className="text-[11px] font-bold px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors">
+                    <button className="text-[11px] font-bold px-2.5 py-1 bg-violet-50 text-violet-700 rounded-lg hover:bg-violet-100 transition-colors">
                       Enviar msg
                     </button>
                     <button className="text-[11px] font-bold px-2.5 py-1 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
@@ -736,7 +736,7 @@ export default function Landing() {
       <section className="py-24 px-6 bg-gray-50">
         <div className="max-w-4xl mx-auto">
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-12">
-            <p className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-3">Depoimentos</p>
+            <p className="text-xs font-black text-violet-600 uppercase tracking-widest mb-3">Depoimentos</p>
             <h2 className="text-4xl font-black tracking-tight text-gray-900">Resultados reais</h2>
           </motion.div>
           <div className="relative">
@@ -748,7 +748,7 @@ export default function Landing() {
                 transition={{ duration: 0.4 }}
                 className="bg-white border border-gray-200 shadow-sm rounded-3xl p-8 md:p-10">
                 <div className="flex items-start gap-4 mb-6">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-2xl flex-shrink-0">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center text-2xl flex-shrink-0">
                     {TESTIMONIALS[activeTest].emoji}
                   </div>
                   <div>
@@ -766,7 +766,7 @@ export default function Landing() {
             <div className="flex items-center justify-center gap-2 mt-6">
               {TESTIMONIALS.map((_, i) => (
                 <button key={i} onClick={() => setActiveTest(i)}
-                  className={`w-2 h-2 rounded-full transition-all ${i === activeTest ? "bg-indigo-500 w-6" : "bg-gray-300 hover:bg-gray-400"}`} />
+                  className={`w-2 h-2 rounded-full transition-all ${i === activeTest ? "bg-violet-500 w-6" : "bg-gray-300 hover:bg-gray-400"}`} />
               ))}
             </div>
           </div>
@@ -777,7 +777,7 @@ export default function Landing() {
       <section id="precos" className="py-24 px-6">
         <div className="max-w-5xl mx-auto">
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-14">
-            <p className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-3">Preços</p>
+            <p className="text-xs font-black text-violet-600 uppercase tracking-widest mb-3">Preços</p>
             <h2 className="text-4xl font-black tracking-tight text-gray-900">Planos claros. Sem surpresas.</h2>
             <p className="text-gray-600 mt-3">Enquanto cursinhos tradicionais custam R$200–800/mês, o Study.IA cabe no seu bolso.</p>
           </motion.div>
@@ -785,10 +785,10 @@ export default function Landing() {
           <div className="grid md:grid-cols-3 gap-6">
             {PLANS.map((plan, i) => (
               <motion.div key={i} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i * 0.1}
-                className={`relative rounded-3xl bg-white border-2 ${plan.color} p-8 flex flex-col ${plan.highlight ? "ring-2 ring-indigo-500/40 ring-offset-2 ring-offset-white shadow-lg shadow-indigo-100" : ""}`}>
+                className={`relative rounded-3xl bg-white border-2 ${plan.color} p-8 flex flex-col ${plan.highlight ? "ring-2 ring-violet-500/40 ring-offset-2 ring-offset-white shadow-lg shadow-violet-100" : ""}`}>
                 {plan.highlight && (
                   <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                    <span className="px-4 py-1.5 bg-indigo-600 text-white text-xs font-black rounded-full shadow-lg shadow-indigo-500/30">MAIS POPULAR</span>
+                    <span className="px-4 py-1.5 bg-violet-600 text-white text-xs font-black rounded-full shadow-lg shadow-violet-500/30">MAIS POPULAR</span>
                   </div>
                 )}
                 <div className="mb-6">
@@ -802,7 +802,7 @@ export default function Landing() {
                 <ul className="space-y-3 flex-1 mb-8">
                   {plan.features.map((f, j) => (
                     <li key={j} className="flex items-start gap-2.5 text-sm text-gray-700">
-                      <CheckCircle className="w-4 h-4 text-indigo-500 flex-shrink-0 mt-0.5" />
+                      <CheckCircle className="w-4 h-4 text-violet-500 flex-shrink-0 mt-0.5" />
                       {f}
                     </li>
                   ))}
@@ -822,7 +822,7 @@ export default function Landing() {
       <section className="py-24 px-6">
         <div className="max-w-3xl mx-auto">
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-12">
-            <p className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-3">Dúvidas frequentes</p>
+            <p className="text-xs font-black text-violet-600 uppercase tracking-widest mb-3">Dúvidas frequentes</p>
             <h2 className="text-4xl font-black tracking-tight text-gray-900">FAQ</h2>
           </motion.div>
           <div className="space-y-2">
@@ -869,26 +869,26 @@ export default function Landing() {
                   <label className="text-xs font-black text-gray-700 uppercase block mb-1.5">Nome *</label>
                   <input value={b2bForm.name} onChange={e => setB2bForm(p => ({ ...p, name: e.target.value }))}
                     placeholder="Seu nome"
-                    className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-500 transition-colors" />
+                    className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 transition-colors" />
                 </div>
                 <div>
                   <label className="text-xs font-black text-gray-700 uppercase block mb-1.5">Email *</label>
                   <input type="email" value={b2bForm.email} onChange={e => setB2bForm(p => ({ ...p, email: e.target.value }))}
                     placeholder="email@instituicao.com"
-                    className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-500 transition-colors" />
+                    className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 transition-colors" />
                 </div>
               </div>
               <div>
                 <label className="text-xs font-black text-gray-700 uppercase block mb-1.5">Nome da Instituição *</label>
                 <input value={b2bForm.institution} onChange={e => setB2bForm(p => ({ ...p, institution: e.target.value }))}
                   placeholder="Colégio / Cursinho / Universidade"
-                  className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-500 transition-colors" />
+                  className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 transition-colors" />
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-black text-gray-700 uppercase block mb-1.5">Tipo *</label>
                   <select value={b2bForm.type} onChange={e => setB2bForm(p => ({ ...p, type: e.target.value }))}
-                    className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-indigo-500 transition-colors">
+                    className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-violet-500 transition-colors">
                     <option value="">Selecione...</option>
                     {B2B_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
@@ -896,7 +896,7 @@ export default function Landing() {
                 <div>
                   <label className="text-xs font-black text-gray-700 uppercase block mb-1.5">Nº de alunos</label>
                   <select value={b2bForm.students} onChange={e => setB2bForm(p => ({ ...p, students: e.target.value }))}
-                    className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-indigo-500 transition-colors">
+                    className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-violet-500 transition-colors">
                     <option value="">Selecione...</option>
                     {B2B_STUDENTS.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
@@ -907,7 +907,7 @@ export default function Landing() {
                 <textarea value={b2bForm.message} onChange={e => setB2bForm(p => ({ ...p, message: e.target.value }))}
                   placeholder="Como podemos ajudar sua instituição?"
                   rows={3}
-                  className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-500 transition-colors resize-none" />
+                  className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 transition-colors resize-none" />
               </div>
               {b2bError && <p className="text-sm text-red-500 bg-red-50 rounded-xl px-4 py-2">{b2bError}</p>}
               <button type="submit" disabled={b2bLoading}
@@ -924,14 +924,14 @@ export default function Landing() {
         <div className="max-w-3xl mx-auto text-center">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.6 }}
             className="relative rounded-3xl overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-indigo-600 to-purple-700" />
+            <div className="absolute inset-0 bg-gradient-to-br from-violet-600 via-violet-600 to-purple-700" />
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PHBhdGggZD0iTTM2IDM0djZoNnYtNmgtNnptNiA2djZoNnYtNmgtNnptLTEyIDB2NmgtNnY2aDZ2Nmg2di02aC02di02aC02em0tNiA2SDEydjZoNnYtNnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30" />
             <div className="relative px-8 py-16">
               <p className="text-5xl mb-4">🚀</p>
               <h2 className="text-4xl font-black text-white mb-4 tracking-tight">Pronto para transformar seus estudos?</h2>
-              <p className="text-indigo-200 text-lg mb-8">Não precisa de cartão. Começa em 2 minutos. Cancela quando quiser.</p>
+              <p className="text-violet-200 text-lg mb-8">Não precisa de cartão. Começa em 2 minutos. Cancela quando quiser.</p>
               <button onClick={handleStart}
-                className="inline-flex items-center gap-2.5 px-8 py-4 rounded-2xl font-black text-indigo-600 bg-white hover:bg-indigo-50 transition-all hover:scale-[1.03] active:scale-[0.97] text-base shadow-xl">
+                className="inline-flex items-center gap-2.5 px-8 py-4 rounded-2xl font-black text-violet-600 bg-white hover:bg-violet-50 transition-all hover:scale-[1.03] active:scale-[0.97] text-base shadow-xl">
                 Começar grátis agora <ArrowRight className="w-5 h-5" />
               </button>
             </div>
@@ -1004,8 +1004,8 @@ export default function Landing() {
           <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-8 mb-10">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-white font-black text-sm">S</div>
-                <span className="font-black text-white">Study<span className="text-indigo-400">.IA</span></span>
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center text-white font-black text-sm">S</div>
+                <span className="font-black text-white">Study<span className="text-violet-400">.IA</span></span>
               </div>
               <p className="text-gray-500 text-xs leading-relaxed">A IA que entende como você aprende. Feito com 💜 no Brasil.</p>
             </div>

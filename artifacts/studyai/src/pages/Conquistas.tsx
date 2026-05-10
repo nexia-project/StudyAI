@@ -35,13 +35,13 @@ const BADGES: Badge[] = [
   { id: "bronze",         category: "xp",        emoji: "🥉", title: "Bronze",             description: "Alcance 500 XP",                                   condition: s => s.xp >= 500,  color: "from-amber-600 to-yellow-700" },
   { id: "prata",          category: "xp",        emoji: "🥈", title: "Prata",              description: "Alcance 1.500 XP",                                 condition: s => s.xp >= 1500, color: "from-slate-400 to-gray-500" },
   { id: "ouro",           category: "xp",        emoji: "🥇", title: "Ouro",               description: "Alcance 3.000 XP",                                 condition: s => s.xp >= 3000, color: "from-yellow-400 to-amber-500" },
-  { id: "platina",        category: "xp",        emoji: "🔮", title: "Platina",            description: "Alcance 6.000 XP",                                 condition: s => s.xp >= 6000, color: "from-indigo-500 to-indigo-600" },
+  { id: "platina",        category: "xp",        emoji: "🔮", title: "Platina",            description: "Alcance 6.000 XP",                                 condition: s => s.xp >= 6000, color: "from-violet-500 to-violet-600" },
 
   // Simulados
-  { id: "primSim",        category: "simulados", emoji: "🎯", title: "Primeiro Disparo",   description: "Complete seu primeiro simulado",                    condition: s => s.simCount >= 1,  color: "from-blue-400 to-indigo-500" },
-  { id: "sim5",           category: "simulados", emoji: "📊", title: "Persistente",        description: "Complete 5 simulados",                             condition: s => s.simCount >= 5,  color: "from-blue-500 to-indigo-600" },
-  { id: "sim10",          category: "simulados", emoji: "🏹", title: "Atirador Certeiro",  description: "Complete 10 simulados",                            condition: s => s.simCount >= 10, color: "from-indigo-500 to-indigo-600" },
-  { id: "sim25",          category: "simulados", emoji: "🎖️", title: "Veterano",           description: "Complete 25 simulados",                            condition: s => s.simCount >= 25, color: "from-indigo-500 to-indigo-700" },
+  { id: "primSim",        category: "simulados", emoji: "🎯", title: "Primeiro Disparo",   description: "Complete seu primeiro simulado",                    condition: s => s.simCount >= 1,  color: "from-violet-400 to-violet-500" },
+  { id: "sim5",           category: "simulados", emoji: "📊", title: "Persistente",        description: "Complete 5 simulados",                             condition: s => s.simCount >= 5,  color: "from-violet-500 to-violet-600" },
+  { id: "sim10",          category: "simulados", emoji: "🏹", title: "Atirador Certeiro",  description: "Complete 10 simulados",                            condition: s => s.simCount >= 10, color: "from-violet-500 to-violet-600" },
+  { id: "sim25",          category: "simulados", emoji: "🎖️", title: "Veterano",           description: "Complete 25 simulados",                            condition: s => s.simCount >= 25, color: "from-violet-500 to-violet-700" },
   { id: "sim90",          category: "simulados", emoji: "💯", title: "Nota Máxima",        description: "Acerte 90%+ num simulado",                         condition: s => s.simAccuracy >= 90, color: "from-emerald-400 to-green-500" },
 
   // Flashcards
@@ -60,8 +60,8 @@ const BADGES: Badge[] = [
   { id: "streak30",       category: "constancia", emoji: "👑", title: "Rei da Constância",  description: "Estude 30 dias seguidos",                          condition: s => s.streak >= 30, color: "from-amber-400 to-yellow-500" },
 
   // Especiais
-  { id: "redacao",        category: "especial",  emoji: "✍️", title: "Escritor",           description: "Corrija sua primeira redação com a IA",            condition: s => s.redacaoCount >= 1, color: "from-indigo-400 to-blue-500" },
-  { id: "completo",       category: "especial",  emoji: "🌟", title: "Estudante Completo",  description: "Use simulados, flashcards e plano de estudos",     condition: s => s.simCount >= 1 && s.flashSessions >= 1 && s.planCount >= 1, color: "from-indigo-500 to-indigo-600" },
+  { id: "redacao",        category: "especial",  emoji: "✍️", title: "Escritor",           description: "Corrija sua primeira redação com a IA",            condition: s => s.redacaoCount >= 1, color: "from-violet-400 to-purple-500" },
+  { id: "completo",       category: "especial",  emoji: "🌟", title: "Estudante Completo",  description: "Use simulados, flashcards e plano de estudos",     condition: s => s.simCount >= 1 && s.flashSessions >= 1 && s.planCount >= 1, color: "from-violet-500 to-violet-600" },
   { id: "maratona",       category: "especial",  emoji: "🚀", title: "Maratonista",         description: "Acumule 50+ simulados + 50+ flashcards + 1000 XP", condition: s => s.simCount >= 50 && s.flashSessions >= 50 && s.xp >= 1000, color: "from-fuchsia-500 to-violet-700", secret: true },
 ];
 
@@ -119,10 +119,10 @@ export default function ConquistasPage() {
   const categories = Array.from(new Set(BADGES.map(b => b.category))) as BadgeCategory[];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-indigo-50 md:pl-64 pt-14 md:pt-0">
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-violet-50 md:pl-64 pt-14 md:pt-0">
       <AppNav />
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 px-4 py-6 shadow-xl shadow-indigo-200">
+      <div className="bg-gradient-to-r from-violet-600 to-violet-700 px-4 py-6 shadow-xl shadow-violet-200">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center gap-4 mb-4">
             <div className="flex-1">
@@ -160,7 +160,7 @@ export default function ConquistasPage() {
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-8">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
           categories.map(cat => {
@@ -171,9 +171,9 @@ export default function ConquistasPage() {
             return (
               <div key={cat}>
                 <div className="flex items-center gap-2 mb-4">
-                  <CatIcon className="w-5 h-5 text-indigo-500" />
+                  <CatIcon className="w-5 h-5 text-violet-500" />
                   <h2 className="font-black text-slate-700 text-lg">{CATEGORY_LABELS[cat].label}</h2>
-                  <span className="ml-auto text-xs font-bold text-indigo-500 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-100">
+                  <span className="ml-auto text-xs font-bold text-violet-500 bg-violet-50 px-2.5 py-1 rounded-full border border-violet-100">
                     {catUnlocked.length}/{catBadges.length}
                   </span>
                 </div>
@@ -192,7 +192,7 @@ export default function ConquistasPage() {
                         className={cn(
                           "relative rounded-2xl border p-4 transition-all",
                           isUnlocked
-                            ? "bg-white border-indigo-100 shadow-sm"
+                            ? "bg-white border-violet-100 shadow-sm"
                             : "bg-white/50 border-slate-100"
                         )}
                       >
@@ -246,7 +246,7 @@ export default function ConquistasPage() {
             <p className="font-semibold">Comece a estudar para desbloquear conquistas!</p>
             <button
               onClick={() => navigate("/app")}
-              className="mt-4 px-6 py-2 rounded-xl bg-indigo-600 text-white font-bold text-sm"
+              className="mt-4 px-6 py-2 rounded-xl bg-violet-600 text-white font-bold text-sm"
             >
               Ir para o início
             </button>

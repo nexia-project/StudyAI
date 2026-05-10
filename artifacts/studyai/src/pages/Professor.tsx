@@ -76,10 +76,10 @@ function SlideViewer({ slides }: { slides: SlideData[] }) {
   const slide = slides[idx];
 
   const slideStyle: Record<string, string> = {
-    titulo: "from-indigo-50 to-violet-50 border-indigo-200",
+    titulo: "from-violet-50 to-violet-50 border-violet-200",
     conteudo: "from-slate-50 to-white border-gray-200",
     exemplo: "from-emerald-50 to-teal-50 border-emerald-200",
-    lista: "from-blue-50 to-indigo-50 border-blue-200",
+    lista: "from-violet-50 to-violet-50 border-violet-200",
     destaque: "from-amber-50 to-orange-50 border-amber-200",
     quiz: "from-violet-50 to-purple-50 border-violet-200",
   };
@@ -100,7 +100,7 @@ function SlideViewer({ slides }: { slides: SlideData[] }) {
             <ul className="space-y-2">
               {slide.items?.map((item, i) => (
                 <li key={i} className="flex items-start gap-2 text-gray-700 text-sm">
-                  <span className="text-indigo-600 mt-1">▸</span>{item}
+                  <span className="text-violet-600 mt-1">▸</span>{item}
                 </li>
               ))}
             </ul>
@@ -129,7 +129,7 @@ function SlideViewer({ slides }: { slides: SlideData[] }) {
         <div className="flex gap-1">
           {slides.map((_, i) => (
             <button key={i} onClick={() => setIdx(i)}
-              className={`w-2 h-2 rounded-full transition-all ${i === idx ? "bg-indigo-400 w-6" : "bg-gray-200"}`} />
+              className={`w-2 h-2 rounded-full transition-all ${i === idx ? "bg-violet-400 w-6" : "bg-gray-200"}`} />
           ))}
         </div>
         <button onClick={() => setIdx(i => Math.min(slides.length - 1, i + 1))} disabled={idx === slides.length - 1}
@@ -149,7 +149,7 @@ function MindMapViewer({ root }: { root: MindNode }) {
     <div className="overflow-auto">
       <div className="flex flex-col items-center gap-4 min-w-max p-4">
         {/* Root */}
-        <div className="px-6 py-3 rounded-2xl bg-indigo-600 text-white font-black text-sm shadow-lg shadow-indigo-500/30">
+        <div className="px-6 py-3 rounded-2xl bg-violet-600 text-white font-black text-sm shadow-lg shadow-violet-500/30">
           {root.emoji} {root.label}
         </div>
         {/* Children */}
@@ -158,7 +158,7 @@ function MindMapViewer({ root }: { root: MindNode }) {
             {root.children.map((child, ci) => (
               <div key={ci} className="flex flex-col items-center gap-3">
                 <div className="w-px h-6 bg-gray-200" />
-                <div className="px-4 py-2 rounded-xl bg-indigo-600 border border-indigo-600 text-white font-bold text-xs shadow-sm">
+                <div className="px-4 py-2 rounded-xl bg-violet-600 border border-violet-600 text-white font-bold text-xs shadow-sm">
                   {child.emoji} {child.label}
                 </div>
                 {child.children && child.children.length > 0 && (
@@ -198,11 +198,11 @@ function ContentPackageView({ content, fromKb }: { content: ContentPackage; from
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
       {/* Header */}
-      <div className="rounded-2xl border border-gray-200 bg-gradient-to-r from-indigo-600/20 to-indigo-600/20 p-5">
+      <div className="rounded-2xl border border-gray-200 bg-gradient-to-r from-violet-600/20 to-violet-600/20 p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h3 className="text-xl font-black text-gray-900">{content.titulo}</h3>
-            <p className="text-indigo-700 text-sm mt-1">{content.materia}</p>
+            <p className="text-violet-700 text-sm mt-1">{content.materia}</p>
             {fromKb && <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full mt-2 inline-block">✓ Usando base de conhecimento</span>}
           </div>
         </div>
@@ -221,7 +221,7 @@ function ContentPackageView({ content, fromKb }: { content: ContentPackage; from
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all
-              ${tab === t.id ? "bg-indigo-600 text-white" : "bg-gray-50 text-gray-500 hover:text-gray-900 hover:bg-gray-100"}`}>
+              ${tab === t.id ? "bg-violet-600 text-white" : "bg-gray-50 text-gray-500 hover:text-gray-900 hover:bg-gray-100"}`}>
             <t.icon className="w-4 h-4" />{t.label}
           </button>
         ))}
@@ -256,7 +256,7 @@ function ContentPackageView({ content, fromKb }: { content: ContentPackage; from
                 return (
                   <div key={qi} className="rounded-2xl border border-gray-200 bg-white p-5">
                     <div className="flex gap-3 mb-4">
-                      <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-black flex items-center justify-center flex-shrink-0">{qi + 1}</div>
+                      <div className="w-7 h-7 rounded-lg bg-violet-100 text-violet-700 text-xs font-black flex items-center justify-center flex-shrink-0">{qi + 1}</div>
                       <p className="text-gray-900 font-semibold text-sm leading-relaxed">{q.text}</p>
                     </div>
                     <div className="grid sm:grid-cols-2 gap-2 mb-3">
@@ -269,7 +269,7 @@ function ContentPackageView({ content, fromKb }: { content: ContentPackage; from
                             className={`text-left px-4 py-2.5 rounded-xl text-xs transition-all border
                               ${isCorrect ? "bg-emerald-100 border-emerald-500/50 text-emerald-700 font-bold"
                               : isWrong ? "bg-red-100 border-red-500/50 text-red-700"
-                              : isSelected ? "bg-indigo-100 border-indigo-400 text-indigo-700 font-bold"
+                              : isSelected ? "bg-violet-100 border-violet-400 text-violet-700 font-bold"
                               : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"}`}>
                             {alt}
                           </button>
@@ -278,7 +278,7 @@ function ContentPackageView({ content, fromKb }: { content: ContentPackage; from
                     </div>
                     {sel !== undefined && !show && (
                       <button onClick={() => setShowAnswer(p => ({ ...p, [qi]: true }))}
-                        className="text-xs text-indigo-600 hover:text-indigo-700 font-bold transition-colors">
+                        className="text-xs text-violet-600 hover:text-violet-700 font-bold transition-colors">
                         Ver resposta →
                       </button>
                     )}
@@ -320,8 +320,8 @@ export default function ProfessorPage() {
   }, []);
 
   if (!authChecked) return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/40 flex items-center justify-center">
-      <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50/40 flex items-center justify-center">
+      <Loader2 className="w-8 h-8 text-violet-600 animate-spin" />
     </div>
   );
   if (!hasAccess) return null;
@@ -329,18 +329,18 @@ export default function ProfessorPage() {
   const currentNav = NAV.find(n => n.id === section);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/40 flex">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50/40 flex">
       {sidebarOpen && <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-20 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {/* Sidebar — premium light */}
       <aside className={`fixed left-0 top-0 h-full z-30 flex flex-col bg-white/95 backdrop-blur-xl border-r border-gray-200/80 shadow-sm transition-all duration-300 ${sidebarOpen ? "w-64" : "w-16 lg:w-64"}`}>
         <div className="flex items-center gap-3 px-4 py-5 border-b border-gray-100">
-          <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-indigo-600/25">
+          <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-violet-600/25">
             <GraduationCap className="w-4.5 h-4.5 text-white" strokeWidth={2.5} />
           </div>
           <div className={`transition-opacity duration-200 ${sidebarOpen ? "opacity-100" : "opacity-0 lg:opacity-100"}`}>
             <p className="font-black text-gray-900 text-sm leading-none tracking-tight">StudyAI</p>
-            <p className="text-indigo-600 text-[10px] font-bold mt-1 tracking-wider">PAINEL DO PROFESSOR</p>
+            <p className="text-violet-600 text-[10px] font-bold mt-1 tracking-wider">PAINEL DO PROFESSOR</p>
           </div>
         </div>
         <nav className="flex-1 py-3 overflow-y-auto space-y-1 px-2">
@@ -353,9 +353,9 @@ export default function ProfessorPage() {
               }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all relative group
                   ${active
-                    ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-600/20"
+                    ? "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-md shadow-violet-600/20"
                     : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"}`}>
-                <item.icon className={`w-4 h-4 flex-shrink-0 ${active ? "text-white" : "text-gray-400 group-hover:text-indigo-600"} transition-colors`} strokeWidth={active ? 2.5 : 2} />
+                <item.icon className={`w-4 h-4 flex-shrink-0 ${active ? "text-white" : "text-gray-400 group-hover:text-violet-600"} transition-colors`} strokeWidth={active ? 2.5 : 2} />
                 <span className={`text-xs font-semibold transition-opacity duration-200 ${sidebarOpen ? "opacity-100" : "opacity-0 lg:opacity-100"}`}>{item.label}</span>
               </button>
             );
@@ -377,7 +377,7 @@ export default function ProfessorPage() {
             <Menu className="w-5 h-5" />
           </button>
           <div className="hidden sm:flex items-center gap-3 min-w-0">
-            {currentNav?.icon && <currentNav.icon className="w-4 h-4 text-indigo-600 flex-shrink-0" strokeWidth={2.5} />}
+            {currentNav?.icon && <currentNav.icon className="w-4 h-4 text-violet-600 flex-shrink-0" strokeWidth={2.5} />}
             <h1 className="text-gray-900 font-black text-base tracking-tight truncate">{currentNav?.label}</h1>
           </div>
           <div className="ml-auto flex items-center gap-3">
@@ -385,7 +385,7 @@ export default function ProfessorPage() {
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span className="text-emerald-700 text-[10px] font-bold tracking-wider">CLAUDE AI ATIVO</span>
             </div>
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-600/20">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center shadow-md shadow-violet-600/20">
               <span className="text-white text-xs font-black">{(user as any)?.firstName?.[0] ?? "P"}</span>
             </div>
           </div>
@@ -450,8 +450,8 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
   const atividadeStatus = (a: any) => {
     if (a.type === "simulado") return { label: "Simulado", color: "bg-red-50 text-red-700 border-red-200" };
     if (a.type === "redacao") return { label: "Redação", color: "bg-amber-50 text-amber-700 border-amber-200" };
-    if (a.type === "flashcard") return { label: "Flashcards", color: "bg-blue-50 text-blue-700 border-blue-200" };
-    return { label: a.type, color: "bg-indigo-50 text-indigo-700 border-indigo-200" };
+    if (a.type === "flashcard") return { label: "Flashcards", color: "bg-violet-50 text-violet-700 border-violet-200" };
+    return { label: a.type, color: "bg-violet-50 text-violet-700 border-violet-200" };
   };
 
   const fadeUp: any = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.4, ease: "easeOut" } };
@@ -460,7 +460,7 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
     <div className="space-y-7">
 
       {/* HERO */}
-      <motion.div {...fadeUp} className="relative overflow-hidden rounded-3xl border border-indigo-200/60 bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-6 lg:p-8 text-white shadow-xl shadow-indigo-600/20">
+      <motion.div {...fadeUp} className="relative overflow-hidden rounded-3xl border border-violet-200/60 bg-gradient-to-br from-violet-600 via-violet-600 to-fuchsia-600 p-6 lg:p-8 text-white shadow-xl shadow-violet-600/20">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_50%)] pointer-events-none" />
         <div className="absolute -bottom-12 -right-12 w-48 h-48 rounded-full bg-white/10 blur-2xl pointer-events-none" />
         <div className="relative flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
@@ -477,7 +477,7 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button onClick={() => onNavigate("provas")} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-indigo-700 font-bold text-sm shadow-lg shadow-black/10 hover:shadow-xl hover:scale-[1.02] transition-all">
+            <button onClick={() => onNavigate("provas")} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-violet-700 font-bold text-sm shadow-lg shadow-black/10 hover:shadow-xl hover:scale-[1.02] transition-all">
               <FileQuestion className="w-4 h-4" /> Nova Prova
             </button>
             <button onClick={() => onNavigate("planoaula")} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/15 backdrop-blur border border-white/25 text-white font-bold text-sm hover:bg-white/25 transition-all">
@@ -490,14 +490,14 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
       {/* KPI Row — premium cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Alunos Ativos", value: data.totalStudents, icon: Users, accent: "from-blue-500 to-cyan-500", iconBg: "bg-blue-50 text-blue-600" },
-          { label: "Minhas Turmas", value: data.totalTurmas, icon: GraduationCap, accent: "from-indigo-500 to-violet-500", iconBg: "bg-indigo-50 text-indigo-600" },
+          { label: "Alunos Ativos", value: data.totalStudents, icon: Users, accent: "from-violet-500 to-cyan-500", iconBg: "bg-violet-50 text-violet-600" },
+          { label: "Minhas Turmas", value: data.totalTurmas, icon: GraduationCap, accent: "from-violet-500 to-purple-600", iconBg: "bg-violet-50 text-violet-600" },
           { label: "Média de Desempenho", value: `${data.avgPerformance}%`, icon: TrendingUp, accent: "from-emerald-500 to-teal-500", iconBg: "bg-emerald-50 text-emerald-600" },
           { label: "Engajamento Geral", value: `${data.engagementRate}%`, icon: Activity, accent: "from-amber-500 to-orange-500", iconBg: "bg-amber-50 text-amber-600" },
         ].map((k, i) => (
           <motion.div key={k.label}
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05, duration: 0.35 }}
-            className="group relative overflow-hidden rounded-3xl border border-gray-200 bg-white p-5 shadow-sm hover:shadow-xl hover:-translate-y-0.5 hover:border-indigo-300 transition-all">
+            className="group relative overflow-hidden rounded-3xl border border-gray-200 bg-white p-5 shadow-sm hover:shadow-xl hover:-translate-y-0.5 hover:border-violet-300 transition-all">
             <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${k.accent} opacity-80 group-hover:opacity-100 transition-opacity`} />
             <div className={`w-10 h-10 rounded-2xl ${k.iconBg} flex items-center justify-center mb-4`}>
               <k.icon className="w-5 h-5" strokeWidth={2.5} />
@@ -522,7 +522,7 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {[
-            { label: "Plano de Aula", desc: "BNCC + objetivos + avaliação", icon: Wand2, s: "planoaula" as Section, gradient: "from-indigo-500 to-violet-600", bg: "from-indigo-50 to-violet-50", border: "border-indigo-200/60", iconColor: "text-white" },
+            { label: "Plano de Aula", desc: "BNCC + objetivos + avaliação", icon: Wand2, s: "planoaula" as Section, gradient: "from-violet-500 to-violet-600", bg: "from-violet-50 to-violet-50", border: "border-violet-200/60", iconColor: "text-white" },
             { label: "Prova / Quiz", desc: "MC, V/F, discursivas premium", icon: FileQuestion, s: "provas" as Section, gradient: "from-rose-500 to-pink-600", bg: "from-rose-50 to-pink-50", border: "border-rose-200/60", iconColor: "text-white" },
             { label: "Conteúdo + Slides", desc: "Resumo, mapa mental, questões", icon: Target, s: "conteudos" as Section, gradient: "from-emerald-500 to-teal-600", bg: "from-emerald-50 to-teal-50", border: "border-emerald-200/60", iconColor: "text-white" },
             { label: "Corrigir Redações", desc: "Matriz INEP, 5 competências", icon: CheckCircle2, s: "atividades" as Section, gradient: "from-amber-500 to-orange-600", bg: "from-amber-50 to-orange-50", border: "border-amber-200/60", iconColor: "text-white" },
@@ -550,15 +550,15 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
         <motion.div {...fadeUp} className="lg:col-span-2 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-2xl bg-indigo-50 flex items-center justify-center">
-                <Users className="w-4.5 h-4.5 text-indigo-600" strokeWidth={2.5} />
+              <div className="w-9 h-9 rounded-2xl bg-violet-50 flex items-center justify-center">
+                <Users className="w-4.5 h-4.5 text-violet-600" strokeWidth={2.5} />
               </div>
               <div>
                 <h3 className="font-black text-gray-900 text-base tracking-tight">Minhas Turmas</h3>
                 <p className="text-gray-500 text-xs">Visão geral das suas turmas ativas</p>
               </div>
             </div>
-            <button onClick={() => onNavigate("turmas")} className="text-xs text-indigo-600 hover:text-indigo-700 font-bold transition-colors flex items-center gap-1">
+            <button onClick={() => onNavigate("turmas")} className="text-xs text-violet-600 hover:text-violet-700 font-bold transition-colors flex items-center gap-1">
               Ver todas <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -566,7 +566,7 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
             <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-2xl">
               <GraduationCap className="w-10 h-10 mx-auto mb-3 text-gray-300" />
               <p className="text-gray-500 text-sm font-semibold">Nenhuma turma criada ainda</p>
-              <button onClick={() => onNavigate("turmas")} className="inline-flex items-center gap-1.5 text-indigo-600 hover:text-indigo-700 mt-3 text-sm font-bold transition-colors">
+              <button onClick={() => onNavigate("turmas")} className="inline-flex items-center gap-1.5 text-violet-600 hover:text-violet-700 mt-3 text-sm font-bold transition-colors">
                 <Plus className="w-3.5 h-3.5" /> Criar primeira turma
               </button>
             </div>
@@ -575,12 +575,12 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
               {data.turmas.slice(0, 4).map((t, i) => {
                 const eng = engagementLabel(Math.floor(Math.random() * 60) + 40);
                 return (
-                  <div key={t.id} className="rounded-2xl border border-gray-200 bg-gradient-to-br from-gray-50 to-white p-4 hover:border-indigo-300 hover:shadow-md transition-all group">
+                  <div key={t.id} className="rounded-2xl border border-gray-200 bg-gradient-to-br from-gray-50 to-white p-4 hover:border-violet-300 hover:shadow-md transition-all group">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1 min-w-0">
                         <p className="font-black text-gray-900 text-sm truncate tracking-tight">{t.name}</p>
                         <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                          {t.serie && <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full font-semibold">{t.serie}</span>}
+                          {t.serie && <span className="text-[10px] bg-violet-50 text-violet-700 border border-violet-200 px-2 py-0.5 rounded-full font-semibold">{t.serie}</span>}
                           {t.subject && <span className="text-[10px] bg-gray-100 text-gray-600 border border-gray-200 px-2 py-0.5 rounded-full font-semibold">{t.subject}</span>}
                         </div>
                       </div>
@@ -591,7 +591,7 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
                     </div>
                     <div className="flex gap-2">
                       <button onClick={() => onNavigate("turmas")}
-                        className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-sm hover:shadow-md">
+                        className="flex-1 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold transition-all shadow-sm hover:shadow-md">
                         Ver turma
                       </button>
                       <button onClick={() => onNavigate("atividades")}
@@ -638,8 +638,8 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
           {/* Evolução Semanal */}
           <motion.div {...fadeUp} className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center">
-                <BarChart3 className="w-4 h-4 text-indigo-600" strokeWidth={2.5} />
+              <div className="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center">
+                <BarChart3 className="w-4 h-4 text-violet-600" strokeWidth={2.5} />
               </div>
               <h3 className="font-black text-gray-900 text-sm tracking-tight">Evolução Semanal</h3>
             </div>
@@ -663,15 +663,15 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
       <motion.div {...fadeUp} className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl bg-blue-50 flex items-center justify-center">
-              <ClipboardList className="w-4.5 h-4.5 text-blue-600" strokeWidth={2.5} />
+            <div className="w-9 h-9 rounded-2xl bg-violet-50 flex items-center justify-center">
+              <ClipboardList className="w-4.5 h-4.5 text-violet-600" strokeWidth={2.5} />
             </div>
             <div>
               <h3 className="font-black text-gray-900 text-base tracking-tight">Atividades Recentes</h3>
               <p className="text-gray-500 text-xs">Últimas atividades publicadas e em rascunho</p>
             </div>
           </div>
-          <button onClick={() => onNavigate("atividades")} className="text-xs text-indigo-600 hover:text-indigo-700 font-bold transition-colors flex items-center gap-1">
+          <button onClick={() => onNavigate("atividades")} className="text-xs text-violet-600 hover:text-violet-700 font-bold transition-colors flex items-center gap-1">
             Ver todas <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -762,40 +762,40 @@ function TurmasSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: Req
     finally { setDeleting(null); }
   }
 
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-indigo-600 animate-spin" /></div>;
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-violet-600 animate-spin" /></div>;
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div><h2 className="font-black text-gray-900">{turmas.length} turma{turmas.length !== 1 ? "s" : ""}</h2></div>
-        <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors">
+        <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors">
           <Plus className="w-3.5 h-3.5" /> Nova Turma
         </button>
       </div>
       <AnimatePresence>
         {showCreate && (
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className="rounded-2xl border border-indigo-300 bg-indigo-600/5 p-5">
+            className="rounded-2xl border border-violet-300 bg-violet-600/5 p-5">
             <h3 className="font-bold text-gray-900 text-sm mb-4">Criar nova turma</h3>
             <form onSubmit={createTurma} className="grid sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2">
                 <label className="text-gray-500 text-xs mb-1 block">Nome *</label>
                 <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required placeholder="Ex: 3º Ano B — Matemática"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-500" />
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500" />
               </div>
               <div>
                 <label className="text-gray-500 text-xs mb-1 block">Série</label>
                 <input value={form.serie} onChange={e => setForm(f => ({ ...f, serie: e.target.value }))} placeholder="Ex: 3º Ano, EJA"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-500" />
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500" />
               </div>
               <div>
                 <label className="text-gray-500 text-xs mb-1 block">Disciplina</label>
                 <input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} placeholder="Ex: Matemática"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-500" />
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500" />
               </div>
               <div className="sm:col-span-2 flex gap-3 justify-end">
                 <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2 rounded-xl bg-gray-50 text-gray-500 text-sm hover:bg-gray-100 transition-colors">Cancelar</button>
-                <button type="submit" disabled={creating} className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition-colors disabled:opacity-50">
+                <button type="submit" disabled={creating} className="px-5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-bold transition-colors disabled:opacity-50">
                   {creating ? "Criando..." : "Criar"}
                 </button>
               </div>
@@ -808,7 +808,7 @@ function TurmasSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: Req
         <div className="text-center py-20 border border-gray-200 rounded-2xl">
           <GraduationCap className="w-12 h-12 text-gray-200 mx-auto mb-4" />
           <p className="text-gray-500 mb-4">Nenhuma turma ainda</p>
-          <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 bg-indigo-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl">
+          <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 bg-violet-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl">
             <Plus className="w-4 h-4" /> Criar primeira turma
           </button>
         </div>
@@ -816,12 +816,12 @@ function TurmasSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: Req
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {turmas.map((t, i) => (
             <motion.div key={t.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-              className="rounded-2xl border border-gray-200 bg-white p-5 hover:border-indigo-300 transition-all">
+              className="rounded-2xl border border-gray-200 bg-white p-5 hover:border-violet-300 transition-all">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1 min-w-0">
                   <h3 className="font-bold text-gray-900 text-sm truncate">{t.name}</h3>
                   <div className="flex gap-1.5 mt-1 flex-wrap">
-                    {t.serie && <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">{t.serie}</span>}
+                    {t.serie && <span className="text-xs bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full">{t.serie}</span>}
                     {t.subject && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{t.subject}</span>}
                   </div>
                 </div>
@@ -831,15 +831,15 @@ function TurmasSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: Req
               <div className="bg-gray-50 rounded-xl px-3 py-2.5 flex items-center justify-between mb-3">
                 <div>
                   <p className="text-gray-300 text-[10px] mb-0.5">Código de convite</p>
-                  <p className="text-indigo-700 font-mono font-black tracking-widest text-sm">{t.inviteCode}</p>
+                  <p className="text-violet-700 font-mono font-black tracking-widest text-sm">{t.inviteCode}</p>
                 </div>
                 <button onClick={() => { navigator.clipboard.writeText(t.inviteCode); setCopiedCode(t.inviteCode); setTimeout(() => setCopiedCode(null), 2000); }}
-                  className="p-1.5 text-gray-300 hover:text-indigo-700 transition-colors rounded-lg">
+                  className="p-1.5 text-gray-300 hover:text-violet-700 transition-colors rounded-lg">
                   {copiedCode === t.inviteCode ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                 </button>
               </div>
               <button onClick={() => onNavigate(t.id)}
-                className="w-full py-2 rounded-xl bg-indigo-50 hover:bg-indigo-600 border border-indigo-200 hover:border-indigo-500 text-indigo-700 hover:text-gray-900 text-xs font-bold transition-all flex items-center justify-center gap-1.5">
+                className="w-full py-2 rounded-xl bg-violet-50 hover:bg-violet-600 border border-violet-200 hover:border-violet-500 text-violet-700 hover:text-gray-900 text-xs font-bold transition-all flex items-center justify-center gap-1.5">
                 Ver turma <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </motion.div>
@@ -862,14 +862,14 @@ function AlunosSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) =>
 
   const filtered = students.filter(s => s.name.toLowerCase().includes(search.toLowerCase()) || s.turma.toLowerCase().includes(search.toLowerCase()));
 
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-indigo-600 animate-spin" /></div>;
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-violet-600 animate-spin" /></div>;
 
   return (
     <div className="space-y-4">
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar aluno ou turma..."
-          className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-500" />
+          className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500" />
       </div>
       {filtered.length === 0 ? (
         <div className="text-center py-20 border border-gray-200 rounded-2xl">
@@ -889,8 +889,8 @@ function AlunosSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) =>
               <tr key={s.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-2.5">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                      <span className="text-indigo-700 text-xs font-bold">{s.name[0]?.toUpperCase()}</span>
+                    <div className="w-7 h-7 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-violet-700 text-xs font-bold">{s.name[0]?.toUpperCase()}</span>
                     </div>
                     <span className="font-semibold text-gray-900">{s.name}</span>
                   </div>
@@ -973,8 +973,8 @@ function ConteudosSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
       {/* Input */}
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
         <div className="flex items-center gap-3 mb-5">
-          <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center">
-            <Wand2 className="w-5 h-5 text-indigo-700" />
+          <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center">
+            <Wand2 className="w-5 h-5 text-violet-700" />
           </div>
           <div>
             <h2 className="font-black text-gray-900">Criador de Conteúdo</h2>
@@ -986,7 +986,7 @@ function ConteudosSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
         <div className="flex gap-2 mb-4">
           {[{ id: "topico" as const, label: "💬 Digite um tema" }, { id: "colar" as const, label: "📋 Cole conteúdo" }].map(t => (
             <button key={t.id} onClick={() => setInputTab(t.id)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${inputTab === t.id ? "bg-indigo-600 text-white" : "bg-gray-50 text-gray-500 hover:text-gray-900 hover:bg-gray-100"}`}>
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${inputTab === t.id ? "bg-violet-600 text-white" : "bg-gray-50 text-gray-500 hover:text-gray-900 hover:bg-gray-100"}`}>
               {t.label}
             </button>
           ))}
@@ -1000,13 +1000,13 @@ function ConteudosSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
             {inputTab === "topico" ? (
               <input value={topico} onChange={e => setTopico(e.target.value)} required
                 placeholder="Ex: Revolução Francesa, Funções do 2º Grau, Mitose e Meiose..."
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-500" />
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500" />
             ) : (
               <>
-                <input value={topico} onChange={e => setTopico(e.target.value)} required placeholder="Nome do tema (para o título)" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-500 mb-2" />
+                <input value={topico} onChange={e => setTopico(e.target.value)} required placeholder="Nome do tema (para o título)" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 mb-2" />
                 <textarea value={conteudo} onChange={e => setConteudo(e.target.value)} rows={5}
                   placeholder="Cole aqui o texto, apostila, anotações ou qualquer conteúdo para a IA processar..."
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-500 resize-none" />
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 resize-none" />
               </>
             )}
           </div>
@@ -1015,21 +1015,21 @@ function ConteudosSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
             <div>
               <label className="text-gray-500 text-xs mb-1.5 block">Nível</label>
               <select value={nivel} onChange={e => setNivel(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-indigo-500">
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-violet-500">
                 {NIVEIS.map(n => <option key={n} value={n} className="bg-white">{n}</option>)}
               </select>
             </div>
             <div>
               <label className="text-gray-500 text-xs mb-1.5 block">Tipo de Material</label>
               <select value={tipo} onChange={e => setTipo(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-indigo-500">
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-violet-500">
                 {TIPOS.map(t => <option key={t.id} value={t.id} className="bg-white">{t.label}</option>)}
               </select>
             </div>
           </div>
 
           <button type="submit" disabled={loading || !topico.trim()}
-            className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors">
+            className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors">
             {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Criando pacote completo...</> : <><Wand2 className="w-4 h-4" />Gerar Conteúdo Completo</>}
           </button>
 
@@ -1044,8 +1044,8 @@ function ConteudosSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
       </div>
 
       {loading && (
-        <div className="rounded-2xl border border-indigo-200 bg-indigo-500/5 p-10 text-center">
-          <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mx-auto mb-4" />
+        <div className="rounded-2xl border border-violet-200 bg-violet-500/5 p-10 text-center">
+          <Loader2 className="w-10 h-10 text-violet-600 animate-spin mx-auto mb-4" />
           <p className="text-gray-900 font-bold">Gerando pacote completo de conteúdo...</p>
           <p className="text-gray-500 text-sm mt-1">Resumo • Slides • Mapa Mental • Questões</p>
         </div>
@@ -1088,8 +1088,8 @@ function PesquisaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) 
     <div className="space-y-5">
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
         <div className="flex items-center gap-3 mb-5">
-          <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center">
-            <Microscope className="w-5 h-5 text-blue-700" />
+          <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center">
+            <Microscope className="w-5 h-5 text-violet-700" />
           </div>
           <div>
             <h2 className="font-black text-gray-900">Central de Pesquisa</h2>
@@ -1103,10 +1103,10 @@ function PesquisaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) 
             <input value={query} onChange={e => setQuery(e.target.value)}
               onKeyDown={e => e.key === "Enter" && search()}
               placeholder="Ex: Revolução Industrial, Equações diferenciais, Fotossíntese..."
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500" />
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500" />
           </div>
           <button onClick={() => search()} disabled={loading || !query.trim()}
-            className="px-5 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl font-bold text-sm flex items-center gap-2 transition-colors whitespace-nowrap">
+            className="px-5 py-3 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white rounded-xl font-bold text-sm flex items-center gap-2 transition-colors whitespace-nowrap">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
             Pesquisar
           </button>
@@ -1119,7 +1119,7 @@ function PesquisaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) 
             <div className="flex flex-wrap gap-2">
               {SUGGESTIONS.map(s => (
                 <button key={s} onClick={() => search(s)}
-                  className="text-xs bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-300 text-gray-500 hover:text-blue-700 px-3 py-1.5 rounded-full transition-all">
+                  className="text-xs bg-gray-50 hover:bg-violet-50 border border-gray-200 hover:border-violet-300 text-gray-500 hover:text-violet-700 px-3 py-1.5 rounded-full transition-all">
                   {s}
                 </button>
               ))}
@@ -1129,8 +1129,8 @@ function PesquisaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) 
       </div>
 
       {loading && (
-        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-10 text-center">
-          <Loader2 className="w-10 h-10 text-blue-600 animate-spin mx-auto mb-4" />
+        <div className="rounded-2xl border border-violet-200 bg-violet-50 p-10 text-center">
+          <Loader2 className="w-10 h-10 text-violet-600 animate-spin mx-auto mb-4" />
           <p className="text-gray-900 font-bold">Pesquisando e gerando conteúdo...</p>
           <p className="text-gray-500 text-sm mt-1">Consultando base de conhecimento + IA</p>
         </div>
@@ -1259,8 +1259,8 @@ function GerarProvaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
       {/* Config */}
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
         <div className="flex items-center gap-3 mb-5">
-          <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center">
-            <FileQuestion className="w-5 h-5 text-indigo-700" />
+          <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center">
+            <FileQuestion className="w-5 h-5 text-violet-700" />
           </div>
           <div>
             <h2 className="font-black text-gray-900">Gerador de Provas</h2>
@@ -1274,7 +1274,7 @@ function GerarProvaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
           <div className="grid grid-cols-3 gap-2">
             {EXAM_MODES.map(m => (
               <button key={m.id} onClick={() => setExamMode(m.id)}
-                className={`p-3 rounded-xl border text-left transition-all ${examMode === m.id ? "bg-indigo-100 border-indigo-400 text-white" : "bg-gray-50 border-gray-200 text-gray-500 hover:text-gray-900 hover:bg-gray-100"}`}>
+                className={`p-3 rounded-xl border text-left transition-all ${examMode === m.id ? "bg-violet-100 border-violet-400 text-white" : "bg-gray-50 border-gray-200 text-gray-500 hover:text-gray-900 hover:bg-gray-100"}`}>
                 <div className="text-xl mb-1">{m.emoji}</div>
                 <p className="text-xs font-bold">{m.label}</p>
                 <p className="text-[10px] text-gray-500 mt-0.5">{m.desc}</p>
@@ -1289,7 +1289,7 @@ function GerarProvaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {VISUAL_STYLES.map(s => (
               <button key={s.id} onClick={() => setVisualStyle(s.id)}
-                className={`p-2.5 rounded-xl border text-center transition-all ${visualStyle === s.id ? "bg-indigo-100 border-indigo-400 text-white" : "bg-gray-50 border-gray-200 text-gray-500 hover:text-gray-900 hover:bg-gray-100"}`}>
+                className={`p-2.5 rounded-xl border text-center transition-all ${visualStyle === s.id ? "bg-violet-100 border-violet-400 text-white" : "bg-gray-50 border-gray-200 text-gray-500 hover:text-gray-900 hover:bg-gray-100"}`}>
                 <div className="text-lg mb-0.5">{s.emoji}</div>
                 <p className="text-[10px] font-bold">{s.label}</p>
                 <p className="text-[9px] text-gray-400">{s.desc}</p>
@@ -1303,26 +1303,26 @@ function GerarProvaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
             <label className="text-gray-500 text-xs mb-1.5 block">Tema / Conteúdo *</label>
             <input value={form.tema} onChange={e => setForm(f => ({ ...f, tema: e.target.value }))} required
               placeholder={examMode === "mundo" ? "Ex: Viagem pelo sistema solar, Aventura na floresta amazônica..." : "Ex: Funções do 1º Grau, Revolução Industrial, Ligações Químicas..."}
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-500" />
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500" />
           </div>
           <div>
             <label className="text-gray-500 text-xs mb-1.5 block">Matéria</label>
             <select value={form.materia} onChange={e => setForm(f => ({ ...f, materia: e.target.value }))}
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-indigo-500">
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-violet-500">
               {MATERIAS.map(m => <option key={m} value={m} className="bg-white">{m}</option>)}
             </select>
           </div>
           <div>
             <label className="text-gray-500 text-xs mb-1.5 block">Nível</label>
             <select value={form.nivel} onChange={e => setForm(f => ({ ...f, nivel: e.target.value }))}
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-indigo-500">
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-violet-500">
               {NIVEIS.map(n => <option key={n} value={n} className="bg-white">{n}</option>)}
             </select>
           </div>
           <div>
             <label className="text-gray-500 text-xs mb-1.5 block">Estilo: {form.estilo}</label>
             <select value={form.estilo} onChange={e => setForm(f => ({ ...f, estilo: e.target.value }))}
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-indigo-500">
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-violet-500">
               {ESTILOS.map(s => <option key={s} value={s} className="bg-white">{s}</option>)}
             </select>
           </div>
@@ -1333,7 +1333,7 @@ function GerarProvaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
           <div className="sm:col-span-2 lg:col-span-1">
             <label className="text-gray-500 text-xs mb-1.5 block opacity-0">Gerar</label>
             <button type="submit" disabled={loading || !form.tema.trim()}
-              className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors">
+              className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors">
               {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Gerando...</> : <><Sparkles className="w-4 h-4" />Gerar Prova</>}
             </button>
           </div>
@@ -1342,8 +1342,8 @@ function GerarProvaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
 
       {/* Loading */}
       {loading && (
-        <div className="rounded-2xl border border-indigo-200 bg-indigo-500/5 p-10 text-center">
-          <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mx-auto mb-4" />
+        <div className="rounded-2xl border border-violet-200 bg-violet-500/5 p-10 text-center">
+          <Loader2 className="w-10 h-10 text-violet-600 animate-spin mx-auto mb-4" />
           <p className="text-gray-900 font-bold">{examMode === "mundo" ? "Criando sua jornada narrativa..." : "Gerando sua prova personalizada..."}</p>
           <p className="text-gray-500 text-sm mt-1">{form.quantidade} questões • {form.materia} • {form.nivel}</p>
         </div>
@@ -1388,7 +1388,7 @@ function GerarProvaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
                   <div>
                     <h3 className={`font-black ${visualStyle === "tecnico" ? "text-zinc-100 font-mono" : "text-gray-900"} text-lg`}>{exam.title}</h3>
                     <div className="flex gap-2 mt-1 flex-wrap">
-                      <span className="text-xs bg-indigo-100 text-indigo-700 px-2.5 py-0.5 rounded-full font-semibold">{form.nivel}</span>
+                      <span className="text-xs bg-violet-100 text-violet-700 px-2.5 py-0.5 rounded-full font-semibold">{form.nivel}</span>
                       <span className="text-xs bg-gray-100 text-gray-500 px-2.5 py-0.5 rounded-full font-semibold">{exam.questions?.length} questões</span>
                     </div>
                   </div>
@@ -1408,12 +1408,12 @@ function GerarProvaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
               {/* Action bar: Save to bank / Apply to class */}
               <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-200">
                 <button onClick={saveToBank} disabled={savingBank || savedBank}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${savedBank ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gray-50 hover:bg-indigo-50 hover:text-indigo-700 text-gray-500 border border-gray-200"}`}>
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${savedBank ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gray-50 hover:bg-violet-50 hover:text-violet-700 text-gray-500 border border-gray-200"}`}>
                   {savingBank ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : savedBank ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Database className="w-3.5 h-3.5" />}
                   {savedBank ? "Salvo no Banco!" : savingBank ? "Salvando..." : "Salvar no Banco"}
                 </button>
                 <button onClick={() => { setShowApply(true); setApplyForm({ title: exam.title || `Prova de ${form.materia}`, turmaId: "", dueDate: "" }); }}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200 transition-all">
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-bold border border-violet-200 transition-all">
                   <Send className="w-3.5 h-3.5" /> Aplicar para Turma
                 </button>
               </div>
@@ -1426,7 +1426,7 @@ function GerarProvaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
                 className="bg-white border border-gray-200 rounded-2xl p-6 w-full max-w-md shadow-xl">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-gray-900 flex items-center gap-2"><Send className="w-4 h-4 text-indigo-600" /> Aplicar para Turma</h3>
+                  <h3 className="font-bold text-gray-900 flex items-center gap-2"><Send className="w-4 h-4 text-violet-600" /> Aplicar para Turma</h3>
                   <button onClick={() => setShowApply(false)} className="text-gray-500 hover:text-gray-900"><X className="w-4 h-4" /></button>
                 </div>
                 <form onSubmit={applyToTurma} className="space-y-3">
@@ -1450,7 +1450,7 @@ function GerarProvaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
                   </div>
                   <div className="flex gap-3 pt-2">
                     <button type="submit" disabled={applyingSaving}
-                      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-colors disabled:opacity-60">
+                      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-sm transition-colors disabled:opacity-60">
                       {applyingSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Aplicar
                     </button>
                     <button type="button" onClick={() => setShowApply(false)} className="px-4 py-2.5 rounded-xl bg-gray-50 text-gray-600 text-sm font-bold">Cancelar</button>
@@ -1485,10 +1485,10 @@ function GerarProvaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
                           ⚡ {q.desafio}
                         </div>
                       )}
-                      {q.context && <div className="text-gray-500 text-xs mb-3 bg-gray-50 rounded-xl px-3 py-2 border-l-2 border-indigo-300">{q.context}</div>}
+                      {q.context && <div className="text-gray-500 text-xs mb-3 bg-gray-50 rounded-xl px-3 py-2 border-l-2 border-violet-300">{q.context}</div>}
                       <p className={`font-semibold mb-4 leading-relaxed text-sm ${visualStyle === "tecnico" ? "text-zinc-200 font-mono" : "text-gray-900"}`}>{q.text}</p>
                       {q.imageDescription && (
-                        <div className="flex items-start gap-2 bg-indigo-50 border border-indigo-200 rounded-xl px-3 py-2 mb-3 text-xs text-indigo-700">
+                        <div className="flex items-start gap-2 bg-violet-50 border border-violet-200 rounded-xl px-3 py-2 mb-3 text-xs text-violet-700">
                           <Eye className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
                           <span><strong>Ilustração:</strong> {q.imageDescription}</span>
                         </div>
@@ -1503,7 +1503,7 @@ function GerarProvaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
                               className={`text-left px-3 py-2.5 rounded-xl text-xs transition-all border
                                 ${isCorrectAlt ? "bg-emerald-100 border-emerald-500/50 text-emerald-700 font-bold"
                                 : isWrongAlt ? "bg-red-100 border-red-500/50 text-red-700"
-                                : isSelected ? "bg-indigo-100 border-indigo-400 text-indigo-700 font-bold"
+                                : isSelected ? "bg-violet-100 border-violet-400 text-violet-700 font-bold"
                                 : theme.alt
                               } ${showResult ? "cursor-default" : "cursor-pointer"}`}>
                               {alt}
@@ -1588,7 +1588,7 @@ function AssistenteSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
     <div className="flex flex-col" style={{ height: "calc(100vh - 11rem)" }}>
       <div className="rounded-2xl border border-gray-200 bg-white p-5 mb-4">
         <h2 className="font-black text-gray-900 flex items-center gap-2 text-sm">
-          <Brain className="w-5 h-5 text-indigo-600" /> Assistente do Professor
+          <Brain className="w-5 h-5 text-violet-600" /> Assistente do Professor
         </h2>
         <p className="text-gray-400 text-xs mt-1">Copiloto pedagógico — cria aulas, provas, estratégias e análises</p>
       </div>
@@ -1597,8 +1597,8 @@ function AssistenteSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 mb-4">
           {SUGGESTIONS.map((s, i) => (
             <button key={i} onClick={() => setInput(s)}
-              className="text-left p-3.5 rounded-2xl border border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-500/5 transition-all text-gray-500 hover:text-gray-900 text-xs">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-600 mb-2" />{s}
+              className="text-left p-3.5 rounded-2xl border border-gray-200 bg-white hover:border-violet-300 hover:bg-violet-500/5 transition-all text-gray-500 hover:text-gray-900 text-xs">
+              <Sparkles className="w-3.5 h-3.5 text-violet-600 mb-2" />{s}
             </button>
           ))}
         </div>
@@ -1608,23 +1608,23 @@ function AssistenteSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             {m.role === "assistant" && (
-              <div className="w-7 h-7 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0 mr-2 mt-1">
-                <Brain className="w-3.5 h-3.5 text-indigo-700" />
+              <div className="w-7 h-7 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0 mr-2 mt-1">
+                <Brain className="w-3.5 h-3.5 text-violet-700" />
               </div>
             )}
             <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-xs leading-relaxed whitespace-pre-wrap
-              ${m.role === "user" ? "bg-indigo-600 text-white" : "bg-white border border-gray-200 text-gray-700 shadow-sm"}`}>
+              ${m.role === "user" ? "bg-violet-600 text-white" : "bg-white border border-gray-200 text-gray-700 shadow-sm"}`}>
               {m.content}
             </div>
           </div>
         ))}
         {loading && (
           <div className="flex justify-start">
-            <div className="w-7 h-7 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0 mr-2">
-              <Brain className="w-3.5 h-3.5 text-indigo-700" />
+            <div className="w-7 h-7 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0 mr-2">
+              <Brain className="w-3.5 h-3.5 text-violet-700" />
             </div>
             <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 flex gap-1">
-              {[0, 150, 300].map(d => <div key={d} className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: `${d}ms` }} />)}
+              {[0, 150, 300].map(d => <div key={d} className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: `${d}ms` }} />)}
             </div>
           </div>
         )}
@@ -1634,9 +1634,9 @@ function AssistenteSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
       <div className="flex gap-3">
         <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
           placeholder="Pergunte ao assistente ou peça para criar algo..."
-          className="flex-1 bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-500" />
+          className="flex-1 bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500" />
         <button onClick={send} disabled={loading || !input.trim()}
-          className="p-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-2xl transition-colors">
+          className="p-3 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-2xl transition-colors">
           <Send className="w-5 h-5" />
         </button>
       </div>
@@ -1679,7 +1679,7 @@ function RelatoriosSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
     window.print();
   }
 
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-indigo-600 animate-spin" /></div>;
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-violet-600 animate-spin" /></div>;
   if (!data) return <div className="text-gray-500 text-center py-20">Erro ao carregar relatórios.</div>;
 
   return (
@@ -1694,7 +1694,7 @@ function RelatoriosSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
             Exportar CSV
           </button>
           <button onClick={exportPdf}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-bold transition-colors">
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-600 text-xs font-bold transition-colors">
             <FileText className="w-4 h-4" />
             Imprimir / PDF
           </button>
@@ -1709,7 +1709,7 @@ function RelatoriosSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
           { label: "Engajamento", value: `${data.engagementRate}%`, icon: Activity },
         ].map(c => (
           <div key={c.label} className="rounded-2xl border border-gray-200 bg-white p-4">
-            <c.icon className="w-4 h-4 text-indigo-600 mb-3" />
+            <c.icon className="w-4 h-4 text-violet-600 mb-3" />
             <p className="text-2xl font-black text-gray-900">{c.value}</p>
             <p className="text-gray-400 text-xs mt-1">{c.label}</p>
           </div>
@@ -1863,9 +1863,9 @@ function BancoSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) => 
 
   const tipoBadge = (t: string) => {
     if (t === "discursiva") return "bg-amber-50 text-amber-700";
-    if (t === "vf") return "bg-blue-50 text-blue-700";
+    if (t === "vf") return "bg-violet-50 text-violet-700";
     if (t === "redacao") return "bg-rose-50 text-rose-700";
-    return "bg-indigo-50 text-indigo-700";
+    return "bg-violet-50 text-violet-700";
   };
   const tipoLabel = (t: string) => ({ multipla: "Múltipla", vf: "V/F", discursiva: "Discursiva", redacao: "Redação" }[t] ?? "Múltipla");
 
@@ -1886,11 +1886,11 @@ function BancoSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) => 
             </button>
           )}
           <button onClick={() => { setShowAIForm(true); setShowForm(false); }}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-bold text-sm transition-all">
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-50 hover:bg-violet-100 border border-violet-200 text-violet-700 font-bold text-sm transition-all">
             <Sparkles className="w-4 h-4" /> Gerar com IA
           </button>
           <button onClick={() => { setShowForm(true); setShowAIForm(false); setForm({ materia: "Matemática", tema: "", nivel: "Médio", text: "", context: "", explanation: "", tags: "", alternatives: ["","","","",""], correct: 0 }); }}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-colors">
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-sm transition-colors">
             <Plus className="w-4 h-4" /> Manual
           </button>
         </div>
@@ -1901,7 +1901,7 @@ function BancoSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) => 
         <div className="flex flex-wrap gap-2">
           {["", ...MATERIAS_BQ].map(m => (
             <button key={m} onClick={() => setFilterMateria(m)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${filterMateria === m ? "bg-indigo-600 border-indigo-500 text-white" : "bg-gray-50 border-gray-200 text-gray-500 hover:text-gray-900"}`}>
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${filterMateria === m ? "bg-violet-600 border-violet-500 text-white" : "bg-gray-50 border-gray-200 text-gray-500 hover:text-gray-900"}`}>
               {m || "Todas"}
             </button>
           ))}
@@ -1909,7 +1909,7 @@ function BancoSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) => 
         <div className="flex flex-wrap gap-2">
           {[{ v: "", l: "Todos tipos" }, { v: "multipla", l: "Múltipla" }, { v: "vf", l: "V/F" }, { v: "discursiva", l: "Discursiva" }].map(t => (
             <button key={t.v} onClick={() => setFilterTipo(t.v)}
-              className={`px-3 py-1 rounded-lg text-xs font-bold border transition-colors ${filterTipo === t.v ? "bg-indigo-600 border-indigo-500 text-white" : "bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-900"}`}>
+              className={`px-3 py-1 rounded-lg text-xs font-bold border transition-colors ${filterTipo === t.v ? "bg-violet-600 border-violet-500 text-white" : "bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-900"}`}>
               {t.l}
             </button>
           ))}
@@ -1919,9 +1919,9 @@ function BancoSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) => 
       {/* AI Generate form */}
       {showAIForm && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border border-indigo-300 bg-indigo-600/5 p-5">
+          className="rounded-2xl border border-violet-300 bg-violet-600/5 p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-gray-900 flex items-center gap-2"><Sparkles className="w-4 h-4 text-indigo-600" /> Gerar Questões com IA</h3>
+            <h3 className="font-bold text-gray-900 flex items-center gap-2"><Sparkles className="w-4 h-4 text-violet-600" /> Gerar Questões com IA</h3>
             <button onClick={() => setShowAIForm(false)} className="text-gray-500 hover:text-gray-900"><X className="w-4 h-4" /></button>
           </div>
           <form onSubmit={generateAI} className="space-y-4">
@@ -1964,7 +1964,7 @@ function BancoSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) => 
             </div>
             <div className="flex gap-3">
               <button type="submit" disabled={generatingAI}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-colors disabled:opacity-60">
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-sm transition-colors disabled:opacity-60">
                 {generatingAI ? <><Loader2 className="w-4 h-4 animate-spin" /> Gerando...</> : <><Sparkles className="w-4 h-4" /> Gerar e Salvar no Banco</>}
               </button>
               <button type="button" onClick={() => setShowAIForm(false)} className="px-4 py-2.5 rounded-xl bg-gray-50 text-gray-600 text-sm font-bold">Cancelar</button>
@@ -1975,7 +1975,7 @@ function BancoSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) => 
 
       {/* Manual form */}
       {showForm && (
-        <div className="rounded-2xl border border-indigo-300 bg-indigo-600/5 p-5">
+        <div className="rounded-2xl border border-violet-300 bg-violet-600/5 p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-gray-900">Nova Questão Manual</h3>
             <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-gray-900"><X className="w-4 h-4" /></button>
@@ -2032,7 +2032,7 @@ function BancoSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) => 
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 resize-none" />
             </div>
             <div className="flex gap-3">
-              <button type="submit" className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-colors">Salvar Questão</button>
+              <button type="submit" className="flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-sm transition-colors">Salvar Questão</button>
               <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2.5 rounded-xl bg-gray-50 text-gray-600 text-sm font-bold">Cancelar</button>
             </div>
           </form>
@@ -2080,7 +2080,7 @@ function BancoSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) => 
         </div>
       )}
 
-      {loading ? <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 text-indigo-600 animate-spin" /></div>
+      {loading ? <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 text-violet-600 animate-spin" /></div>
         : filtered.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <Database className="w-12 h-12 mx-auto mb-3 opacity-30" />
@@ -2093,19 +2093,19 @@ function BancoSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) => 
               const isSel = selected.has(q.id);
               return (
                 <div key={q.id} onClick={() => toggleSelect(q.id)}
-                  className={`rounded-2xl border p-4 cursor-pointer transition-all ${isSel ? "border-indigo-400 bg-indigo-50" : "border-gray-200 bg-white hover:border-gray-200"}`}>
+                  className={`rounded-2xl border p-4 cursor-pointer transition-all ${isSel ? "border-violet-400 bg-violet-50" : "border-gray-200 bg-white hover:border-gray-200"}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 flex-shrink-0 mt-0.5">
-                      <div className={`w-5 h-5 rounded-lg border flex items-center justify-center flex-shrink-0 transition-all ${isSel ? "bg-indigo-600 border-indigo-500" : "border-gray-300 bg-gray-50"}`}>
+                      <div className={`w-5 h-5 rounded-lg border flex items-center justify-center flex-shrink-0 transition-all ${isSel ? "bg-violet-600 border-violet-500" : "border-gray-300 bg-gray-50"}`}>
                         {isSel && <CheckCircle2 className="w-3 h-3 text-gray-900" />}
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-semibold">{q.materia}</span>
+                        <span className="text-xs bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full font-semibold">{q.materia}</span>
                         <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${tipoBadge(q.tipo || "multipla")}`}>{tipoLabel(q.tipo || "multipla")}</span>
                         <span className="text-xs bg-gray-50 text-gray-500 px-2 py-0.5 rounded-full">{q.nivel}</span>
-                        {q.origin === "ia" && <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full flex items-center gap-1"><Sparkles className="w-2.5 h-2.5" /> IA</span>}
+                        {q.origin === "ia" && <span className="text-xs bg-violet-50 text-violet-600 px-2 py-0.5 rounded-full flex items-center gap-1"><Sparkles className="w-2.5 h-2.5" /> IA</span>}
                         {q.tema && <span className="text-xs text-gray-400">{q.tema}</span>}
                       </div>
                       <p className="text-gray-900 text-sm leading-relaxed">{q.text}</p>
@@ -2226,7 +2226,7 @@ function AtividadesSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
 
   const corrStatusBadge = (s: string) => {
     if (s === "corrigido") return "bg-emerald-50 text-emerald-700";
-    if (s === "ai_corrigido") return "bg-indigo-50 text-indigo-700";
+    if (s === "ai_corrigido") return "bg-violet-50 text-violet-700";
     return "bg-gray-100 text-gray-500";
   };
   const corrStatusLabel = (s: string) => s === "corrigido" ? "Corrigido" : s === "ai_corrigido" ? "Corrigido IA" : "Pendente";
@@ -2255,7 +2255,7 @@ function AtividadesSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
           {/* Answer panel */}
           <div className="rounded-2xl border border-gray-200 bg-white p-5">
             <h3 className="font-bold text-gray-900 text-sm mb-4 flex items-center gap-2">
-              <Eye className="w-4 h-4 text-blue-600" /> Resposta do Aluno
+              <Eye className="w-4 h-4 text-violet-600" /> Resposta do Aluno
             </h3>
             {isRedacao ? (
               <div className="bg-gray-50 rounded-xl p-4 text-gray-600 text-sm leading-relaxed whitespace-pre-wrap max-h-80 overflow-y-auto">
@@ -2277,11 +2277,11 @@ function AtividadesSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
           <div className="rounded-2xl border border-gray-200 bg-white p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
-                <Brain className="w-4 h-4 text-indigo-600" /> Correção IA
+                <Brain className="w-4 h-4 text-violet-600" /> Correção IA
               </h3>
               {!ai && (
                 <button onClick={() => aiCorrect(selectedSub)} disabled={aiCorrecting}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 text-xs font-bold transition-all disabled:opacity-50">
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 border border-violet-200 text-violet-700 text-xs font-bold transition-all disabled:opacity-50">
                   {aiCorrecting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
                   {aiCorrecting ? "Corrigindo..." : "Corrigir com IA"}
                 </button>
@@ -2305,9 +2305,9 @@ function AtividadesSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
                     <p className="text-gray-500 text-[10px]">{c.feedback}</p>
                   </div>
                 ))}
-                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 mt-2">
+                <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 mt-2">
                   <p className="text-gray-500 text-[10px] font-bold mb-1">Nota Sugerida</p>
-                  <p className="text-indigo-700 font-black text-xl">{ai.notaTotal}/1000</p>
+                  <p className="text-violet-700 font-black text-xl">{ai.notaTotal}/1000</p>
                   <p className="text-gray-500 text-xs mt-1">{ai.comentarioGeral}</p>
                 </div>
               </div>
@@ -2340,7 +2340,7 @@ function AtividadesSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
               </div>
               {selectedSub.teacher_feedback && <p className="text-gray-600 text-sm bg-gray-50 rounded-xl p-3">{selectedSub.teacher_feedback}</p>}
               <button onClick={() => setCorrForm({ teacher_score: String(selectedSub.teacher_score ?? ""), teacher_feedback: selectedSub.teacher_feedback ?? "" })}
-                className="text-xs text-indigo-600 hover:underline">Editar correção</button>
+                className="text-xs text-violet-600 hover:underline">Editar correção</button>
             </div>
           ) : (
             <div className="space-y-3">
@@ -2362,7 +2362,7 @@ function AtividadesSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
               </div>
               {ai && !corrForm.teacher_score && (
                 <button onClick={() => setCorrForm({ teacher_score: String(ai.notaSugerida ?? ""), teacher_feedback: ai.feedbackAluno ?? "" })}
-                  className="text-xs text-indigo-600 hover:text-indigo-700 hover:underline">
+                  className="text-xs text-violet-600 hover:text-violet-700 hover:underline">
                   Usar sugestão da IA (nota: {ai.notaSugerida})
                 </button>
               )}
@@ -2405,7 +2405,7 @@ function AtividadesSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
         </button>
       </div>
 
-      {loadingSubs ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 text-indigo-600 animate-spin" /></div>
+      {loadingSubs ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 text-violet-600 animate-spin" /></div>
         : submissions.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <ClipboardList className="w-10 h-10 mx-auto mb-3 opacity-30" />
@@ -2417,9 +2417,9 @@ function AtividadesSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
             {/* Summary stats */}
             <div className="grid grid-cols-3 gap-0 border-b border-gray-200">
               {[
-                { label: "Entregas", val: submissions.length, color: "text-blue-600" },
+                { label: "Entregas", val: submissions.length, color: "text-violet-600" },
                 { label: "Nota Média", val: submissions.some((s: any) => s.total > 0) ? `${Math.round(submissions.filter((s: any) => s.total > 0).reduce((acc: number, s: any) => acc + (s.score / s.total) * 100, 0) / submissions.filter((s: any) => s.total > 0).length)}%` : "—", color: "text-emerald-600" },
-                { label: "Corrigidos", val: `${submissions.filter((s: any) => s.correction_status === "corrigido").length}/${submissions.length}`, color: "text-indigo-600" },
+                { label: "Corrigidos", val: `${submissions.filter((s: any) => s.correction_status === "corrigido").length}/${submissions.length}`, color: "text-violet-600" },
               ].map(k => (
                 <div key={k.label} className="text-center p-4">
                   <p className={`text-xl font-black ${k.color}`}>{k.val}</p>
@@ -2457,7 +2457,7 @@ function AtividadesSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
                         <td className="px-4 py-3 text-gray-500 text-xs text-center hidden md:table-cell">{new Date(s.submitted_at).toLocaleDateString("pt-BR")}</td>
                         <td className="px-4 py-3 text-right">
                           <button onClick={() => { setSelectedSub(s); setCorrForm({ teacher_score: String(s.teacher_score ?? ""), teacher_feedback: s.teacher_feedback ?? "" }); }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 hover:bg-indigo-50 hover:text-indigo-700 text-gray-500 text-xs font-bold transition-colors ml-auto">
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 hover:bg-violet-50 hover:text-violet-700 text-gray-500 text-xs font-bold transition-colors ml-auto">
                             <Eye className="w-3 h-3" /> {s.correction_status === "corrigido" ? "Ver" : "Corrigir"}
                           </button>
                         </td>
@@ -2480,13 +2480,13 @@ function AtividadesSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
           <p className="text-gray-500 text-xs">Provas e tarefas para suas turmas</p>
         </div>
         <button onClick={() => { setShowForm(true); setForm({ title: "", description: "", type: "prova", turmaId: "", dueDate: "" }); setQuestoes([{ text: "", alternatives: ["","","","",""], correct: 0 }]); }}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-colors">
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-sm transition-colors">
           <Plus className="w-4 h-4" /> Nova Atividade
         </button>
       </div>
 
       {showForm && (
-        <div className="rounded-2xl border border-indigo-300 bg-indigo-600/5 p-5">
+        <div className="rounded-2xl border border-violet-300 bg-violet-600/5 p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-gray-900">Nova Atividade</h3>
             <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-gray-900"><X className="w-4 h-4" /></button>
@@ -2528,7 +2528,7 @@ function AtividadesSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
               <div className="flex items-center justify-between">
                 <label className="text-gray-500 text-xs font-bold">Questões ({questoes.length})</label>
                 <button type="button" onClick={() => setQuestoes(q => [...q, { text: "", alternatives: ["","","","",""], correct: 0 }])}
-                  className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+                  className="text-xs text-violet-600 hover:text-violet-700 flex items-center gap-1">
                   <Plus className="w-3.5 h-3.5" /> Adicionar
                 </button>
               </div>
@@ -2554,14 +2554,14 @@ function AtividadesSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
               ))}
             </div>
             <div className="flex gap-3">
-              <button type="submit" className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-colors">Publicar Atividade</button>
+              <button type="submit" className="flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-sm transition-colors">Publicar Atividade</button>
               <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2.5 rounded-xl bg-gray-50 text-gray-600 text-sm font-bold">Cancelar</button>
             </div>
           </form>
         </div>
       )}
 
-      {loading ? <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 text-indigo-600 animate-spin" /></div>
+      {loading ? <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 text-violet-600 animate-spin" /></div>
         : activities.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <ClipboardList className="w-12 h-12 mx-auto mb-3 opacity-30" />
@@ -2577,7 +2577,7 @@ function AtividadesSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-semibold capitalize">{a.type}</span>
+                        <span className="text-xs bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full font-semibold capitalize">{a.type}</span>
                         <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${pub ? "bg-emerald-100 text-emerald-700" : "bg-gray-50 text-gray-400"}`}>
                           {pub ? "Publicada" : "Rascunho"}
                         </span>
@@ -2596,7 +2596,7 @@ function AtividadesSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
                         {pub ? <Lock className="w-3.5 h-3.5" /> : <Globe className="w-3.5 h-3.5" />}
                       </button>
                       <button onClick={() => viewSubmissions(a)}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-50 hover:bg-indigo-50 hover:text-indigo-700 text-gray-500 text-xs font-bold transition-colors">
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-50 hover:bg-violet-50 hover:text-violet-700 text-gray-500 text-xs font-bold transition-colors">
                         <Eye className="w-3.5 h-3.5" /> Respostas
                       </button>
                       <button onClick={() => deleteActivity(a.id)} className="p-2 rounded-xl bg-gray-50 hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors">
@@ -2809,7 +2809,7 @@ function PlanoAulaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
-            <Wand2 className="w-5 h-5 text-indigo-600" /> Plano de Aula com IA
+            <Wand2 className="w-5 h-5 text-violet-600" /> Plano de Aula com IA
           </h2>
           <p className="text-gray-500 text-sm mt-0.5">Gere planos profissionais em segundos, com base nos seus cadernos RAG</p>
         </div>
@@ -2836,7 +2836,7 @@ function PlanoAulaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
                 <div>
                   <label className="text-gray-500 text-xs font-semibold block mb-1.5">Disciplina *</label>
                   <select value={form.disciplina} onChange={e => setForm(f => ({ ...f, disciplina: e.target.value }))}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 text-sm focus:border-indigo-500 outline-none">
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 text-sm focus:border-violet-500 outline-none">
                     <option value="">Selecionar...</option>
                     {DISCIPLINAS.map(d => <option key={d} value={d} className="bg-white">{d}</option>)}
                   </select>
@@ -2845,7 +2845,7 @@ function PlanoAulaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
                   <label className="text-gray-500 text-xs font-semibold block mb-1.5">Série / Ano</label>
                   <input value={form.serie} onChange={e => setForm(f => ({ ...f, serie: e.target.value }))}
                     placeholder="Ex: 2º Ano EM, 9º Ano EF..."
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 text-sm placeholder-gray-400 focus:border-indigo-500 outline-none" />
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 text-sm placeholder-gray-400 focus:border-violet-500 outline-none" />
                 </div>
               </div>
 
@@ -2853,14 +2853,14 @@ function PlanoAulaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
                 <div>
                   <label className="text-gray-500 text-xs font-semibold block mb-1.5">Duração da Aula</label>
                   <select value={form.duracao} onChange={e => setForm(f => ({ ...f, duracao: e.target.value }))}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 text-sm focus:border-indigo-500 outline-none">
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 text-sm focus:border-violet-500 outline-none">
                     {DURACOES.map(d => <option key={d} value={d} className="bg-white">{d}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-gray-500 text-xs font-semibold block mb-1.5">Turma (opcional)</label>
                   <select value={form.turmaId} onChange={e => setForm(f => ({ ...f, turmaId: e.target.value }))}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 text-sm focus:border-indigo-500 outline-none">
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 text-sm focus:border-violet-500 outline-none">
                     <option value="" className="bg-white">Sem turma específica</option>
                     {turmas.map(t => <option key={t.id} value={t.id} className="bg-white">{t.name}{t.serie ? ` (${t.serie})` : ""}</option>)}
                   </select>
@@ -2871,18 +2871,18 @@ function PlanoAulaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
                 <label className="text-gray-500 text-xs font-semibold block mb-1.5">Objetivo Geral *</label>
                 <textarea value={form.objetivo} onChange={e => setForm(f => ({ ...f, objetivo: e.target.value }))}
                   rows={3} placeholder="Ex: Apresentar o conceito de funções de 1º grau, relacionando com situações do cotidiano e preparação para o ENEM..."
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 text-sm placeholder-gray-400 focus:border-indigo-500 outline-none resize-none" />
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 text-sm placeholder-gray-400 focus:border-violet-500 outline-none resize-none" />
               </div>
 
               <div>
                 <label className="text-gray-500 text-xs font-semibold block mb-1.5">Objetivos Específicos (opcional)</label>
                 <textarea value={form.objetivosEspecificos} onChange={e => setForm(f => ({ ...f, objetivosEspecificos: e.target.value }))}
                   rows={2} placeholder="Liste objetivos específicos separados por vírgula ou linha..."
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 text-sm placeholder-gray-400 focus:border-indigo-500 outline-none resize-none" />
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 text-sm placeholder-gray-400 focus:border-violet-500 outline-none resize-none" />
               </div>
 
               <button type="submit" disabled={generating}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-600 hover:from-indigo-500 hover:to-violet-500 text-white font-black text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-violet-500 text-white font-black text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                 {generating ? <><Loader2 className="w-4 h-4 animate-spin" /> Gerando plano com IA...</> : <><Wand2 className="w-4 h-4" /> Gerar Plano de Aula</>}
               </button>
             </form>
@@ -2891,17 +2891,17 @@ function PlanoAulaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
           {/* Planos salvos */}
           <div className="rounded-2xl border border-gray-200 bg-white p-5">
             <h3 className="font-bold text-gray-900 text-sm mb-4 flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-indigo-600" /> Planos Salvos
+              <BookOpen className="w-4 h-4 text-violet-600" /> Planos Salvos
             </h3>
             {savedPlans.length === 0 ? (
               <p className="text-gray-300 text-xs text-center py-6">Nenhum plano salvo ainda</p>
             ) : (
               <div className="space-y-2">
                 {savedPlans.map((p: any) => (
-                  <div key={p.id} className="rounded-xl border border-gray-200 bg-gray-50 p-3 hover:border-indigo-200 transition-all">
+                  <div key={p.id} className="rounded-xl border border-gray-200 bg-gray-50 p-3 hover:border-violet-200 transition-all">
                     <p className="text-gray-900 text-xs font-bold truncate">{p.title}</p>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      {p.disciplina && <span className="text-[10px] bg-indigo-50 text-indigo-700/80 px-1.5 py-0.5 rounded-full">{p.disciplina}</span>}
+                      {p.disciplina && <span className="text-[10px] bg-violet-50 text-violet-700/80 px-1.5 py-0.5 rounded-full">{p.disciplina}</span>}
                       {p.turma_name && <span className="text-[10px] text-gray-400">{p.turma_name}</span>}
                     </div>
                     <p className="text-gray-300 text-[10px] mt-1">
@@ -2918,12 +2918,12 @@ function PlanoAulaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
       {step === "result" && plano && (
         <div className="space-y-4">
           {/* Action bar */}
-          <div className="rounded-2xl border border-indigo-200 bg-indigo-600/8 p-4">
+          <div className="rounded-2xl border border-violet-200 bg-violet-600/8 p-4">
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex-1 min-w-0">
                 <p className="text-gray-900 font-bold text-sm truncate">{planTitle}</p>
                 <div className="flex gap-2 mt-1 flex-wrap">
-                  <span className="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">{plano.disciplina}</span>
+                  <span className="text-[10px] bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full">{plano.disciplina}</span>
                   <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{plano.serie}</span>
                   <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">⏱ {plano.duracao}</span>
                   {savedId && <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full">✓ Salvo</span>}
@@ -2935,7 +2935,7 @@ function PlanoAulaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
                   <Layers className="w-3 h-3" /> Simplificar
                 </button>
                 <button onClick={() => handleAjuste("avancado")} disabled={generating}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-500/25 border border-indigo-200 text-indigo-700 text-xs font-bold transition-all disabled:opacity-50">
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-500/25 border border-violet-200 text-violet-700 text-xs font-bold transition-all disabled:opacity-50">
                   <TrendingUp className="w-3 h-3" /> Nível Avançado
                 </button>
                 {!savedId && (
@@ -2945,17 +2945,17 @@ function PlanoAulaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
                   </button>
                 )}
                 <button onClick={generateSlides}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-500/25 border border-indigo-200 text-indigo-700 text-xs font-bold transition-all">
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-500/25 border border-violet-200 text-violet-700 text-xs font-bold transition-all">
                   <LayoutTemplate className="w-3 h-3" /> Slides
                 </button>
                 <button onClick={printPlan}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-bold transition-all">
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 border border-violet-200 text-violet-700 text-xs font-bold transition-all">
                   <FileQuestion className="w-3 h-3" /> Imprimir
                 </button>
               </div>
             </div>
             {generating && (
-              <div className="flex items-center gap-2 mt-3 text-xs text-indigo-700/70">
+              <div className="flex items-center gap-2 mt-3 text-xs text-violet-700/70">
                 <Loader2 className="w-3 h-3 animate-spin" /> Regenerando plano...
               </div>
             )}
@@ -2969,22 +2969,22 @@ function PlanoAulaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
               <div className="rounded-2xl border border-gray-200 bg-white p-5">
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
-                    <h4 className="font-bold text-gray-900 text-sm mb-2 flex items-center gap-1.5"><Target className="w-3.5 h-3.5 text-indigo-600" /> Objetivos</h4>
+                    <h4 className="font-bold text-gray-900 text-sm mb-2 flex items-center gap-1.5"><Target className="w-3.5 h-3.5 text-violet-600" /> Objetivos</h4>
                     <ul className="space-y-1.5">
                       {plano.objetivos.map((o, i) => (
                         <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
-                          <span className="w-4 h-4 rounded-full bg-indigo-50 text-indigo-600 text-[9px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+                          <span className="w-4 h-4 rounded-full bg-violet-50 text-violet-600 text-[9px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
                           {o}
                         </li>
                       ))}
                     </ul>
                   </div>
                   <div>
-                    <h4 className="font-bold text-gray-900 text-sm mb-2 flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5 text-indigo-600" /> Conteúdos</h4>
+                    <h4 className="font-bold text-gray-900 text-sm mb-2 flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5 text-violet-600" /> Conteúdos</h4>
                     <ul className="space-y-1">
                       {plano.conteudos.map((c, i) => (
                         <li key={i} className="text-xs text-gray-600 flex items-start gap-1.5">
-                          <span className="text-indigo-600 mt-0.5">•</span>{c}
+                          <span className="text-violet-600 mt-0.5">•</span>{c}
                         </li>
                       ))}
                     </ul>
@@ -2995,7 +2995,7 @@ function PlanoAulaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
               {/* Abertura */}
               {[
                 { key: "abertura", label: "Abertura", dot: "bg-emerald-500", data: plano.abertura, items: [{ l: "Descrição", v: plano.abertura.descricao }, { l: "Atividade", v: plano.abertura.atividade }] },
-                { key: "desenvolvimento", label: "Desenvolvimento", dot: "bg-indigo-500", data: plano.desenvolvimento, items: [{ l: "Descrição", v: plano.desenvolvimento.descricao }, ...plano.desenvolvimento.atividades.map((a, i) => ({ l: `Atividade ${i + 1}`, v: a }))] },
+                { key: "desenvolvimento", label: "Desenvolvimento", dot: "bg-violet-500", data: plano.desenvolvimento, items: [{ l: "Descrição", v: plano.desenvolvimento.descricao }, ...plano.desenvolvimento.atividades.map((a, i) => ({ l: `Atividade ${i + 1}`, v: a }))] },
                 { key: "fechamento", label: "Fechamento", dot: "bg-amber-500", data: plano.fechamento, items: [{ l: "Descrição", v: plano.fechamento.descricao }, { l: "Avaliação", v: plano.fechamento.avaliacao }] },
               ].map(block => (
                 <div key={block.key} className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
@@ -3033,10 +3033,10 @@ function PlanoAulaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
             <div className="space-y-3">
               {plano.perguntas_norteadoras.length > 0 && (
                 <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                  <h4 className="font-bold text-gray-900 text-sm mb-3 flex items-center gap-1.5"><Brain className="w-3.5 h-3.5 text-indigo-600" /> Perguntas Norteadoras</h4>
+                  <h4 className="font-bold text-gray-900 text-sm mb-3 flex items-center gap-1.5"><Brain className="w-3.5 h-3.5 text-violet-600" /> Perguntas Norteadoras</h4>
                   <ul className="space-y-2">
                     {plano.perguntas_norteadoras.map((q, i) => (
-                      <li key={i} className="text-xs text-gray-600 pl-3 border-l-2 border-indigo-300">{q}</li>
+                      <li key={i} className="text-xs text-gray-600 pl-3 border-l-2 border-violet-300">{q}</li>
                     ))}
                   </ul>
                 </div>
@@ -3044,11 +3044,11 @@ function PlanoAulaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
 
               {plano.materiais.length > 0 && (
                 <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                  <h4 className="font-bold text-gray-900 text-sm mb-3 flex items-center gap-1.5"><Layers className="w-3.5 h-3.5 text-blue-600" /> Materiais</h4>
+                  <h4 className="font-bold text-gray-900 text-sm mb-3 flex items-center gap-1.5"><Layers className="w-3.5 h-3.5 text-violet-600" /> Materiais</h4>
                   <ul className="space-y-1.5">
                     {plano.materiais.map((m, i) => (
                       <li key={i} className="flex items-center gap-1.5 text-xs text-gray-600">
-                        <span className="text-blue-600">•</span>{m}
+                        <span className="text-violet-600">•</span>{m}
                       </li>
                     ))}
                   </ul>
@@ -3057,11 +3057,11 @@ function PlanoAulaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
 
               {plano.recursos_digitais?.length > 0 && (
                 <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                  <h4 className="font-bold text-gray-900 text-sm mb-3 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-indigo-600" /> Recursos Digitais</h4>
+                  <h4 className="font-bold text-gray-900 text-sm mb-3 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-violet-600" /> Recursos Digitais</h4>
                   <ul className="space-y-1.5">
                     {plano.recursos_digitais.map((r, i) => (
                       <li key={i} className="text-xs text-gray-600 flex items-start gap-1.5">
-                        <span className="text-indigo-600">•</span>{r}
+                        <span className="text-violet-600">•</span>{r}
                       </li>
                     ))}
                   </ul>
@@ -3086,10 +3086,10 @@ function PlanoAulaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
 const HIST_KIND_META: Record<string, { label: string; icon: any; color: string }> = {
   content_package:  { label: "Pacote Completo",   icon: Layers,        color: "text-fuchsia-600 bg-fuchsia-50 border-fuchsia-200" },
   material_premium: { label: "Material Premium",  icon: Sparkles,      color: "text-amber-600 bg-amber-50 border-amber-200" },
-  lesson_plan:      { label: "Plano de Aula",     icon: BookOpen,      color: "text-blue-600 bg-blue-50 border-blue-200" },
+  lesson_plan:      { label: "Plano de Aula",     icon: BookOpen,      color: "text-violet-600 bg-violet-50 border-violet-200" },
   exam:             { label: "Prova",              icon: FileQuestion,  color: "text-red-600 bg-red-50 border-red-200" },
   research:         { label: "Pesquisa",           icon: Microscope,    color: "text-cyan-600 bg-cyan-50 border-cyan-200" },
-  slides:           { label: "Slides",             icon: Presentation,  color: "text-indigo-600 bg-indigo-50 border-indigo-200" },
+  slides:           { label: "Slides",             icon: Presentation,  color: "text-violet-600 bg-violet-50 border-violet-200" },
   mapa_mental:      { label: "Mapa Mental",        icon: Network,       color: "text-violet-600 bg-violet-50 border-violet-200" },
 };
 
@@ -3179,23 +3179,23 @@ function HistoricoSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
           <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === "Enter" && load()}
             placeholder="Buscar por título ou matéria..."
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500" />
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-violet-500" />
         </div>
         <select value={kindFilter} onChange={e => setKindFilter(e.target.value)}
-          className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500">
+          className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-violet-500">
           <option value="">Todos os tipos</option>
           {Object.entries(HIST_KIND_META).map(([k, m]) => (
             <option key={k} value={k}>{m.label}</option>
           ))}
         </select>
-        <button onClick={load} className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition-colors flex items-center gap-2">
+        <button onClick={load} className="px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-bold transition-colors flex items-center gap-2">
           <RefreshCw className="w-4 h-4" /> Atualizar
         </button>
       </div>
 
       {loading ? (
         <div className="text-center py-16">
-          <Loader2 className="w-7 h-7 text-indigo-600 animate-spin mx-auto" />
+          <Loader2 className="w-7 h-7 text-violet-600 animate-spin mx-auto" />
           <p className="text-gray-500 mt-3 text-sm">Carregando histórico...</p>
         </div>
       ) : filtered.length === 0 ? (
@@ -3227,7 +3227,7 @@ function HistoricoSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit)
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
                     <button onClick={() => openItem(item)}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-colors">
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-colors">
                       <Eye className="w-3.5 h-3.5" /> Abrir
                     </button>
                     <button onClick={() => deleteItem(item)}
@@ -3288,7 +3288,7 @@ function HistViewer({ item }: { item: HistItem }) {
                 <ul className="mt-2 space-y-1 text-xs">{q.alternatives?.map((a: string, j: number) => (
                   <li key={j} className={j === q.correct ? "text-emerald-700 font-bold" : "text-gray-600"}>{a}</li>
                 ))}</ul>
-                {q.explanation && <p className="text-indigo-700 text-xs mt-2"><strong>Explicação:</strong> {q.explanation}</p>}
+                {q.explanation && <p className="text-violet-700 text-xs mt-2"><strong>Explicação:</strong> {q.explanation}</p>}
               </div>
             ))}
           </div>

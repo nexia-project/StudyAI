@@ -16,16 +16,16 @@ const MATERIAS = [
 ];
 
 const MATERIA_COLORS: Record<string, string> = {
-  "Matemática": "bg-blue-100 text-blue-700",
+  "Matemática": "bg-violet-100 text-violet-700",
   "Português": "bg-emerald-100 text-emerald-700",
   "Redação": "bg-pink-100 text-pink-700",
   "História": "bg-amber-100 text-amber-700",
   "Geografia": "bg-green-100 text-green-700",
   "Biologia": "bg-lime-100 text-lime-700",
-  "Física": "bg-indigo-100 text-gray-700",
+  "Física": "bg-violet-100 text-gray-700",
   "Química": "bg-orange-100 text-orange-700",
-  "Inglês": "bg-sky-100 text-sky-700",
-  "Filosofia": "bg-indigo-100 text-indigo-700",
+  "Inglês": "bg-violet-100 text-violet-700",
+  "Filosofia": "bg-violet-100 text-violet-700",
   "Sociologia": "bg-rose-100 text-rose-700",
 };
 
@@ -331,7 +331,7 @@ export default function Caderno() {
                     ) : <span />}
                     <div className="flex items-center gap-1.5">
                       {note.processedContent && (
-                        <span title="IA processada"><Brain className="w-3 h-3 text-indigo-400" /></span>
+                        <span title="IA processada"><Brain className="w-3 h-3 text-violet-400" /></span>
                       )}
                       <span className="text-xs text-gray-400">{formatDate(note.updatedAt)}</span>
                     </div>
@@ -396,7 +396,7 @@ export default function Caderno() {
                     <button
                       onClick={handleProcess}
                       disabled={aiLoading}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-lg text-xs font-bold transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white rounded-lg text-xs font-bold transition-colors"
                     >
                       {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                       Tiagão IA
@@ -438,7 +438,7 @@ export default function Caderno() {
                     {editContent.split(/\s+/).filter(Boolean).length} palavras
                   </span>
                   {editContent.length > 100 && !isCreating && !processed && (
-                    <button onClick={handleProcess} disabled={aiLoading} className="text-xs text-indigo-600 hover:underline font-medium">
+                    <button onClick={handleProcess} disabled={aiLoading} className="text-xs text-violet-600 hover:underline font-medium">
                       ✨ Processar com IA
                     </button>
                   )}
@@ -450,15 +450,15 @@ export default function Caderno() {
                 <motion.div
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="w-80 flex-shrink-0 bg-white rounded-2xl shadow-sm border border-indigo-100 overflow-hidden flex flex-col hidden lg:flex"
+                  className="w-80 flex-shrink-0 bg-white rounded-2xl shadow-sm border border-violet-100 overflow-hidden flex flex-col hidden lg:flex"
                 >
-                  <div className="px-4 py-3 bg-gradient-to-r from-indigo-600 to-indigo-600 text-white flex items-center gap-2">
+                  <div className="px-4 py-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white flex items-center gap-2">
                     <Brain className="w-4 h-4" />
                     <span className="font-bold text-sm">Tiagão IA — Insights</span>
                   </div>
 
                   {/* Tabs */}
-                  <div className="flex border-b border-indigo-50">
+                  <div className="flex border-b border-violet-50">
                     {([
                       { id: "resumo", icon: List, label: "Resumo" },
                       { id: "pontos", icon: Lightbulb, label: "Pontos" },
@@ -469,7 +469,7 @@ export default function Caderno() {
                         key={tab.id}
                         onClick={() => setAiTab(tab.id)}
                         className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-xs font-semibold transition-colors ${
-                          aiTab === tab.id ? "text-indigo-600 border-b-2 border-indigo-500" : "text-gray-400 hover:text-gray-600"
+                          aiTab === tab.id ? "text-violet-600 border-b-2 border-violet-500" : "text-gray-400 hover:text-gray-600"
                         }`}
                       >
                         <tab.icon className="w-3.5 h-3.5" />
@@ -487,7 +487,7 @@ export default function Caderno() {
                       <ul className="space-y-2">
                         {processed.keyPoints.map((p, i) => (
                           <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                            <span className="w-5 h-5 rounded-full bg-indigo-100 text-gray-700 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+                            <span className="w-5 h-5 rounded-full bg-violet-100 text-gray-700 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
                             {p}
                           </li>
                         ))}
@@ -503,7 +503,7 @@ export default function Caderno() {
                             className="w-full text-left"
                           >
                             <div className={`p-3 rounded-xl border-2 transition-all ${
-                              flipCard === i ? "bg-indigo-50 border-indigo-200" : "bg-gray-50 border-gray-100"
+                              flipCard === i ? "bg-violet-50 border-violet-200" : "bg-gray-50 border-gray-100"
                             }`}>
                               <p className="text-xs font-bold text-gray-700 mb-1">
                                 {flipCard === i ? "📖 Resposta" : "❓ Pergunta"}
@@ -532,7 +532,7 @@ export default function Caderno() {
                                   onClick={() => setSelectedAnswer(prev => ({ ...prev, [qi]: ai }))}
                                   className={`w-full text-left text-xs px-3 py-2 rounded-lg border transition-all ${
                                     selectedAnswer[qi] === undefined
-                                      ? "border-gray-200 bg-white hover:border-indigo-300"
+                                      ? "border-gray-200 bg-white hover:border-violet-300"
                                       : ai === q.correct
                                         ? "border-emerald-300 bg-emerald-50 text-emerald-800 font-semibold"
                                         : selectedAnswer[qi] === ai
@@ -559,13 +559,13 @@ export default function Caderno() {
 
               {/* Empty AI panel state */}
               {!processed && !isCreating && selectedId && (
-                <div className="w-72 flex-shrink-0 bg-white rounded-2xl shadow-sm border border-dashed border-indigo-200 items-center justify-center text-center p-8 hidden lg:flex flex-col">
-                  <Brain className="w-10 h-10 text-indigo-200 mb-3" />
+                <div className="w-72 flex-shrink-0 bg-white rounded-2xl shadow-sm border border-dashed border-violet-200 items-center justify-center text-center p-8 hidden lg:flex flex-col">
+                  <Brain className="w-10 h-10 text-violet-200 mb-3" />
                   <p className="text-sm text-gray-500 mb-4">Clique em <strong>Tiagão IA</strong> para gerar resumo, flashcards e questões automaticamente</p>
                   <button
                     onClick={handleProcess}
                     disabled={aiLoading}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-bold transition-colors"
                   >
                     {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                     Processar com IA

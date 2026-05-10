@@ -286,13 +286,13 @@ const TOOL_CONFIG: Record<Tool, { label: string; icon: React.ElementType; color:
 const FEATURED_STUDIO_TOOLS: Tool[] = ["mapa-mental", "study-guide", "podcast"];
 
 const COLOR_MAP: Record<string, string> = {
-  indigo:  "bg-indigo-50/60  border-indigo-200  text-indigo-700",
-  violet:  "bg-indigo-50/60  border-indigo-200  text-indigo-700",
+  indigo:  "bg-violet-50/60  border-violet-200  text-violet-700",
+  violet:  "bg-violet-50/60  border-violet-200  text-violet-700",
   pink:    "bg-pink-50/60    border-pink-200    text-pink-700",
   amber:   "bg-amber-50/60   border-amber-200   text-amber-700",
   green:   "bg-emerald-50/60 border-emerald-200 text-emerald-700",
   emerald: "bg-emerald-50/60 border-emerald-200 text-emerald-700",
-  blue:    "bg-blue-50/60    border-blue-200    text-blue-700",
+  blue:    "bg-violet-50/60    border-violet-200    text-violet-700",
   rose:    "bg-rose-50/60    border-rose-200    text-rose-700",
   fuchsia: "bg-fuchsia-50/60 border-fuchsia-200 text-fuchsia-700",
   orange:  "bg-orange-50/60  border-orange-200  text-orange-700",
@@ -301,13 +301,13 @@ const COLOR_MAP: Record<string, string> = {
 };
 
 const ICON_TINT: Record<string, string> = {
-  indigo:  "text-indigo-500  bg-indigo-100",
-  violet:  "text-indigo-500  bg-indigo-100",
+  indigo:  "text-violet-500  bg-violet-100",
+  violet:  "text-violet-500  bg-violet-100",
   pink:    "text-pink-500    bg-pink-100",
   amber:   "text-amber-600   bg-amber-100",
   green:   "text-emerald-500 bg-emerald-100",
   emerald: "text-emerald-500 bg-emerald-100",
-  blue:    "text-blue-500    bg-blue-100",
+  blue:    "text-violet-500    bg-violet-100",
   rose:    "text-rose-500    bg-rose-100",
   fuchsia: "text-fuchsia-500 bg-fuchsia-100",
   orange:  "text-orange-500  bg-orange-100",
@@ -377,7 +377,7 @@ function MindMapView({ map }: { map: MindMap }) {
         <div className="flex-shrink-0 flex flex-wrap gap-1.5 px-4 pt-3 pb-2 border-b border-slate-100">
           <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider self-center mr-1">Conceitos:</span>
           {conceitosChave.map((c, i) => (
-            <span key={i} className="text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-full">{c}</span>
+            <span key={i} className="text-[10px] font-semibold bg-violet-50 text-violet-700 border border-violet-100 px-2 py-0.5 rounded-full">{c}</span>
           ))}
         </div>
       )}
@@ -578,9 +578,9 @@ function FlashcardViewer({ cards }: { cards: Flashcard[] }) {
           </div>
         </div>
         <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
-          <div className="h-full bg-indigo-500 rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
+          <div className="h-full bg-violet-500 rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
         </div>
-        <p className="text-[10px] text-indigo-600 font-semibold mt-0.5">{card.materia}</p>
+        <p className="text-[10px] text-violet-600 font-semibold mt-0.5">{card.materia}</p>
       </div>
 
       {/* Flip card */}
@@ -592,11 +592,11 @@ function FlashcardViewer({ cards }: { cards: Flashcard[] }) {
         style={{ transformStyle: "preserve-3d", minHeight: 180 }}
       >
         {/* Front */}
-        <div className="absolute inset-0 rounded-2xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 to-violet-50 p-5 flex flex-col"
+        <div className="absolute inset-0 rounded-2xl border-2 border-violet-200 bg-gradient-to-br from-violet-50 to-violet-50 p-5 flex flex-col"
           style={{ backfaceVisibility: "hidden" }}>
-          <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-3">❓ Pergunta</p>
+          <p className="text-[10px] font-black text-violet-400 uppercase tracking-widest mb-3">❓ Pergunta</p>
           <p className="text-sm font-bold text-slate-800 leading-relaxed flex-1">{card.frente}</p>
-          <p className="text-[11px] text-indigo-300 text-center mt-3 flex items-center justify-center gap-1">
+          <p className="text-[11px] text-violet-300 text-center mt-3 flex items-center justify-center gap-1">
             <span className="text-base">👆</span> Toque para ver a resposta
           </p>
         </div>
@@ -621,11 +621,11 @@ function FlashcardViewer({ cards }: { cards: Flashcard[] }) {
 
       {/* Dica ENEM — só quando virado */}
       {cardAny.dicaEnem && flipped && (
-        <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200 flex items-start gap-2">
-          <GraduationCap className="w-4 h-4 text-indigo-500 flex-shrink-0 mt-0.5" />
+        <div className="p-3 rounded-xl bg-violet-50 border border-violet-200 flex items-start gap-2">
+          <GraduationCap className="w-4 h-4 text-violet-500 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-[10px] font-black text-indigo-600 uppercase tracking-wider mb-0.5">Como cai no ENEM</p>
-            <p className="text-xs text-indigo-800 leading-relaxed">{cardAny.dicaEnem}</p>
+            <p className="text-[10px] font-black text-violet-600 uppercase tracking-wider mb-0.5">Como cai no ENEM</p>
+            <p className="text-xs text-violet-800 leading-relaxed">{cardAny.dicaEnem}</p>
           </div>
         </div>
       )}
@@ -639,7 +639,7 @@ function FlashcardViewer({ cards }: { cards: Flashcard[] }) {
         </button>
         <button onClick={() => { setIdx(i => Math.min(cards.length - 1, i + 1)); setFlipped(false); }}
           disabled={idx === cards.length - 1}
-          className="flex-1 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold disabled:opacity-25 hover:bg-indigo-700 transition-colors">
+          className="flex-1 py-2 rounded-xl bg-violet-600 text-white text-sm font-bold disabled:opacity-25 hover:bg-violet-700 transition-colors">
           Próximo →
         </button>
       </div>
@@ -674,7 +674,7 @@ function QuestaViewer({ questoes }: { questoes: Questao[] }) {
                 correct ? "bg-emerald-50 border-emerald-400 text-emerald-800" :
                 wrong   ? "bg-red-50 border-red-400 text-red-700" :
                 selected ? "bg-slate-50 border-slate-200 text-slate-500" :
-                "bg-white border-slate-200 text-slate-700 hover:border-indigo-300 hover:bg-indigo-50"
+                "bg-white border-slate-200 text-slate-700 hover:border-violet-300 hover:bg-violet-50"
               }`}>
               <span className="font-black flex-shrink-0 mt-0.5">{key})</span>
               <span className="leading-snug">{text}</span>
@@ -687,12 +687,12 @@ function QuestaViewer({ questoes }: { questoes: Questao[] }) {
       {selected && (
         <div className="mt-2">
           <button onClick={() => setShowExpl(s => !s)}
-            className="text-xs text-indigo-600 font-bold flex items-center gap-1">
+            className="text-xs text-violet-600 font-bold flex items-center gap-1">
             <HelpCircle className="w-3.5 h-3.5" />
             {showExpl ? "Ocultar explicação" : "Ver explicação completa"}
           </button>
           {showExpl && (
-            <p className="text-xs text-slate-700 mt-1.5 p-2.5 bg-indigo-50 rounded-xl leading-relaxed">{q.explicacao}</p>
+            <p className="text-xs text-slate-700 mt-1.5 p-2.5 bg-violet-50 rounded-xl leading-relaxed">{q.explicacao}</p>
           )}
         </div>
       )}
@@ -702,7 +702,7 @@ function QuestaViewer({ questoes }: { questoes: Questao[] }) {
           ← Anterior
         </button>
         <button onClick={() => { setIdx(i => Math.min(questoes.length-1, i+1)); setSelected(null); setShowExpl(false); }}
-          disabled={idx === questoes.length - 1} className="flex-1 py-1.5 rounded-xl border border-indigo-200 text-xs font-bold text-indigo-600 disabled:opacity-30 hover:bg-indigo-50">
+          disabled={idx === questoes.length - 1} className="flex-1 py-1.5 rounded-xl border border-violet-200 text-xs font-bold text-violet-600 disabled:opacity-30 hover:bg-violet-50">
           Próxima →
         </button>
       </div>
@@ -801,18 +801,18 @@ function PodcastViewer({ podcast }: { podcast: PodcastRoteiro }) {
 
       {/* Speakers */}
       <div className="flex gap-2">
-        <div className="flex-1 flex items-center gap-1.5 p-2 bg-indigo-50 rounded-xl border border-indigo-100">
-          <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-white text-[10px] font-black">A</div>
+        <div className="flex-1 flex items-center gap-1.5 p-2 bg-violet-50 rounded-xl border border-violet-100">
+          <div className="w-6 h-6 rounded-full bg-violet-500 flex items-center justify-center text-white text-[10px] font-black">A</div>
           <div>
-            <p className="text-[10px] font-black text-indigo-700">ANA</p>
-            <p className="text-[9px] text-indigo-400">Professora</p>
+            <p className="text-[10px] font-black text-violet-700">ANA</p>
+            <p className="text-[9px] text-violet-400">Professora</p>
           </div>
         </div>
-        <div className="flex-1 flex items-center gap-1.5 p-2 bg-blue-50 rounded-xl border border-blue-100">
-          <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-[10px] font-black">M</div>
+        <div className="flex-1 flex items-center gap-1.5 p-2 bg-violet-50 rounded-xl border border-violet-100">
+          <div className="w-6 h-6 rounded-full bg-violet-500 flex items-center justify-center text-white text-[10px] font-black">M</div>
           <div>
-            <p className="text-[10px] font-black text-blue-700">MARCOS</p>
-            <p className="text-[9px] text-blue-400">Estudante ENEM</p>
+            <p className="text-[10px] font-black text-violet-700">MARCOS</p>
+            <p className="text-[9px] text-violet-400">Estudante ENEM</p>
           </div>
         </div>
       </div>
@@ -837,15 +837,15 @@ function PodcastViewer({ podcast }: { podcast: PodcastRoteiro }) {
             <motion.div key={i}
               animate={{ scale: isActive ? 1.02 : 1, opacity: currentIdx >= 0 && currentIdx !== i ? 0.5 : 1 }}
               className={`flex gap-2 ${isAna ? "" : "flex-row-reverse"}`}>
-              <div className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-white text-[9px] font-black mt-0.5 ${isAna ? "bg-indigo-500" : "bg-blue-500"}`}>
+              <div className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-white text-[9px] font-black mt-0.5 ${isAna ? "bg-violet-500" : "bg-violet-500"}`}>
                 {linha.speaker[0]}
               </div>
               <div className={`flex-1 px-3 py-2 rounded-2xl text-xs leading-relaxed ${
                 isActive
-                  ? isAna ? "bg-indigo-100 border-2 border-indigo-300 text-gray-900" : "bg-blue-100 border-2 border-blue-300 text-blue-900"
-                  : isAna ? "bg-indigo-50 text-slate-700" : "bg-blue-50 text-slate-700"
+                  ? isAna ? "bg-violet-100 border-2 border-violet-300 text-gray-900" : "bg-violet-100 border-2 border-violet-300 text-violet-900"
+                  : isAna ? "bg-violet-50 text-slate-700" : "bg-violet-50 text-slate-700"
               }`}>
-                <span className={`text-[9px] font-black block mb-0.5 ${isAna ? "text-indigo-500" : "text-blue-500"}`}>{linha.speaker}</span>
+                <span className={`text-[9px] font-black block mb-0.5 ${isAna ? "text-violet-500" : "text-violet-500"}`}>{linha.speaker}</span>
                 {linha.fala}
               </div>
             </motion.div>
@@ -907,9 +907,9 @@ function TimelineView({ t }: { t: Timeline }) {
               <p className="text-xs font-black text-slate-800 leading-tight mb-1">{ev.titulo}</p>
               <p className="text-[11px] text-slate-600 leading-relaxed">{ev.descricao}</p>
               {ev.dicaEnem && (
-                <div className="mt-2 flex items-start gap-1.5 px-2 py-1.5 bg-indigo-50 rounded-lg border border-indigo-100">
-                  <GraduationCap className="w-3 h-3 text-indigo-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-indigo-700 leading-tight"><span className="font-black">ENEM:</span> {ev.dicaEnem}</p>
+                <div className="mt-2 flex items-start gap-1.5 px-2 py-1.5 bg-violet-50 rounded-lg border border-violet-100">
+                  <GraduationCap className="w-3 h-3 text-violet-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-violet-700 leading-tight"><span className="font-black">ENEM:</span> {ev.dicaEnem}</p>
                 </div>
               )}
             </div>
@@ -922,7 +922,7 @@ function TimelineView({ t }: { t: Timeline }) {
 
 // ─── Slides (apresentação profissional) ──────────────────────────────────────
 const SLIDE_THEMES = {
-  indigo:  { bg: "from-indigo-600 to-indigo-700",  accent: "text-indigo-200", chip: "bg-indigo-500", border: "border-indigo-400" },
+  indigo:  { bg: "from-violet-600 to-violet-700",  accent: "text-violet-200", chip: "bg-violet-500", border: "border-violet-400" },
   rose:    { bg: "from-rose-600 to-pink-700",      accent: "text-rose-200",   chip: "bg-rose-500",   border: "border-rose-400" },
   emerald: { bg: "from-emerald-600 to-teal-700",   accent: "text-emerald-200",chip: "bg-emerald-500",border: "border-emerald-400" },
   amber:   { bg: "from-amber-500 to-orange-600",   accent: "text-amber-100",  chip: "bg-amber-500",  border: "border-amber-400" },
@@ -1080,7 +1080,7 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
     <div className="p-3 space-y-2">
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-1.5">
-          <Presentation className="w-3.5 h-3.5 text-indigo-500" />
+          <Presentation className="w-3.5 h-3.5 text-violet-500" />
           <span className="text-[10px] font-black text-slate-700 uppercase tracking-wider">Apresentação</span>
         </div>
         <div className="flex items-center gap-1">
@@ -1091,7 +1091,7 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
               {imgLoading === idx ? "Gerando..." : "Imagem IA"}
             </button>
           )}
-          <button onClick={() => setFullscreen(true)} className="flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-indigo-600 px-2 py-1 rounded-md hover:bg-indigo-50">
+          <button onClick={() => setFullscreen(true)} className="flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-violet-600 px-2 py-1 rounded-md hover:bg-violet-50">
             <Maximize2 className="w-3 h-3" /> Tela cheia
           </button>
           <button onClick={exportPDF} disabled={exporting}
@@ -1099,7 +1099,7 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
             {exporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
             {exporting ? "Gerando..." : "PDF"}
           </button>
-          <button onClick={handlePrint} className="flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-indigo-600 px-2 py-1 rounded-md hover:bg-indigo-50">
+          <button onClick={handlePrint} className="flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-violet-600 px-2 py-1 rounded-md hover:bg-violet-50">
             <Printer className="w-3 h-3" /> Imprimir
           </button>
         </div>
@@ -1261,7 +1261,7 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
             <button
               key={i}
               onClick={() => setIdx(i)}
-              className={`flex-1 h-1.5 rounded-full transition-colors ${i === idx ? "bg-indigo-500" : i < idx ? "bg-indigo-200" : "bg-slate-200"}`}
+              className={`flex-1 h-1.5 rounded-full transition-colors ${i === idx ? "bg-violet-500" : i < idx ? "bg-violet-200" : "bg-slate-200"}`}
             />
           ))}
         </div>
@@ -1288,7 +1288,7 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
               key={i}
               onClick={() => setIdx(i)}
               className={`text-left p-1.5 rounded-md border text-[9px] font-semibold truncate transition-all ${
-                i === idx ? "bg-indigo-50 border-indigo-300 text-indigo-700" : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+                i === idx ? "bg-violet-50 border-violet-300 text-violet-700" : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
               }`}
             >
               <span className="font-black mr-1">{i + 1}.</span>{t}
@@ -1476,9 +1476,9 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
 
 // ─── Caderno color palette ────────────────────────────────────────────────────
 const CADERNO_PALETTE: Record<string, { gradient: string; light: string; text: string; dot: string }> = {
-  indigo:  { gradient: "from-indigo-500 to-indigo-600",  light: "bg-indigo-50",  text: "text-indigo-700",  dot: "bg-indigo-500" },
-  violet:  { gradient: "from-indigo-500 to-indigo-600",  light: "bg-indigo-50",  text: "text-indigo-700",  dot: "bg-indigo-500" },
-  blue:    { gradient: "from-blue-500 to-indigo-600",    light: "bg-blue-50",    text: "text-blue-700",    dot: "bg-blue-500" },
+  indigo:  { gradient: "from-violet-500 to-violet-600",  light: "bg-violet-50",  text: "text-violet-700",  dot: "bg-violet-500" },
+  violet:  { gradient: "from-violet-500 to-violet-600",  light: "bg-violet-50",  text: "text-violet-700",  dot: "bg-violet-500" },
+  blue:    { gradient: "from-violet-500 to-violet-600",    light: "bg-violet-50",    text: "text-violet-700",    dot: "bg-violet-500" },
   emerald: { gradient: "from-emerald-500 to-teal-600",   light: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500" },
   rose:    { gradient: "from-rose-500 to-pink-600",      light: "bg-rose-50",    text: "text-rose-700",    dot: "bg-rose-500" },
   amber:   { gradient: "from-amber-500 to-orange-600",   light: "bg-amber-50",   text: "text-amber-700",   dot: "bg-amber-500" },
@@ -1550,8 +1550,8 @@ export default function Notebook() {
   const [chatMode, setChatMode] = useState<"padrao" | "estudo" | "pesquisa" | "revisao" | "duvidas">("padrao");
   const CHAT_MODES = [
     { key: "padrao",   label: "Padrão",   color: "text-slate-600",  active: "bg-slate-700 text-white" },
-    { key: "estudo",   label: "Estudo",   color: "text-indigo-600", active: "bg-indigo-600 text-white" },
-    { key: "pesquisa", label: "Pesquisa", color: "text-indigo-600", active: "bg-indigo-600 text-white" },
+    { key: "estudo",   label: "Estudo",   color: "text-violet-600", active: "bg-violet-600 text-white" },
+    { key: "pesquisa", label: "Pesquisa", color: "text-violet-600", active: "bg-violet-600 text-white" },
     { key: "revisao",  label: "Revisão",  color: "text-amber-600",  active: "bg-amber-500 text-white" },
     { key: "duvidas",  label: "Dúvidas",  color: "text-rose-600",   active: "bg-rose-500 text-white" },
   ] as const;
@@ -2464,7 +2464,7 @@ export default function Notebook() {
         <div className="flex items-center justify-between mb-1.5">
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Caderno</p>
           <button onClick={openNewCaderno} title="Novo caderno"
-            className="w-5 h-5 rounded-md bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700">
+            className="w-5 h-5 rounded-md bg-violet-600 text-white flex items-center justify-center hover:bg-violet-700">
             <Plus className="w-3 h-3" />
           </button>
         </div>
@@ -2473,8 +2473,8 @@ export default function Notebook() {
             <button key={c.id} onClick={() => setActiveCaderno(c)}
               className={`flex-shrink-0 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 border ${
                 activeCaderno?.id === c.id
-                  ? "bg-indigo-600 border-indigo-600 text-white shadow-sm"
-                  : "bg-white border-slate-200 text-slate-700 hover:border-indigo-300"
+                  ? "bg-violet-600 border-violet-600 text-white shadow-sm"
+                  : "bg-white border-slate-200 text-slate-700 hover:border-violet-300"
               }`}>
               <span>{c.emoji ?? "📘"}</span>
               <span className="max-w-[90px] truncate">{c.title}</span>
@@ -2483,7 +2483,7 @@ export default function Notebook() {
         </div>
         {activeCaderno && (
           <button onClick={openEditCaderno}
-            className="mt-1.5 w-full text-left text-[10px] text-slate-500 hover:text-indigo-600 truncate flex items-center gap-1">
+            className="mt-1.5 w-full text-left text-[10px] text-slate-500 hover:text-violet-600 truncate flex items-center gap-1">
             <Sparkles className="w-3 h-3 flex-shrink-0" />
             {activeCaderno.persona ? activeCaderno.persona.slice(0, 50) + "…" : "Definir persona/objetivos…"}
           </button>
@@ -2501,7 +2501,7 @@ export default function Notebook() {
                   setSelectedDocIds(docs.map(d => d.id));
                 }
               }}
-              className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
+              className="flex items-center gap-1 text-[10px] font-bold text-violet-600 hover:text-violet-700 transition-colors"
             >
               {selectedDocIds.length === docs.length
                 ? <><X className="w-3 h-3" /> Limpar</>
@@ -2524,7 +2524,7 @@ export default function Notebook() {
         onDrop={handleDrop}
       >
         {dragOver && (
-          <div className="mb-2 p-3 bg-indigo-50 border-2 border-dashed border-indigo-400 rounded-xl text-center text-xs text-indigo-600 font-bold">
+          <div className="mb-2 p-3 bg-violet-50 border-2 border-dashed border-violet-400 rounded-xl text-center text-xs text-violet-600 font-bold">
             <Upload className="w-4 h-4 mx-auto mb-1" />
             Solte os arquivos aqui
           </div>
@@ -2544,7 +2544,7 @@ export default function Notebook() {
           ].map(({ mode, icon: Icon, label }) => (
             <button key={mode} onClick={() => setUploadMode(m => m === mode ? null : mode)}
               className={`flex flex-col items-center gap-1 py-2 rounded-xl border text-[10px] font-bold transition-all ${
-                uploadMode === mode ? "bg-indigo-600 border-indigo-600 text-white" : "border-slate-200 text-slate-600 hover:border-indigo-300 hover:bg-indigo-50"
+                uploadMode === mode ? "bg-violet-600 border-violet-600 text-white" : "border-slate-200 text-slate-600 hover:border-violet-300 hover:bg-violet-50"
               }`}>
               <Icon className="w-3.5 h-3.5" />
               {label}
@@ -2562,7 +2562,7 @@ export default function Notebook() {
                       accept=".pdf,.doc,.docx,.txt,.pptx"
                       onChange={e => { Array.from(e.target.files ?? []).forEach(f => handleFileUpload(f)); }} />
                     <button onClick={() => fileRef.current?.click()} disabled={uploading}
-                      className="w-full border-2 border-dashed border-indigo-300 rounded-xl p-4 text-xs text-indigo-600 font-medium hover:bg-indigo-50 flex flex-col items-center gap-2">
+                      className="w-full border-2 border-dashed border-violet-300 rounded-xl p-4 text-xs text-violet-600 font-medium hover:bg-violet-50 flex flex-col items-center gap-2">
                       {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
                       {uploading ? "Processando... aguarde" : "Clique ou arraste PDF / DOC / PPTX / TXT"}
                       {!uploading && <span className="text-[10px] text-slate-400">Múltiplos arquivos — Máx. 50MB cada</span>}
@@ -2599,7 +2599,7 @@ export default function Notebook() {
                   <>
                     <input value={uploadUrl} onChange={e => setUploadUrl(e.target.value)}
                       placeholder="https://docs.google.com/document/d/... *"
-                      className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-indigo-400" />
+                      className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-violet-400" />
                     <button onClick={() => {
                       if (!uploadUrl.trim()) return;
                       setUploading(true);
@@ -2611,7 +2611,7 @@ export default function Notebook() {
                         if (!d.erro) { setUploadUrl(""); setUploadMode(null); loadDocs(activeCaderno?.id); }
                       }).finally(() => setUploading(false));
                     }} disabled={uploading || !uploadUrl.trim()}
-                      className="w-full py-1.5 rounded-xl bg-blue-600 text-white text-xs font-bold disabled:opacity-40 flex items-center justify-center gap-1.5">
+                      className="w-full py-1.5 rounded-xl bg-violet-600 text-white text-xs font-bold disabled:opacity-40 flex items-center justify-center gap-1.5">
                       {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ExternalLink className="w-3.5 h-3.5" />}
                       Importar Google Doc
                     </button>
@@ -2622,13 +2622,13 @@ export default function Notebook() {
                   <>
                     <input value={uploadTitle} onChange={e => setUploadTitle(e.target.value)}
                       placeholder="Título do conteúdo *"
-                      className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-indigo-400" />
+                      className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-violet-400" />
                     <textarea value={uploadText} onChange={e => setUploadText(e.target.value)}
                       placeholder="Cole o texto aqui..."
                       rows={5}
-                      className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-indigo-400 resize-none" />
+                      className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-violet-400 resize-none" />
                     <button onClick={handleTextUpload} disabled={uploading || !uploadTitle.trim() || !uploadText.trim()}
-                      className="w-full py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold disabled:opacity-40 flex items-center justify-center gap-1.5">
+                      className="w-full py-1.5 rounded-xl bg-violet-600 text-white text-xs font-bold disabled:opacity-40 flex items-center justify-center gap-1.5">
                       {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
                       Adicionar
                     </button>
@@ -2638,12 +2638,12 @@ export default function Notebook() {
                   <>
                     <input value={uploadUrl} onChange={e => setUploadUrl(e.target.value)}
                       placeholder="https://... *"
-                      className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-indigo-400" />
+                      className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-violet-400" />
                     <input value={uploadTitle} onChange={e => setUploadTitle(e.target.value)}
                       placeholder="Título (opcional)"
-                      className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-indigo-400" />
+                      className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-violet-400" />
                     <button onClick={handleUrlUpload} disabled={uploading || !uploadUrl.trim()}
-                      className="w-full py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold disabled:opacity-40 flex items-center justify-center gap-1.5">
+                      className="w-full py-1.5 rounded-xl bg-violet-600 text-white text-xs font-bold disabled:opacity-40 flex items-center justify-center gap-1.5">
                       {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ExternalLink className="w-3.5 h-3.5" />}
                       Importar URL
                     </button>
@@ -2653,10 +2653,10 @@ export default function Notebook() {
                   <>
                     <input value={uploadYtUrl} onChange={e => setUploadYtUrl(e.target.value)}
                       placeholder="https://youtube.com/watch?v=... *"
-                      className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-indigo-400" />
+                      className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-violet-400" />
                     <input value={uploadTitle} onChange={e => setUploadTitle(e.target.value)}
                       placeholder="Título (opcional)"
-                      className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-indigo-400" />
+                      className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-violet-400" />
                     <button onClick={handleYoutubeUpload} disabled={uploading || !uploadYtUrl.trim()}
                       className="w-full py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold disabled:opacity-40 flex items-center justify-center gap-1.5">
                       {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Youtube className="w-3.5 h-3.5" />}
@@ -2669,7 +2669,7 @@ export default function Notebook() {
                   <>
                     <input value={uploadWiki} onChange={e => setUploadWiki(e.target.value)}
                       placeholder="Ex: Revolução Industrial, Mitose, Romantismo *"
-                      className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-indigo-400" />
+                      className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-violet-400" />
                     <button onClick={handleWikipediaUpload} disabled={uploading || !uploadWiki.trim()}
                       className="w-full py-1.5 rounded-xl bg-slate-700 text-white text-xs font-bold disabled:opacity-40 flex items-center justify-center gap-1.5">
                       {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BookOpen className="w-3.5 h-3.5" />}
@@ -2684,7 +2684,7 @@ export default function Notebook() {
                       accept="audio/*,.mp3,.m4a,.wav,.ogg,.webm"
                       onChange={e => e.target.files?.[0] && handleAudioUpload(e.target.files[0])} />
                     <button onClick={() => audioRef.current?.click()} disabled={uploading}
-                      className="w-full border-2 border-dashed border-indigo-300 rounded-xl p-4 text-xs text-indigo-600 font-medium hover:bg-indigo-50 flex flex-col items-center gap-2">
+                      className="w-full border-2 border-dashed border-violet-300 rounded-xl p-4 text-xs text-violet-600 font-medium hover:bg-violet-50 flex flex-col items-center gap-2">
                       {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Mic className="w-5 h-5" />}
                       {uploading ? "Transcrevendo... aguarde" : "Clique para enviar áudio"}
                       {!uploading && <span className="text-[10px] text-slate-400">MP3, M4A, WAV — Whisper transcreve em PT</span>}
@@ -2719,7 +2719,7 @@ export default function Notebook() {
       {/* Doc list */}
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
         {loadingDocs ? (
-          <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-indigo-400" /></div>
+          <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-violet-400" /></div>
         ) : docs.length === 0 ? (
           <div className="text-center py-8 px-4">
             <FileText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
@@ -2732,11 +2732,11 @@ export default function Notebook() {
             return (
               <div key={doc.id}
                 className={`flex items-start gap-2 p-2 rounded-xl border cursor-pointer transition-all ${
-                  isSelected ? "bg-indigo-50 border-indigo-200" : "bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50"
+                  isSelected ? "bg-violet-50 border-violet-200" : "bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50"
                 }`}
                 onClick={() => toggleDoc(doc.id)}>
                 <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center ${
-                  isSelected ? "border-indigo-500 bg-indigo-500" : "border-slate-300"
+                  isSelected ? "border-violet-500 bg-violet-500" : "border-slate-300"
                 }`}>
                   {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                 </div>
@@ -2749,7 +2749,7 @@ export default function Notebook() {
                 </div>
                 <button onClick={e => { e.stopPropagation(); fetchDna(doc.id); }}
                   title="DNA das Fontes — análise IA profunda"
-                  className="flex-shrink-0 p-1 rounded-lg text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
+                  className="flex-shrink-0 p-1 rounded-lg text-slate-300 hover:text-violet-600 hover:bg-violet-50 transition-colors">
                   <Sparkles className="w-3 h-3" />
                 </button>
                 <button onClick={e => { e.stopPropagation(); handleDelete(doc.id); }}
@@ -2764,11 +2764,11 @@ export default function Notebook() {
 
       {/* DNA das Fontes Panel */}
       {showDna && (
-        <div className="border-t border-indigo-100 flex-shrink-0">
+        <div className="border-t border-violet-100 flex-shrink-0">
           <div className="flex items-center justify-between px-3 py-2">
             <div className="flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-              <p className="text-[10px] font-black text-indigo-700 uppercase tracking-wider">DNA das Fontes</p>
+              <Sparkles className="w-3.5 h-3.5 text-violet-500" />
+              <p className="text-[10px] font-black text-violet-700 uppercase tracking-wider">DNA das Fontes</p>
             </div>
             <button onClick={() => setShowDna(false)} className="text-slate-300 hover:text-slate-500">
               <X className="w-3 h-3" />
@@ -2776,14 +2776,14 @@ export default function Notebook() {
           </div>
           {dnaLoading ? (
             <div className="px-3 pb-3 flex items-center gap-2 text-xs text-slate-500">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-400" />
               Analisando o DNA da fonte...
             </div>
           ) : dnaResult ? (
             <div className="px-3 pb-3 space-y-2.5 max-h-72 overflow-y-auto text-[10px]">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full font-bold capitalize">{dnaResult.nivelComplexidade}</span>
-                <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full font-bold">{dnaResult.dominio?.replace(/_/g," ")}</span>
+                <span className="px-2 py-0.5 bg-violet-100 text-violet-700 rounded-full font-bold capitalize">{dnaResult.nivelComplexidade}</span>
+                <span className="px-2 py-0.5 bg-violet-100 text-violet-700 rounded-full font-bold">{dnaResult.dominio?.replace(/_/g," ")}</span>
                 <span className={`px-2 py-0.5 rounded-full font-bold ${dnaResult.relevanciaEnem === "Alta" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}>
                   ENEM: {dnaResult.relevanciaEnem}
                 </span>
@@ -2795,7 +2795,7 @@ export default function Notebook() {
                   <div className="space-y-1">
                     {dnaResult.conceitosChave.slice(0, 5).map((c, i) => (
                       <div key={i} className="flex items-center gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0" style={{ opacity: 0.4 + c.importancia * 0.6 }} />
+                        <div className="w-1.5 h-1.5 rounded-full bg-violet-400 flex-shrink-0" style={{ opacity: 0.4 + c.importancia * 0.6 }} />
                         <span className="font-semibold text-slate-700">{c.termo}</span>
                         {c.definicao && <span className="text-slate-500 truncate">{c.definicao.slice(0,60)}…</span>}
                       </div>
@@ -2817,7 +2817,7 @@ export default function Notebook() {
                 <div>
                   <p className="font-black text-slate-500 uppercase tracking-wider mb-1">Fontes Sugeridas</p>
                   {dnaResult.sugestoesFontes.slice(0,2).map((s, i) => (
-                    <p key={i} className="text-indigo-600 flex items-start gap-1">
+                    <p key={i} className="text-violet-600 flex items-start gap-1">
                       <BookOpen className="w-3 h-3 flex-shrink-0 mt-0.5" />{s}
                     </p>
                   ))}
@@ -2834,7 +2834,7 @@ export default function Notebook() {
           onClick={() => setShowFastResearch(v => !v)}
           className="w-full flex items-center justify-between px-3 py-2 text-[11px] font-bold text-slate-600 hover:bg-slate-50"
         >
-          <span className="flex items-center gap-1.5"><Search className="w-3.5 h-3.5 text-indigo-500" />Pesquisa Rápida</span>
+          <span className="flex items-center gap-1.5"><Search className="w-3.5 h-3.5 text-violet-500" />Pesquisa Rápida</span>
           {showFastResearch ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
         </button>
         <AnimatePresence>
@@ -2845,9 +2845,9 @@ export default function Notebook() {
                   <input value={fastResearchTopic} onChange={e => setFastResearchTopic(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && runFastResearch()}
                     placeholder="Tema para pesquisar..."
-                    className="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-indigo-400" />
+                    className="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-violet-400" />
                   <button onClick={runFastResearch} disabled={fastResearchLoading || !fastResearchTopic.trim()}
-                    className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold disabled:opacity-40 flex items-center gap-1">
+                    className="px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-bold disabled:opacity-40 flex items-center gap-1">
                     {fastResearchLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
                   </button>
                 </div>
@@ -2862,7 +2862,7 @@ export default function Notebook() {
                       </a>
                       <button onClick={() => addUrlToNotebook(item.url, item.titulo)}
                         disabled={addingUrl === item.url}
-                        className="flex-1 py-1 rounded-lg bg-indigo-600 text-white text-[10px] font-bold disabled:opacity-40 flex items-center justify-center gap-1">
+                        className="flex-1 py-1 rounded-lg bg-violet-600 text-white text-[10px] font-bold disabled:opacity-40 flex items-center justify-center gap-1">
                         {addingUrl === item.url ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
                         Adicionar
                       </button>
@@ -2880,9 +2880,9 @@ export default function Notebook() {
         <div className="border-t border-slate-100 flex-shrink-0">
           <button
             onClick={runDiscover}
-            className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-bold text-slate-600 hover:bg-indigo-50 hover:text-indigo-700"
+            className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-bold text-slate-600 hover:bg-violet-50 hover:text-violet-700"
           >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+            <Sparkles className="w-3.5 h-3.5 text-violet-500" />
             {discoverLoading ? "Buscando leituras..." : "Descobrir mais sobre este tema"}
             {discoverLoading && <Loader2 className="w-3 h-3 animate-spin ml-auto" />}
           </button>
@@ -2891,18 +2891,18 @@ export default function Notebook() {
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                 <div className="px-3 pb-3 space-y-2">
                   {discoverResults.map((item, i) => (
-                    <div key={i} className="bg-indigo-50 rounded-xl p-2 space-y-1">
+                    <div key={i} className="bg-violet-50 rounded-xl p-2 space-y-1">
                       <p className="text-[11px] font-bold text-gray-900 line-clamp-1">{item.titulo}</p>
-                      {item.relevancia && <p className="text-[10px] text-indigo-600 italic">{item.relevancia}</p>}
+                      {item.relevancia && <p className="text-[10px] text-violet-600 italic">{item.relevancia}</p>}
                       <p className="text-[10px] text-slate-500 line-clamp-2">{item.snippet}</p>
                       <div className="flex gap-1.5">
                         <a href={item.url} target="_blank" rel="noopener noreferrer"
-                          className="flex-1 py-1 rounded-lg border border-indigo-200 text-[10px] text-center text-indigo-700 hover:bg-white font-semibold">
+                          className="flex-1 py-1 rounded-lg border border-violet-200 text-[10px] text-center text-violet-700 hover:bg-white font-semibold">
                           Abrir
                         </a>
                         <button onClick={() => addUrlToNotebook(item.url, item.titulo)}
                           disabled={addingUrl === item.url}
-                          className="flex-1 py-1 rounded-lg bg-indigo-600 text-white text-[10px] font-bold disabled:opacity-40 flex items-center justify-center gap-1">
+                          className="flex-1 py-1 rounded-lg bg-violet-600 text-white text-[10px] font-bold disabled:opacity-40 flex items-center justify-center gap-1">
                           {addingUrl === item.url ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
                           Adicionar
                         </button>
@@ -2918,7 +2918,7 @@ export default function Notebook() {
 
       {selectedDocIds.length > 0 && (
         <div className="p-2 border-t border-slate-100 flex-shrink-0">
-          <p className="text-[10px] text-indigo-600 font-bold text-center">
+          <p className="text-[10px] text-violet-600 font-bold text-center">
             {selectedDocIds.length} fonte{selectedDocIds.length > 1 ? "s" : ""} ativa{selectedDocIds.length > 1 ? "s" : ""}
           </p>
         </div>
@@ -2953,7 +2953,7 @@ export default function Notebook() {
             onClick={() => setRestrictToSelected(v => !v)}
             className={`mt-2 w-full flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[11px] font-semibold transition-all ${
               restrictToSelected
-                ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                ? "bg-violet-50 border-violet-300 text-violet-700"
                 : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"
             }`}
             title={restrictToSelected ? "Clique para perguntar em TODOS os documentos" : "Clique para perguntar SÓ nos documentos marcados"}
@@ -2964,7 +2964,7 @@ export default function Notebook() {
                 ? `Perguntar só sobre ${selectedDocIds.length} ${selectedDocIds.length === 1 ? "fonte" : "fontes"} marcada${selectedDocIds.length === 1 ? "" : "s"}`
                 : "Perguntar sobre todos os documentos"}
             </span>
-            <span className={`w-7 h-3.5 rounded-full relative transition-colors ${restrictToSelected ? "bg-indigo-500" : "bg-slate-300"}`}>
+            <span className={`w-7 h-3.5 rounded-full relative transition-colors ${restrictToSelected ? "bg-violet-500" : "bg-slate-300"}`}>
               <span className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-white shadow transition-all ${restrictToSelected ? "left-3.5" : "left-0.5"}`} />
             </span>
           </button>
@@ -2996,8 +2996,8 @@ export default function Notebook() {
                     <div className="flex flex-col gap-1.5 w-full">
                       {suggestedQs.map((q, i) => (
                         <button key={i} onClick={() => { setInputMsg(q); setSuggestedQs([]); }}
-                          className="w-full text-left px-3 py-2 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-800 text-xs font-medium hover:bg-indigo-100 transition-colors flex items-center gap-2">
-                          <HelpCircle className="w-3.5 h-3.5 flex-shrink-0 text-indigo-400" />
+                          className="w-full text-left px-3 py-2 rounded-xl border border-violet-200 bg-violet-50 text-violet-800 text-xs font-medium hover:bg-violet-100 transition-colors flex items-center gap-2">
+                          <HelpCircle className="w-3.5 h-3.5 flex-shrink-0 text-violet-400" />
                           {q}
                         </button>
                       ))}
@@ -3007,7 +3007,7 @@ export default function Notebook() {
                   <div className="flex flex-wrap gap-2 justify-center">
                     {["Faça um resumo", "Pontos mais importantes?", "Como cai no ENEM?", "Explique o conceito"].map(q => (
                       <button key={q} onClick={() => setInputMsg(q)}
-                        className="px-3 py-1.5 rounded-full border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs font-medium hover:bg-indigo-100 transition-colors">
+                        className="px-3 py-1.5 rounded-full border border-violet-200 bg-violet-50 text-violet-700 text-xs font-medium hover:bg-violet-100 transition-colors">
                         {q}
                       </button>
                     ))}
@@ -3032,7 +3032,7 @@ export default function Notebook() {
                       key={idx}
                       onClick={() => setOpenFonte(o => o?.msgIdx === i && o?.numero === n ? null : { msgIdx: i, numero: n })}
                       className={`inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 mx-0.5 rounded-md text-[10px] font-black align-baseline transition-all ${
-                        f ? "bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white cursor-pointer" : "bg-slate-100 text-slate-400"
+                        f ? "bg-violet-100 text-violet-700 hover:bg-violet-600 hover:text-white cursor-pointer" : "bg-slate-100 text-slate-400"
                       }`}
                       title={f ? `Ver trecho de "${f.titulo}"` : "Fonte não disponível"}
                       disabled={!f}
@@ -3052,7 +3052,7 @@ export default function Notebook() {
               {msg.role === "assistant" && <div className="flex-shrink-0 mt-1"><TiagaoCharacter state="idle" size={28} showLabel={false} /></div>}
               <div className="max-w-[82%] space-y-2">
                 <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-                  msg.role === "user" ? "bg-indigo-600 text-white" : "bg-white border border-slate-200 text-slate-800"
+                  msg.role === "user" ? "bg-violet-600 text-white" : "bg-white border border-slate-200 text-slate-800"
                 }`}>
                   <p className="whitespace-pre-wrap">{msg.role === "assistant" ? parts : msg.text}</p>
                 </div>
@@ -3066,15 +3066,15 @@ export default function Notebook() {
                       exit={{ opacity: 0, y: -4, height: 0 }}
                       className="overflow-hidden"
                     >
-                      <div className="px-3 py-2.5 bg-indigo-50 border border-indigo-200 rounded-xl">
+                      <div className="px-3 py-2.5 bg-violet-50 border border-violet-200 rounded-xl">
                         <div className="flex items-center justify-between mb-1.5">
                           <div className="flex items-center gap-1.5">
-                            <Quote className="w-3 h-3 text-indigo-600" />
-                            <span className="text-[10px] font-black text-indigo-700 uppercase tracking-wider">Fonte {fonteAberta.numero}</span>
+                            <Quote className="w-3 h-3 text-violet-600" />
+                            <span className="text-[10px] font-black text-violet-700 uppercase tracking-wider">Fonte {fonteAberta.numero}</span>
                             <span className="text-[10px] font-bold text-slate-700">· {fonteAberta.titulo}</span>
                           </div>
-                          <button onClick={() => setOpenFonte(null)} className="p-0.5 hover:bg-indigo-100 rounded">
-                            <X className="w-3 h-3 text-indigo-600" />
+                          <button onClick={() => setOpenFonte(null)} className="p-0.5 hover:bg-violet-100 rounded">
+                            <X className="w-3 h-3 text-violet-600" />
                           </button>
                         </div>
                         <p className="text-[11px] text-slate-700 leading-relaxed whitespace-pre-wrap">
@@ -3097,7 +3097,7 @@ export default function Notebook() {
                     <button
                       onClick={() => setExpandedMsg({ text: msg.text, idx: i })}
                       title="Expandir resposta (tela cheia, PDF, compartilhar)"
-                      className="p-1 rounded-lg text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
+                      className="p-1 rounded-lg text-slate-300 hover:text-violet-600 hover:bg-violet-50 transition-colors">
                       <Maximize2 className="w-3.5 h-3.5" />
                     </button>
                     <button
@@ -3136,10 +3136,10 @@ export default function Notebook() {
                               key={f.numero}
                               onClick={() => setOpenFonte(o => o?.msgIdx === i && o?.numero === f.numero ? null : { msgIdx: i, numero: f.numero })}
                               className={`flex items-center gap-1 px-2 py-1 rounded-lg text-left transition-all ${
-                                isOpen ? "bg-indigo-100 ring-1 ring-indigo-300" : "bg-slate-100 hover:bg-slate-200"
+                                isOpen ? "bg-violet-100 ring-1 ring-violet-300" : "bg-slate-100 hover:bg-slate-200"
                               }`}
                             >
-                              <span className="text-[10px] font-black text-indigo-600">[{f.numero}]</span>
+                              <span className="text-[10px] font-black text-violet-600">[{f.numero}]</span>
                               <p className="text-[10px] font-medium text-slate-600 truncate max-w-[160px]">{f.titulo}</p>
                             </button>
                           );
@@ -3169,10 +3169,10 @@ export default function Notebook() {
                             setNotebookView("workspace");
                             runTool(tool, selectedDocIds[0]);
                           }}
-                          className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 hover:border-indigo-200 transition-all disabled:opacity-40"
+                          className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-50 hover:bg-violet-100 border border-violet-100 hover:border-violet-200 transition-all disabled:opacity-40"
                         >
                           <span className="text-[10px]">{emoji}</span>
-                          <span className="text-[10px] font-semibold text-indigo-600">{label}</span>
+                          <span className="text-[10px] font-semibold text-violet-600">{label}</span>
                         </button>
                       ))}
                     </div>
@@ -3187,7 +3187,7 @@ export default function Notebook() {
           <div className="flex justify-start gap-2">
             <TiagaoCharacter state="thinking" size={28} showLabel={false} />
             <div className="bg-white border border-slate-200 px-4 py-3 rounded-2xl flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
+              <Loader2 className="w-4 h-4 animate-spin text-violet-500" />
               <span className="text-xs text-slate-500">Buscando nas fontes...</span>
             </div>
           </div>
@@ -3215,9 +3215,9 @@ export default function Notebook() {
             onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendMessage()}
             placeholder={docs.length === 0 ? "Adicione um documento para começar..." : `Modo ${CHAT_MODES.find(m => m.key === chatMode)?.label} • Pergunte algo...`}
             disabled={docs.length === 0 || chatLoading}
-            className="flex-1 px-4 py-2.5 rounded-2xl border border-slate-200 focus:border-indigo-400 focus:outline-none text-sm text-slate-800 placeholder-slate-400 disabled:opacity-50" />
+            className="flex-1 px-4 py-2.5 rounded-2xl border border-slate-200 focus:border-violet-400 focus:outline-none text-sm text-slate-800 placeholder-slate-400 disabled:opacity-50" />
           <button onClick={sendMessage} disabled={!inputMsg.trim() || chatLoading || docs.length === 0}
-            className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center disabled:opacity-30 hover:bg-indigo-700 transition-colors flex-shrink-0">
+            className="w-10 h-10 rounded-2xl bg-violet-600 text-white flex items-center justify-center disabled:opacity-30 hover:bg-violet-700 transition-colors flex-shrink-0">
             <Send className="w-4 h-4" />
           </button>
         </div>
@@ -3238,10 +3238,10 @@ export default function Notebook() {
         </div>
         {/* Artefatos criados pelo Tiagão (doc_id = 0) — visível sempre */}
         {tiagaoArtifacts.length > 0 && (
-          <div className="mb-2 p-2 rounded-xl bg-indigo-50 border border-indigo-200">
+          <div className="mb-2 p-2 rounded-xl bg-violet-50 border border-violet-200">
             <div className="flex items-center gap-1.5 mb-1.5">
-              <Sparkles className="w-3 h-3 text-indigo-600" />
-              <p className="text-[10px] font-black text-indigo-800 uppercase tracking-wider">Criado pelo Tiagão ({tiagaoArtifacts.length})</p>
+              <Sparkles className="w-3 h-3 text-violet-600" />
+              <p className="text-[10px] font-black text-violet-800 uppercase tracking-wider">Criado pelo Tiagão ({tiagaoArtifacts.length})</p>
             </div>
             <div className="flex flex-wrap gap-1">
               {tiagaoArtifacts.map(a => {
@@ -3252,10 +3252,10 @@ export default function Notebook() {
                 };
                 const emoji = kindMap[a.kind] ?? "✨";
                 return (
-                  <div key={a.id} className="group inline-flex items-center bg-white border border-indigo-200 rounded-lg overflow-hidden hover:border-indigo-400 transition-all">
+                  <div key={a.id} className="group inline-flex items-center bg-white border border-violet-200 rounded-lg overflow-hidden hover:border-violet-400 transition-all">
                     <button
                       onClick={() => openSavedArtifact(a)}
-                      className="flex items-center gap-1 px-2 py-1 hover:bg-indigo-50 text-[10px] font-bold text-slate-700"
+                      className="flex items-center gap-1 px-2 py-1 hover:bg-violet-50 text-[10px] font-bold text-slate-700"
                       title={`Abrir: ${a.title}`}
                     >
                       <span>{emoji}</span>
@@ -3405,7 +3405,7 @@ export default function Notebook() {
                     <select
                       value={selectedPersona}
                       onChange={e => setSelectedPersona(e.target.value)}
-                      className="w-full text-[11px] bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700 font-medium focus:outline-none focus:border-indigo-400"
+                      className="w-full text-[11px] bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700 font-medium focus:outline-none focus:border-violet-400"
                     >
                       {PERSONAS_OPTIONS.map(p => (
                         <option key={p.key} value={p.key}>{p.label}</option>
@@ -3443,7 +3443,7 @@ export default function Notebook() {
                             <div className="flex items-center gap-1.5">
                               <p className="text-xs font-bold text-slate-800 truncate">{cfg.label}</p>
                               {cfg.badge && (
-                                <span className={`text-[9px] font-black px-1 py-0.5 rounded-md ${cfg.badge === "NOVO" ? "bg-emerald-500 text-white" : cfg.badge === "v2" ? "bg-indigo-600 text-white" : "bg-rose-500 text-white"}`}>{cfg.badge}</span>
+                                <span className={`text-[9px] font-black px-1 py-0.5 rounded-md ${cfg.badge === "NOVO" ? "bg-emerald-500 text-white" : cfg.badge === "v2" ? "bg-violet-600 text-white" : "bg-rose-500 text-white"}`}>{cfg.badge}</span>
                               )}
                             </div>
                             <p className="text-[10px] text-slate-400">{cfg.desc}</p>
@@ -3573,14 +3573,14 @@ export default function Notebook() {
                 <div className="p-3 space-y-4">
                   {/* Insight Central */}
                   {r.insightCentral && (
-                    <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200">
-                      <p className="text-[9px] font-black text-indigo-500 uppercase tracking-wider mb-1">💡 Insight Central</p>
-                      <p className="text-xs font-bold text-indigo-900 leading-snug">{r.insightCentral}</p>
+                    <div className="p-3 rounded-xl bg-violet-50 border border-violet-200">
+                      <p className="text-[9px] font-black text-violet-500 uppercase tracking-wider mb-1">💡 Insight Central</p>
+                      <p className="text-xs font-bold text-violet-900 leading-snug">{r.insightCentral}</p>
                     </div>
                   )}
                   {r.summary && !r.insightCentral && (
                     <div>
-                      <p className="text-[10px] font-black text-indigo-600 uppercase tracking-wider mb-1.5">Resumo</p>
+                      <p className="text-[10px] font-black text-violet-600 uppercase tracking-wider mb-1.5">Resumo</p>
                       <p className="text-xs text-slate-700 leading-relaxed">{r.summary}</p>
                     </div>
                   )}
@@ -3594,11 +3594,11 @@ export default function Notebook() {
                   {/* Pilares */}
                   {r.pilares && r.pilares.length > 0 && (
                     <div>
-                      <p className="text-[10px] font-black text-indigo-600 uppercase tracking-wider mb-1.5">Pilares</p>
+                      <p className="text-[10px] font-black text-violet-600 uppercase tracking-wider mb-1.5">Pilares</p>
                       <div className="space-y-2">
                         {r.pilares.map((p, i) => (
-                          <div key={i} className="rounded-lg border border-indigo-100 bg-indigo-50/50 p-2.5">
-                            <p className="text-[10px] font-black text-indigo-700 mb-0.5">{p.conceito}</p>
+                          <div key={i} className="rounded-lg border border-violet-100 bg-violet-50/50 p-2.5">
+                            <p className="text-[10px] font-black text-violet-700 mb-0.5">{p.conceito}</p>
                             <p className="text-[10px] text-slate-600 leading-snug">{p.explicacao}</p>
                             {p.conexaoEnem && (
                               <div className="mt-1.5 flex items-start gap-1">
@@ -3666,7 +3666,7 @@ export default function Notebook() {
                 <div className="p-4 space-y-4">
                   {/* Objetivo Final — hero card */}
                   {r.objetivoFinal && (
-                    <div className="rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-700 p-4 text-white shadow-lg">
+                    <div className="rounded-2xl bg-gradient-to-br from-violet-600 to-violet-700 p-4 text-white shadow-lg">
                       <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-2">🎯 Ao Final, Você Será Capaz de</p>
                       <p className="text-sm font-semibold leading-relaxed">{r.objetivoFinal}</p>
                     </div>
@@ -3689,11 +3689,11 @@ export default function Notebook() {
 
                   {/* Pré-requisitos */}
                   {r.prerequisitos && (
-                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-blue-50 border border-blue-100">
+                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-violet-50 border border-violet-100">
                       <span className="text-lg flex-shrink-0">📖</span>
                       <div>
-                        <p className="text-[10px] font-black text-blue-600 uppercase tracking-wider mb-1">Pré-requisitos</p>
-                        <p className="text-xs text-blue-900 leading-relaxed">{r.prerequisitos}</p>
+                        <p className="text-[10px] font-black text-violet-600 uppercase tracking-wider mb-1">Pré-requisitos</p>
+                        <p className="text-xs text-violet-900 leading-relaxed">{r.prerequisitos}</p>
                       </div>
                     </div>
                   )}
@@ -3722,15 +3722,15 @@ export default function Notebook() {
                     <div className="space-y-2.5">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">📚 Módulos de Estudo</p>
                       {r.modulos!.map((mod, i) => (
-                        <details key={i} className="group rounded-2xl border border-indigo-100 overflow-hidden shadow-sm" open={i === 0}>
-                          <summary className="px-4 py-3 cursor-pointer list-none bg-gradient-to-r from-violet-50 to-indigo-50 flex items-center gap-3">
-                            <span className="w-7 h-7 rounded-full bg-indigo-600 text-white text-xs font-black flex items-center justify-center flex-shrink-0 shadow-md">{mod.numero}</span>
+                        <details key={i} className="group rounded-2xl border border-violet-100 overflow-hidden shadow-sm" open={i === 0}>
+                          <summary className="px-4 py-3 cursor-pointer list-none bg-gradient-to-r from-violet-50 to-violet-50 flex items-center gap-3">
+                            <span className="w-7 h-7 rounded-full bg-violet-600 text-white text-xs font-black flex items-center justify-center flex-shrink-0 shadow-md">{mod.numero}</span>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-bold text-slate-800 leading-tight">{mod.titulo}</p>
-                              {mod.objetivo && <p className="text-[10px] text-indigo-600 mt-0.5 line-clamp-1">{mod.objetivo}</p>}
+                              {mod.objetivo && <p className="text-[10px] text-violet-600 mt-0.5 line-clamp-1">{mod.objetivo}</p>}
                             </div>
                             {mod.tempoBruto && <span className="text-[10px] text-slate-400 flex-shrink-0 font-medium">⏱ {mod.tempoBruto}</span>}
-                            <ChevronDown className="w-4 h-4 text-indigo-400 flex-shrink-0 group-open:rotate-180 transition-transform" />
+                            <ChevronDown className="w-4 h-4 text-violet-400 flex-shrink-0 group-open:rotate-180 transition-transform" />
                           </summary>
                           <div className="px-4 py-3 space-y-3 bg-white">
                             {mod.conceitoCentral && (
@@ -3774,13 +3774,13 @@ export default function Notebook() {
                               </div>
                             )}
                             {((mod.checkpoint?.length ?? 0) > 0) && (
-                              <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-100">
-                                <p className="text-[10px] font-black text-indigo-600 uppercase tracking-wider mb-1.5">✅ Checkpoint — Perguntas de Autoavaliação</p>
+                              <div className="p-3 rounded-xl bg-violet-50 border border-violet-100">
+                                <p className="text-[10px] font-black text-violet-600 uppercase tracking-wider mb-1.5">✅ Checkpoint — Perguntas de Autoavaliação</p>
                                 <div className="space-y-1.5">
                                   {mod.checkpoint!.map((c, j) => (
                                     <div key={j} className="flex items-start gap-2">
-                                      <HelpCircle className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0 mt-0.5" />
-                                      <p className="text-xs text-indigo-900 leading-relaxed">{c}</p>
+                                      <HelpCircle className="w-3.5 h-3.5 text-violet-400 flex-shrink-0 mt-0.5" />
+                                      <p className="text-xs text-violet-900 leading-relaxed">{c}</p>
                                     </div>
                                   ))}
                                 </div>
@@ -3812,15 +3812,15 @@ export default function Notebook() {
                   {(r.expansao?.leituras?.length || r.expansao?.conexoes?.length) ? (
                     <div className="grid grid-cols-2 gap-2">
                       {((r.expansao?.leituras?.length ?? 0) > 0) && (
-                        <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-100">
-                          <p className="text-[10px] font-black text-indigo-600 uppercase tracking-wider mb-2">📚 Leituras</p>
-                          {r.expansao!.leituras!.map((l, i) => <p key={i} className="text-[11px] text-indigo-800 py-0.5 leading-snug">• {l}</p>)}
+                        <div className="p-3 rounded-xl bg-violet-50 border border-violet-100">
+                          <p className="text-[10px] font-black text-violet-600 uppercase tracking-wider mb-2">📚 Leituras</p>
+                          {r.expansao!.leituras!.map((l, i) => <p key={i} className="text-[11px] text-violet-800 py-0.5 leading-snug">• {l}</p>)}
                         </div>
                       )}
                       {((r.expansao?.conexoes?.length ?? 0) > 0) && (
-                        <div className="p-3 rounded-xl bg-sky-50 border border-sky-100">
-                          <p className="text-[10px] font-black text-sky-600 uppercase tracking-wider mb-2">🔗 Conexões</p>
-                          {r.expansao!.conexoes!.map((c, i) => <p key={i} className="text-[11px] text-sky-800 py-0.5 leading-snug">• {c}</p>)}
+                        <div className="p-3 rounded-xl bg-violet-50 border border-violet-100">
+                          <p className="text-[10px] font-black text-violet-600 uppercase tracking-wider mb-2">🔗 Conexões</p>
+                          {r.expansao!.conexoes!.map((c, i) => <p key={i} className="text-[11px] text-violet-800 py-0.5 leading-snug">• {c}</p>)}
                         </div>
                       )}
                     </div>
@@ -3835,7 +3835,7 @@ export default function Notebook() {
                       <div className="divide-y divide-slate-100 bg-white">
                         {r.cronogramaSugerido.map((d, i) => (
                           <div key={i} className="flex items-start gap-3 px-4 py-2.5">
-                            <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+                            <span className="w-6 h-6 rounded-full bg-violet-100 text-violet-700 text-[10px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
                             <p className="text-xs text-slate-700 leading-relaxed">{d}</p>
                           </div>
                         ))}
@@ -3994,7 +3994,7 @@ ${t}
                       <pre className="text-[11px] p-3 whitespace-pre font-mono text-slate-700 bg-slate-50">{r.markdown}</pre>
                     </div>
                     <button onClick={() => navigator.clipboard.writeText(r.markdown!)}
-                      className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-indigo-600 hover:underline">
+                      className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-violet-600 hover:underline">
                       <ClipboardList className="w-3 h-3" /> Copiar tabela
                     </button>
                   </div>
@@ -4008,9 +4008,9 @@ ${t}
                     <div className="overflow-x-auto rounded-xl border border-slate-200">
                       <table className="w-full text-[11px]">
                         <thead>
-                          <tr className="bg-indigo-50">
+                          <tr className="bg-violet-50">
                             {r.colunas.map((col, ci) => (
-                              <th key={ci} className="px-2 py-1.5 text-left font-bold text-indigo-700 border-b border-indigo-100 whitespace-nowrap">{col}</th>
+                              <th key={ci} className="px-2 py-1.5 text-left font-bold text-violet-700 border-b border-violet-100 whitespace-nowrap">{col}</th>
                             ))}
                           </tr>
                         </thead>
@@ -4058,11 +4058,11 @@ ${t}
                     <p className="text-[10px] text-emerald-800 leading-snug">{r.conclusoes}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-wider mb-1.5">Recomendações</p>
+                    <p className="text-[10px] font-black text-violet-600 uppercase tracking-wider mb-1.5">Recomendações</p>
                     <div className="space-y-1.5">
                       {r.recomendacoes?.map((rec, i) => (
                         <div key={i} className="flex items-start gap-2">
-                          <CheckCircle className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0 mt-0.5" />
+                          <CheckCircle className="w-3.5 h-3.5 text-violet-500 flex-shrink-0 mt-0.5" />
                           <div>
                             <p className="text-[10px] font-semibold text-slate-800">{rec.acao}</p>
                             {rec.justificativa && <p className="text-[9px] text-slate-500">{rec.justificativa}</p>}
@@ -4103,14 +4103,14 @@ ${t}
               return (
                 <div className="p-3 space-y-3">
                   {/* Header */}
-                  <div className="p-3 rounded-xl bg-indigo-700 text-white">
+                  <div className="p-3 rounded-xl bg-violet-700 text-white">
                     <p className="text-xs font-black leading-snug">{r.titulo}</p>
                     <div className="flex gap-2 mt-1.5 flex-wrap">
                       <span className="px-2 py-0.5 bg-white/20 rounded text-[9px] font-bold">{r.turma}</span>
                       <span className="px-2 py-0.5 bg-white/20 rounded text-[9px] font-bold">{r.duracao}</span>
                       {(r as any).persona && <span className="px-2 py-0.5 bg-white/30 rounded text-[9px] font-bold">🎭 {(r as any).persona}</span>}
                     </div>
-                    {r.perfilTurma && <p className="text-[9px] text-indigo-200 mt-1.5 leading-snug">{r.perfilTurma}</p>}
+                    {r.perfilTurma && <p className="text-[9px] text-violet-200 mt-1.5 leading-snug">{r.perfilTurma}</p>}
                   </div>
 
                   {/* v2: Snapshot Executivo (/schemas/plano_aula_v2.py) */}
@@ -4132,13 +4132,13 @@ ${t}
                   {(r as any).climaDeAula && (() => {
                     const c = (r as any).climaDeAula;
                     return (
-                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-                        <p className="text-[9px] font-black text-blue-600 uppercase mb-1.5">🌡️ Clima de Aula</p>
+                      <div className="bg-violet-50 border border-violet-200 rounded-xl p-3">
+                        <p className="text-[9px] font-black text-violet-600 uppercase mb-1.5">🌡️ Clima de Aula</p>
                         <div className="grid grid-cols-2 gap-1 text-[10px]">
-                          {c.energiaEsperada && <p className="text-blue-700">⚡ {c.energiaEsperada}</p>}
-                          {c.temperatura && <p className="text-blue-700">🎭 {c.temperatura}</p>}
-                          {c.atencaoPrevista && <p className="text-blue-600 col-span-2">👁 {c.atencaoPrevista}</p>}
-                          {c.recomendacaoAmbiental && <p className="text-blue-500 col-span-2 italic">🏫 {c.recomendacaoAmbiental}</p>}
+                          {c.energiaEsperada && <p className="text-violet-700">⚡ {c.energiaEsperada}</p>}
+                          {c.temperatura && <p className="text-violet-700">🎭 {c.temperatura}</p>}
+                          {c.atencaoPrevista && <p className="text-violet-600 col-span-2">👁 {c.atencaoPrevista}</p>}
+                          {c.recomendacaoAmbiental && <p className="text-violet-500 col-span-2 italic">🏫 {c.recomendacaoAmbiental}</p>}
                         </div>
                       </div>
                     );
@@ -4177,14 +4177,14 @@ ${t}
 
                   {/* BNCC */}
                   {r.bncc && (
-                    <div className="p-2 rounded-lg bg-blue-50 border border-blue-200">
-                      <p className="text-[9px] font-black text-blue-600 uppercase tracking-wider mb-0.5">BNCC</p>
-                      <p className="text-[9px] text-blue-800 font-semibold">{r.bncc.competencia}</p>
-                      <p className="text-[9px] text-blue-700">{r.bncc.habilidade}</p>
+                    <div className="p-2 rounded-lg bg-violet-50 border border-violet-200">
+                      <p className="text-[9px] font-black text-violet-600 uppercase tracking-wider mb-0.5">BNCC</p>
+                      <p className="text-[9px] text-violet-800 font-semibold">{r.bncc.competencia}</p>
+                      <p className="text-[9px] text-violet-700">{r.bncc.habilidade}</p>
                       {((r.bncc.objetosConhecimento?.length ?? 0) > 0) && (
                         <div className="flex flex-wrap gap-1 mt-1">
                           {r.bncc.objetosConhecimento.map((o, i) => (
-                            <span key={i} className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[8px] font-medium">{o}</span>
+                            <span key={i} className="px-1.5 py-0.5 bg-violet-100 text-violet-700 rounded text-[8px] font-medium">{o}</span>
                           ))}
                         </div>
                       )}
@@ -4194,12 +4194,12 @@ ${t}
                   {/* Objetivos */}
                   <div>
                     {objetivos.geral && (
-                      <p className="text-[10px] font-semibold text-indigo-700 mb-1 italic">{objetivos.geral}</p>
+                      <p className="text-[10px] font-semibold text-violet-700 mb-1 italic">{objetivos.geral}</p>
                     )}
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Objetivos Específicos</p>
                     {objetivos.especificos?.map((o, i) => (
                       <p key={i} className="text-[10px] text-slate-700 flex items-start gap-1.5 mb-0.5">
-                        <CheckCircle className="w-3 h-3 text-indigo-400 flex-shrink-0 mt-0.5" />{o}
+                        <CheckCircle className="w-3 h-3 text-violet-400 flex-shrink-0 mt-0.5" />{o}
                       </p>
                     ))}
                     {((objetivos.indicadores?.length ?? 0) > 0) && (
@@ -4216,16 +4216,16 @@ ${t}
 
                   {/* Pré-requisitos */}
                   {prereqs ? (
-                    <div className="p-2 rounded-lg bg-blue-50 border border-blue-100">
-                      <p className="text-[9px] font-black text-blue-600 uppercase tracking-wider mb-0.5">Pré-requisitos</p>
+                    <div className="p-2 rounded-lg bg-violet-50 border border-violet-100">
+                      <p className="text-[9px] font-black text-violet-600 uppercase tracking-wider mb-0.5">Pré-requisitos</p>
                       {prereqs.map((p, i) => (
-                        <p key={i} className="text-[9px] text-blue-800">• <strong>{p.conceito}</strong> — {p.status}</p>
+                        <p key={i} className="text-[9px] text-violet-800">• <strong>{p.conceito}</strong> — {p.status}</p>
                       ))}
                     </div>
                   ) : r.prerequisitos ? (
-                    <div className="p-2 rounded-lg bg-blue-50 border border-blue-100">
-                      <p className="text-[9px] font-black text-blue-600 uppercase tracking-wider mb-0.5">Pré-requisitos</p>
-                      <p className="text-[9px] text-blue-800">{r.prerequisitos as string}</p>
+                    <div className="p-2 rounded-lg bg-violet-50 border border-violet-100">
+                      <p className="text-[9px] font-black text-violet-600 uppercase tracking-wider mb-0.5">Pré-requisitos</p>
+                      <p className="text-[9px] text-violet-800">{r.prerequisitos as string}</p>
                     </div>
                   ) : null}
 
@@ -4255,7 +4255,7 @@ ${t}
                         {r.desenvolvimento.map((d, i) => (
                           <details key={i} className="group rounded-xl border border-slate-200 overflow-hidden">
                             <summary className="px-2.5 py-1.5 cursor-pointer list-none bg-slate-50 flex items-center gap-2">
-                              <span className="text-[9px] font-black text-indigo-500 w-10 flex-shrink-0">{d.tempo}</span>
+                              <span className="text-[9px] font-black text-violet-500 w-10 flex-shrink-0">{d.tempo}</span>
                               <span className="text-[10px] font-bold text-slate-700 flex-1">{d.nome ?? d.etapa}</span>
                               <span className="text-[9px] text-slate-400">{d.etapa}</span>
                             </summary>
@@ -4265,18 +4265,18 @@ ${t}
                               <p className="text-[9px] text-slate-400">📦 {d.recursos}</p>
                               {((d.perguntasNorteadoras?.length ?? 0) > 0) && (
                                 <div className="pt-1">
-                                  <p className="text-[9px] font-black text-indigo-500 mb-0.5">Perguntas Norteadoras</p>
+                                  <p className="text-[9px] font-black text-violet-500 mb-0.5">Perguntas Norteadoras</p>
                                   {d.perguntasNorteadoras!.map((q, j) => (
-                                    <p key={j} className="text-[9px] text-indigo-700 italic">• {q}</p>
+                                    <p key={j} className="text-[9px] text-violet-700 italic">• {q}</p>
                                   ))}
                                 </div>
                               )}
                               {/* v2: Diálogo Esperado */}
                               {(d as any).dialogoEsperado && (
-                                <div className="p-1.5 rounded-lg bg-indigo-50 border border-indigo-100 mt-1">
-                                  <p className="text-[8px] font-black text-indigo-500 uppercase mb-0.5">💬 Diálogo Esperado</p>
-                                  {(d as any).dialogoEsperado.professor && <p className="text-[9px] text-indigo-700">👨‍🏫 {(d as any).dialogoEsperado.professor}</p>}
-                                  {(d as any).dialogoEsperado.aluno && <p className="text-[9px] text-indigo-500 mt-0.5">👩‍🎓 {(d as any).dialogoEsperado.aluno}</p>}
+                                <div className="p-1.5 rounded-lg bg-violet-50 border border-violet-100 mt-1">
+                                  <p className="text-[8px] font-black text-violet-500 uppercase mb-0.5">💬 Diálogo Esperado</p>
+                                  {(d as any).dialogoEsperado.professor && <p className="text-[9px] text-violet-700">👨‍🏫 {(d as any).dialogoEsperado.professor}</p>}
+                                  {(d as any).dialogoEsperado.aluno && <p className="text-[9px] text-violet-500 mt-0.5">👩‍🎓 {(d as any).dialogoEsperado.aluno}</p>}
                                 </div>
                               )}
                               {d.diferenciacão && (
@@ -4316,7 +4316,7 @@ ${t}
                                   <th className="px-1.5 py-1 text-left font-black text-slate-600 border border-slate-200">Critério</th>
                                   <th className="px-1.5 py-1 text-center font-black text-red-600 border border-slate-200">D</th>
                                   <th className="px-1.5 py-1 text-center font-black text-amber-600 border border-slate-200">C</th>
-                                  <th className="px-1.5 py-1 text-center font-black text-blue-600 border border-slate-200">B</th>
+                                  <th className="px-1.5 py-1 text-center font-black text-violet-600 border border-slate-200">B</th>
                                   <th className="px-1.5 py-1 text-center font-black text-emerald-600 border border-slate-200">A</th>
                                 </tr>
                               </thead>
@@ -4340,9 +4340,9 @@ ${t}
 
                   {/* Tarefa de Casa */}
                   {r.tarefaCasa && (
-                    <div className="p-2.5 rounded-lg bg-indigo-50 border border-indigo-100">
-                      <p className="text-[9px] font-black text-indigo-600 uppercase tracking-wider mb-0.5">📚 Tarefa de Casa</p>
-                      <p className="text-[9px] text-indigo-800 leading-snug">{r.tarefaCasa}</p>
+                    <div className="p-2.5 rounded-lg bg-violet-50 border border-violet-100">
+                      <p className="text-[9px] font-black text-violet-600 uppercase tracking-wider mb-0.5">📚 Tarefa de Casa</p>
+                      <p className="text-[9px] text-violet-800 leading-snug">{r.tarefaCasa}</p>
                     </div>
                   )}
 
@@ -4373,7 +4373,7 @@ ${t}
                           {v.seTurmaEstiverCansada && <div className="p-2 bg-orange-50 border border-orange-100 rounded-lg"><p className="text-[8px] font-black text-orange-500">😴 Se turma estiver cansada</p><p className="text-[9px] text-orange-700">{v.seTurmaEstiverCansada}</p></div>}
                           {v.seTecnologiaFalhar && <div className="p-2 bg-red-50 border border-red-100 rounded-lg"><p className="text-[8px] font-black text-red-500">📵 Se tecnologia falhar</p><p className="text-[9px] text-red-700">{v.seTecnologiaFalhar}</p></div>}
                           {v.seTempoAcabar && <div className="p-2 bg-amber-50 border border-amber-100 rounded-lg"><p className="text-[8px] font-black text-amber-500">⏰ Se tempo acabar</p><p className="text-[9px] text-amber-700">{v.seTempoAcabar}</p></div>}
-                          {v.seAlunoDesafiar && <div className="p-2 bg-indigo-50 border border-indigo-100 rounded-lg"><p className="text-[8px] font-black text-indigo-500">😤 Se aluno desafiar</p><p className="text-[9px] text-indigo-700">{v.seAlunoDesafiar}</p></div>}
+                          {v.seAlunoDesafiar && <div className="p-2 bg-violet-50 border border-violet-100 rounded-lg"><p className="text-[8px] font-black text-violet-500">😤 Se aluno desafiar</p><p className="text-[9px] text-violet-700">{v.seAlunoDesafiar}</p></div>}
                         </div>
                       </details>
                     );
@@ -4391,7 +4391,7 @@ ${t}
                           <p key={i} className="text-[9px] text-slate-600">• {ref}</p>
                         ))}
                         {r.referencias.fontesCaderno && (
-                          <p className="text-[9px] text-indigo-600 italic">Caderno: {r.referencias.fontesCaderno}</p>
+                          <p className="text-[9px] text-violet-600 italic">Caderno: {r.referencias.fontesCaderno}</p>
                         )}
                       </div>
                     </details>
@@ -4443,7 +4443,7 @@ ${t}
                       📚 Para o Aluno
                     </button>
                     <button onClick={() => setShowProfessor(true)}
-                      className={`flex-1 py-1.5 text-[10px] font-black transition-colors ${showProfessor ? "bg-indigo-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>
+                      className={`flex-1 py-1.5 text-[10px] font-black transition-colors ${showProfessor ? "bg-violet-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}>
                       🎓 Para o Professor
                     </button>
                   </div>
@@ -4495,9 +4495,9 @@ ${t}
                         </div>
                       )}
 
-                      <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200">
-                        <p className="text-[9px] font-black text-blue-600 uppercase tracking-wider mb-0.5">✅ Como saber se acertou</p>
-                        <p className="text-[10px] text-blue-800 leading-snug">{r.paraAluno?.comoSaberSeAcertou}</p>
+                      <div className="p-2.5 rounded-xl bg-violet-50 border border-violet-200">
+                        <p className="text-[9px] font-black text-violet-600 uppercase tracking-wider mb-0.5">✅ Como saber se acertou</p>
+                        <p className="text-[10px] text-violet-800 leading-snug">{r.paraAluno?.comoSaberSeAcertou}</p>
                       </div>
 
                       {((r.paraAluno?.seTravar?.length ?? 0) > 0) && (
@@ -4510,18 +4510,18 @@ ${t}
                       )}
 
                       {r.paraAluno?.querMaisDesafio && (
-                        <div className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200">
-                          <p className="text-[9px] font-black text-indigo-600 uppercase tracking-wider mb-0.5">🚀 Quer mais desafio?</p>
-                          <p className="text-[10px] text-indigo-800 leading-snug">{r.paraAluno.querMaisDesafio}</p>
+                        <div className="p-2.5 rounded-xl bg-violet-50 border border-violet-200">
+                          <p className="text-[9px] font-black text-violet-600 uppercase tracking-wider mb-0.5">🚀 Quer mais desafio?</p>
+                          <p className="text-[10px] text-violet-800 leading-snug">{r.paraAluno.querMaisDesafio}</p>
                         </div>
                       )}
                     </div>
                   ) : (
                     /* ─── SEÇÃO DO PROFESSOR ─── */
                     <div className="space-y-2.5">
-                      <div className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200">
-                        <p className="text-[9px] font-black text-indigo-600 uppercase tracking-wider mb-0.5">🎯 Objetivo</p>
-                        <p className="text-[10px] text-indigo-800 leading-snug">{r.paraProfessor?.objetivo}</p>
+                      <div className="p-2.5 rounded-xl bg-violet-50 border border-violet-200">
+                        <p className="text-[9px] font-black text-violet-600 uppercase tracking-wider mb-0.5">🎯 Objetivo</p>
+                        <p className="text-[10px] text-violet-800 leading-snug">{r.paraProfessor?.objetivo}</p>
                       </div>
 
                       <details className="group rounded-xl border border-slate-200 overflow-hidden">
@@ -4568,7 +4568,7 @@ ${t}
                               <div key={i} className="flex items-start gap-2 p-2 rounded-lg border border-slate-200">
                                 <span className={`px-1.5 py-0.5 rounded text-[9px] font-black flex-shrink-0 ${
                                   i === 0 ? "bg-emerald-100 text-emerald-700" :
-                                  i === 1 ? "bg-blue-100 text-blue-700" :
+                                  i === 1 ? "bg-violet-100 text-violet-700" :
                                   i === 2 ? "bg-amber-100 text-amber-700" :
                                   "bg-red-100 text-red-700"
                                 }`}>{rv.nivel}</span>
@@ -4603,9 +4603,9 @@ ${t}
                           </div>
                         )}
                         {r.paraProfessor?.conexaoProximaAula && (
-                          <div className="p-2 rounded-lg bg-indigo-50 border border-indigo-100 flex-1">
-                            <p className="text-[9px] font-black text-indigo-600 mb-0.5">Próxima Aula</p>
-                            <p className="text-[9px] text-indigo-800">{r.paraProfessor.conexaoProximaAula}</p>
+                          <div className="p-2 rounded-lg bg-violet-50 border border-violet-100 flex-1">
+                            <p className="text-[9px] font-black text-violet-600 mb-0.5">Próxima Aula</p>
+                            <p className="text-[9px] text-violet-800">{r.paraProfessor.conexaoProximaAula}</p>
                           </div>
                         )}
                       </div>
@@ -4622,30 +4622,30 @@ ${t}
               return (
                 <div className="p-3 space-y-3">
                   {/* Header */}
-                  <div className="p-3 rounded-xl bg-blue-700 text-white">
+                  <div className="p-3 rounded-xl bg-violet-700 text-white">
                     <p className="text-xs font-black leading-snug">{r.titulo}</p>
                     <div className="flex gap-2 mt-1.5 flex-wrap">
                       <span className="px-2 py-0.5 bg-white/20 rounded text-[9px] font-bold">{r.nivel}</span>
                       <span className="px-2 py-0.5 bg-white/20 rounded text-[9px] font-bold">{r.duracaoTotal}</span>
                     </div>
-                    {r.objetivo && <p className="text-[9px] text-blue-200 mt-1.5 leading-snug">{r.objetivo}</p>}
+                    {r.objetivo && <p className="text-[9px] text-violet-200 mt-1.5 leading-snug">{r.objetivo}</p>}
                   </div>
 
                   {/* Produto Final */}
-                  <div className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200">
-                    <p className="text-[9px] font-black text-indigo-600 uppercase tracking-wider mb-0.5">🏆 Produto Final</p>
-                    <p className="text-[10px] text-indigo-800 font-semibold">{r.produtoFinal}</p>
-                    <p className="text-[9px] text-indigo-600 mt-0.5">{r.avaliacaoSomativa}</p>
+                  <div className="p-2.5 rounded-xl bg-violet-50 border border-violet-200">
+                    <p className="text-[9px] font-black text-violet-600 uppercase tracking-wider mb-0.5">🏆 Produto Final</p>
+                    <p className="text-[10px] text-violet-800 font-semibold">{r.produtoFinal}</p>
+                    <p className="text-[9px] text-violet-600 mt-0.5">{r.avaliacaoSomativa}</p>
                   </div>
 
                   {/* BNCC */}
                   {r.bncc && (
-                    <div className="p-2 rounded-lg bg-blue-50 border border-blue-100">
-                      <p className="text-[9px] font-black text-blue-600 mb-0.5">BNCC</p>
-                      <p className="text-[9px] text-blue-800">{r.bncc.competencia}</p>
+                    <div className="p-2 rounded-lg bg-violet-50 border border-violet-100">
+                      <p className="text-[9px] font-black text-violet-600 mb-0.5">BNCC</p>
+                      <p className="text-[9px] text-violet-800">{r.bncc.competencia}</p>
                       <div className="flex flex-wrap gap-1 mt-0.5">
                         {r.bncc.habilidades?.map((h, i) => (
-                          <span key={i} className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[8px]">{h}</span>
+                          <span key={i} className="px-1.5 py-0.5 bg-violet-100 text-violet-700 rounded text-[8px]">{h}</span>
                         ))}
                       </div>
                     </div>
@@ -4660,12 +4660,12 @@ ${t}
                           <button key={i} onClick={() => setActiveAula(activeAula === m.numero ? null : m.numero)}
                             className={`flex-1 min-w-[60px] p-2 rounded-lg border text-left transition-all ${
                               activeAula === m.numero
-                                ? "bg-blue-600 border-blue-600 text-white"
-                                : "bg-slate-50 border-slate-200 text-slate-700 hover:border-blue-300"
+                                ? "bg-violet-600 border-violet-600 text-white"
+                                : "bg-slate-50 border-slate-200 text-slate-700 hover:border-violet-300"
                             }`}>
                             <p className="text-[8px] font-black mb-0.5">Aula {m.numero}</p>
                             <p className="text-[9px] font-semibold leading-tight line-clamp-2">{m.tema}</p>
-                            {m.conceito && <p className={`text-[8px] mt-0.5 ${activeAula === m.numero ? "text-blue-200" : "text-slate-400"}`}>{m.conceito}</p>}
+                            {m.conceito && <p className={`text-[8px] mt-0.5 ${activeAula === m.numero ? "text-violet-200" : "text-slate-400"}`}>{m.conceito}</p>}
                           </button>
                         ))}
                       </div>
@@ -4677,9 +4677,9 @@ ${t}
                     <div className="space-y-1.5">
                       <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Aulas Detalhadas</p>
                       {r.aulas.map((aula, i) => (
-                        <details key={i} className="group rounded-xl border border-blue-200 overflow-hidden">
-                          <summary className="px-2.5 py-2 cursor-pointer list-none bg-blue-50 flex items-center gap-2">
-                            <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[9px] font-black flex items-center justify-center flex-shrink-0">{aula.numero}</span>
+                        <details key={i} className="group rounded-xl border border-violet-200 overflow-hidden">
+                          <summary className="px-2.5 py-2 cursor-pointer list-none bg-violet-50 flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-violet-600 text-white text-[9px] font-black flex items-center justify-center flex-shrink-0">{aula.numero}</span>
                             <p className="text-[10px] font-bold text-slate-800 flex-1 line-clamp-1">{aula.titulo}</p>
                             <ChevronDown className="w-3 h-3 text-slate-400 group-open:rotate-180 transition-transform flex-shrink-0" />
                           </summary>
@@ -4689,7 +4689,7 @@ ${t}
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Objetivos</p>
                                 {aula.objetivos.map((o, j) => (
                                   <p key={j} className="text-[9px] text-slate-700 flex items-start gap-1">
-                                    <CheckCircle className="w-2.5 h-2.5 text-blue-400 flex-shrink-0 mt-0.5" />{o}
+                                    <CheckCircle className="w-2.5 h-2.5 text-violet-400 flex-shrink-0 mt-0.5" />{o}
                                   </p>
                                 ))}
                               </div>
@@ -4736,7 +4736,7 @@ ${t}
                             <tbody>
                               {r.avaliacaoIntegrada.rubrica.map((row, i) => (
                                 <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}>
-                                  <td className="px-1.5 py-1 font-semibold text-blue-700 border border-slate-200">{row.dimensao}</td>
+                                  <td className="px-1.5 py-1 font-semibold text-violet-700 border border-slate-200">{row.dimensao}</td>
                                   <td className="px-1.5 py-1 text-center font-bold text-slate-700 border border-slate-200">{row.peso}</td>
                                   <td className="px-1.5 py-1 text-slate-600 border border-slate-200 leading-snug">{row.criterios}</td>
                                 </tr>
@@ -4826,7 +4826,7 @@ ${t}
                       {r.cenas.map((cena: any) => {
                         const tipoColor: Record<string, string> = {
                           vinheta: "bg-orange-500", recapitulacao: "bg-slate-500", gancho: "bg-red-500",
-                          acao: "bg-blue-500", comercial: "bg-green-500", climax: "bg-indigo-600", fechamento: "bg-orange-700"
+                          acao: "bg-violet-500", comercial: "bg-green-500", climax: "bg-violet-600", fechamento: "bg-orange-700"
                         };
                         return (
                           <details key={cena.numero} className="rounded-xl border border-slate-200 overflow-hidden">
@@ -4849,7 +4849,7 @@ ${t}
                                 <p className="text-[9px] font-bold text-orange-600 mb-0.5">Fala do Host:</p>
                                 <p className="text-[9px] text-orange-900 italic">"{cena.falaHost}"</p>
                               </div>
-                              {cena.pontoDeVirada && <p className="text-[9px] text-blue-700">⚡ Ponto de virada: {cena.pontoDeVirada}</p>}
+                              {cena.pontoDeVirada && <p className="text-[9px] text-violet-700">⚡ Ponto de virada: {cena.pontoDeVirada}</p>}
                               {cena.cliffhanger && <p className="text-[9px] text-gray-700">🎭 Cliffhanger: {cena.cliffhanger}</p>}
                               {cena.transicao && <p className="text-[9px] text-slate-400">→ {cena.transicao}</p>}
                             </div>
@@ -4905,7 +4905,7 @@ ${t}
                   {/* 15s */}
                   {microTab === "15s" && r.conceito15s && (
                     <div className="space-y-2">
-                      <div className="p-2.5 rounded-xl bg-gradient-to-br from-cyan-50 to-blue-50 border border-cyan-200">
+                      <div className="p-2.5 rounded-xl bg-gradient-to-br from-cyan-50 to-purple-50 border border-cyan-200">
                         <p className="text-[9px] font-black text-cyan-600 uppercase mb-1">🎬 Versão 15 Segundos (TikTok/Reels)</p>
                         <div className="space-y-1.5">
                           <div className="p-2 rounded-lg bg-black/5">
@@ -5060,11 +5060,11 @@ ${t}
                         </div>
                       )}
                       {r.personagens && (
-                        <div className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200">
-                          <p className="text-[9px] font-black text-indigo-600 mb-1.5">👥 Personagens</p>
+                        <div className="p-2.5 rounded-xl bg-violet-50 border border-violet-200">
+                          <p className="text-[9px] font-black text-violet-600 mb-1.5">👥 Personagens</p>
                           <div className="space-y-2">
                             {r.personagens.protagonista && (
-                              <div className="p-1.5 rounded-lg bg-white border border-indigo-100">
+                              <div className="p-1.5 rounded-lg bg-white border border-violet-100">
                                 <p className="text-[9px] font-bold text-gray-700">🦸 Protagonista: {r.personagens.protagonista.nome}</p>
                                 <p className="text-[9px] text-slate-600">Papel: {r.personagens.protagonista.papel}</p>
                                 <p className="text-[9px] text-slate-600">Habilidade: {r.personagens.protagonista.habilidadeEspecial}</p>
@@ -5072,14 +5072,14 @@ ${t}
                               </div>
                             )}
                             {r.personagens.mentor && (
-                              <div className="p-1.5 rounded-lg bg-white border border-indigo-100">
+                              <div className="p-1.5 rounded-lg bg-white border border-violet-100">
                                 <p className="text-[9px] font-bold text-gray-700">🧙 Mentor</p>
                                 <p className="text-[9px] text-slate-600">Papel: {r.personagens.mentor.papel}</p>
                                 <p className="text-[9px] text-slate-600">Limitação: {r.personagens.mentor.limitacao}</p>
                               </div>
                             )}
                             {r.personagens.antagonista && (
-                              <div className="p-1.5 rounded-lg bg-white border border-indigo-100">
+                              <div className="p-1.5 rounded-lg bg-white border border-violet-100">
                                 <p className="text-[9px] font-bold text-red-600">👹 Antagonista</p>
                                 <p className="text-[9px] text-slate-600">{r.personagens.antagonista}</p>
                               </div>
@@ -5093,7 +5093,7 @@ ${t}
                   {/* Atos */}
                   {(narrTab === "ato1" || narrTab === "ato2" || narrTab === "ato3") && (() => {
                     const atos: Record<string, { label: string; key: keyof typeof r.estruturaDramatica; color: string }> = {
-                      ato1: { label: "Ato 1: Mundo Comum", key: "ato1", color: "from-blue-50 to-indigo-50 border-blue-200" },
+                      ato1: { label: "Ato 1: Mundo Comum", key: "ato1", color: "from-violet-50 to-violet-50 border-violet-200" },
                       ato2: { label: "Ato 2: Mundo Especial", key: "ato2", color: "from-fuchsia-50 to-purple-50 border-fuchsia-200" },
                       ato3: { label: "Ato 3: Retorno", key: "ato3", color: "from-green-50 to-emerald-50 border-green-200" },
                     };
@@ -5277,13 +5277,13 @@ ${t}
               return (
                 <div className="p-3 space-y-3">
                   {/* Header */}
-                  <div className="p-3 rounded-xl bg-indigo-700 text-white">
+                  <div className="p-3 rounded-xl bg-violet-700 text-white">
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <Shuffle className="w-4 h-4" />
                       <p className="text-xs font-black">5 Versões: {r.tema}</p>
                     </div>
-                    <p className="text-[9px] text-indigo-200">{r.nivel} · {r.duracao}</p>
-                    {r.objetivoCentral && <p className="text-[9px] text-indigo-200 mt-1 italic">{r.objetivoCentral}</p>}
+                    <p className="text-[9px] text-violet-200">{r.nivel} · {r.duracao}</p>
+                    {r.objetivoCentral && <p className="text-[9px] text-violet-200 mt-1 italic">{r.objetivoCentral}</p>}
                   </div>
 
                   {/* Versão tabs */}
@@ -5291,7 +5291,7 @@ ${t}
                     {tabs.map(([t, l]) => (
                       <button key={t} onClick={() => setVerTab(t)}
                         className={`px-2.5 py-1 rounded-lg text-[9px] font-black whitespace-nowrap flex-shrink-0 transition-colors ${
-                          verTab === t ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                          verTab === t ? "bg-violet-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                         }`}>{l}</button>
                     ))}
                   </div>
@@ -5339,19 +5339,19 @@ ${t}
                   {verTab === "turmaAvancada" && r.versoes?.turmaAvancada && (() => {
                     const v = r.versoes.turmaAvancada;
                     return (
-                      <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 space-y-2">
-                        <p className="text-[9px] font-black text-blue-600 mb-1">🚀 Turma Avançada — Enriquecimento</p>
+                      <div className="p-2.5 rounded-xl bg-violet-50 border border-violet-200 space-y-2">
+                        <p className="text-[9px] font-black text-violet-600 mb-1">🚀 Turma Avançada — Enriquecimento</p>
                         <p className="text-[9px] text-slate-700">{v.diagnostico}</p>
                         {((v.estrategiasEnriquecimento?.length ?? 0) > 0) && (
                           <div className="overflow-x-auto">
                             <table className="w-full text-[9px]">
-                              <thead><tr className="bg-blue-100">
-                                <th className="text-left px-1.5 py-1 font-bold text-blue-700">Estratégia</th>
-                                <th className="text-left px-1.5 py-1 font-bold text-blue-700">Aplicação</th>
+                              <thead><tr className="bg-violet-100">
+                                <th className="text-left px-1.5 py-1 font-bold text-violet-700">Estratégia</th>
+                                <th className="text-left px-1.5 py-1 font-bold text-violet-700">Aplicação</th>
                               </tr></thead>
                               <tbody>{v.estrategiasEnriquecimento.map((e: any, i: number) => (
-                                <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-blue-50/40"}>
-                                  <td className="px-1.5 py-1 font-semibold text-blue-600">{e.estrategia}</td>
+                                <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-violet-50/40"}>
+                                  <td className="px-1.5 py-1 font-semibold text-violet-600">{e.estrategia}</td>
                                   <td className="px-1.5 py-1 text-slate-700">{e.aplicacao}</td>
                                 </tr>
                               ))}</tbody>
@@ -5360,11 +5360,11 @@ ${t}
                         )}
                         {((v.adaptacoes?.length ?? 0) > 0) && (
                           <div>
-                            <p className="text-[9px] font-bold text-blue-500 mb-0.5">Adaptações:</p>
+                            <p className="text-[9px] font-bold text-violet-500 mb-0.5">Adaptações:</p>
                             {v.adaptacoes.map((a: string, i: number) => <p key={i} className="text-[9px] text-slate-700">• {a}</p>)}
                           </div>
                         )}
-                        {v.produtoFinal && <p className="text-[9px] text-blue-700 mt-1">🏆 Produto Final: {v.produtoFinal}</p>}
+                        {v.produtoFinal && <p className="text-[9px] text-violet-700 mt-1">🏆 Produto Final: {v.produtoFinal}</p>}
                       </div>
                     );
                   })()}
@@ -5407,19 +5407,19 @@ ${t}
                   {verTab === "aulaRemota" && r.versoes?.aulaRemota && (() => {
                     const v = r.versoes.aulaRemota;
                     return (
-                      <div className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200 space-y-2">
-                        <p className="text-[9px] font-black text-indigo-600 mb-1">💻 Aula Remota — 100% Digital</p>
-                        {v.modalidade && <span className="px-2 py-0.5 bg-indigo-100 text-indigo-600 rounded text-[8px] font-bold">{v.modalidade}</span>}
+                      <div className="p-2.5 rounded-xl bg-violet-50 border border-violet-200 space-y-2">
+                        <p className="text-[9px] font-black text-violet-600 mb-1">💻 Aula Remota — 100% Digital</p>
+                        {v.modalidade && <span className="px-2 py-0.5 bg-violet-100 text-violet-600 rounded text-[8px] font-bold">{v.modalidade}</span>}
                         {((v.adaptacoesEngajamento?.length ?? 0) > 0) && (
                           <div className="overflow-x-auto mt-1.5">
                             <table className="w-full text-[9px]">
-                              <thead><tr className="bg-indigo-100">
-                                <th className="text-left px-1.5 py-1 font-bold text-indigo-700">Desafio</th>
-                                <th className="text-left px-1.5 py-1 font-bold text-indigo-700">Solução</th>
+                              <thead><tr className="bg-violet-100">
+                                <th className="text-left px-1.5 py-1 font-bold text-violet-700">Desafio</th>
+                                <th className="text-left px-1.5 py-1 font-bold text-violet-700">Solução</th>
                               </tr></thead>
                               <tbody>{v.adaptacoesEngajamento.map((a: any, i: number) => (
-                                <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-indigo-50/40"}>
-                                  <td className="px-1.5 py-1 font-semibold text-indigo-600">{a.desafio}</td>
+                                <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-violet-50/40"}>
+                                  <td className="px-1.5 py-1 font-semibold text-violet-600">{a.desafio}</td>
                                   <td className="px-1.5 py-1 text-slate-700">{a.solucao}</td>
                                 </tr>
                               ))}</tbody>
@@ -5428,7 +5428,7 @@ ${t}
                         )}
                         {((v.interacoesObrigatorias?.length ?? 0) > 0) && (
                           <div>
-                            <p className="text-[9px] font-bold text-indigo-500 mb-0.5">Interações obrigatórias:</p>
+                            <p className="text-[9px] font-bold text-violet-500 mb-0.5">Interações obrigatórias:</p>
                             {v.interacoesObrigatorias.map((r: string, i: number) => <p key={i} className="text-[9px] text-slate-700">• {r}</p>)}
                           </div>
                         )}
@@ -5488,7 +5488,7 @@ ${t}
                     {r.abertura && <div className="bg-white border border-slate-200 rounded-xl p-3"><p className="text-[9px] font-black text-slate-500 uppercase mb-1.5">🎤 Abertura</p><p className="text-[10px] text-slate-700"><strong>Âncora:</strong> {r.abertura.ancora}</p>{r.abertura.chamadas?.map((c: string, i: number) => <p key={i} className="text-[10px] text-slate-600 mt-0.5">• {c}</p>)}</div>}
                     {r.segmentos?.map((s: any, i: number) => <div key={i} className="bg-white border border-slate-200 rounded-xl p-3"><p className="text-[9px] font-black text-slate-500 uppercase mb-1">{s.nome} <span className="text-slate-400">({s.duracao})</span></p><p className="text-[10px] text-slate-700">{s.script}</p>{s.participantes && <p className="text-[10px] text-slate-400 mt-0.5">👥 {s.participantes}</p>}</div>)}
                     {((r.plantaoCuriosidades?.length ?? 0) > 0) && <div className="bg-amber-50 border border-amber-200 rounded-xl p-3"><p className="text-[9px] font-black text-amber-600 uppercase mb-1.5">⚡ Plantão de Curiosidades</p>{r.plantaoCuriosidades.map((c: string, i: number) => <p key={i} className="text-[10px] text-amber-700 mt-0.5">• {c}</p>)}</div>}
-                    {r.debate && <div className="bg-blue-50 border border-blue-200 rounded-xl p-3"><p className="text-[9px] font-black text-blue-600 uppercase mb-1">🗣️ Debate — {r.debate.tema}</p>{r.debate.posicoes?.map((p: string, i: number) => <p key={i} className="text-[10px] text-blue-700">• {p}</p>)}{r.debate.mediacao && <p className="text-[10px] text-blue-500 mt-1">Mediação: {r.debate.mediacao}</p>}</div>}
+                    {r.debate && <div className="bg-violet-50 border border-violet-200 rounded-xl p-3"><p className="text-[9px] font-black text-violet-600 uppercase mb-1">🗣️ Debate — {r.debate.tema}</p>{r.debate.posicoes?.map((p: string, i: number) => <p key={i} className="text-[10px] text-violet-700">• {p}</p>)}{r.debate.mediacao && <p className="text-[10px] text-violet-500 mt-1">Mediação: {r.debate.mediacao}</p>}</div>}
                     {r.encerramentoAncora && <div className="bg-slate-800 text-white rounded-xl p-3"><p className="text-[9px] font-black uppercase mb-1">📡 Encerramento</p><p className="text-[10px]">{r.encerramentoAncora}</p></div>}
                     {r.missaoPosEdicao && <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3"><p className="text-[9px] font-black text-emerald-600 uppercase mb-1">🏠 Missão Pós-Edição</p><p className="text-[10px] text-emerald-700">{r.missaoPosEdicao}</p></div>}
                   </>)}
@@ -5499,7 +5499,7 @@ ${t}
                     {r.receita && <div className="bg-orange-50 border border-orange-200 rounded-xl p-3"><p className="text-[9px] font-black text-orange-600 uppercase mb-1">📋 Receita</p><p className="text-[11px] font-bold text-orange-700">{r.receita.nome}</p><p className="text-[10px] text-orange-500">🍽️ {r.receita.porcoes} | Dificuldade: {r.receita.dificuldade}</p></div>}
                     {r.etapas?.map((e: any, i: number) => <div key={i} className="bg-white border border-slate-200 rounded-xl p-3"><p className="text-[9px] font-black text-slate-500 uppercase mb-1">{e.nome} <span className="text-slate-400">{e.tempoDeAula}</span></p><p className="text-[10px] text-slate-700">🥄 {e.tecnica}</p><p className="text-[10px] text-amber-700 mt-0.5">🧂 Ingrediente: {e.ingredienteConceito}</p>{e.errosComuns && <p className="text-[10px] text-red-500 mt-0.5">⚠️ {e.errosComuns}</p>}{e.sinaisDePontoIdeal && <p className="text-[10px] text-emerald-600 mt-0.5">✅ Ponto ideal: {e.sinaisDePontoIdeal}</p>}</div>)}
                     {r.degustacao && <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3"><p className="text-[9px] font-black text-emerald-600 uppercase mb-1">👅 Degustação (Avaliação)</p><p className="text-[10px] text-emerald-700">{r.degustacao.instrumento}</p></div>}
-                    {r.receitaCasa && <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3"><p className="text-[9px] font-black text-indigo-600 uppercase mb-1">🏠 Receita para Casa</p><p className="text-[10px] text-indigo-700">{r.receitaCasa}</p></div>}
+                    {r.receitaCasa && <div className="bg-violet-50 border border-violet-200 rounded-xl p-3"><p className="text-[9px] font-black text-violet-600 uppercase mb-1">🏠 Receita para Casa</p><p className="text-[10px] text-violet-700">{r.receitaCasa}</p></div>}
                     {r.cardapioProximaAula && <div className="bg-slate-50 border border-slate-200 rounded-xl p-3"><p className="text-[9px] font-black text-slate-500 uppercase mb-1">📅 Próximo Cardápio</p><p className="text-[10px] text-slate-600">{r.cardapioProximaAula}</p></div>}
                   </>)}
 
@@ -5508,7 +5508,7 @@ ${t}
                     {r.boletimOcorrencia && <div className="bg-red-50 border border-red-200 rounded-xl p-3"><p className="text-[9px] font-black text-red-600 uppercase mb-1">🚔 Boletim de Ocorrência</p><p className="text-[10px] text-red-700 font-semibold">Crime: {r.boletimOcorrencia.crime}</p><p className="text-[10px] text-red-600 mt-0.5">Investigadores: {r.boletimOcorrencia.investigadores}</p>{r.boletimOcorrencia.evidencias?.map((e: string, i: number) => <p key={i} className="text-[10px] text-red-500">🔍 {e}</p>)}</div>}
                     {r.perfilSuspeito && <div className="bg-slate-900 text-white rounded-xl p-3"><p className="text-[9px] font-black uppercase mb-1">🕵️ Perfil do Suspeito</p><p className="text-[11px] font-bold">{r.perfilSuspeito.nome}</p>{r.perfilSuspeito.caracteristicas?.map((c: string, i: number) => <p key={i} className="text-[10px] text-slate-300">• {c}</p>)}{r.perfilSuspeito.pontoFraco && <p className="text-[10px] text-emerald-400 mt-1">🎯 Ponto fraco: {r.perfilSuspeito.pontoFraco}</p>}</div>}
                     {r.investigacao && <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3"><p className="text-[9px] font-black text-yellow-600 uppercase mb-1">🔎 Trabalho de Campo</p><p className="text-[10px] text-yellow-700">{r.investigacao.missao}</p>{r.investigacao.materiais?.map((m: string, i: number) => <p key={i} className="text-[10px] text-yellow-600">📦 {m}</p>)}</div>}
-                    {r.julgamento && <div className="bg-blue-50 border border-blue-200 rounded-xl p-3"><p className="text-[9px] font-black text-blue-600 uppercase mb-1">⚖️ Julgamento</p><p className="text-[10px] text-blue-700">Acusação: {r.julgamento.acusacao}</p><p className="text-[10px] text-blue-600 mt-0.5">Defesa: {r.julgamento.defesa}</p></div>}
+                    {r.julgamento && <div className="bg-violet-50 border border-violet-200 rounded-xl p-3"><p className="text-[9px] font-black text-violet-600 uppercase mb-1">⚖️ Julgamento</p><p className="text-[10px] text-violet-700">Acusação: {r.julgamento.acusacao}</p><p className="text-[10px] text-violet-600 mt-0.5">Defesa: {r.julgamento.defesa}</p></div>}
                     {r.vereditoFinal && <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3"><p className="text-[9px] font-black text-emerald-600 uppercase mb-1">🔨 Veredito Final</p><p className="text-[10px] text-emerald-700">{r.vereditoFinal}</p></div>}
                     {r.proxoCaso && <div className="bg-slate-50 border border-slate-200 rounded-xl p-3"><p className="text-[9px] font-black text-slate-500 uppercase mb-1">📁 Próximo Caso</p><p className="text-[10px] text-slate-600">{r.proxoCaso}</p></div>}
                   </>)}
@@ -5518,7 +5518,7 @@ ${t}
                     {r.coldOpen && <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3"><p className="text-[9px] font-black text-yellow-600 uppercase mb-1">🎬 Cold Open</p><p className="text-[10px] text-yellow-700">{r.coldOpen.cena}</p>{r.coldOpen.punchline && <p className="text-[10px] text-yellow-600 font-semibold mt-1">💬 "{r.coldOpen.punchline}"</p>}</div>}
                     {r.monologo && <div className="bg-slate-50 border border-slate-200 rounded-xl p-3"><p className="text-[9px] font-black text-slate-500 uppercase mb-1">🎤 Monólogo do Host</p><p className="text-[10px] text-slate-700">{r.monologo.roteiro}</p>{r.monologo.piadas?.map((p: string, i: number) => <p key={i} className="text-[10px] text-slate-500 italic mt-0.5">😂 {p}</p>)}</div>}
                     {((r.top3?.length ?? 0) > 0) && <div className="bg-rose-50 border border-rose-200 rounded-xl p-3"><p className="text-[9px] font-black text-rose-600 uppercase mb-1.5">🏆 Top 3 — Fatos do Tema</p>{r.top3.map((f: any, i: number) => <div key={i} className="mb-1.5"><p className="text-[10px] font-bold text-rose-700">{i+1}. {f.fato}</p><p className="text-[10px] text-rose-500">{f.porqueImporta}</p></div>)}</div>}
-                    {r.entrevista && <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3"><p className="text-[9px] font-black text-indigo-600 uppercase mb-1">🎙️ Entrevista — {r.entrevista.entrevistado}</p>{r.entrevista.perguntas?.map((p: string, i: number) => <p key={i} className="text-[10px] text-indigo-700 mt-0.5">Q{i+1}: {p}</p>)}{r.entrevista.reveal_final && <p className="text-[10px] text-indigo-800 font-semibold mt-1.5">✨ Reveal: {r.entrevista.reveal_final}</p>}</div>}
+                    {r.entrevista && <div className="bg-violet-50 border border-violet-200 rounded-xl p-3"><p className="text-[9px] font-black text-violet-600 uppercase mb-1">🎙️ Entrevista — {r.entrevista.entrevistado}</p>{r.entrevista.perguntas?.map((p: string, i: number) => <p key={i} className="text-[10px] text-violet-700 mt-0.5">Q{i+1}: {p}</p>)}{r.entrevista.reveal_final && <p className="text-[10px] text-violet-800 font-semibold mt-1.5">✨ Reveal: {r.entrevista.reveal_final}</p>}</div>}
                     {((r.mitosVerdades?.length ?? 0) > 0) && <div className="bg-orange-50 border border-orange-200 rounded-xl p-3"><p className="text-[9px] font-black text-orange-600 uppercase mb-1.5">🔮 Mitos e Verdades</p>{r.mitosVerdades.map((m: any, i: number) => <div key={i} className="mb-1.5"><p className="text-[10px] font-bold text-orange-700">{m.veredicto === "Mito" ? "❌" : "✅"} {m.afirmacao}</p><p className="text-[10px] text-orange-500">{m.explicacao}</p></div>)}</div>}
                     {r.encerramento && <div className="bg-slate-800 text-white rounded-xl p-3"><p className="text-[9px] font-black uppercase mb-1">🌟 Encerramento</p><p className="text-[10px]">{r.encerramento.teaser}</p>{r.encerramento.tarefa && <p className="text-[10px] text-slate-300 mt-1">📝 {r.encerramento.tarefa}</p>}</div>}
                   </>)}
@@ -5573,27 +5573,27 @@ ${t}
                   </>)}
 
                   {vozTab === "entrevista" && r.entrevistaSimulada && (<>
-                    <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3">
-                      <p className="text-[9px] font-black text-indigo-500 uppercase mb-1">{r.entrevistaSimulada.formato}</p>
-                      <p className="text-[10px] text-indigo-700">{r.entrevistaSimulada.abertura}</p>
+                    <div className="bg-violet-50 border border-violet-200 rounded-xl p-3">
+                      <p className="text-[9px] font-black text-violet-500 uppercase mb-1">{r.entrevistaSimulada.formato}</p>
+                      <p className="text-[10px] text-violet-700">{r.entrevistaSimulada.abertura}</p>
                     </div>
                     {r.entrevistaSimulada.perguntas?.map((p: any, i: number) => (
                       <div key={i} className="bg-white border border-slate-200 rounded-xl p-3">
                         <div className="flex items-center gap-1.5 mb-1">
-                          <span className="text-[9px] bg-indigo-100 text-indigo-600 font-black px-1.5 py-0.5 rounded">P{p.numero}</span>
+                          <span className="text-[9px] bg-violet-100 text-violet-600 font-black px-1.5 py-0.5 rounded">P{p.numero}</span>
                           <span className="text-[9px] text-slate-400 uppercase">{p.tipo}</span>
                         </div>
                         <p className="text-[10px] font-semibold text-slate-700">{p.pergunta}</p>
                         <p className="text-[10px] text-slate-500 mt-0.5">✅ {p.resposta_esperada}</p>
-                        {p.followup && <p className="text-[10px] text-indigo-500 mt-0.5">↩️ {p.followup}</p>}
+                        {p.followup && <p className="text-[10px] text-violet-500 mt-0.5">↩️ {p.followup}</p>}
                       </div>
                     ))}
                   </>)}
 
                   {vozTab === "debate" && r.debateEstruturado && (<>
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-                      <p className="text-[9px] font-black text-blue-500 uppercase mb-1">⚖️ Tese</p>
-                      <p className="text-[11px] font-bold text-blue-700">"{r.debateEstruturado.tese}"</p>
+                    <div className="bg-violet-50 border border-violet-200 rounded-xl p-3">
+                      <p className="text-[9px] font-black text-violet-500 uppercase mb-1">⚖️ Tese</p>
+                      <p className="text-[11px] font-bold text-violet-700">"{r.debateEstruturado.tese}"</p>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       {r.debateEstruturado.grupos?.map((g: any, i: number) => (
@@ -5656,10 +5656,10 @@ ${t}
                   ))}
 
                   {r.segredosDoProfissional?.map((s: any, i: number) => (
-                    <div key={i} className="bg-indigo-50 border border-indigo-200 rounded-xl p-3">
-                      <p className="text-[9px] font-black text-indigo-500 uppercase mb-1">🔐 Segredo {i+1}</p>
-                      <p className="text-[10px] font-bold text-indigo-700">{s.segredo}</p>
-                      <p className="text-[10px] text-indigo-500 mt-0.5">✅ Quando usar: {s.contexto}</p>
+                    <div key={i} className="bg-violet-50 border border-violet-200 rounded-xl p-3">
+                      <p className="text-[9px] font-black text-violet-500 uppercase mb-1">🔐 Segredo {i+1}</p>
+                      <p className="text-[10px] font-bold text-violet-700">{s.segredo}</p>
+                      <p className="text-[10px] text-violet-500 mt-0.5">✅ Quando usar: {s.contexto}</p>
                       <p className="text-[10px] text-red-400 mt-0.5">⚠️ {s.aviso}</p>
                     </div>
                   ))}
@@ -5669,7 +5669,7 @@ ${t}
                       <p className="text-[9px] font-black uppercase text-slate-400">💬 Reflexão Honesta</p>
                       <p className="text-[10px]">❤️ {r.reflexaoHonesta.oQueMaisGosto}</p>
                       <p className="text-[10px] text-slate-300">😓 {r.reflexaoHonesta.oQueMaisTeio}</p>
-                      <p className="text-[10px] text-indigo-300 italic mt-1">"{r.reflexaoHonesta.mensagemAosAlunos}"</p>
+                      <p className="text-[10px] text-violet-300 italic mt-1">"{r.reflexaoHonesta.mensagemAosAlunos}"</p>
                     </div>
                   )}
                 </div>
@@ -5682,9 +5682,9 @@ ${t}
               const PERFIL_COLORS: Record<string, string> = {
                 "A Entusiasta": "bg-yellow-50 border-yellow-200",
                 "O Resistente": "bg-red-50 border-red-200",
-                "A Silenciosa Brilhante": "bg-blue-50 border-blue-200",
+                "A Silenciosa Brilhante": "bg-violet-50 border-violet-200",
                 "O Com Dificuldade Real": "bg-orange-50 border-orange-200",
-                "A Avançada Que Se Entedia": "bg-indigo-50 border-indigo-200",
+                "A Avançada Que Se Entedia": "bg-violet-50 border-violet-200",
               };
               const PERFIL_EMOJI: Record<string, string> = {
                 "A Entusiasta": "🌟", "O Resistente": "😤", "A Silenciosa Brilhante": "🔵",
@@ -5735,7 +5735,7 @@ ${t}
                               </div>
                             ))}
                           </div>
-                          {m.intervencao_necessaria && <p className="text-[10px] text-indigo-600 border-t border-slate-100 pt-1.5 mt-1.5">🎯 Intervenção: {m.intervencao_necessaria}</p>}
+                          {m.intervencao_necessaria && <p className="text-[10px] text-violet-600 border-t border-slate-100 pt-1.5 mt-1.5">🎯 Intervenção: {m.intervencao_necessaria}</p>}
                           {m.aprendizado_do_ensaio && <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">💡 {m.aprendizado_do_ensaio}</p>}
                         </div>
                       ))}
@@ -5778,7 +5778,7 @@ ${t}
                     {(["academico", "blog", "executivo", "aula"] as const).map(t => (
                       <button key={t} onClick={() => setRelatorioTemplate(t)}
                         className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${
-                          relatorioTemplate === t ? "bg-indigo-600 border-indigo-600 text-white" : "border-slate-200 text-slate-600 hover:border-indigo-300"
+                          relatorioTemplate === t ? "bg-violet-600 border-violet-600 text-white" : "border-slate-200 text-slate-600 hover:border-violet-300"
                         }`}>
                         {t.charAt(0).toUpperCase() + t.slice(1)}
                       </button>
@@ -5797,7 +5797,7 @@ ${t}
                     <div className="space-y-3">
                       {r.secoes.map((s, i) => (
                         <div key={i}>
-                          <p className="text-[10px] font-black text-indigo-600 uppercase tracking-wider mb-1">{s.titulo}</p>
+                          <p className="text-[10px] font-black text-violet-600 uppercase tracking-wider mb-1">{s.titulo}</p>
                           <p className="text-xs text-slate-700 leading-relaxed">{s.conteudo}</p>
                         </div>
                       ))}
@@ -5805,7 +5805,7 @@ ${t}
                   ) : null}
                   {(r.markdown ?? "") && (
                     <button onClick={() => navigator.clipboard.writeText(r.markdown!)}
-                      className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-600 hover:underline">
+                      className="flex items-center gap-1.5 text-[10px] font-bold text-violet-600 hover:underline">
                       <ClipboardList className="w-3 h-3" /> Copiar relatório
                     </button>
                   )}
@@ -5864,7 +5864,7 @@ ${t}
                   <button onClick={() => navigate("/app")} className="text-slate-400 hover:text-slate-700 p-1.5 rounded-xl hover:bg-white/60 transition-colors">
                     <ArrowLeft className="w-4 h-4" />
                   </button>
-                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-violet-500/25">
                     <BookOpen className="w-5 h-5 text-white" />
                   </div>
                   <div>
@@ -5875,7 +5875,7 @@ ${t}
               </div>
               <button
                 onClick={openNewCaderno}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white text-sm font-bold shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:scale-[1.02] active:scale-[0.98] transition-all flex-shrink-0"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-600 text-white text-sm font-bold shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 hover:scale-[1.02] active:scale-[0.98] transition-all flex-shrink-0"
               >
                 <Plus className="w-4 h-4" />
                 Novo Caderno
@@ -5889,7 +5889,7 @@ ${t}
                 value={homeSearch}
                 onChange={e => setHomeSearch(e.target.value)}
                 placeholder="Buscar cadernos..."
-                className="w-full pl-11 pr-4 py-3 bg-white rounded-2xl border border-slate-200 shadow-sm focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 text-sm text-slate-800 placeholder-slate-400 font-medium"
+                className="w-full pl-11 pr-4 py-3 bg-white rounded-2xl border border-slate-200 shadow-sm focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 text-sm text-slate-800 placeholder-slate-400 font-medium"
               />
               {homeSearch && (
                 <button onClick={() => setHomeSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600">
@@ -5945,7 +5945,7 @@ ${t}
             {filteredCadernos.length === 0 && !homeSearch ? (
               /* Empty state */
               <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-20">
-                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center mx-auto mb-5 shadow-xl shadow-indigo-500/30">
+                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center mx-auto mb-5 shadow-xl shadow-violet-500/30">
                   <BookOpen className="w-10 h-10 text-white" />
                 </div>
                 <h2 className="font-display font-bold text-slate-800 text-xl mb-2">Crie seu primeiro caderno</h2>
@@ -5954,7 +5954,7 @@ ${t}
                 </p>
                 <button
                   onClick={openNewCaderno}
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white font-bold shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-600 text-white font-bold shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 hover:scale-[1.02] active:scale-[0.98] transition-all"
                 >
                   <Plus className="w-4 h-4" />
                   Criar caderno
@@ -5992,7 +5992,7 @@ ${t}
                             <div className="min-w-0">
                               <p className="font-display font-bold text-slate-900 leading-tight text-base">{c.title}</p>
                               {c.is_default && (
-                                <span className="inline-block mt-0.5 text-[9px] font-black uppercase tracking-wider bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full">Padrão</span>
+                                <span className="inline-block mt-0.5 text-[9px] font-black uppercase tracking-wider bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">Padrão</span>
                               )}
                             </div>
                           </div>
@@ -6047,13 +6047,13 @@ ${t}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: filteredCadernos.length * 0.04, duration: 0.25 }}
                   onClick={openNewCaderno}
-                  className="bg-white/60 rounded-2xl border-2 border-dashed border-slate-200 hover:border-indigo-300 hover:bg-white transition-all flex flex-col items-center justify-center gap-3 py-10 group"
+                  className="bg-white/60 rounded-2xl border-2 border-dashed border-slate-200 hover:border-violet-300 hover:bg-white transition-all flex flex-col items-center justify-center gap-3 py-10 group"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-slate-100 group-hover:bg-indigo-100 flex items-center justify-center transition-colors">
-                    <Plus className="w-5 h-5 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                  <div className="w-10 h-10 rounded-xl bg-slate-100 group-hover:bg-violet-100 flex items-center justify-center transition-colors">
+                    <Plus className="w-5 h-5 text-slate-400 group-hover:text-violet-600 transition-colors" />
                   </div>
                   <div className="text-center">
-                    <p className="text-sm font-bold text-slate-500 group-hover:text-indigo-700 transition-colors">Novo caderno</p>
+                    <p className="text-sm font-bold text-slate-500 group-hover:text-violet-700 transition-colors">Novo caderno</p>
                     <p className="text-[11px] text-slate-400 mt-0.5">PDF, vídeo, áudio, URL...</p>
                   </div>
                 </motion.button>
@@ -6088,7 +6088,7 @@ ${t}
               </div>
               <div>
                 <p className="font-display font-bold text-slate-900 text-[13px] leading-tight tracking-tight">{activeCaderno.title}</p>
-                <button onClick={() => setNotebookView("home")} className="text-[10px] text-slate-400 hover:text-indigo-600 font-medium leading-tight flex items-center gap-0.5 transition-colors">
+                <button onClick={() => setNotebookView("home")} className="text-[10px] text-slate-400 hover:text-violet-600 font-medium leading-tight flex items-center gap-0.5 transition-colors">
                   <Layers className="w-2.5 h-2.5" /> Meus Cadernos
                 </button>
               </div>
@@ -6105,7 +6105,7 @@ ${t}
           )}
           <button
             onClick={() => { setShowShareModal(true); if (!shareToken) generateShareLink(); }}
-            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all"
+            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:border-violet-300 hover:bg-violet-50 transition-all"
             title="Compartilhar caderno"
           >
             {shareLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ExternalLink className="w-3.5 h-3.5" />}
@@ -6228,7 +6228,7 @@ ${t}
                     <button key={opt.key} onClick={() => setExpandedSize(opt.key)}
                       title={opt.title}
                       className={`w-8 h-6 rounded-lg font-black transition-all ${
-                        expandedSize === opt.key ? "bg-white shadow text-indigo-600" : "text-slate-500 hover:text-slate-700"
+                        expandedSize === opt.key ? "bg-white shadow text-violet-600" : "text-slate-500 hover:text-slate-700"
                       }`}>
                       {opt.label}
                     </button>
@@ -6290,7 +6290,7 @@ ${t}
                   <a
                     href={`mailto:?subject=${encodeURIComponent("Resposta StudyAI")}&body=${encodeURIComponent(`Resposta gerada pelo StudyAI:\n\n${expandedMsg.text}`)}`}
                     title="Enviar por e-mail"
-                    className="p-1.5 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
+                    className="p-1.5 rounded-xl text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                     </svg>
@@ -6332,7 +6332,7 @@ ${t}
               {/* Conteúdo */}
               <div className="flex-1 overflow-y-auto p-6 sm:p-10 bg-white">
                 <div className="max-w-3xl mx-auto">
-                  <p className="text-slate-800 text-base leading-relaxed whitespace-pre-wrap font-[Georgia,serif] selection:bg-indigo-100">
+                  <p className="text-slate-800 text-base leading-relaxed whitespace-pre-wrap font-[Georgia,serif] selection:bg-violet-100">
                     {expandedMsg.text}
                   </p>
                 </div>
@@ -6369,7 +6369,7 @@ ${t}
                       w.focus();
                       setTimeout(() => w.print(), 500);
                     }}
-                    className="text-xs font-bold px-4 py-1.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 transition-colors flex items-center gap-1.5">
+                    className="text-xs font-bold px-4 py-1.5 rounded-xl bg-violet-600 text-white hover:bg-violet-500 transition-colors flex items-center gap-1.5">
                     <Printer className="w-3 h-3" /> Imprimir / PDF
                   </button>
                 </div>
@@ -6402,21 +6402,21 @@ ${t}
                     className="w-14 px-2 py-2 rounded-lg border border-slate-200 text-center text-2xl" />
                   <input value={cadernoForm.title} onChange={e => setCadernoForm(f => ({ ...f, title: e.target.value }))}
                     placeholder="Nome do caderno (ex: ENEM Biologia)"
-                    className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-indigo-400" />
+                    className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-violet-400" />
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-700 mb-1 block">Persona / foco do tutor</label>
                   <textarea value={cadernoForm.persona} onChange={e => setCadernoForm(f => ({ ...f, persona: e.target.value }))}
                     placeholder="Ex: Explique como se eu fosse aluno do 3º ano, com foco em ENEM, usando exemplos do cotidiano brasileiro."
                     rows={3}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-indigo-400" />
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-violet-400" />
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-700 mb-1 block">Objetivos do aluno</label>
                   <textarea value={cadernoForm.goals} onChange={e => setCadernoForm(f => ({ ...f, goals: e.target.value }))}
                     placeholder="Ex: Quero atingir 750+ em Ciências da Natureza no ENEM 2026."
                     rows={2}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-indigo-400" />
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-violet-400" />
                 </div>
               </div>
               <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between gap-2">
@@ -6430,7 +6430,7 @@ ${t}
                   <button onClick={() => setShowCadernoModal(null)}
                     className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-100">Cancelar</button>
                   <button onClick={saveCaderno} disabled={!cadernoForm.title.trim()}
-                    className="px-4 py-2 rounded-lg text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">
+                    className="px-4 py-2 rounded-lg text-sm font-bold bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50">
                     Salvar
                   </button>
                 </div>
@@ -6452,7 +6452,7 @@ ${t}
               <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                 <div>
                   <h3 className="font-black text-slate-800 flex items-center gap-2">
-                    <ExternalLink className="w-4 h-4 text-indigo-500" />
+                    <ExternalLink className="w-4 h-4 text-violet-500" />
                     Compartilhar caderno
                   </h3>
                   <p className="text-[11px] text-slate-400 mt-0.5">Qualquer pessoa com o link pode ver (somente leitura)</p>
@@ -6478,7 +6478,7 @@ ${t}
                       />
                       <button
                         onClick={() => navigator.clipboard.writeText(`${window.location.origin}/shared/${shareToken}`)}
-                        className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 flex items-center gap-1.5 whitespace-nowrap">
+                        className="px-3 py-2 rounded-xl bg-violet-600 text-white text-xs font-bold hover:bg-violet-700 flex items-center gap-1.5 whitespace-nowrap">
                         <ClipboardList className="w-3.5 h-3.5" />
                         Copiar
                       </button>
@@ -6489,14 +6489,14 @@ ${t}
                     </div>
                     <div className="flex justify-between items-center">
                       <button onClick={generateShareLink} disabled={shareLoading}
-                        className="text-xs font-bold text-slate-500 hover:text-indigo-600 flex items-center gap-1 disabled:opacity-40">
+                        className="text-xs font-bold text-slate-500 hover:text-violet-600 flex items-center gap-1 disabled:opacity-40">
                         <RefreshCw className="w-3 h-3" /> Gerar novo link
                       </button>
                       <a
                         href={`/shared/${shareToken}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1">
+                        className="text-xs font-bold text-violet-600 hover:underline flex items-center gap-1">
                         <ExternalLink className="w-3 h-3" /> Visualizar
                       </a>
                     </div>
@@ -6505,7 +6505,7 @@ ${t}
                   <div className="flex flex-col items-center py-6 gap-3">
                     <p className="text-sm text-slate-500">Nenhum link gerado ainda.</p>
                     <button onClick={generateShareLink} disabled={shareLoading}
-                      className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 flex items-center gap-2">
+                      className="px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-700 flex items-center gap-2">
                       <ExternalLink className="w-4 h-4" />
                       Gerar link de compartilhamento
                     </button>

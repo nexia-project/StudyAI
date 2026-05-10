@@ -66,7 +66,7 @@ export default function Privacidade() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 to-violet-50">
       {/* Header */}
       <div className="border-b border-white/60 bg-white/70 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
@@ -74,7 +74,7 @@ export default function Privacidade() {
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
           <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-indigo-600" />
+            <Shield className="w-5 h-5 text-violet-600" />
             <span className="font-bold text-gray-800">Privacidade e LGPD</span>
           </div>
         </div>
@@ -85,7 +85,7 @@ export default function Privacidade() {
         {/* Hero */}
         <div className="bg-white rounded-3xl p-6 shadow-sm border border-white">
           <div className="flex items-start gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center flex-shrink-0">
               <Shield className="w-7 h-7 text-white" />
             </div>
             <div>
@@ -153,7 +153,7 @@ export default function Privacidade() {
         ].map((s) => (
           <div key={s.num} className="bg-white rounded-2xl p-5 shadow-sm border border-white">
             <h2 className="font-black text-gray-900 mb-2 flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-black flex items-center justify-center flex-shrink-0">
+              <span className="w-6 h-6 rounded-full bg-violet-100 text-violet-700 text-xs font-black flex items-center justify-center flex-shrink-0">
                 {s.num}
               </span>
               {s.title}
@@ -166,7 +166,7 @@ export default function Privacidade() {
         {isAuthenticated && (
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-white">
             <h2 className="font-black text-gray-900 mb-1 flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-black flex items-center justify-center flex-shrink-0">✓</span>
+              <span className="w-6 h-6 rounded-full bg-violet-100 text-violet-700 text-xs font-black flex items-center justify-center flex-shrink-0">✓</span>
               Exercer meus direitos
             </h2>
             <p className="text-gray-500 text-xs mb-4">LGPD Art. 18 — ações imediatas disponíveis para você</p>
@@ -176,22 +176,22 @@ export default function Privacidade() {
               <button
                 onClick={handleDownload}
                 disabled={downloadLoading}
-                className="w-full flex items-center gap-3 p-4 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 transition-colors text-left disabled:opacity-60"
+                className="w-full flex items-center gap-3 p-4 rounded-xl border border-violet-200 bg-violet-50 hover:bg-violet-100 transition-colors text-left disabled:opacity-60"
               >
-                <Download className="w-5 h-5 text-indigo-600 flex-shrink-0" />
+                <Download className="w-5 h-5 text-violet-600 flex-shrink-0" />
                 <div>
                   <p className="font-semibold text-gray-800 text-sm">Baixar meus dados</p>
                   <p className="text-gray-500 text-xs">Exportar todos os dados que temos sobre você em JSON</p>
                 </div>
-                {downloadLoading && <div className="ml-auto w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />}
+                {downloadLoading && <div className="ml-auto w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />}
               </button>
 
               {/* Contact DPO */}
               <a
                 href="mailto:privacidade@study.ia.br?subject=LGPD%20-%20Solicita%C3%A7%C3%A3o%20de%20Dados"
-                className="w-full flex items-center gap-3 p-4 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors text-left"
+                className="w-full flex items-center gap-3 p-4 rounded-xl border border-violet-200 bg-violet-50 hover:bg-violet-100 transition-colors text-left"
               >
-                <Mail className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                <Mail className="w-5 h-5 text-violet-600 flex-shrink-0" />
                 <div>
                   <p className="font-semibold text-gray-800 text-sm">Contatar o DPO</p>
                   <p className="text-gray-500 text-xs">privacidade@study.ia.br — correção, portabilidade ou outras solicitações</p>

@@ -11,8 +11,8 @@ export default function ChatResponse({ response, model, cached, loading }: ChatR
   if (loading) {
     return (
       <div className="flex items-start gap-3 animate-pulse">
-        <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
-          <Bot className="w-4 h-4 text-indigo-400" />
+        <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
+          <Bot className="w-4 h-4 text-violet-400" />
         </div>
         <div className="flex-1 space-y-2 pt-1">
           <div className="h-3 bg-slate-100 rounded w-3/4" />
@@ -29,7 +29,7 @@ export default function ChatResponse({ response, model, cached, loading }: ChatR
 
   return (
     <div className="flex items-start gap-3">
-      <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center shrink-0 mt-0.5">
+      <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center shrink-0 mt-0.5">
         <Bot className="w-4 h-4 text-white" />
       </div>
       <div className="flex-1 min-w-0">

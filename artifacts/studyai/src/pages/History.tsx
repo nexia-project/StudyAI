@@ -58,7 +58,7 @@ function getGradeColor(nota: string | null) {
   if (!nota) return "text-muted-foreground";
   const n = parseFloat(nota);
   if (n >= 9) return "text-emerald-600";
-  if (n >= 7) return "text-blue-600";
+  if (n >= 7) return "text-violet-600";
   if (n >= 5) return "text-yellow-600";
   return "text-red-600";
 }
@@ -228,10 +228,10 @@ export default function HistoryPage() {
           {/* Stats Row */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
             <StatCard
-              icon={<BookOpen className="w-6 h-6 text-indigo-600" />}
+              icon={<BookOpen className="w-6 h-6 text-violet-600" />}
               label="Planos criados"
               value={data?.plans.length ?? 0}
-              color="bg-indigo-50 text-gray-700"
+              color="bg-violet-50 text-gray-700"
             />
             <StatCard
               icon={<Trophy className="w-6 h-6 text-amber-600" />}
@@ -437,8 +437,8 @@ export default function HistoryPage() {
                       transition={{ delay: i * 0.05 }}
                       className="bg-white rounded-2xl border border-border p-5 flex items-center gap-4"
                     >
-                      <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
-                        <Brain className="w-6 h-6 text-indigo-600" />
+                      <div className="w-12 h-12 rounded-2xl bg-violet-50 flex items-center justify-center flex-shrink-0">
+                        <Brain className="w-6 h-6 text-violet-600" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-black text-foreground truncate">{f.materia}</p>
@@ -454,7 +454,7 @@ export default function HistoryPage() {
                             <XCircle className="w-3.5 h-3.5 inline mr-0.5" />
                             {f.unknown} não sabia
                           </span>
-                          <span className="text-xs font-bold text-indigo-600">{pct}% aproveitamento</span>
+                          <span className="text-xs font-bold text-violet-600">{pct}% aproveitamento</span>
                         </div>
                       </div>
                       <span className="text-xs text-muted-foreground font-semibold whitespace-nowrap">

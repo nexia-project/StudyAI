@@ -69,20 +69,20 @@ export function InstituicaoConvitePage() {
   }
 
   if (isLoading) return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center">
-      <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900 flex items-center justify-center">
+      <RefreshCw className="w-8 h-8 text-violet-400 animate-spin" />
     </div>
   );
 
   if (!isAuthenticated) return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900 flex items-center justify-center p-4">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
         className="bg-slate-800/60 border border-slate-700 rounded-2xl p-8 max-w-md text-center">
-        <Mail className="w-12 h-12 text-indigo-400 mx-auto mb-4" />
+        <Mail className="w-12 h-12 text-violet-400 mx-auto mb-4" />
         <h2 className="text-xl font-bold text-white mb-2">Convite Institucional</h2>
         <p className="text-slate-400 mb-6">Faça login ou crie uma conta para aceitar o convite de ingresso na instituição.</p>
         <Button onClick={() => { sessionStorage.setItem("auth_return_to", `/instituicao/convite/${params.token}`); navigate("/sign-in"); }}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl">
+          className="w-full bg-violet-600 hover:bg-violet-700 text-white rounded-xl">
           Fazer Login
         </Button>
       </motion.div>
@@ -90,14 +90,14 @@ export function InstituicaoConvitePage() {
   );
 
   if (status === "success") return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900 flex items-center justify-center p-4">
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
         className="bg-slate-800/60 border border-slate-700 rounded-2xl p-8 max-w-md text-center">
         <CheckCircle className="w-14 h-14 text-emerald-400 mx-auto mb-4" />
         <h2 className="text-2xl font-bold text-white mb-2">Bem-vindo!</h2>
         <p className="text-slate-400 mb-6">Você entrou para <strong className="text-white">{instName}</strong>. Agora tem acesso ao portal institucional.</p>
         <Button onClick={() => navigate("/instituicao")}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl">
+          className="w-full bg-violet-600 hover:bg-violet-700 text-white rounded-xl">
           Acessar Portal
         </Button>
       </motion.div>
@@ -105,15 +105,15 @@ export function InstituicaoConvitePage() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900 flex items-center justify-center p-4">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
         className="bg-slate-800/60 border border-slate-700 rounded-2xl p-8 max-w-md text-center">
-        <Building2 className="w-12 h-12 text-indigo-400 mx-auto mb-4" />
+        <Building2 className="w-12 h-12 text-violet-400 mx-auto mb-4" />
         <h2 className="text-xl font-bold text-white mb-2">Aceitar Convite</h2>
         <p className="text-slate-400 mb-6">Você foi convidado para fazer parte de uma instituição no StudyAI.</p>
         {status === "error" && <p className="text-red-400 text-sm mb-4">{msg}</p>}
         <Button onClick={accept} disabled={status === "loading"}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl">
+          className="w-full bg-violet-600 hover:bg-violet-700 text-white rounded-xl">
           {status === "loading" ? <RefreshCw className="w-4 h-4 animate-spin mx-auto" /> : "Aceitar e Entrar"}
         </Button>
       </motion.div>
@@ -149,17 +149,17 @@ export function InstituicaoLoginPage() {
   }
 
   if (isLoading) return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center">
-      <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900 flex items-center justify-center">
+      <RefreshCw className="w-8 h-8 text-violet-400 animate-spin" />
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900 flex items-center justify-center p-4">
       <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center mx-auto mb-4 shadow-xl shadow-indigo-900/40">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center mx-auto mb-4 shadow-xl shadow-violet-900/40">
             <Building2 className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-black text-white">Portal Institucional</h1>
@@ -178,7 +178,7 @@ export function InstituicaoLoginPage() {
               <input
                 type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="seu@email.com" required
-                className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+                className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 text-sm"
               />
             </div>
             <div>
@@ -187,7 +187,7 @@ export function InstituicaoLoginPage() {
                 <input
                   type={showPw ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••" required autoComplete="current-password"
-                  className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm pr-10"
+                  className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 text-sm pr-10"
                 />
                 <button type="button" onClick={() => setShowPw(!showPw)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
@@ -196,14 +196,14 @@ export function InstituicaoLoginPage() {
               </div>
             </div>
             {error && <p className="text-red-400 text-sm">{error}</p>}
-            <Button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-2.5 font-bold">
+            <Button type="submit" disabled={loading} className="w-full bg-violet-600 hover:bg-violet-700 text-white rounded-xl py-2.5 font-bold">
               {loading ? <RefreshCw className="w-4 h-4 animate-spin mx-auto" /> : "Entrar no Portal"}
             </Button>
           </form>
 
           <p className="text-center text-slate-500 text-xs mt-4">
             Não tem acesso?{" "}
-            <a href="mailto:contato@study.ia.br" className="text-indigo-400 hover:text-indigo-300">
+            <a href="mailto:contato@study.ia.br" className="text-violet-400 hover:text-violet-300">
               Solicite ao administrador
             </a>
           </p>
@@ -249,7 +249,7 @@ function InstituicaoIATab({ institutionId, primaryColor }: { institutionId: stri
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin" />
+        <RefreshCw className="w-8 h-8 text-violet-400 animate-spin" />
       </div>
     );
   }
@@ -275,9 +275,9 @@ function InstituicaoIATab({ institutionId, primaryColor }: { institutionId: stri
   return (
     <div className="space-y-5">
       {/* Hero */}
-      <div className="rounded-2xl p-5 border border-indigo-500/30 bg-gradient-to-br from-indigo-900/40 to-violet-900/30">
+      <div className="rounded-2xl p-5 border border-violet-500/30 bg-gradient-to-br from-violet-900/40 to-violet-900/30">
         <div className="flex items-center gap-3 mb-1">
-          <Brain className="w-5 h-5 text-indigo-300" />
+          <Brain className="w-5 h-5 text-violet-300" />
           <h2 className="text-white font-bold text-lg">Inteligência IA da Instituição</h2>
         </div>
         <p className="text-slate-300 text-sm">
@@ -290,8 +290,8 @@ function InstituicaoIATab({ institutionId, primaryColor }: { institutionId: stri
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: "Diagnósticos (30d)", value: stats.diagnosticsCompleted30d, icon: Target, color: "text-emerald-400" },
-          { label: "Documentos Notebook", value: stats.notebookDocsTotal, icon: BookOpen, color: "text-blue-400" },
-          { label: "Storage RAG", value: `${stats.notebookStorageMb} MB`, icon: Layers, color: "text-indigo-400" },
+          { label: "Documentos Notebook", value: stats.notebookDocsTotal, icon: BookOpen, color: "text-violet-400" },
+          { label: "Storage RAG", value: `${stats.notebookStorageMb} MB`, icon: Layers, color: "text-violet-400" },
           { label: "Overviews gerados", value: stats.notebookOverviewsTotal, icon: Wand2, color: "text-amber-400" },
         ].map(k => (
           <div key={k.label} className="bg-slate-800/60 border border-slate-700 rounded-2xl p-4">
@@ -315,7 +315,7 @@ function InstituicaoIATab({ institutionId, primaryColor }: { institutionId: stri
             return (
               <div key={f.feature} className="bg-slate-900/60 border border-slate-700 rounded-xl p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Icon className="w-4 h-4 text-indigo-300" />
+                  <Icon className="w-4 h-4 text-violet-300" />
                   <span className="text-white font-semibold text-sm">{f.feature}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-center">
@@ -362,7 +362,7 @@ function InstituicaoIATab({ institutionId, primaryColor }: { institutionId: stri
         {/* Content breakdown */}
         <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-5">
           <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-            <Layers className="w-4 h-4 text-indigo-400" /> Conteúdo Gerado pela Instituição
+            <Layers className="w-4 h-4 text-violet-400" /> Conteúdo Gerado pela Instituição
           </h3>
           {stats.contentBreakdown.every(c => c.value === 0) ? (
             <p className="text-slate-500 text-sm text-center py-8">Sem conteúdo gerado ainda.</p>
@@ -526,21 +526,21 @@ export default function InstituicaoPage() {
 
   // ── Loading ──
   if (loading || authLoading) return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center">
-      <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900 flex items-center justify-center">
+      <RefreshCw className="w-8 h-8 text-violet-400 animate-spin" />
     </div>
   );
 
   // ── Error states ──
   if (error === "nao_autenticado") return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900 flex items-center justify-center p-4">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
         className="bg-slate-800/60 border border-slate-700 rounded-2xl p-8 max-w-md text-center">
-        <Lock className="w-12 h-12 text-indigo-400 mx-auto mb-4" />
+        <Lock className="w-12 h-12 text-violet-400 mx-auto mb-4" />
         <h2 className="text-xl font-bold text-white mb-2">Acesso Restrito</h2>
         <p className="text-slate-400 mb-6">Faça login para acessar o portal institucional.</p>
         <Button onClick={() => { sessionStorage.setItem("auth_return_to", "/instituicao"); navigate("/instituicao/login"); }}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl">
+          className="w-full bg-violet-600 hover:bg-violet-700 text-white rounded-xl">
           Entrar no Portal
         </Button>
       </motion.div>
@@ -548,7 +548,7 @@ export default function InstituicaoPage() {
   );
 
   if (error === "aguardando_aprovacao") return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900 flex items-center justify-center p-4">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
         className="bg-slate-800/60 border border-slate-700 rounded-2xl p-8 max-w-md text-center">
         <Clock className="w-14 h-14 text-amber-400 mx-auto mb-4" />
@@ -564,14 +564,14 @@ export default function InstituicaoPage() {
   );
 
   if (error === "sem_instituicao") return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900 flex items-center justify-center p-4">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
         className="bg-slate-800/60 border border-slate-700 rounded-2xl p-8 max-w-md text-center">
         <Building2 className="w-12 h-12 text-slate-500 mx-auto mb-4" />
         <h2 className="text-xl font-bold text-white mb-2">Sem Instituição Vinculada</h2>
         <p className="text-slate-400 mb-6">Você ainda não está vinculado a nenhuma instituição. Peça o link de convite ao administrador.</p>
         <Button onClick={() => navigate("/app")}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl">
+          className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl">
           Voltar ao Início
         </Button>
       </motion.div>
@@ -597,7 +597,7 @@ export default function InstituicaoPage() {
   const planLabels: Record<string, string> = { trial: "Trial", basic: "Básico", standard: "Standard", premium: "Premium", enterprise: "Enterprise" };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900">
       <div className="max-w-5xl mx-auto px-4 py-8">
 
         {/* Header */}
@@ -642,7 +642,7 @@ export default function InstituicaoPage() {
           {tabs.map(tab => (
             <button key={tab.id} onClick={() => { setActiveTab(tab.id as any); if (tab.id === "relatorios" && !report) loadReport(); }}
               className={`flex-shrink-0 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-sm font-medium transition-all
-                ${activeTab === tab.id ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400 hover:text-white hover:bg-slate-700"}`}>
+                ${activeTab === tab.id ? "bg-violet-600 text-white shadow-lg" : "text-slate-400 hover:text-white hover:bg-slate-700"}`}>
               <tab.icon className="w-4 h-4" />
               <span className="hidden sm:inline">{tab.label}</span>
               {"count" in tab && (tab.count ?? 0) > 0 && (
@@ -664,9 +664,9 @@ export default function InstituicaoPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: "Turmas", value: stats.turmaCount, icon: GraduationCap, color: "text-indigo-400" },
+                { label: "Turmas", value: stats.turmaCount, icon: GraduationCap, color: "text-violet-400" },
                 { label: "Membros", value: stats.memberCount, icon: Users, color: "text-emerald-400" },
-                { label: "Alunos", value: stats.studentCount, icon: Target, color: "text-blue-400" },
+                { label: "Alunos", value: stats.studentCount, icon: Target, color: "text-violet-400" },
                 { label: "XP médio", value: stats.avgXp.toLocaleString("pt-BR"), icon: Zap, color: "text-amber-400" },
               ].map(s => (
                 <motion.div key={s.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
@@ -682,7 +682,7 @@ export default function InstituicaoPage() {
             {institution.contractEnd && (
               <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-5">
                 <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-indigo-400" /> Contrato / Licença
+                  <FileText className="w-4 h-4 text-violet-400" /> Contrato / Licença
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                   <div>
@@ -739,7 +739,7 @@ export default function InstituicaoPage() {
                     className="bg-slate-800/60 border border-slate-700 rounded-2xl p-5">
                     <h3 className="text-white font-semibold">{turma.name}</h3>
                     <div className="flex gap-2 mt-1">
-                      {turma.serie && <span className="text-xs bg-indigo-900/50 text-indigo-300 px-2 py-0.5 rounded-full">{turma.serie}</span>}
+                      {turma.serie && <span className="text-xs bg-violet-900/50 text-violet-300 px-2 py-0.5 rounded-full">{turma.serie}</span>}
                       {turma.subject && <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{turma.subject}</span>}
                     </div>
                   </motion.div>
@@ -756,20 +756,20 @@ export default function InstituicaoPage() {
             {isAdmin && (
               <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-5">
                 <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
-                  <Send className="w-4 h-4 text-indigo-400" /> Convidar membro
+                  <Send className="w-4 h-4 text-violet-400" /> Convidar membro
                 </h3>
                 <form onSubmit={sendInvite} className="flex flex-col sm:flex-row gap-3">
                   <input
                     type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
                     placeholder="email@instituicao.com" required
-                    className="flex-1 bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+                    className="flex-1 bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 text-sm"
                   />
                   <select value={inviteRole} onChange={e => setInviteRole(e.target.value)}
-                    className="bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-indigo-500 text-sm">
+                    className="bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-violet-500 text-sm">
                     <option value="teacher">Professor</option>
                     <option value="admin">Admin</option>
                   </select>
-                  <Button type="submit" disabled={inviting} className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-5">
+                  <Button type="submit" disabled={inviting} className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl px-5">
                     {inviting ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Convidar"}
                   </Button>
                 </form>
@@ -904,18 +904,18 @@ export default function InstituicaoPage() {
           <div className="space-y-4">
             {loadingReport && !report && (
               <div className="flex items-center justify-center py-16">
-                <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin" />
+                <RefreshCw className="w-8 h-8 text-violet-400 animate-spin" />
               </div>
             )}
             {report && (
               <>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {[
-                    { label: "Total de alunos", value: report.totalStudents, icon: Users, color: "text-blue-400" },
-                    { label: "Simulados feitos", value: report.simCompleted, icon: Target, color: "text-indigo-400" },
+                    { label: "Total de alunos", value: report.totalStudents, icon: Users, color: "text-violet-400" },
+                    { label: "Simulados feitos", value: report.simCompleted, icon: Target, color: "text-violet-400" },
                     { label: "Acerto médio (%)", value: `${report.avgSimAccuracy}%`, icon: TrendingUp, color: "text-emerald-400" },
                     { label: "XP médio", value: report.avgXp.toLocaleString("pt-BR"), icon: Zap, color: "text-amber-400" },
-                    { label: "Flashcards feitos", value: report.flashcardsCompleted, icon: BarChart2, color: "text-indigo-400" },
+                    { label: "Flashcards feitos", value: report.flashcardsCompleted, icon: BarChart2, color: "text-violet-400" },
                     { label: "Turmas", value: report.totalTurmas, icon: GraduationCap, color: "text-pink-400" },
                   ].map(s => (
                     <div key={s.label} className="bg-slate-800/60 border border-slate-700 rounded-2xl p-5">
@@ -929,7 +929,7 @@ export default function InstituicaoPage() {
                 {report.turmaBreakdown.length > 0 && (
                   <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-5">
                     <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-                      <GraduationCap className="w-4 h-4 text-indigo-400" /> Desempenho por turma
+                      <GraduationCap className="w-4 h-4 text-violet-400" /> Desempenho por turma
                     </h3>
                     <div className="space-y-3">
                       {report.turmaBreakdown.map(t => (
@@ -937,7 +937,7 @@ export default function InstituicaoPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
                               <p className="text-white text-sm font-medium truncate">{t.name}</p>
-                              {t.serie && <span className="text-xs bg-indigo-900/50 text-indigo-300 px-1.5 py-0.5 rounded-full">{t.serie}</span>}
+                              {t.serie && <span className="text-xs bg-violet-900/50 text-violet-300 px-1.5 py-0.5 rounded-full">{t.serie}</span>}
                               {t.subject && <span className="text-xs bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded-full">{t.subject}</span>}
                             </div>
                             <div className="flex items-center gap-4 text-xs text-slate-400">
@@ -947,7 +947,7 @@ export default function InstituicaoPage() {
                           </div>
                           <div className="w-24">
                             <div className="bg-slate-700 rounded-full h-1.5">
-                              <div className="h-1.5 rounded-full bg-indigo-500" style={{ width: `${Math.min(100, (t.avgXp / 5000) * 100)}%` }} />
+                              <div className="h-1.5 rounded-full bg-violet-500" style={{ width: `${Math.min(100, (t.avgXp / 5000) * 100)}%` }} />
                             </div>
                           </div>
                         </div>
@@ -962,7 +962,7 @@ export default function InstituicaoPage() {
               </>
             )}
             <button onClick={loadReport}
-              className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 text-sm transition-colors">
+              className="flex items-center gap-2 text-violet-400 hover:text-violet-300 text-sm transition-colors">
               <RefreshCw className="w-4 h-4" /> Atualizar relatório
             </button>
           </div>
@@ -973,26 +973,26 @@ export default function InstituicaoPage() {
           <div className="space-y-5">
             <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-6">
               <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-                <Palette className="w-4 h-4 text-indigo-400" /> Identidade Visual
+                <Palette className="w-4 h-4 text-violet-400" /> Identidade Visual
               </h3>
               <form onSubmit={saveBranding} className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-slate-400 text-xs block mb-1">Nome da instituição</label>
                     <input value={brandingForm.name} onChange={e => setBrandingForm(f => ({ ...f, name: e.target.value }))}
-                      className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-indigo-500 text-sm" />
+                      className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-violet-500 text-sm" />
                   </div>
                   <div>
                     <label className="text-slate-400 text-xs block mb-1">CNPJ</label>
                     <input value={brandingForm.cnpj} onChange={e => setBrandingForm(f => ({ ...f, cnpj: e.target.value }))}
                       placeholder="00.000.000/0001-00"
-                      className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm" />
+                      className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 text-sm" />
                   </div>
                   <div>
                     <label className="text-slate-400 text-xs block mb-1">URL do logo</label>
                     <input value={brandingForm.logoUrl} onChange={e => setBrandingForm(f => ({ ...f, logoUrl: e.target.value }))}
                       placeholder="https://exemplo.com/logo.png"
-                      className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm" />
+                      className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 text-sm" />
                   </div>
                   <div>
                     <label className="text-slate-400 text-xs block mb-1">Cor principal</label>
@@ -1002,19 +1002,19 @@ export default function InstituicaoPage() {
                         className="w-10 h-10 rounded-lg cursor-pointer bg-transparent border-0" />
                       <input value={brandingForm.primaryColor}
                         onChange={e => setBrandingForm(f => ({ ...f, primaryColor: e.target.value }))}
-                        className="flex-1 bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-indigo-500 text-sm" />
+                        className="flex-1 bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-violet-500 text-sm" />
                     </div>
                   </div>
                   <div>
                     <label className="text-slate-400 text-xs block mb-1">Cidade</label>
                     <input value={brandingForm.city} onChange={e => setBrandingForm(f => ({ ...f, city: e.target.value }))}
-                      className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-indigo-500 text-sm" />
+                      className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-violet-500 text-sm" />
                   </div>
                   <div>
                     <label className="text-slate-400 text-xs block mb-1">Estado (UF)</label>
                     <input value={brandingForm.state} onChange={e => setBrandingForm(f => ({ ...f, state: e.target.value }))}
                       placeholder="SP" maxLength={2}
-                      className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm" />
+                      className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 text-sm" />
                   </div>
                 </div>
 
@@ -1040,7 +1040,7 @@ export default function InstituicaoPage() {
                 {brandingMsg && (
                   <p className={`text-sm ${brandingMsg.ok ? "text-emerald-400" : "text-red-400"}`}>{brandingMsg.text}</p>
                 )}
-                <Button type="submit" disabled={savingBranding} className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl">
+                <Button type="submit" disabled={savingBranding} className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl">
                   {savingBranding ? "Salvando..." : "Salvar configurações"}
                 </Button>
               </form>
@@ -1049,7 +1049,7 @@ export default function InstituicaoPage() {
             {/* Contract info display */}
             <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-5">
               <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-indigo-400" /> Contrato & Licença
+                <FileText className="w-4 h-4 text-violet-400" /> Contrato & Licença
               </h3>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><p className="text-slate-500">Plano</p><p className="text-white">{planLabels[institution.planType ?? ""] ?? institution.planType ?? "—"}</p></div>
@@ -1064,7 +1064,7 @@ export default function InstituicaoPage() {
                   </div>
                 )}
               </div>
-              <p className="text-slate-600 text-xs mt-3">Para alterar plano ou contrato, entre em contato com <a href="mailto:contato@study.ia.br" className="text-indigo-400">contato@study.ia.br</a></p>
+              <p className="text-slate-600 text-xs mt-3">Para alterar plano ou contrato, entre em contato com <a href="mailto:contato@study.ia.br" className="text-violet-400">contato@study.ia.br</a></p>
             </div>
           </div>
         )}

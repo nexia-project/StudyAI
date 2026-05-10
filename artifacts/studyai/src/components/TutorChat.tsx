@@ -120,7 +120,7 @@ function MessageBubble({ message }: { message: Message }) {
           <Bot className="w-4 h-4" />
         </div>
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden max-w-sm">
-          <div className="bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-4 text-white">
+          <div className="bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-4 text-white">
             <p className="text-[10px] font-bold tracking-widest uppercase opacity-80">STUDYAI · AVALIAÇÃO</p>
             <h3 className="text-base font-bold mt-1">{prova.titulo}</h3>
             <div className="flex gap-3 mt-2 text-xs opacity-90 flex-wrap">
@@ -133,7 +133,7 @@ function MessageBubble({ message }: { message: Message }) {
             {prova.questoes?.slice(0, 3).map((q: any, i: number) => (
               <div key={i} className="border border-gray-100 rounded-xl p-2.5">
                 <div className="flex items-center gap-2 mb-1.5">
-                  <span className="w-5 h-5 rounded-md bg-indigo-50 text-indigo-600 text-[10px] font-bold flex items-center justify-center">{q.numero ?? i + 1}</span>
+                  <span className="w-5 h-5 rounded-md bg-violet-50 text-violet-600 text-[10px] font-bold flex items-center justify-center">{q.numero ?? i + 1}</span>
                   <span className="text-[10px] text-gray-400 uppercase font-semibold">{q.tipo === "multipla_escolha" ? "Múltipla escolha" : "Dissertativa"}</span>
                 </div>
                 <p className="text-xs text-gray-700 line-clamp-2">{q.enunciado}</p>
@@ -146,7 +146,7 @@ function MessageBubble({ message }: { message: Message }) {
           <div className="border-t border-gray-100 p-3 flex justify-center">
             <button
               onClick={() => navigate("/notebook")}
-              className="bg-indigo-600 text-white px-5 py-2 rounded-xl text-xs font-semibold hover:bg-indigo-700 transition-colors"
+              className="bg-violet-600 text-white px-5 py-2 rounded-xl text-xs font-semibold hover:bg-violet-700 transition-colors"
             >
               Iniciar Prova →
             </button>

@@ -318,7 +318,7 @@ export function TiagaoCharacter({
                 key={i}
                 animate={{ scaleY: [0.3, 1, 0.3] }}
                 transition={{ repeat: Infinity, duration: 0.65, delay: delay / 1000, ease: "easeInOut" }}
-                className="w-1 bg-indigo-400 rounded-full origin-bottom"
+                className="w-1 bg-violet-400 rounded-full origin-bottom"
                 style={{ height: [5, 8, 10, 8, 5][i] }}
               />
             ))}
@@ -328,7 +328,7 @@ export function TiagaoCharacter({
           <motion.div
             animate={{ scale: [1, 1.4, 1], opacity: [0.7, 1, 0.7] }}
             transition={{ repeat: Infinity, duration: 0.9, ease: "easeInOut" }}
-            className="absolute -top-1 right-1 w-3 h-3 rounded-full bg-blue-400 shadow-md"
+            className="absolute -top-1 right-1 w-3 h-3 rounded-full bg-violet-400 shadow-md"
           />
         )}
       </motion.div>
@@ -407,7 +407,7 @@ export function TiagaoDemo() {
             onClick={() => setState(s)}
             className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
               state === s
-                ? "bg-indigo-600 text-white shadow-lg scale-105"
+                ? "bg-violet-600 text-white shadow-lg scale-105"
                 : "bg-white/10 text-white/60 hover:bg-white/20"
             }`}
           >

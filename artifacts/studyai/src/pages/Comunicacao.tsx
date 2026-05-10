@@ -146,14 +146,14 @@ const HISTORICO_ENVIOS: Envio[] = [
 // ─── Sub-componentes ─────────────────────────────────────────────────────────
 const CANAL_ICONS: Record<Canal, { icon: string; label: string; color: string; bg: string }> = {
   whatsapp: { icon: "💬", label: "WhatsApp", color: "text-green-700", bg: "bg-green-50 border-green-200" },
-  email:    { icon: "📧", label: "Email",    color: "text-blue-700",  bg: "bg-blue-50 border-blue-200"   },
-  push:     { icon: "🔔", label: "Push",     color: "text-indigo-700",bg: "bg-indigo-50 border-indigo-200"},
+  email:    { icon: "📧", label: "Email",    color: "text-violet-700",  bg: "bg-violet-50 border-violet-200"   },
+  push:     { icon: "🔔", label: "Push",     color: "text-violet-700",bg: "bg-violet-50 border-violet-200"},
   sms:      { icon: "📱", label: "SMS",      color: "text-orange-700",bg: "bg-orange-50 border-orange-200"},
 };
 
 const TOM_CONFIG: Record<Tom, { label: string; color: string; bg: string }> = {
   motivacional: { label: "Motivacional", color: "text-amber-700",   bg: "bg-amber-50"   },
-  informativo:  { label: "Informativo",  color: "text-blue-700",    bg: "bg-blue-50"    },
+  informativo:  { label: "Informativo",  color: "text-violet-700",    bg: "bg-violet-50"    },
   urgente:      { label: "Urgente",      color: "text-red-700",     bg: "bg-red-50"     },
   celebratorio: { label: "Celebratório", color: "text-emerald-700", bg: "bg-emerald-50" },
   alerta:       { label: "Alerta",       color: "text-orange-700",  bg: "bg-orange-50"  },
@@ -161,7 +161,7 @@ const TOM_CONFIG: Record<Tom, { label: string; color: string; bg: string }> = {
 
 const STATUS_CONFIG = {
   enviado:  { label: "Enviado",  color: "text-slate-500",   bg: "bg-slate-100",   icon: "📤" },
-  aberto:   { label: "Aberto",   color: "text-blue-600",    bg: "bg-blue-50",     icon: "👁"  },
+  aberto:   { label: "Aberto",   color: "text-violet-600",    bg: "bg-violet-50",     icon: "👁"  },
   clicado:  { label: "Clicado",  color: "text-emerald-600", bg: "bg-emerald-50",  icon: "✅" },
   falhou:   { label: "Falhou",   color: "text-red-600",     bg: "bg-red-50",      icon: "❌" },
 };
@@ -246,7 +246,7 @@ function TestSendModal({ trigger, onClose }: { trigger: Trigger; onClose: () => 
               <label className="text-xs font-black text-slate-500 uppercase block mb-1">Email de teste</label>
               <input value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="aluno@exemplo.com"
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
             </div>
             {trigger.canal.includes("whatsapp") && (
               <div>
@@ -258,7 +258,7 @@ function TestSendModal({ trigger, onClose }: { trigger: Trigger; onClose: () => 
             )}
             {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{error}</p>}
             <button onClick={handleSend} disabled={loading}
-              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-60">
+              className="w-full py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-60">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               {loading ? "Enviando..." : "Enviar teste"}
             </button>
@@ -317,7 +317,7 @@ export default function ComunicacaoPage() {
                 Zero aluno perdido, zero professor sobrecarregado — mensagens automáticas e inteligentes.
               </p>
             </div>
-            <button className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition-all shadow-md shadow-indigo-200">
+            <button className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl text-sm transition-all shadow-md shadow-violet-200">
               <Plus className="w-4 h-4" /> Novo trigger
             </button>
           </div>
@@ -325,10 +325,10 @@ export default function ComunicacaoPage() {
           {/* Métricas */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
             {[
-              { label: "Disparos totais", value: totalDisparos.toLocaleString("pt-BR"), icon: "📤", color: "bg-indigo-50 border-indigo-200" },
+              { label: "Disparos totais", value: totalDisparos.toLocaleString("pt-BR"), icon: "📤", color: "bg-violet-50 border-violet-200" },
               { label: "Triggers ativos", value: totalAtivos.toString(), icon: "⚡", color: "bg-emerald-50 border-emerald-200" },
               { label: "Taxa média abertura", value: `${mediaAbertura}%`, icon: "👁", color: "bg-amber-50 border-amber-200" },
-              { label: "Canais configurados", value: "4", icon: "📡", color: "bg-indigo-50 border-indigo-200" },
+              { label: "Canais configurados", value: "4", icon: "📡", color: "bg-violet-50 border-violet-200" },
             ].map((m, i) => (
               <div key={i} className={cn("rounded-2xl border p-4", m.color)}>
                 <p className="text-2xl mb-1">{m.icon}</p>
@@ -370,7 +370,7 @@ export default function ComunicacaoPage() {
             <button key={t.id} onClick={() => setTab(t.id)}
               className={cn(
                 "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap flex-1 justify-center",
-                tab === t.id ? "bg-indigo-600 text-white shadow" : "text-slate-500 hover:bg-slate-50"
+                tab === t.id ? "bg-violet-600 text-white shadow" : "text-slate-500 hover:bg-slate-50"
               )}>
               <t.icon className="w-4 h-4" /> {t.label}
             </button>
@@ -388,7 +388,7 @@ export default function ComunicacaoPage() {
                   className={cn(
                     "px-3 py-1 rounded-full text-xs font-bold transition-all border",
                     filtroCanal === c
-                      ? "bg-indigo-600 text-white border-indigo-600"
+                      ? "bg-violet-600 text-white border-violet-600"
                       : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
                   )}>
                   {c === "todos" ? "Todos" : CANAL_ICONS[c].icon + " " + CANAL_ICONS[c].label}
@@ -400,7 +400,7 @@ export default function ComunicacaoPage() {
               <motion.div key={trigger.id} layout
                 className={cn(
                   "bg-white rounded-2xl border p-4 flex flex-col sm:flex-row sm:items-center gap-4 transition-all",
-                  trigger.status === "pausado" ? "opacity-60 border-slate-200" : "border-slate-200 hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-50"
+                  trigger.status === "pausado" ? "opacity-60 border-slate-200" : "border-slate-200 hover:border-violet-200 hover:shadow-md hover:shadow-violet-50"
                 )}>
                 <div className="flex items-start gap-3 flex-1">
                   <span className="text-2xl flex-shrink-0 mt-0.5">{trigger.icon}</span>
@@ -410,7 +410,7 @@ export default function ComunicacaoPage() {
                       <TomBadge tom={trigger.tom} />
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5">{trigger.descricao}</p>
-                    <code className="text-[10px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded font-mono mt-1 inline-block">{trigger.condicao}</code>
+                    <code className="text-[10px] text-violet-600 bg-violet-50 px-2 py-0.5 rounded font-mono mt-1 inline-block">{trigger.condicao}</code>
                     <div className="flex gap-1.5 mt-2 flex-wrap">
                       {trigger.canal.map(c => <CanalBadge key={c} canal={c} />)}
                     </div>
@@ -439,7 +439,7 @@ export default function ComunicacaoPage() {
                       {trigger.status === "ativo" ? <><ToggleRight className="w-3.5 h-3.5" /> Ativo</> : <><ToggleLeft className="w-3.5 h-3.5" /> Pausado</>}
                     </button>
                     <button onClick={() => setTestTrigger(trigger)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100 transition-all">
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-violet-50 text-violet-600 border border-violet-200 hover:bg-violet-100 transition-all">
                       <Send className="w-3.5 h-3.5" /> Testar
                     </button>
                   </div>
@@ -475,12 +475,12 @@ export default function ComunicacaoPage() {
                           <p className="text-xs font-black text-slate-400 uppercase mb-1.5">Variáveis dinâmicas</p>
                           <div className="flex flex-wrap gap-2">
                             {t.variaveis.map(v => (
-                              <code key={v} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded text-xs font-mono font-bold">{v}</code>
+                              <code key={v} className="px-2 py-0.5 bg-violet-50 text-violet-700 rounded text-xs font-mono font-bold">{v}</code>
                             ))}
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1.5">
+                          <button className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1.5">
                             <Settings className="w-3.5 h-3.5" /> Editar template
                           </button>
                           <button className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs transition-all flex items-center gap-1.5">
@@ -571,7 +571,7 @@ export default function ComunicacaoPage() {
                   <div key={row.canal} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm">
                     <p className="font-bold text-slate-700">{row.canal}</p>
                     <p className="text-slate-500">{row.dias} · {row.janela}</p>
-                    <button className="text-indigo-600 text-xs font-bold hover:underline">Editar</button>
+                    <button className="text-violet-600 text-xs font-bold hover:underline">Editar</button>
                   </div>
                 ))}
               </div>

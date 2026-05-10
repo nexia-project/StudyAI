@@ -86,18 +86,18 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-purple-50">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur border-b border-indigo-100 px-4 py-3 flex items-center gap-3">
+      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur border-b border-violet-100 px-4 py-3 flex items-center gap-3">
         <button
           onClick={() => navigate("/app")}
-          className="flex items-center gap-1.5 text-gray-500 hover:text-indigo-700 text-sm font-medium transition-colors"
+          className="flex items-center gap-1.5 text-gray-500 hover:text-violet-700 text-sm font-medium transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Voltar
         </button>
         <span className="text-gray-300">|</span>
         <div className="flex items-center gap-2">
-          <Crown className="w-4 h-4 text-indigo-600" />
-          <span className="font-bold text-indigo-700 text-sm">StudyAI Premium</span>
+          <Crown className="w-4 h-4 text-violet-600" />
+          <span className="font-bold text-violet-700 text-sm">StudyAI Premium</span>
         </div>
       </div>
 
@@ -122,13 +122,13 @@ export default function PricingPage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12"
         >
-          <div className="inline-flex items-center gap-2 bg-indigo-100 text-indigo-700 px-4 py-1.5 rounded-full text-sm font-semibold mb-4">
+          <div className="inline-flex items-center gap-2 bg-violet-100 text-violet-700 px-4 py-1.5 rounded-full text-sm font-semibold mb-4">
             <Sparkles className="w-4 h-4" />
             Desbloqueie todo o potencial do StudyAI
           </div>
           <h1 className="text-4xl font-black text-gray-900 mb-3">
             Estude mais inteligente,<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-indigo-600">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-fuchsia-600">
               alcance seus objetivos
             </span>
           </h1>
@@ -179,7 +179,7 @@ export default function PricingPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="relative bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-3xl p-6 shadow-xl text-white overflow-hidden flex flex-col md:-mt-4 md:mb-0"
+            className="relative bg-gradient-to-br from-violet-600 to-violet-700 rounded-3xl p-6 shadow-xl text-white overflow-hidden flex flex-col md:-mt-4 md:mb-0"
           >
             <div className="absolute -top-8 -right-8 w-32 h-32 bg-white/10 rounded-full" />
             <div className="absolute -bottom-4 -left-4 w-20 h-20 bg-white/10 rounded-full" />
@@ -189,14 +189,14 @@ export default function PricingPage() {
                 <div>
                   <div className="flex items-center gap-1.5 mb-1">
                     <Crown className="w-4 h-4 text-yellow-300" />
-                    <p className="text-xs font-semibold text-indigo-200 uppercase tracking-widest">Pro</p>
+                    <p className="text-xs font-semibold text-violet-200 uppercase tracking-widest">Pro</p>
                   </div>
                   <div className="flex items-baseline gap-0.5">
                     <span className="text-4xl font-black">R$29</span>
                     <span className="text-2xl font-black">,90</span>
-                    <span className="text-indigo-300 ml-1">/mês</span>
+                    <span className="text-violet-300 ml-1">/mês</span>
                   </div>
-                  <p className="text-sm text-indigo-200 mt-1">Cancele quando quiser</p>
+                  <p className="text-sm text-violet-200 mt-1">Cancele quando quiser</p>
                 </div>
                 <div className="bg-yellow-400 text-yellow-900 text-xs font-black px-2.5 py-1 rounded-full whitespace-nowrap">
                   + POPULAR
@@ -236,7 +236,7 @@ export default function PricingPage() {
                 <button
                   onClick={handleCheckout}
                   disabled={checkoutLoading}
-                  className="w-full py-3 rounded-2xl bg-white text-indigo-700 font-black text-sm hover:bg-indigo-50 hover:scale-[1.02] transition-all shadow-lg flex items-center justify-center gap-2"
+                  className="w-full py-3 rounded-2xl bg-white text-violet-700 font-black text-sm hover:bg-violet-50 hover:scale-[1.02] transition-all shadow-lg flex items-center justify-center gap-2"
                 >
                   {checkoutLoading ? (
                     <>
@@ -259,7 +259,7 @@ export default function PricingPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-3xl border-2 border-indigo-200 p-6 shadow-sm flex flex-col relative overflow-hidden"
+            className="bg-white rounded-3xl border-2 border-violet-200 p-6 shadow-sm flex flex-col relative overflow-hidden"
           >
             <div className="absolute top-4 right-4 bg-emerald-100 text-emerald-700 text-xs font-black px-2.5 py-1 rounded-full border border-emerald-200">
               ECONOMIZE 50%
@@ -271,7 +271,7 @@ export default function PricingPage() {
                 <span className="text-xl font-black text-gray-900">,00</span>
                 <span className="text-gray-400">/ano</span>
               </div>
-              <p className="text-sm text-indigo-600 font-semibold mt-1">≈ R$14,92/mês · 6 meses de bônus</p>
+              <p className="text-sm text-violet-600 font-semibold mt-1">≈ R$14,92/mês · 6 meses de bônus</p>
             </div>
             <ul className="space-y-2.5 mb-6 flex-1">
               {[
@@ -282,7 +282,7 @@ export default function PricingPage() {
                 "6 meses grátis vs mensal",
               ].map((feat, i) => (
                 <li key={i} className="flex items-center gap-2.5 text-sm">
-                  <Check className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                  <Check className="w-4 h-4 text-violet-500 flex-shrink-0" />
                   <span className="text-gray-700">{feat}</span>
                 </li>
               ))}
@@ -290,7 +290,7 @@ export default function PricingPage() {
             <button
               onClick={handleCheckout}
               disabled={checkoutLoading || subLoading}
-              className="w-full py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-600 text-white font-black text-sm hover:from-indigo-500 hover:to-purple-500 hover:scale-[1.02] transition-all shadow-md flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black text-sm hover:from-violet-500 hover:to-purple-500 hover:scale-[1.02] transition-all shadow-md flex items-center justify-center gap-2"
             >
               {isPremium ? (
                 <><Crown className="w-4 h-4 text-yellow-300" /> Você já é Premium!</>

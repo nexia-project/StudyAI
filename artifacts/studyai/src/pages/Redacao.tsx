@@ -37,8 +37,8 @@ interface RedacaoResult {
 }
 
 const COMP_COLORS = [
-  { bar: "bg-indigo-500", light: "bg-indigo-50", border: "border-indigo-200", text: "text-indigo-700", emoji: "📝" },
-  { bar: "bg-blue-500",   light: "bg-blue-50",   border: "border-blue-200",   text: "text-blue-700",   emoji: "🌍" },
+  { bar: "bg-violet-500", light: "bg-violet-50", border: "border-violet-200", text: "text-violet-700", emoji: "📝" },
+  { bar: "bg-violet-500",   light: "bg-violet-50",   border: "border-violet-200",   text: "text-violet-700",   emoji: "🌍" },
   { bar: "bg-emerald-500",light: "bg-emerald-50",border: "border-emerald-200",text: "text-emerald-700",emoji: "🧩" },
   { bar: "bg-amber-500",  light: "bg-amber-50",  border: "border-amber-200",  text: "text-amber-700",  emoji: "🔗" },
   { bar: "bg-rose-500",   light: "bg-rose-50",   border: "border-rose-200",   text: "text-rose-700",   emoji: "💡" },
@@ -46,8 +46,8 @@ const COMP_COLORS = [
 
 function getNivelColor(nota: number) {
   if (nota >= 900) return { label: "Nota 1000 🏆", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-300" };
-  if (nota >= 800) return { label: "Excelente ⭐", color: "text-indigo-700", bg: "bg-indigo-50", border: "border-indigo-300" };
-  if (nota >= 700) return { label: "Muito Bom 👏", color: "text-blue-700", bg: "bg-blue-50", border: "border-blue-300" };
+  if (nota >= 800) return { label: "Excelente ⭐", color: "text-violet-700", bg: "bg-violet-50", border: "border-violet-300" };
+  if (nota >= 700) return { label: "Muito Bom 👏", color: "text-violet-700", bg: "bg-violet-50", border: "border-violet-300" };
   if (nota >= 600) return { label: "Bom 📈", color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-300" };
   if (nota >= 400) return { label: "Regular ✏️", color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-300" };
   return { label: "Iniciante 💪", color: "text-rose-700", bg: "bg-rose-50", border: "border-rose-300" };
@@ -188,17 +188,17 @@ export default function Redacao() {
   if (subLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!isPremium) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-indigo-50 md:pl-64 pt-14 md:pt-0">
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-violet-50 md:pl-64 pt-14 md:pt-0">
         <AppNav />
         <div className="flex flex-col items-center justify-center gap-6 p-8 pt-8 md:pt-16">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-200">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-xl shadow-violet-200">
             <PenLine className="w-10 h-10 text-white" />
           </div>
           <div className="text-center">
@@ -208,7 +208,7 @@ export default function Redacao() {
           <button
             onClick={async () => { setCheckoutLoading(true); try { await startCheckout(); } catch { navigate("/pricing"); } finally { setCheckoutLoading(false); } }}
             disabled={checkoutLoading}
-            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-600 text-white font-black shadow-lg hover:opacity-90 transition-opacity disabled:opacity-60"
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black shadow-lg hover:opacity-90 transition-opacity disabled:opacity-60"
           >
             <Sparkles className="w-5 h-5" />
             {checkoutLoading ? "Aguarde..." : "Assinar Premium — R$29,90/mês"}
@@ -219,12 +219,12 @@ export default function Redacao() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-indigo-50/40 md:pl-64 pt-14 md:pt-0">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50/30 to-violet-50/40 md:pl-64 pt-14 md:pt-0">
       <AppNav />
       {/* Sub-header */}
       <div className="sticky top-14 md:top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-slate-100">
         <div className="max-w-3xl mx-auto px-4 py-2.5 flex items-center gap-3">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow flex-shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow flex-shrink-0">
             <PenLine className="w-3.5 h-3.5 text-white" />
           </div>
           <div className="flex-1 min-w-0">
@@ -235,7 +235,7 @@ export default function Redacao() {
             <button
               onClick={() => setActiveTab("nova")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                activeTab === "nova" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                activeTab === "nova" ? "bg-white text-violet-700 shadow-sm" : "text-slate-500 hover:text-slate-700"
               }`}
             >
               <Plus className="w-3 h-3" />
@@ -244,11 +244,11 @@ export default function Redacao() {
             <button
               onClick={() => setActiveTab("historico")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                activeTab === "historico" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                activeTab === "historico" ? "bg-white text-violet-700 shadow-sm" : "text-slate-500 hover:text-slate-700"
               }`}
             >
               <History className="w-3 h-3" />
-              Histórico {historico.length > 0 && <span className="text-indigo-500">({historico.length})</span>}
+              Histórico {historico.length > 0 && <span className="text-violet-500">({historico.length})</span>}
             </button>
           </div>
         </div>
@@ -266,11 +266,11 @@ export default function Redacao() {
               className="space-y-5"
             >
               {/* Score Hero */}
-              <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-3xl p-8 text-white text-center relative overflow-hidden">
+              <div className="bg-gradient-to-br from-violet-600 to-violet-700 rounded-3xl p-8 text-white text-center relative overflow-hidden">
                 <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
-                <p className="text-indigo-200 font-bold text-sm uppercase tracking-widest mb-2">Sua Nota ENEM</p>
+                <p className="text-violet-200 font-bold text-sm uppercase tracking-widest mb-2">Sua Nota ENEM</p>
                 <p className="text-8xl font-black leading-none mb-1">{result.notaTotal}</p>
-                <p className="text-indigo-200 text-lg font-semibold">de 1000 pontos</p>
+                <p className="text-violet-200 text-lg font-semibold">de 1000 pontos</p>
                 <div className={`inline-flex items-center gap-2 mt-4 px-5 py-2 rounded-full ${nivelInfo.bg} ${nivelInfo.border} border font-black text-sm ${nivelInfo.color}`}>
                   <Star className="w-4 h-4" />
                   {nivelInfo.label}
@@ -281,7 +281,7 @@ export default function Redacao() {
               <div className="flex gap-3">
                 <button
                   onClick={handleShare}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black text-sm transition-all"
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 font-black text-sm transition-all"
                 >
                   {copied ? <Check className="w-4 h-4 text-green-500" /> : <Share2 className="w-4 h-4" />}
                   {copied ? "Copiado! 💬" : "Compartilhar"}
@@ -289,7 +289,7 @@ export default function Redacao() {
                 <button
                   onClick={handleOuvir}
                   disabled={ttsLoading}
-                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black text-sm transition-all disabled:opacity-60"
+                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 font-black text-sm transition-all disabled:opacity-60"
                   title="Ouvir avaliação em voz"
                 >
                   {ttsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : ttsPlaying ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
@@ -368,8 +368,8 @@ export default function Redacao() {
                   <p className="text-xs font-black text-slate-400 uppercase tracking-wider mb-2">💬 Avaliação Geral</p>
                   <p className="text-sm text-slate-600 leading-relaxed">{result.comentarioGeral}</p>
                 </div>
-                <div className="bg-indigo-50 rounded-2xl border border-indigo-200 shadow-sm p-5">
-                  <p className="text-xs font-black text-indigo-500 uppercase tracking-wider mb-2">🚀 Próximos Passos</p>
+                <div className="bg-violet-50 rounded-2xl border border-violet-200 shadow-sm p-5">
+                  <p className="text-xs font-black text-violet-500 uppercase tracking-wider mb-2">🚀 Próximos Passos</p>
                   <p className="text-sm text-slate-600 leading-relaxed">{result.proximosPasso}</p>
                 </div>
               </div>
@@ -393,15 +393,15 @@ export default function Redacao() {
             className="space-y-5"
           >
             {/* Header card */}
-            <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-3xl p-7 text-white">
+            <div className="bg-gradient-to-br from-violet-600 to-violet-700 rounded-3xl p-7 text-white">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center text-2xl">✍️</div>
                 <div>
                   <h2 className="font-black text-xl leading-tight">Corretor de Redação ENEM</h2>
-                  <p className="text-indigo-200 text-sm font-semibold">Avaliação por IA nas 5 competências oficiais</p>
+                  <p className="text-violet-200 text-sm font-semibold">Avaliação por IA nas 5 competências oficiais</p>
                 </div>
               </div>
-              <p className="text-indigo-100 text-sm leading-relaxed">
+              <p className="text-violet-100 text-sm leading-relaxed">
                 Cole sua redação abaixo e receba uma avaliação detalhada com nota estimada, pontos fortes e o que melhorar — como um corretor especializado.
               </p>
             </div>
@@ -422,7 +422,7 @@ export default function Redacao() {
                     <button
                       onClick={gerarImagemTema}
                       disabled={loadingTemaImg}
-                      className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-full transition-all disabled:opacity-50"
+                      className="flex items-center gap-1.5 text-xs font-bold text-violet-600 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-full transition-all disabled:opacity-50"
                     >
                       {loadingTemaImg ? (
                         <><Loader2 className="w-3 h-3 animate-spin" /> Gerando...</>
@@ -445,7 +445,7 @@ export default function Redacao() {
                   value={tema}
                   onChange={(e) => { setTema(e.target.value); setTemaImagem(null); }}
                   placeholder="Ex: Desafios para a democratização do acesso à internet no Brasil"
-                  className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 text-sm font-medium transition-all"
+                  className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 text-sm font-medium transition-all"
                 />
                 <AnimatePresence>
                   {temaImagem && (
@@ -455,15 +455,15 @@ export default function Redacao() {
                       exit={{ opacity: 0, y: -8, height: 0 }}
                       className="mt-3 overflow-hidden"
                     >
-                      <div className="rounded-2xl overflow-hidden border border-indigo-100 shadow-md">
+                      <div className="rounded-2xl overflow-hidden border border-violet-100 shadow-md">
                         <img
                           src={temaImagem}
                           alt={`Visualização do tema: ${tema}`}
                           className="w-full object-cover max-h-72"
                         />
-                        <div className="bg-gradient-to-r from-violet-50 to-indigo-50 px-4 py-2.5 flex items-center gap-2">
-                          <ImageIcon className="w-3.5 h-3.5 text-indigo-400" />
-                          <p className="text-xs text-indigo-600 font-semibold">
+                        <div className="bg-gradient-to-r from-violet-50 to-violet-50 px-4 py-2.5 flex items-center gap-2">
+                          <ImageIcon className="w-3.5 h-3.5 text-violet-400" />
+                          <p className="text-xs text-violet-600 font-semibold">
                             Infográfico do tema gerado por IA — use como inspiração para seus repertórios
                           </p>
                         </div>
@@ -485,7 +485,7 @@ export default function Redacao() {
                   onChange={(e) => setTexto(e.target.value)}
                   rows={16}
                   placeholder={`Escreva ou cole sua redação aqui...\n\nDica: uma boa redação ENEM tem entre 250 e 350 palavras (7 linhas de introdução + desenvolvimento + conclusão).\n\nVocê pode escrever sobre qualquer tema — a IA avalia o texto completo mesmo sem tema definido.`}
-                  className="w-full px-4 py-4 rounded-2xl border-2 border-slate-200 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 text-sm font-medium leading-relaxed resize-y transition-all min-h-[300px]"
+                  className="w-full px-4 py-4 rounded-2xl border-2 border-slate-200 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 text-sm font-medium leading-relaxed resize-y transition-all min-h-[300px]"
                 />
                 {wordCount > 0 && wordCount < 150 && (
                   <p className="text-xs text-amber-500 font-semibold mt-1.5 flex items-center gap-1">
@@ -504,7 +504,7 @@ export default function Redacao() {
               <button
                 onClick={handleSubmit}
                 disabled={loading || texto.trim().length < 100}
-                className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-600 text-white font-black text-base shadow-lg shadow-indigo-200 hover:opacity-95 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:translate-y-0"
+                className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black text-base shadow-lg shadow-violet-200 hover:opacity-95 hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:translate-y-0"
               >
                 {loading ? (
                   <>
@@ -563,7 +563,7 @@ export default function Redacao() {
                 <h2 className="font-black text-slate-800 text-base">Suas Redações Corrigidas</h2>
                 <button
                   onClick={() => setActiveTab("nova")}
-                  className="flex items-center gap-1.5 text-sm text-indigo-600 font-bold hover:underline"
+                  className="flex items-center gap-1.5 text-sm text-violet-600 font-bold hover:underline"
                 >
                   <Plus className="w-4 h-4" />
                   Nova Redação
@@ -576,7 +576,7 @@ export default function Redacao() {
                   <p className="text-slate-400 text-sm mt-1">Escreva e envie sua primeira redação para ver o histórico aqui.</p>
                   <button
                     onClick={() => setActiveTab("nova")}
-                    className="mt-4 px-5 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-colors"
+                    className="mt-4 px-5 py-2 bg-violet-600 text-white rounded-xl text-sm font-bold hover:bg-violet-700 transition-colors"
                   >
                     Escrever Redação
                   </button>
@@ -597,7 +597,7 @@ export default function Redacao() {
                             </p>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <p className="text-2xl font-black text-indigo-700">{r.scoreTotal}</p>
+                            <p className="text-2xl font-black text-violet-700">{r.scoreTotal}</p>
                             <p className={`text-xs font-bold ${nivelR.color}`}>{nivelR.label}</p>
                           </div>
                         </div>

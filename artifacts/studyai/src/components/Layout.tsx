@@ -30,21 +30,21 @@ interface PageHeaderProps {
 export function PageHeader({ icon, title, subtitle, actions, sticky = true, className }: PageHeaderProps) {
   return (
     <div className={cn(
-      "bg-white/80 backdrop-blur-xl border-b border-gray-100 z-20",
+      "z-20 border-b border-violet-200/45 bg-white/70 backdrop-blur-2xl shadow-sm shadow-violet-200/15",
       sticky && "sticky top-14 md:top-0",
       className
     )}>
-      <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
+      <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3.5">
         {icon && (
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0">
-            <span className="text-white [&>*]:w-4 [&>*]:h-4">{icon}</span>
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-fuchsia-500 via-violet-600 to-purple-800 shadow-md shadow-violet-400/25 ring-1 ring-white/30">
+            <span className="text-white [&>*]:h-4 [&>*]:w-4">{icon}</span>
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <h1 className="text-sm font-black text-gray-900 leading-tight">{title}</h1>
-          {subtitle && <p className="text-xs text-gray-500 leading-tight truncate">{subtitle}</p>}
+          <h1 className="text-sm font-black leading-tight tracking-tight text-purple-950">{title}</h1>
+          {subtitle && <p className="truncate text-xs leading-tight text-violet-600/75">{subtitle}</p>}
         </div>
-        {actions && <div className="flex items-center gap-2 flex-shrink-0">{actions}</div>}
+        {actions && <div className="flex flex-shrink-0 items-center gap-2">{actions}</div>}
       </div>
     </div>
   );

@@ -86,7 +86,7 @@ export function PomodoroWidget() {
       {/* Floating trigger button */}
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 left-6 z-40 w-14 h-14 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-300/40 flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+        className="fixed bottom-6 left-6 z-40 w-14 h-14 rounded-full bg-violet-600 hover:bg-violet-700 text-white shadow-xl shadow-violet-300/40 flex items-center justify-center transition-all hover:scale-110 active:scale-95"
         title="Pomodoro Timer"
       >
         <Timer className="w-6 h-6" />
@@ -107,7 +107,7 @@ export function PomodoroWidget() {
             {/* Header */}
             <div className="px-5 pt-5 pb-4 flex items-center justify-between border-b border-gray-50">
               <div className="flex items-center gap-2">
-                <Timer className="w-5 h-5 text-indigo-600" />
+                <Timer className="w-5 h-5 text-violet-600" />
                 <span className="font-black text-gray-900">Pomodoro</span>
               </div>
               <button
@@ -151,7 +151,7 @@ export function PomodoroWidget() {
                     className={cn(
                       "w-3 h-3 rounded-full transition-all",
                       i < (cycles % CYCLES_BEFORE_LONG_BREAK)
-                        ? "bg-indigo-500 scale-110"
+                        ? "bg-violet-500 scale-110"
                         : "bg-gray-200"
                     )}
                   />
@@ -174,7 +174,7 @@ export function PomodoroWidget() {
                 {phase === "idle" ? (
                   <button
                     onClick={startWork}
-                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-3 rounded-2xl flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 text-sm"
+                    className="flex-1 bg-violet-600 hover:bg-violet-700 text-white font-black py-3 rounded-2xl flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 text-sm"
                   >
                     <Play className="w-4 h-4" /> Iniciar Foco
                   </button>
@@ -186,7 +186,7 @@ export function PomodoroWidget() {
                         "flex-1 font-black py-3 rounded-2xl flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 text-sm",
                         running
                           ? "bg-yellow-100 hover:bg-yellow-200 text-yellow-700"
-                          : "bg-indigo-100 hover:bg-indigo-200 text-indigo-700"
+                          : "bg-violet-100 hover:bg-violet-200 text-violet-700"
                       )}
                     >
                       {running ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
@@ -205,7 +205,7 @@ export function PomodoroWidget() {
               {/* Tips */}
               <div className={cn(
                 "w-full rounded-2xl p-3 text-xs font-medium text-center transition-all",
-                phase === "work" ? "bg-indigo-50 text-indigo-700" : phase === "break" ? "bg-emerald-50 text-emerald-700" : "bg-gray-50 text-gray-500"
+                phase === "work" ? "bg-violet-50 text-violet-700" : phase === "break" ? "bg-emerald-50 text-emerald-700" : "bg-gray-50 text-gray-500"
               )}>
                 {phase === "work"
                   ? "📵 Celular na gaveta. Foco total por 25 min."

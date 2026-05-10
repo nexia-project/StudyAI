@@ -393,7 +393,7 @@ export default function LousaImersiva() {
   // ── LIBRARY VIEW ──────────────────────────────────────────────────────────
   if (view === "library") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950">
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-violet-950">
         {/* Header */}
         <div className="sticky top-0 z-20 bg-slate-950/80 backdrop-blur border-b border-slate-800 px-4 py-3 flex items-center gap-3">
           <button onClick={() => navigate("/dashboard")} className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition">
@@ -406,7 +406,7 @@ export default function LousaImersiva() {
           <div className="ml-auto">
             <button
               onClick={() => setView("create")}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold text-sm transition"
+              className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-semibold text-sm transition"
             >
               <Zap className="w-4 h-4" />
               Nova Aula
@@ -422,17 +422,17 @@ export default function LousaImersiva() {
           </div>
 
           {/* Quick create */}
-          <div className="bg-gradient-to-br from-indigo-900/60 to-slate-900/60 border border-indigo-700/40 rounded-2xl p-6 mb-8">
+          <div className="bg-gradient-to-br from-violet-900/60 to-slate-900/60 border border-violet-700/40 rounded-2xl p-6 mb-8">
             <div className="flex flex-col sm:flex-row gap-3">
               <input
-                className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-violet-500"
                 placeholder="Ex: Lei de Ohm, Revolução Francesa, Equações do 2º grau..."
                 value={topic}
                 onChange={e => setTopic(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && createLesson()}
               />
               <select
-                className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:border-indigo-500"
+                className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:border-violet-500"
                 value={subject}
                 onChange={e => setSubject(e.target.value)}
               >
@@ -441,7 +441,7 @@ export default function LousaImersiva() {
               <button
                 onClick={createLesson}
                 disabled={!topic.trim() || creating}
-                className="flex items-center gap-2 px-5 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl font-bold text-sm transition"
+                className="flex items-center gap-2 px-5 py-3 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white rounded-xl font-bold text-sm transition"
               >
                 {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                 Gerar Aula
@@ -453,7 +453,7 @@ export default function LousaImersiva() {
           {/* Lessons grid */}
           {loadingLessons ? (
             <div className="flex justify-center py-16">
-              <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
+              <Loader2 className="w-8 h-8 animate-spin text-violet-400" />
             </div>
           ) : lessons.length === 0 ? (
             <div className="text-center py-16">
@@ -469,7 +469,7 @@ export default function LousaImersiva() {
                   onClick={() => l.status === "ready" ? openPlayer(l.id) : undefined}
                   className={`relative bg-slate-900 border rounded-2xl p-5 group transition ${
                     l.status === "ready"
-                      ? "border-slate-700 hover:border-indigo-500 cursor-pointer"
+                      ? "border-slate-700 hover:border-violet-500 cursor-pointer"
                       : "border-slate-800 opacity-70"
                   }`}
                 >
@@ -477,7 +477,7 @@ export default function LousaImersiva() {
                   <div className="w-full aspect-video bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl mb-4 flex items-center justify-center border border-slate-700 overflow-hidden">
                     {l.status === "generating" ? (
                       <div className="flex flex-col items-center gap-2">
-                        <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+                        <Loader2 className="w-6 h-6 animate-spin text-violet-400" />
                         <span className="text-slate-500 text-xs">Gerando...</span>
                       </div>
                     ) : l.status === "error" ? (
@@ -527,7 +527,7 @@ export default function LousaImersiva() {
   // ── CREATE VIEW ───────────────────────────────────────────────────────────
   if (view === "create") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 flex flex-col">
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-violet-950 flex flex-col">
         <div className="sticky top-0 z-20 bg-slate-950/80 backdrop-blur border-b border-slate-800 px-4 py-3 flex items-center gap-3">
           <button onClick={() => setView("library")} className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition">
             <ChevronLeft className="w-5 h-5" />
@@ -547,7 +547,7 @@ export default function LousaImersiva() {
               <div>
                 <label className="text-slate-400 text-sm font-medium mb-1 block">Tópico *</label>
                 <input
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-violet-500"
                   placeholder="Ex: Função do 2º grau, Fotossíntese, Segunda Guerra..."
                   value={topic}
                   onChange={e => setTopic(e.target.value)}
@@ -560,7 +560,7 @@ export default function LousaImersiva() {
                 <div>
                   <label className="text-slate-400 text-sm font-medium mb-1 block">Matéria</label>
                   <select
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:border-violet-500"
                     value={subject}
                     onChange={e => setSubject(e.target.value)}
                   >
@@ -570,7 +570,7 @@ export default function LousaImersiva() {
                 <div>
                   <label className="text-slate-400 text-sm font-medium mb-1 block">Nível</label>
                   <select
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-white text-sm focus:outline-none focus:border-violet-500"
                     value={difficulty}
                     onChange={e => setDifficulty(e.target.value)}
                   >
@@ -584,7 +584,7 @@ export default function LousaImersiva() {
               <button
                 onClick={createLesson}
                 disabled={!topic.trim() || creating}
-                className="w-full flex items-center justify-center gap-2 py-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl font-bold text-base transition"
+                className="w-full flex items-center justify-center gap-2 py-4 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white rounded-xl font-bold text-base transition"
               >
                 {creating ? (
                   <><Loader2 className="w-5 h-5 animate-spin" /> Gerando aula...</>
@@ -649,7 +649,7 @@ export default function LousaImersiva() {
             <div className="relative mx-auto w-24 h-24 mb-6">
               <img src="/tiagao-thinking.png" alt="Tiagão pensando" className="w-24 h-24 object-contain" />
             </div>
-            <Loader2 className="w-6 h-6 animate-spin text-indigo-400 mx-auto mb-3" />
+            <Loader2 className="w-6 h-6 animate-spin text-violet-400 mx-auto mb-3" />
             <p className="text-white font-semibold">Preparando a aula...</p>
             <p className="text-slate-400 text-sm mt-1">O Professor Tiagão está organizando o roteiro</p>
           </div>
@@ -758,7 +758,7 @@ export default function LousaImersiva() {
                             )}
                             <button
                               onClick={continueAfterQuiz}
-                              className="mt-4 w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition"
+                              className="mt-4 w-full py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-bold transition"
                             >
                               {quizResult === "correct" ? "Próxima Etapa →" : "Rever esta Etapa"}
                             </button>
@@ -779,19 +779,19 @@ export default function LousaImersiva() {
                       className="absolute bottom-4 left-1/2 -translate-x-1/2 w-11/12 max-w-lg bg-slate-900 border border-slate-700 rounded-2xl p-4 z-15"
                     >
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-indigo-400 font-semibold text-sm">Tire sua dúvida com o Tiagão</span>
+                        <span className="text-violet-400 font-semibold text-sm">Tire sua dúvida com o Tiagão</span>
                         <button onClick={() => setShowQuestion(false)} className="text-slate-500 hover:text-white">
                           <X className="w-4 h-4" />
                         </button>
                       </div>
                       {answer && (
-                        <div className="bg-indigo-900/30 border border-indigo-700/40 rounded-xl p-3 mb-3 text-sm text-indigo-100">
+                        <div className="bg-violet-900/30 border border-violet-700/40 rounded-xl p-3 mb-3 text-sm text-violet-100">
                           {answer}
                         </div>
                       )}
                       <div className="flex gap-2">
                         <input
-                          className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                          className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500"
                           placeholder="O que você não entendeu?"
                           value={question}
                           onChange={e => setQuestion(e.target.value)}
@@ -801,7 +801,7 @@ export default function LousaImersiva() {
                         <button
                           onClick={askQuestion}
                           disabled={!question.trim() || asking}
-                          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition"
+                          className="px-4 py-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition"
                         >
                           {asking ? <Loader2 className="w-4 h-4 animate-spin" /> : "→"}
                         </button>
@@ -824,7 +824,7 @@ export default function LousaImersiva() {
               <div className="flex items-start gap-3 max-w-4xl mx-auto">
                 <img src="/tiagao-teaching.png" alt="Tiagão" className="w-8 h-8 object-contain shrink-0 md:hidden" />
                 <p className="text-slate-300 text-sm leading-relaxed flex-1 line-clamp-2">
-                  <span className="text-indigo-400 font-semibold mr-1">Tiagão:</span>
+                  <span className="text-violet-400 font-semibold mr-1">Tiagão:</span>
                   {etapa.narracao}
                 </p>
               </div>
@@ -857,7 +857,7 @@ export default function LousaImersiva() {
                     key={i}
                     onClick={() => goToStep(i)}
                     className={`w-2 h-2 rounded-full transition ${
-                      i === currentStep ? "bg-indigo-400 w-3" :
+                      i === currentStep ? "bg-violet-400 w-3" :
                       i < currentStep ? "bg-slate-600" :
                       e.tipo === "quiz" ? "bg-purple-700" :
                       "bg-slate-700"
@@ -884,7 +884,7 @@ export default function LousaImersiva() {
                 <button
                   onClick={togglePlay}
                   disabled={showQuiz}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl font-bold transition"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white rounded-xl font-bold transition"
                 >
                   {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                   {isPlaying ? "Pausar" : boardDone ? "Replay" : "Iniciar"}

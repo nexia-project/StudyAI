@@ -27,11 +27,11 @@ interface Item {
 
 const KIND_META: Record<Kind, { label: string; icon: any; color: string; group: "student" | "teacher" | "both" }> = {
   resumao:          { label: "Resumão",            icon: FileText,      color: "text-emerald-600 bg-emerald-50 border-emerald-200", group: "student" },
-  slides:           { label: "Slides",             icon: Presentation,  color: "text-indigo-600 bg-indigo-50 border-indigo-200",    group: "both" },
+  slides:           { label: "Slides",             icon: Presentation,  color: "text-violet-600 bg-violet-50 border-violet-200",    group: "both" },
   mapa_mental:      { label: "Mapa Mental",        icon: Brain,         color: "text-violet-600 bg-violet-50 border-violet-200",    group: "both" },
   infografico:      { label: "Infográfico",        icon: ImageIcon,     color: "text-rose-600 bg-rose-50 border-rose-200",          group: "student" },
   material_premium: { label: "Material Premium",   icon: Sparkles,      color: "text-amber-600 bg-amber-50 border-amber-200",       group: "teacher" },
-  lesson_plan:     { label: "Plano de Aula",      icon: BookOpen,      color: "text-blue-600 bg-blue-50 border-blue-200",          group: "teacher" },
+  lesson_plan:     { label: "Plano de Aula",      icon: BookOpen,      color: "text-violet-600 bg-violet-50 border-violet-200",          group: "teacher" },
   exam:             { label: "Prova",               icon: ClipboardList, color: "text-red-600 bg-red-50 border-red-200",             group: "teacher" },
   research:         { label: "Pesquisa",            icon: Microscope,    color: "text-cyan-600 bg-cyan-50 border-cyan-200",          group: "teacher" },
   content_package:  { label: "Pacote Completo",     icon: Layers,        color: "text-fuchsia-600 bg-fuchsia-50 border-fuchsia-200", group: "teacher" },
@@ -156,7 +156,7 @@ export default function MeusConteudosPage() {
   }, [items, search]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/40 md:pl-64 pt-14 md:pt-0">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50/40 md:pl-64 pt-14 md:pt-0">
       <AppNav />
       <div className="max-w-6xl mx-auto px-4 py-6 lg:py-10">
         <button onClick={() => navigate(-1 as any)} className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-6 text-sm font-semibold transition-colors">
@@ -176,18 +176,18 @@ export default function MeusConteudosPage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Buscar por título ou matéria..."
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500"
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-violet-500"
             />
           </div>
           <select value={kindFilter} onChange={e => setKindFilter(e.target.value as any)}
-            className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500">
+            className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-violet-500">
             <option value="">Todos os tipos</option>
             {Object.entries(KIND_META).map(([k, m]) => (
               <option key={k} value={k}>{m.label}</option>
             ))}
           </select>
           <select value={roleFilter} onChange={e => setRoleFilter(e.target.value as any)}
-            className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500">
+            className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-violet-500">
             <option value="">Aluno + Professor</option>
             <option value="student">Como Aluno</option>
             <option value="teacher">Como Professor</option>
@@ -196,7 +196,7 @@ export default function MeusConteudosPage() {
 
         {loading ? (
           <div className="text-center py-20">
-            <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mx-auto" />
+            <Loader2 className="w-8 h-8 text-violet-600 animate-spin mx-auto" />
             <p className="text-gray-500 mt-3 text-sm">Carregando seu histórico...</p>
           </div>
         ) : error ? (
@@ -233,7 +233,7 @@ export default function MeusConteudosPage() {
                       <p className="text-gray-500 text-xs mt-0.5">{formatDate(item.created_at)}</p>
                     </div>
                     <div className="flex gap-2 lg:flex-shrink-0">
-                      <button onClick={() => open(item)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-colors">
+                      <button onClick={() => open(item)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-colors">
                         <Eye className="w-3.5 h-3.5" /> Abrir
                       </button>
                       <button onClick={() => del(item)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-50 hover:bg-red-50 text-gray-500 hover:text-red-600 text-xs font-bold transition-colors">
@@ -254,7 +254,7 @@ export default function MeusConteudosPage() {
           <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
               <div className="min-w-0">
-                <p className="text-xs text-indigo-600 font-bold tracking-wider">{KIND_META[viewing.kind]?.label}</p>
+                <p className="text-xs text-violet-600 font-bold tracking-wider">{KIND_META[viewing.kind]?.label}</p>
                 <h2 className="font-black text-gray-900 truncate">{viewing.title}</h2>
               </div>
               <button onClick={() => setViewing(null)} className="text-gray-400 hover:text-gray-900 text-2xl leading-none px-3">×</button>
@@ -294,7 +294,7 @@ function ContentRenderer({ item }: { item: Item }) {
               <div key={i} className="rounded-xl border border-gray-200 bg-gray-50 p-3">
                 <p className="font-bold text-gray-900">{c.titulo}</p>
                 <p className="text-gray-600 text-xs mt-1">{c.explicacao}</p>
-                {c.comoMemorizar && <p className="text-indigo-700 text-xs mt-1.5">💡 {c.comoMemorizar}</p>}
+                {c.comoMemorizar && <p className="text-violet-700 text-xs mt-1.5">💡 {c.comoMemorizar}</p>}
               </div>
             ))}</div>
           </div>
@@ -312,7 +312,7 @@ function ContentRenderer({ item }: { item: Item }) {
           <div key={i} className="rounded-xl border border-gray-200 bg-gray-50 p-4">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xl">{s.emoji || "📄"}</span>
-              <span className="text-[10px] font-bold uppercase text-indigo-600 tracking-wider">{s.tipo}</span>
+              <span className="text-[10px] font-bold uppercase text-violet-600 tracking-wider">{s.tipo}</span>
             </div>
             <p className="font-bold text-gray-900 text-sm">{s.titulo}</p>
             {s.subtitulo && <p className="text-gray-500 text-xs mt-1">{s.subtitulo}</p>}
@@ -355,7 +355,7 @@ function ContentRenderer({ item }: { item: Item }) {
               <ul className="mt-2 space-y-1 text-xs">{q.alternatives?.map((a: string, j: number) => (
                 <li key={j} className={j === q.correct ? "text-emerald-700 font-bold" : "text-gray-600"}>{a}</li>
               ))}</ul>
-              {q.explanation && <p className="text-indigo-700 text-xs mt-2"><strong>Explicação:</strong> {q.explanation}</p>}
+              {q.explanation && <p className="text-violet-700 text-xs mt-2"><strong>Explicação:</strong> {q.explanation}</p>}
             </div>
           ))}</div>
         )}
@@ -369,7 +369,7 @@ function ContentRenderer({ item }: { item: Item }) {
       <div className="space-y-4 text-sm">
         {(p.disciplina || p.serie || p.duracao) && (
           <div className="flex flex-wrap gap-2">
-            {p.disciplina && <span className="text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-full">{p.disciplina}</span>}
+            {p.disciplina && <span className="text-xs font-bold bg-violet-50 text-violet-700 border border-violet-200 px-2.5 py-1 rounded-full">{p.disciplina}</span>}
             {p.serie && <span className="text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full">{p.serie}</span>}
             {p.duracao && <span className="text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full">⏱ {p.duracao}</span>}
           </div>
@@ -381,8 +381,8 @@ function ContentRenderer({ item }: { item: Item }) {
         {plano?.conteudos?.length > 0 && (
           <div><h3 className="font-black text-gray-900 mb-1">Conteúdos</h3><ul className="list-disc pl-5 text-gray-700 space-y-1">{plano.conteudos.map((c: string, i: number) => <li key={i}>{c}</li>)}</ul></div>
         )}
-        {plano?.abertura && <div className="rounded-xl border border-blue-200 bg-blue-50 p-3"><p className="font-bold text-blue-900">🚪 Abertura ({plano.abertura.duracao})</p><p className="text-gray-700 text-xs mt-1">{plano.abertura.descricao}</p>{plano.abertura.atividade && <p className="text-gray-600 text-xs mt-1 italic">Atividade: {plano.abertura.atividade}</p>}</div>}
-        {plano?.desenvolvimento && <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3"><p className="font-bold text-indigo-900">📚 Desenvolvimento ({plano.desenvolvimento.duracao})</p><p className="text-gray-700 text-xs mt-1">{plano.desenvolvimento.descricao}</p>{plano.desenvolvimento.atividades?.length > 0 && <ul className="list-disc pl-5 text-gray-600 text-xs mt-1.5 space-y-0.5">{plano.desenvolvimento.atividades.map((a: string, i: number) => <li key={i}>{a}</li>)}</ul>}</div>}
+        {plano?.abertura && <div className="rounded-xl border border-violet-200 bg-violet-50 p-3"><p className="font-bold text-violet-900">🚪 Abertura ({plano.abertura.duracao})</p><p className="text-gray-700 text-xs mt-1">{plano.abertura.descricao}</p>{plano.abertura.atividade && <p className="text-gray-600 text-xs mt-1 italic">Atividade: {plano.abertura.atividade}</p>}</div>}
+        {plano?.desenvolvimento && <div className="rounded-xl border border-violet-200 bg-violet-50 p-3"><p className="font-bold text-violet-900">📚 Desenvolvimento ({plano.desenvolvimento.duracao})</p><p className="text-gray-700 text-xs mt-1">{plano.desenvolvimento.descricao}</p>{plano.desenvolvimento.atividades?.length > 0 && <ul className="list-disc pl-5 text-gray-600 text-xs mt-1.5 space-y-0.5">{plano.desenvolvimento.atividades.map((a: string, i: number) => <li key={i}>{a}</li>)}</ul>}</div>}
         {plano?.fechamento && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3"><p className="font-bold text-emerald-900">🎯 Fechamento ({plano.fechamento.duracao})</p><p className="text-gray-700 text-xs mt-1">{plano.fechamento.descricao}</p>{plano.fechamento.avaliacao && <p className="text-gray-600 text-xs mt-1 italic">Avaliação: {plano.fechamento.avaliacao}</p>}</div>}
         {plano?.materiais?.length > 0 && <div><h3 className="font-black text-gray-900 mb-1">Materiais</h3><p className="text-gray-700">{plano.materiais.join(", ")}</p></div>}
         {plano?.tarefa_casa && <div className="rounded-xl bg-amber-50 border border-amber-200 p-3"><strong className="text-amber-700">📝 Tarefa de casa:</strong> <span className="text-gray-700">{plano.tarefa_casa}</span></div>}

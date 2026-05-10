@@ -441,13 +441,13 @@ export default function AdminPage() {
                 <div><span className="text-white/40">Autenticado:</span> <span className={debugInfo.authenticated ? "text-emerald-400" : "text-red-400"}>{debugInfo.authenticated ? "Sim" : "Não"}</span></div>
                 <div><span className="text-white/40">É admin:</span> <span className={debugInfo.isAdmin ? "text-emerald-400" : "text-red-400"}>{debugInfo.isAdmin ? "Sim ✓" : "Não ✗"}</span></div>
                 {debugInfo.resolvedUserId && (
-                  <div><span className="text-white/40">ID resolvido:</span> <span className="text-blue-300 break-all">{debugInfo.resolvedUserId}</span></div>
+                  <div><span className="text-white/40">ID resolvido:</span> <span className="text-violet-300 break-all">{debugInfo.resolvedUserId}</span></div>
                 )}
                 {debugInfo.dbRecord && (
                   <>
                     <div><span className="text-white/40">Email no DB:</span> <span className="text-white/80">{debugInfo.dbRecord.email ?? "—"}</span></div>
                     <div><span className="text-white/40">Role no DB:</span> <span className={debugInfo.dbRecord.role === "admin" ? "text-emerald-400" : "text-orange-300"}>{debugInfo.dbRecord.role ?? "—"}</span></div>
-                    <div><span className="text-white/40">Clerk ID no DB:</span> <span className="text-blue-300 break-all">{debugInfo.dbRecord.clerk_id ?? "—"}</span></div>
+                    <div><span className="text-white/40">Clerk ID no DB:</span> <span className="text-violet-300 break-all">{debugInfo.dbRecord.clerk_id ?? "—"}</span></div>
                   </>
                 )}
                 {!debugInfo.dbRecord && debugInfo.authenticated && (
@@ -473,7 +473,7 @@ export default function AdminPage() {
 
           <div className="flex gap-3 justify-center">
             <Button onClick={() => { sessionStorage.setItem("auth_return_to", "/admin"); navigate("/sign-in"); }}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl">Fazer Login</Button>
+              className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl">Fazer Login</Button>
             <Button variant="outline" className="border-white/10 text-white/70 hover:bg-white/5"
               onClick={() => navigate("/app")}>Voltar ao App</Button>
           </div>
@@ -506,10 +506,10 @@ export default function AdminPage() {
   const providersFromApi = stats?.aiProviders ?? [];
   const providerStatus = (id: string) => providersFromApi.find(p => p.id === id);
   const aiProviders = [
-    { id: "deepseek",  name: "DeepSeek",       emoji: "🧠", bg: "bg-blue-500/15",   ok: providerStatus("deepseek")?.ok  ?? true,  usage: "Tutor Tiagão · Simulado adaptativo · Notebook" },
+    { id: "deepseek",  name: "DeepSeek",       emoji: "🧠", bg: "bg-violet-500/15",   ok: providerStatus("deepseek")?.ok  ?? true,  usage: "Tutor Tiagão · Simulado adaptativo · Notebook" },
     { id: "anthropic", name: "Anthropic Claude", emoji: "🟠", bg: "bg-amber-500/15", ok: providerStatus("anthropic")?.ok ?? true,  usage: "Aula com lousa · Explicações longas" },
     { id: "openai",    name: "OpenAI GPT",     emoji: "🟢", bg: "bg-emerald-500/15", ok: providerStatus("openai")?.ok    ?? true,  usage: "Imagens (slides, infográficos) · TTS Tiagão" },
-    { id: "gemini",    name: "Google Gemini",  emoji: "✨", bg: "bg-indigo-500/15",  ok: providerStatus("gemini")?.ok    ?? true,  usage: "Resolução de problema por foto · OCR" },
+    { id: "gemini",    name: "Google Gemini",  emoji: "✨", bg: "bg-violet-500/15",  ok: providerStatus("gemini")?.ok    ?? true,  usage: "Resolução de problema por foto · OCR" },
     { id: "openrouter", name: "OpenRouter",    emoji: "🔀", bg: "bg-pink-500/15",    ok: providerStatus("openrouter")?.ok ?? false, usage: "Fallback · Modelos extras (opcional)" },
     { id: "elevenlabs", name: "ElevenLabs TTS", emoji: "🔊", bg: "bg-cyan-500/15",   ok: providerStatus("elevenlabs")?.ok ?? false, usage: "Voz do podcast (opcional)" },
   ];
@@ -544,7 +544,7 @@ export default function AdminPage() {
       <aside className="w-56 flex-shrink-0 bg-[#0d0d16] border-r border-white/[0.06] flex flex-col">
         {/* Logo */}
         <div className="px-5 py-5 flex items-center gap-2.5 border-b border-white/[0.06]">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center">
             <Brain className="w-3.5 h-3.5 text-white" />
           </div>
           <span className="font-black text-base tracking-tight">StudyAI Admin</span>
@@ -573,7 +573,7 @@ export default function AdminPage() {
                               onClick={() => setActiveSection(child.section)}
                               className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                                 activeSection === child.section
-                                  ? "bg-indigo-600/20 text-indigo-300"
+                                  ? "bg-violet-600/20 text-violet-300"
                                   : "text-white/40 hover:text-white hover:bg-white/5"
                               }`}>
                               <child.icon className="w-3.5 h-3.5" />
@@ -592,7 +592,7 @@ export default function AdminPage() {
                 onClick={() => setActiveSection(item.section)}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
                   activeSection === item.section
-                    ? "bg-indigo-600/20 text-indigo-300"
+                    ? "bg-violet-600/20 text-violet-300"
                     : "text-white/50 hover:text-white hover:bg-white/5"
                 }`}>
                 <item.icon className="w-4 h-4 flex-shrink-0" />
@@ -604,7 +604,7 @@ export default function AdminPage() {
           <div className="pt-2 border-t border-white/[0.06] mt-2 space-y-0.5">
             <button onClick={() => setActiveSection("solicitacoes")}
               className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
-                activeSection === "solicitacoes" ? "bg-indigo-600/20 text-indigo-300" : "text-white/50 hover:text-white hover:bg-white/5"
+                activeSection === "solicitacoes" ? "bg-violet-600/20 text-violet-300" : "text-white/50 hover:text-white hover:bg-white/5"
               }`}>
               <Bell className="w-4 h-4 flex-shrink-0" />
               Solicitações
@@ -614,7 +614,7 @@ export default function AdminPage() {
             </button>
             <button onClick={() => setActiveSection("roles")}
               className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${
-                activeSection === "roles" ? "bg-indigo-600/20 text-indigo-300" : "text-white/50 hover:text-white hover:bg-white/5"
+                activeSection === "roles" ? "bg-violet-600/20 text-violet-300" : "text-white/50 hover:text-white hover:bg-white/5"
               }`}>
               <UserCog className="w-4 h-4 flex-shrink-0" />
               Perfis & Acesso
@@ -642,7 +642,7 @@ export default function AdminPage() {
               value={searchQ}
               onChange={e => setSearchQ(e.target.value)}
               placeholder="Searcar..."
-              className="w-full bg-white/5 border border-white/[0.08] rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-white/25 focus:outline-none focus:border-indigo-500/40"
+              className="w-full bg-white/5 border border-white/[0.08] rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-white/25 focus:outline-none focus:border-violet-500/40"
             />
           </div>
           <div className="flex-1" />
@@ -656,7 +656,7 @@ export default function AdminPage() {
             )}
           </button>
           <div className="flex items-center gap-2 pl-3 border-l border-white/[0.06]">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-xs font-black">A</div>
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center text-xs font-black">A</div>
             <span className="text-sm font-semibold text-white/70">Admin</span>
           </div>
         </header>
@@ -696,13 +696,13 @@ export default function AdminPage() {
                   return [
                     {
                       label: "Total de Usuários", value: stats?.totalUsers ?? 0,
-                      icon: Users, color: "from-indigo-500 to-indigo-600",
+                      icon: Users, color: "from-violet-500 to-violet-600",
                       sub: `+${stats?.newUsersInRange ?? 0} no período`,
                       pct: stats?.newUsersPct,
                     },
                     {
                       label: "Logins no Período", value: stats?.loginsInRange ?? 0,
-                      icon: Activity, color: "from-blue-500 to-cyan-500",
+                      icon: Activity, color: "from-violet-500 to-cyan-500",
                       sub: `${stats?.studyingNow ?? 0} ao vivo agora`,
                       pct: stats?.loginsPct,
                     },
@@ -743,7 +743,7 @@ export default function AdminPage() {
                 {/* Logins wide */}
                 <div className="col-span-3 bg-[#12121a] border border-white/[0.07] rounded-2xl p-5 space-y-4">
                   <p className="text-sm font-bold text-white/80 flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-blue-400" /> Logins
+                    <Activity className="w-4 h-4 text-violet-400" /> Logins
                   </p>
                   <div className="grid grid-cols-3 gap-3">
                     {/* Logins por dia */}
@@ -790,7 +790,7 @@ export default function AdminPage() {
                           const name = [u.first_name, u.last_name].filter(Boolean).join(" ") || u.email?.split("@")[0] || "User";
                           return (
                             <div key={`${u.id}-${i}`} className="flex items-center gap-2">
-                              <div className="w-5 h-5 rounded-full bg-indigo-500/30 flex items-center justify-center text-[9px] font-black text-indigo-300 flex-shrink-0">
+                              <div className="w-5 h-5 rounded-full bg-violet-500/30 flex items-center justify-center text-[9px] font-black text-violet-300 flex-shrink-0">
                                 {name[0]?.toUpperCase()}
                               </div>
                               <div className="flex-1 min-w-0">
@@ -831,8 +831,8 @@ export default function AdminPage() {
                     </div>
                     <div className="flex flex-col justify-center gap-2">
                       {[
-                        { label: "Alunos ativos", value: Math.max(0, (stats?.todayActive ?? 0)).toLocaleString("pt-BR"), color: "text-indigo-400" },
-                        { label: "Professores cadastrados", value: (stats?.teacherCount ?? 0).toLocaleString("pt-BR"), color: "text-blue-400" },
+                        { label: "Alunos ativos", value: Math.max(0, (stats?.todayActive ?? 0)).toLocaleString("pt-BR"), color: "text-violet-400" },
+                        { label: "Professores cadastrados", value: (stats?.teacherCount ?? 0).toLocaleString("pt-BR"), color: "text-violet-400" },
                         { label: "Instituições", value: (stats?.institutionsTotal ?? 0).toLocaleString("pt-BR"), color: "text-emerald-400" },
                       ].map(r => (
                         <div key={r.label}>
@@ -877,7 +877,7 @@ export default function AdminPage() {
                 </Card>
 
                 {/* IA & Custos */}
-                <Card title="IA & Custos" icon={Bot} iconColor="text-blue-400">
+                <Card title="IA & Custos" icon={Bot} iconColor="text-violet-400">
                   <p className="text-[10px] text-white/30 font-bold uppercase">Custos por modelo de IA</p>
                   <ResponsiveContainer width="100%" height={80}>
                     <BarChart data={aiCostsChart} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
@@ -894,7 +894,7 @@ export default function AdminPage() {
                         <div key={f.feature} className="flex items-center gap-2">
                           <span className="text-[10px] text-white/50 w-24 truncate">{f.feature}</span>
                           <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
-                            <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-violet-500" style={{ width: `${pct}%` }} />
+                            <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-purple-600" style={{ width: `${pct}%` }} />
                           </div>
                           <span className="text-[10px] text-white/40 w-6 text-right">{pct}%</span>
                         </div>
@@ -944,7 +944,7 @@ export default function AdminPage() {
                       <div key={m.materia} className="flex items-center gap-2">
                         <span className="text-[9px] text-white/25 w-3">{i + 1}</span>
                         <span className="text-[10px] text-white/60 flex-1 truncate">{m.materia}</span>
-                        <span className="text-[10px] font-bold text-indigo-400">{m.count}</span>
+                        <span className="text-[10px] font-bold text-violet-400">{m.count}</span>
                       </div>
                     ))}
                     {(!stats || stats.topMaterias.length === 0) && (
@@ -988,7 +988,7 @@ export default function AdminPage() {
                 </Card>
 
                 {/* Sistema */}
-                <Card title="Sistema" icon={Server} iconColor="text-blue-400">
+                <Card title="Sistema" icon={Server} iconColor="text-violet-400">
                   <div className="grid grid-cols-2 gap-2">
                     <div className="bg-white/[0.04] rounded-xl p-3 text-center">
                       <Bug className="w-4 h-4 text-amber-400 mx-auto mb-1" />
@@ -1051,13 +1051,13 @@ export default function AdminPage() {
                 </Card>
 
                 {/* Ações Rápidas */}
-                <Card title="Ações rápidas" icon={Zap} iconColor="text-indigo-400">
+                <Card title="Ações rápidas" icon={Zap} iconColor="text-violet-400">
                   <div className="space-y-2">
                     {[
-                      { icon: Key, label: "Liberar acesso usuário", color: "text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20", action: () => setActiveSection("roles") },
+                      { icon: Key, label: "Liberar acesso usuário", color: "text-violet-400 bg-violet-500/10 hover:bg-violet-500/20", action: () => setActiveSection("roles") },
                       { icon: Lock, label: "Resetar senha", color: "text-amber-400 bg-amber-500/10 hover:bg-amber-500/20", action: () => setActiveSection("alunos") },
                       { icon: UserPlus, label: "Criar usuário admin", color: "text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20", action: () => setActiveSection("roles") },
-                      { icon: Upload, label: "Upload de conteúdo", color: "text-blue-400 bg-blue-500/10 hover:bg-blue-500/20", action: () => setActiveSection("banco-dados") },
+                      { icon: Upload, label: "Upload de conteúdo", color: "text-violet-400 bg-violet-500/10 hover:bg-violet-500/20", action: () => setActiveSection("banco-dados") },
                     ].map(a => (
                       <button key={a.label} onClick={a.action}
                         className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-left ${a.color}`}>
@@ -1076,7 +1076,7 @@ export default function AdminPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-lg font-black flex items-center gap-2">
-                  <Users className="w-5 h-5 text-indigo-400" />
+                  <Users className="w-5 h-5 text-violet-400" />
                   {activeSection === "alunos" ? "Alunos" : activeSection === "professores" ? "Professores" : "Instituições"}
                   <span className="text-white/30 font-normal text-sm">({filteredUsers.length})</span>
                 </h2>
@@ -1094,7 +1094,7 @@ export default function AdminPage() {
                 </motion.div>
               )}
               {loading ? (
-                <div className="flex justify-center py-20"><div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" /></div>
+                <div className="flex justify-center py-20"><div className="w-8 h-8 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" /></div>
               ) : filteredUsers.length === 0 ? (
                 <div className="text-center py-16 text-white/30 bg-white/[0.02] rounded-2xl border border-white/[0.06]">
                   <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
@@ -1110,7 +1110,7 @@ export default function AdminPage() {
                     return (
                       <motion.div key={user.id} layout className="rounded-2xl border border-white/[0.07] bg-[#12121a] p-4 flex flex-col sm:flex-row sm:items-center gap-4">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 font-black ${isPremium ? "bg-gradient-to-br from-indigo-500 to-indigo-600" : "bg-white/10"}`}>
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 font-black ${isPremium ? "bg-gradient-to-br from-violet-500 to-violet-600" : "bg-white/10"}`}>
                             {((user.firstName ?? user.email ?? "?")[0]).toUpperCase()}
                           </div>
                           <div className="min-w-0">
@@ -1124,7 +1124,7 @@ export default function AdminPage() {
                         </div>
                         <div className={`flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-black border ${
                           cfg.color === "emerald" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300" :
-                          cfg.color === "blue"    ? "bg-blue-500/10 border-blue-500/20 text-blue-300" :
+                          cfg.color === "blue"    ? "bg-violet-500/10 border-violet-500/20 text-violet-300" :
                           cfg.color === "yellow"  ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-300" :
                           cfg.color === "red"     ? "bg-red-500/10 border-red-500/20 text-red-300" :
                                                     "bg-white/5 border-white/10 text-white/40"}`}>
@@ -1133,7 +1133,7 @@ export default function AdminPage() {
                         <div className="flex gap-2 flex-shrink-0">
                           {!isPremium ? (
                             <Button size="sm" onClick={() => updateStatus(user.id, "active")} disabled={isUpdating}
-                              className="bg-gradient-to-r from-indigo-600 to-indigo-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs h-8 px-3">
+                              className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-purple-500 text-white font-bold text-xs h-8 px-3">
                               {isUpdating ? <div className="w-3.5 h-3.5 rounded-full border border-white border-t-transparent animate-spin" /> : <><Crown className="w-3.5 h-3.5 mr-1.5" />Premium</>}
                             </Button>
                           ) : (
@@ -1187,8 +1187,8 @@ export default function AdminPage() {
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {[
                   { label: "MRR Estimado", value: `R$ ${mrr.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, sub: `${activeCount} assinaturas ativas`, color: "text-emerald-400", gradient: "from-emerald-500 to-teal-600" },
-                  { label: "ARR Projetado", value: `R$ ${arr.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`, sub: "MRR × 12", color: "text-blue-400", gradient: "from-blue-500 to-cyan-600" },
-                  { label: "Conversão Pago", value: `${conversionRate.toFixed(1)}%`, sub: `${stats?.premiumUsers ?? 0} de ${stats?.totalUsers ?? 0} usuários`, color: "text-indigo-400", gradient: "from-indigo-500 to-indigo-600" },
+                  { label: "ARR Projetado", value: `R$ ${arr.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`, sub: "MRR × 12", color: "text-violet-400", gradient: "from-violet-500 to-cyan-600" },
+                  { label: "Conversão Pago", value: `${conversionRate.toFixed(1)}%`, sub: `${stats?.premiumUsers ?? 0} de ${stats?.totalUsers ?? 0} usuários`, color: "text-violet-400", gradient: "from-violet-500 to-violet-600" },
                   { label: "Churn Rate", value: `${churnRate.toFixed(1)}%`, sub: `${canceledCount} cancelamentos`, color: churnRate > 5 ? "text-red-400" : "text-amber-400", gradient: "from-amber-500 to-orange-600" },
                 ].map(k => (
                   <div key={k.label} className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5 relative overflow-hidden">
@@ -1291,7 +1291,7 @@ export default function AdminPage() {
             const costPct = ac?.costPct;
             return (
             <div className="space-y-5">
-              <h2 className="text-lg font-black flex items-center gap-2"><Bot className="w-5 h-5 text-blue-400" /> IA & Custos Reais</h2>
+              <h2 className="text-lg font-black flex items-center gap-2"><Bot className="w-5 h-5 text-violet-400" /> IA & Custos Reais</h2>
 
               <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-4">
                 <DateRangeFilter value={dateRange} onChange={r => setDateRange(r)} loading={statsLoading} />
@@ -1304,9 +1304,9 @@ export default function AdminPage() {
                     label: "Custo no Período", val: fmtBrlShort(ac?.rangeBrl ?? 0),
                     sub: `US$ ${(ac?.rangeUsd ?? 0).toFixed(4)}`,
                     pct: costPct != null ? { v: costPct, invert: true } : null,
-                    color: "text-blue-400"
+                    color: "text-violet-400"
                   },
-                  { label: "Custo Hoje", val: fmtBrlShort(ac?.todayBrl ?? 0), sub: `US$ ${(ac?.todayUsd ?? 0).toFixed(4)}`, color: "text-indigo-400", pct: null },
+                  { label: "Custo Hoje", val: fmtBrlShort(ac?.todayBrl ?? 0), sub: `US$ ${(ac?.todayUsd ?? 0).toFixed(4)}`, color: "text-violet-400", pct: null },
                   { label: "Chamadas no Período", val: callsRange.toLocaleString("pt-BR"), sub: "registradas", color: "text-amber-400", pct: null },
                   { label: "Tokens no Período", val: tokensRange >= 1000 ? `${(tokensRange/1000).toFixed(1)}k` : String(tokensRange), sub: "in + out", color: "text-emerald-400", pct: null },
                 ].map(k => (
@@ -1366,7 +1366,7 @@ export default function AdminPage() {
                               <span className="text-xs font-bold text-white/80 ml-2 shrink-0">{fmtBrl(f.costBrl)} · {f.calls} calls</span>
                             </div>
                             <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                              <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-violet-500" style={{ width: `${Math.max(pct, 2)}%` }} />
+                              <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-purple-600" style={{ width: `${Math.max(pct, 2)}%` }} />
                             </div>
                           </div>
                         );
@@ -1383,7 +1383,7 @@ export default function AdminPage() {
                   ) : (
                     <div className="space-y-2">
                       {ac!.byModel.map((m, i) => {
-                        const colors = ["text-blue-400", "text-indigo-400", "text-amber-400", "text-emerald-400", "text-rose-400"];
+                        const colors = ["text-violet-400", "text-violet-400", "text-amber-400", "text-emerald-400", "text-rose-400"];
                         return (
                           <div key={m.model} className="flex items-center justify-between py-2 border-b border-white/[0.05] last:border-0">
                             <div>
@@ -1428,9 +1428,9 @@ export default function AdminPage() {
 
                   // KPI cards
                   const kpis = [
-                    { label: "Custo IA Real",       val: fmtBrl(fc.totalIaCostBrl), sub: `US$ ${fc.totalIaCostUsd.toFixed(4)}`, color: "text-blue-400" },
+                    { label: "Custo IA Real",       val: fmtBrl(fc.totalIaCostBrl), sub: `US$ ${fc.totalIaCostUsd.toFixed(4)}`, color: "text-violet-400" },
                     { label: "Economia Total",       val: fmtBrl(fc.totalSavedBrl),  sub: `US$ ${fc.totalSavedUsd.toFixed(4)}`, color: "text-emerald-400" },
-                    { label: "Taxa de Economia",     val: `${fc.taxaEconomia}%`,      sub: "do total potencial",                  color: "text-indigo-400" },
+                    { label: "Taxa de Economia",     val: `${fc.taxaEconomia}%`,      sub: "do total potencial",                  color: "text-violet-400" },
                     { label: "Chamadas Gratuitas",   val: (fc.cache.totalHits + (fc.fontes.find(f => f.id === "wikipedia")?.calls ?? 0) + (fc.fontes.find(f => f.id === "bncc")?.calls ?? 0) + (fc.fontes.find(f => f.id === "fts-kb")?.calls ?? 0)).toLocaleString("pt-BR"), sub: "cache + APIs gratuitas", color: "text-amber-400" },
                   ];
 
@@ -1453,9 +1453,9 @@ export default function AdminPage() {
                           const isIa = fonte.tipo === "ia";
                           const barValue = isIa ? fonte.calls : fonte.calls;
                           const barPct = totalCalls > 0 ? Math.max((barValue / totalCalls) * 100, 1) : 0;
-                          const badge = isIa ? { label: "PAGO", cls: "bg-blue-500/15 text-blue-300" }
+                          const badge = isIa ? { label: "PAGO", cls: "bg-violet-500/15 text-violet-300" }
                             : fonte.tipo === "cache" ? { label: "CACHE", cls: "bg-emerald-500/15 text-emerald-300" }
-                            : { label: "GRÁTIS", cls: "bg-indigo-500/15 text-indigo-300" };
+                            : { label: "GRÁTIS", cls: "bg-violet-500/15 text-violet-300" };
                           return (
                             <div key={fonte.id}>
                               <div className="flex items-center justify-between mb-1.5">
@@ -1466,7 +1466,7 @@ export default function AdminPage() {
                                 </div>
                                 <div className="flex items-center gap-3 text-right">
                                   {isIa ? (
-                                    <span className="text-xs font-bold text-blue-300">{fmtBrl(fonte.costBrl)}</span>
+                                    <span className="text-xs font-bold text-violet-300">{fmtBrl(fonte.costBrl)}</span>
                                   ) : (
                                     <span className="text-xs font-bold text-emerald-300">+{fmtBrl(fonte.savedBrl)} economizados</span>
                                   )}
@@ -1536,14 +1536,14 @@ export default function AdminPage() {
           {/* ══ CONTEÚDOS ══ */}
           {activeSection === "conteudos" && (
             <div className="space-y-6">
-              <h2 className="text-lg font-black flex items-center gap-2"><FileText className="w-5 h-5 text-indigo-400" /> Conteúdos</h2>
+              <h2 className="text-lg font-black flex items-center gap-2"><FileText className="w-5 h-5 text-violet-400" /> Conteúdos</h2>
               {tcMessage && (
                 <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-semibold ${tcMessage.ok ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300" : "bg-red-500/10 border-red-500/20 text-red-300"}`}>
                   {tcMessage.ok ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />} {tcMessage.text}
                 </div>
               )}
               <form onSubmit={saveTeacherContent} className="bg-[#12121a] rounded-2xl p-6 border border-white/[0.07] space-y-4">
-                <h3 className="font-bold flex items-center gap-2"><Plus className="w-4 h-4 text-indigo-400" /> Adicionar Conteúdo</h3>
+                <h3 className="font-bold flex items-center gap-2"><Plus className="w-4 h-4 text-violet-400" /> Adicionar Conteúdo</h3>
                 <div className="grid grid-cols-2 gap-4">
                   {[
                     { label: "Título *", key: "title", placeholder: "Ex: Funções do 2° grau", required: true },
@@ -1554,7 +1554,7 @@ export default function AdminPage() {
                     <div key={f.key}>
                       <label className="block text-xs text-white/50 font-bold mb-1">{f.label}</label>
                       <input required={f.required} value={(tcForm as any)[f.key]} onChange={e => setTcForm(p => ({ ...p, [f.key]: e.target.value }))}
-                        placeholder={f.placeholder} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-indigo-500/50" />
+                        placeholder={f.placeholder} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-violet-500/50" />
                     </div>
                   ))}
                 </div>
@@ -1562,14 +1562,14 @@ export default function AdminPage() {
                   <label className="block text-xs text-white/50 font-bold mb-1">Conteúdo / Material didático *</label>
                   <textarea required value={tcForm.contentText} onChange={e => setTcForm(p => ({ ...p, contentText: e.target.value }))}
                     rows={5} placeholder="Cole aqui o texto do material didático..."
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-indigo-500/50 resize-none" />
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-violet-500/50 resize-none" />
                 </div>
-                <Button type="submit" disabled={tcSaving} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold">
+                <Button type="submit" disabled={tcSaving} className="bg-violet-600 hover:bg-violet-700 text-white font-bold">
                   {tcSaving ? "Salvando..." : "Salvar Conteúdo"}
                 </Button>
               </form>
               <div className="space-y-3">
-                <h3 className="font-bold flex items-center gap-2"><BookOpen className="w-4 h-4 text-indigo-400" /> Cadastrados ({tcList.length})</h3>
+                <h3 className="font-bold flex items-center gap-2"><BookOpen className="w-4 h-4 text-violet-400" /> Cadastrados ({tcList.length})</h3>
                 {tcLoading ? <div className="text-center py-8 text-white/30">Carregando...</div>
                   : tcList.length === 0 ? <div className="text-center py-8 text-white/30 bg-white/[0.02] rounded-2xl border border-white/[0.06]"><BookOpen className="w-8 h-8 mx-auto mb-2 opacity-30" /><p className="text-sm">Nenhum conteúdo cadastrado ainda.</p></div>
                   : tcList.map(c => (
@@ -1577,7 +1577,7 @@ export default function AdminPage() {
                       className="flex items-center justify-between bg-[#12121a] border border-white/[0.07] rounded-2xl px-5 py-4">
                       <div>
                         <p className="font-bold text-sm text-white">{c.title}</p>
-                        <p className="text-xs text-white/40 mt-0.5">{[c.subject, c.grade_level].filter(Boolean).join(" · ")}{c.tags && <span className="ml-2 text-indigo-400/70"># {c.tags}</span>}</p>
+                        <p className="text-xs text-white/40 mt-0.5">{[c.subject, c.grade_level].filter(Boolean).join(" · ")}{c.tags && <span className="ml-2 text-violet-400/70"># {c.tags}</span>}</p>
                       </div>
                       <button onClick={() => deleteTeacherContent(c.id)} className="ml-4 p-2 text-white/30 hover:text-red-400 transition-colors rounded-xl hover:bg-red-500/10">
                         <Trash2 className="w-4 h-4" />
@@ -1591,24 +1591,24 @@ export default function AdminPage() {
           {/* ══ BANCO DE DADOS (Knowledge Base) ══ */}
           {activeSection === "banco-dados" && (
             <div className="space-y-8">
-              <h2 className="text-lg font-black flex items-center gap-2"><Database className="w-5 h-5 text-indigo-400" /> Base de Conhecimento</h2>
+              <h2 className="text-lg font-black flex items-center gap-2"><Database className="w-5 h-5 text-violet-400" /> Base de Conhecimento</h2>
               <p className="text-white/40 text-sm -mt-4">Documentos aqui são consultados internamente pelo sistema (Professor Tiagão e Tutor) antes de buscar informações externas. Esta seção é exclusiva para administradores.</p>
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="rounded-2xl border border-white/[0.07] bg-[#12121a] p-5">
-                  <h3 className="font-bold mb-4 flex items-center gap-2"><FileText className="w-4 h-4 text-indigo-400" /> Adicionar por Texto</h3>
+                  <h3 className="font-bold mb-4 flex items-center gap-2"><FileText className="w-4 h-4 text-violet-400" /> Adicionar por Texto</h3>
                   <form onSubmit={saveKbText} className="space-y-3">
-                    <input value={kbForm.title} onChange={e => setKbForm(f => ({ ...f, title: e.target.value }))} placeholder="Título do documento *" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-indigo-500" />
-                    <input value={kbForm.subject} onChange={e => setKbForm(f => ({ ...f, subject: e.target.value }))} placeholder="Matéria (ex: Matemática)" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-indigo-500" />
-                    <textarea value={kbForm.contentText} onChange={e => setKbForm(f => ({ ...f, contentText: e.target.value }))} placeholder="Cole o conteúdo aqui... *" required rows={5} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-indigo-500 resize-none" />
-                    <button type="submit" disabled={kbSaving || !kbForm.title || !kbForm.contentText} className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors">
+                    <input value={kbForm.title} onChange={e => setKbForm(f => ({ ...f, title: e.target.value }))} placeholder="Título do documento *" required className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500" />
+                    <input value={kbForm.subject} onChange={e => setKbForm(f => ({ ...f, subject: e.target.value }))} placeholder="Matéria (ex: Matemática)" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500" />
+                    <textarea value={kbForm.contentText} onChange={e => setKbForm(f => ({ ...f, contentText: e.target.value }))} placeholder="Cole o conteúdo aqui... *" required rows={5} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500 resize-none" />
+                    <button type="submit" disabled={kbSaving || !kbForm.title || !kbForm.contentText} className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors">
                       {kbSaving ? <><Loader2 className="w-4 h-4 animate-spin" />Salvando...</> : <><Plus className="w-4 h-4" />Adicionar à Base</>}
                     </button>
                   </form>
                 </div>
                 <div className="rounded-2xl border border-white/[0.07] bg-[#12121a] p-5">
-                  <h3 className="font-bold mb-4 flex items-center gap-2"><Upload className="w-4 h-4 text-indigo-400" /> Upload em Massa (PDF / DOCX / TXT)</h3>
+                  <h3 className="font-bold mb-4 flex items-center gap-2"><Upload className="w-4 h-4 text-violet-400" /> Upload em Massa (PDF / DOCX / TXT)</h3>
                   <form onSubmit={saveBatchFiles} className="space-y-3">
-                    <input value={kbForm.subject} onChange={e => setKbForm(f => ({ ...f, subject: e.target.value }))} placeholder="Matéria (aplicada a todos)" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-indigo-500" />
+                    <input value={kbForm.subject} onChange={e => setKbForm(f => ({ ...f, subject: e.target.value }))} placeholder="Matéria (aplicada a todos)" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-violet-500" />
                     <div
                       onClick={() => !kbSaving && kbFileRef.current?.click()}
                       onDragOver={ev => { ev.preventDefault(); }}
@@ -1617,7 +1617,7 @@ export default function AdminPage() {
                         const dropped = Array.from(ev.dataTransfer.files).filter(f => /\.(pdf|docx?|txt)$/i.test(f.name));
                         if (dropped.length) { setKbFiles(prev => [...prev, ...dropped]); setBatchResults([]); }
                       }}
-                      className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-colors ${kbFiles.length > 0 ? "border-indigo-500/40 bg-indigo-500/5" : "border-white/15 hover:border-indigo-500/50"}`}
+                      className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-colors ${kbFiles.length > 0 ? "border-violet-500/40 bg-violet-500/5" : "border-white/15 hover:border-violet-500/50"}`}
                     >
                       {kbFiles.length === 0 ? (
                         <>
@@ -1629,7 +1629,7 @@ export default function AdminPage() {
                         <div className="space-y-1.5 text-left max-h-40 overflow-y-auto pr-1">
                           {kbFiles.map((f, i) => {
                             const r = batchResults[i];
-                            const statusColor = !r ? "text-white/50" : r.status === "done" ? "text-emerald-400" : r.status === "error" ? "text-red-400" : r.status === "uploading" ? "text-indigo-300" : "text-white/40";
+                            const statusColor = !r ? "text-white/50" : r.status === "done" ? "text-emerald-400" : r.status === "error" ? "text-red-400" : r.status === "uploading" ? "text-violet-300" : "text-white/40";
                             const icon = !r ? "⏳" : r.status === "done" ? "✅" : r.status === "error" ? "❌" : r.status === "uploading" ? "⬆️" : "⏳";
                             return (
                               <div key={i} className="flex items-center gap-2 bg-white/5 rounded-xl px-3 py-1.5">
@@ -1661,7 +1661,7 @@ export default function AdminPage() {
                         <button type="button" onClick={() => { setKbFiles([]); setBatchResults([]); }} className="text-xs text-white/30 hover:text-red-400 transition-colors">Limpar tudo</button>
                       </div>
                     )}
-                    <button type="submit" disabled={kbSaving || kbFiles.length === 0} className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors">
+                    <button type="submit" disabled={kbSaving || kbFiles.length === 0} className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors">
                       {kbSaving
                         ? <><Loader2 className="w-4 h-4 animate-spin" />Processando {batchResults.filter(r => r.status === "done" || r.status === "error").length}/{kbFiles.length}...</>
                         : <><Upload className="w-4 h-4" />Processar {kbFiles.length > 1 ? `${kbFiles.length} Arquivos` : "Arquivo"}</>}
@@ -1685,11 +1685,11 @@ export default function AdminPage() {
                   : kbDocs.length === 0 ? <div className="text-center py-12 text-white/30 border border-white/[0.07] rounded-2xl"><Database className="w-10 h-10 mx-auto mb-3 opacity-30" /><p>Nenhum documento na base ainda.</p></div>
                   : <div className="space-y-3">{kbDocs.map((doc: any) => (
                     <div key={doc.id} className="rounded-2xl border border-white/[0.07] bg-[#12121a] p-4 flex gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center flex-shrink-0"><FileText className="w-5 h-5 text-indigo-400" /></div>
+                      <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center flex-shrink-0"><FileText className="w-5 h-5 text-violet-400" /></div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <p className="font-bold text-sm truncate">{doc.title}</p>
-                          {doc.subject && <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold flex-shrink-0">{doc.subject}</span>}
+                          {doc.subject && <span className="px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 text-xs font-semibold flex-shrink-0">{doc.subject}</span>}
                         </div>
                         <p className="text-white/40 text-xs line-clamp-2">{doc.preview}</p>
                         <p className="text-white/25 text-xs mt-1">Adicionado em {new Date(doc.created_at).toLocaleDateString("pt-BR")}</p>
@@ -1704,7 +1704,7 @@ export default function AdminPage() {
           {/* ══ INTEGRAÇÕES ══ */}
           {activeSection === "integracoes" && (
             <div className="space-y-5">
-              <h2 className="text-lg font-black flex items-center gap-2"><Link className="w-5 h-5 text-blue-400" /> Integrações</h2>
+              <h2 className="text-lg font-black flex items-center gap-2"><Link className="w-5 h-5 text-violet-400" /> Integrações</h2>
               <div className="grid grid-cols-3 gap-3">
                 {[
                   ...aiProviders.map(p => ({ name: p.name, status: p.ok ? "Ativo" : "Pendente", color: p.ok ? "emerald" : "gray", icon: p.emoji })),
@@ -1718,8 +1718,8 @@ export default function AdminPage() {
                   <div key={i.name} className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
                     <div className="text-2xl mb-3">{i.icon}</div>
                     <p className="font-bold text-sm text-white">{i.name}</p>
-                    <div className={`inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-full text-xs font-bold ${i.color === "emerald" ? "bg-emerald-500/10 text-emerald-400" : i.color === "blue" ? "bg-blue-500/10 text-blue-400" : "bg-white/10 text-white/40"}`}>
-                      <div className={`w-1.5 h-1.5 rounded-full ${i.color === "emerald" ? "bg-emerald-400" : i.color === "blue" ? "bg-blue-400" : "bg-white/30"}`} />
+                    <div className={`inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-full text-xs font-bold ${i.color === "emerald" ? "bg-emerald-500/10 text-emerald-400" : i.color === "blue" ? "bg-violet-500/10 text-violet-400" : "bg-white/10 text-white/40"}`}>
+                      <div className={`w-1.5 h-1.5 rounded-full ${i.color === "emerald" ? "bg-emerald-400" : i.color === "blue" ? "bg-violet-400" : "bg-white/30"}`} />
                       {i.status}
                     </div>
                   </div>
@@ -1731,9 +1731,9 @@ export default function AdminPage() {
           {/* ══ LOGS & SEGURANÇA ══ */}
           {activeSection === "logs-seguranca" && (() => {
             const EVENT_LABELS: Record<string, { label: string; color: string; icon: string }> = {
-              login: { label: "Login", color: "text-blue-400", icon: "🔑" },
-              essay_submitted: { label: "Redação", color: "text-indigo-400", icon: "✍️" },
-              essay_corrected: { label: "Redação corrigida", color: "text-indigo-400", icon: "📝" },
+              login: { label: "Login", color: "text-violet-400", icon: "🔑" },
+              essay_submitted: { label: "Redação", color: "text-violet-400", icon: "✍️" },
+              essay_corrected: { label: "Redação corrigida", color: "text-violet-400", icon: "📝" },
               quiz_completed: { label: "Quiz", color: "text-amber-400", icon: "🎯" },
               flashcard_reviewed: { label: "Flashcard", color: "text-cyan-400", icon: "🃏" },
               notebook_chat: { label: "Notebook Chat", color: "text-emerald-400", icon: "💬" },
@@ -1742,8 +1742,8 @@ export default function AdminPage() {
               trilha_session: { label: "Trilha do Mestre", color: "text-orange-400", icon: "🏆" },
               trilha_completed: { label: "Trilha completa", color: "text-yellow-400", icon: "🎖️" },
               study_plan_created: { label: "Plano de estudo", color: "text-pink-400", icon: "📅" },
-              simulado_started: { label: "Simulado iniciado", color: "text-indigo-400", icon: "📊" },
-              simulado_completed: { label: "Simulado concluído", color: "text-blue-300", icon: "✅" },
+              simulado_started: { label: "Simulado iniciado", color: "text-violet-400", icon: "📊" },
+              simulado_completed: { label: "Simulado concluído", color: "text-violet-300", icon: "✅" },
             };
             const events = stats?.recentEvents ?? [];
             const eventsByType = stats?.eventsByType30d ?? [];
@@ -1770,7 +1770,7 @@ export default function AdminPage() {
                             <span className="text-xs font-bold text-white/70">{ev.count} eventos · {ev.users} usuários</span>
                           </div>
                           <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                            <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-blue-500" style={{ width: `${Math.max(Math.round(ev.count / maxCount * 100), 2)}%` }} />
+                            <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-purple-500" style={{ width: `${Math.max(Math.round(ev.count / maxCount * 100), 2)}%` }} />
                           </div>
                         </div>
                       );
@@ -1819,7 +1819,7 @@ export default function AdminPage() {
                     const name = [u.first_name, u.last_name].filter(Boolean).join(" ") || u.email?.split("@")[0] || "User";
                     return (
                       <div key={`${u.id}-${i}`} className="flex items-center gap-3 py-1.5 border-b border-white/[0.04] last:border-0">
-                        <div className="w-7 h-7 rounded-full bg-indigo-500/20 flex items-center justify-center text-[11px] font-black text-indigo-300 flex-shrink-0">
+                        <div className="w-7 h-7 rounded-full bg-violet-500/20 flex items-center justify-center text-[11px] font-black text-violet-300 flex-shrink-0">
                           {name[0]?.toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -1893,7 +1893,7 @@ export default function AdminPage() {
                       <p className="font-bold text-sm text-white">{s.label}</p>
                       <p className="text-xs text-white/40">{s.desc}</p>
                     </div>
-                    <div className={`w-10 h-5 rounded-full transition-colors flex items-center ${s.active ? "bg-indigo-600 justify-end pr-0.5" : "bg-white/10 justify-start pl-0.5"}`}>
+                    <div className={`w-10 h-5 rounded-full transition-colors flex items-center ${s.active ? "bg-violet-600 justify-end pr-0.5" : "bg-white/10 justify-start pl-0.5"}`}>
                       <div className="w-4 h-4 rounded-full bg-white" />
                     </div>
                   </div>
@@ -1906,7 +1906,7 @@ export default function AdminPage() {
           {activeSection === "solicitacoes" && (
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-2">
-                <h2 className="text-lg font-black flex items-center gap-2"><Bell className="w-5 h-5 text-indigo-400" /> Solicitações de Acesso</h2>
+                <h2 className="text-lg font-black flex items-center gap-2"><Bell className="w-5 h-5 text-violet-400" /> Solicitações de Acesso</h2>
                 <button onClick={fetchRoleRequests} className="flex items-center gap-1.5 text-white/40 hover:text-white text-sm">
                   <RefreshCw className={`w-4 h-4 ${rrLoading ? "animate-spin" : ""}`} /> Atualizar
                 </button>
@@ -1916,7 +1916,7 @@ export default function AdminPage() {
                   {rrMsg.ok ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />} {rrMsg.text}
                 </div>
               )}
-              {rrLoading ? <div className="flex justify-center py-12"><RefreshCw className="w-6 h-6 text-indigo-400 animate-spin" /></div>
+              {rrLoading ? <div className="flex justify-center py-12"><RefreshCw className="w-6 h-6 text-violet-400 animate-spin" /></div>
                 : roleRequests.length === 0 ? (
                   <div className="bg-[#12121a] rounded-2xl p-10 border border-white/[0.07] text-center">
                     <Bell className="w-10 h-10 text-white/20 mx-auto mb-3" />
@@ -1935,7 +1935,7 @@ export default function AdminPage() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-1 flex-wrap">
                                 <span className="font-bold text-white text-sm">{name}</span>
-                                <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-500/30">{roleLabel}</span>
+                                <span className="text-xs bg-violet-500/20 text-violet-300 px-2 py-0.5 rounded-full border border-violet-500/30">{roleLabel}</span>
                                 {isPending && <span className="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30 flex items-center gap-1"><Clock className="w-3 h-3" />Pendente</span>}
                                 {isApproved && <span className="text-xs bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1"><CheckCircle className="w-3 h-3" />Aprovado</span>}
                                 {r.status === "rejected" && <span className="text-xs bg-red-500/20 text-red-300 px-2 py-0.5 rounded-full border border-red-500/30 flex items-center gap-1"><XCircle className="w-3 h-3" />Rejeitado</span>}
@@ -1974,7 +1974,7 @@ export default function AdminPage() {
           {/* ══ PERFIS & ACESSO ══ */}
           {activeSection === "roles" && (
             <div className="space-y-4">
-              <h2 className="text-lg font-black flex items-center gap-2"><UserCog className="w-5 h-5 text-indigo-400" /> Perfis & Acesso</h2>
+              <h2 className="text-lg font-black flex items-center gap-2"><UserCog className="w-5 h-5 text-violet-400" /> Perfis & Acesso</h2>
               {roleMsg && (
                 <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-semibold ${roleMsg.ok ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300" : "bg-red-500/10 border-red-500/20 text-red-300"}`}>
                   {roleMsg.ok ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />} {roleMsg.text}
@@ -1984,7 +1984,7 @@ export default function AdminPage() {
                 <p className="text-white/50 text-sm">Atribua perfis especiais para liberar acesso ao Módulo Professor, Instituição ou Governo.</p>
                 <div className="flex gap-4 mt-3 flex-wrap">
                   {[
-                    { role: "teacher", label: "Professor", icon: GraduationCap, color: "text-indigo-400" },
+                    { role: "teacher", label: "Professor", icon: GraduationCap, color: "text-violet-400" },
                     { role: "institution_admin", label: "Admin de Instituição", icon: Building2, color: "text-emerald-400" },
                     { role: "government", label: "Governo", icon: Globe, color: "text-amber-400" },
                     { role: "admin", label: "Super Admin", icon: Shield, color: "text-red-400" },
@@ -1996,7 +1996,7 @@ export default function AdminPage() {
                   ))}
                 </div>
               </div>
-              {loading ? <div className="flex justify-center py-10"><div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" /></div>
+              {loading ? <div className="flex justify-center py-10"><div className="w-8 h-8 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" /></div>
                 : <div className="space-y-2">
                   {users.map(user => {
                     const currentRole = user.role ?? "student";
@@ -2011,14 +2011,14 @@ export default function AdminPage() {
                           <p className="text-white/30 text-xs truncate">{user.email}</p>
                         </div>
                         <select value={currentRole} onChange={e => updateRole(user.id, e.target.value)} disabled={isUpdating}
-                          className="bg-slate-800 border border-white/10 rounded-xl px-3 py-1.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50">
+                          className="bg-slate-800 border border-white/10 rounded-xl px-3 py-1.5 text-sm text-white focus:outline-none focus:border-violet-500 disabled:opacity-50">
                           <option value="student">Aluno</option>
                           <option value="teacher">Professor</option>
                           <option value="institution_admin">Admin de Instituição</option>
                           <option value="government">Governo</option>
                           <option value="admin">Super Admin</option>
                         </select>
-                        {isUpdating && <div className="w-4 h-4 rounded-full border border-indigo-400 border-t-transparent animate-spin flex-shrink-0" />}
+                        {isUpdating && <div className="w-4 h-4 rounded-full border border-violet-400 border-t-transparent animate-spin flex-shrink-0" />}
                       </div>
                     );
                   })}

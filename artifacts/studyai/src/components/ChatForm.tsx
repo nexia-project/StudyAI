@@ -37,8 +37,8 @@ export default function ChatForm({ onSubmit, loading }: ChatFormProps) {
               onClick={() => setType(t.value)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all border ${
                 type === t.value
-                  ? "bg-indigo-600 text-white border-indigo-600"
-                  : "bg-white text-slate-600 border-slate-200 hover:border-indigo-400"
+                  ? "bg-violet-600 text-white border-violet-600"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-violet-400"
               }`}>
               <Icon className="w-3.5 h-3.5" /> {t.label}
             </button>
@@ -49,7 +49,7 @@ export default function ChatForm({ onSubmit, loading }: ChatFormProps) {
             <button key={p} type="button"
               onClick={() => setProvider(p)}
               className={`px-3 py-1.5 font-semibold transition-all ${
-                provider === p ? "bg-indigo-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50"
+                provider === p ? "bg-violet-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50"
               }`}>
               {p === "openai" ? "GPT" : "Claude"}
             </button>
@@ -64,10 +64,10 @@ export default function ChatForm({ onSubmit, loading }: ChatFormProps) {
           onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(e as any); } }}
           placeholder="Digite sua pergunta ou tema..."
           rows={3}
-          className="flex-1 border border-slate-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          className="flex-1 border border-slate-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-400"
         />
         <button type="submit" disabled={loading || !message.trim()}
-          className="px-4 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 font-semibold">
+          className="px-4 py-3 bg-violet-600 text-white rounded-xl hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 font-semibold">
           <Send className="w-4 h-4" />
         </button>
       </div>

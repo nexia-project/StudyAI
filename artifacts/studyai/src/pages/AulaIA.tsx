@@ -59,7 +59,7 @@ function SpeakingWaveform({ active }: { active: boolean }) {
       {bars.map((h, i) => (
         <motion.div
           key={i}
-          className={`rounded-full ${active ? "bg-indigo-500" : "bg-slate-300"}`}
+          className={`rounded-full ${active ? "bg-violet-500" : "bg-slate-300"}`}
           style={{ width: 3, height: h }}
           animate={active ? { scaleY: [0.25, 1, 0.25] } : { scaleY: 0.25 }}
           transition={active ? {
@@ -421,7 +421,7 @@ export default function AulaIA() {
   // ─── TELA INICIAL ─────────────────────────────────────────────────────────
   if (!aula && !gerando) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 flex flex-col">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-violet-50 flex flex-col">
         <audio ref={audioRef} />
         <header className="bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-3 shadow-sm">
           <button onClick={() => navigate("/app")}
@@ -430,7 +430,7 @@ export default function AulaIA() {
           </button>
           <div className="h-4 w-px bg-slate-200" />
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center">
               <BookOpen className="w-3.5 h-3.5 text-white" />
             </div>
             <span className="font-black text-slate-800 text-sm">Aula com o Professor</span>
@@ -444,7 +444,7 @@ export default function AulaIA() {
             transition={{ type: "spring", stiffness: 200 }}
             className="mb-6 relative">
             <div
-              className="w-40 h-40 rounded-3xl overflow-hidden shadow-xl shadow-indigo-200 border-2 border-indigo-100"
+              className="w-40 h-40 rounded-3xl overflow-hidden shadow-xl shadow-violet-200 border-2 border-violet-100"
               style={{
                 backgroundImage: "url(/tiagao-teaching.png)",
                 backgroundSize: "180%",
@@ -456,7 +456,7 @@ export default function AulaIA() {
             <motion.div
               animate={{ scale: [1, 1.15, 1], opacity: [0.8, 1, 0.8] }}
               transition={{ repeat: Infinity, duration: 2.5 }}
-              className="absolute top-2 right-0 w-7 h-7 bg-indigo-500 rounded-full flex items-center justify-center shadow-lg">
+              className="absolute top-2 right-0 w-7 h-7 bg-violet-500 rounded-full flex items-center justify-center shadow-lg">
               <Zap className="w-3.5 h-3.5 text-white" />
             </motion.div>
           </motion.div>
@@ -480,7 +480,7 @@ export default function AulaIA() {
               onChange={e => setTopico(e.target.value)}
               onKeyDown={e => e.key === "Enter" && gerarAula()}
               placeholder="Ex: Funções do 1º grau, Lei de Newton, Revolução Francesa..."
-              className="w-full px-5 py-4 rounded-2xl border-2 border-slate-200 focus:border-indigo-400 focus:outline-none text-slate-800 font-medium text-base bg-white shadow-sm placeholder-slate-400"
+              className="w-full px-5 py-4 rounded-2xl border-2 border-slate-200 focus:border-violet-400 focus:outline-none text-slate-800 font-medium text-base bg-white shadow-sm placeholder-slate-400"
             />
           </motion.div>
 
@@ -492,8 +492,8 @@ export default function AulaIA() {
               <button key={e} onClick={() => setEstilo(e)}
                 className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
                   estilo === e
-                    ? "bg-indigo-600 text-white shadow-md"
-                    : "bg-white border border-slate-200 text-slate-600 hover:border-indigo-300"
+                    ? "bg-violet-600 text-white shadow-md"
+                    : "bg-white border border-slate-200 text-slate-600 hover:border-violet-300"
                 }`}>
                 {e}
               </button>
@@ -506,7 +506,7 @@ export default function AulaIA() {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
             onClick={gerarAula}
             disabled={!topico.trim()}
-            className="w-full py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-600 text-white font-black text-lg shadow-xl hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+            className="w-full py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black text-lg shadow-xl hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
             <BookOpen className="w-5 h-5" /> Começar Aula com o Professor
           </motion.button>
 
@@ -519,7 +519,7 @@ export default function AulaIA() {
             <div className="flex flex-wrap gap-2 justify-center">
               {TOPICOS_SUGERIDOS.map(t => (
                 <button key={t} onClick={() => setTopico(t)}
-                  className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-medium hover:border-indigo-300 hover:text-indigo-700 hover:bg-indigo-50 transition-all shadow-sm">
+                  className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-medium hover:border-violet-300 hover:text-violet-700 hover:bg-violet-50 transition-all shadow-sm">
                   {t}
                 </button>
               ))}
@@ -533,13 +533,13 @@ export default function AulaIA() {
   // ─── CARREGANDO ───────────────────────────────────────────────────────────
   if (gerando) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-indigo-900 flex flex-col items-center justify-center gap-6">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-violet-900 flex flex-col items-center justify-center gap-6">
         <audio ref={audioRef} />
         <TiagaoCharacter state="thinking" size={160} showLabel />
         <div className="text-center">
           <p className="text-white font-black text-xl mb-1">Professor Tiagão está preparando a aula...</p>
-          <p className="text-indigo-300 text-sm">Organizando lousa, explicações e exemplos sobre</p>
-          <p className="text-indigo-200 font-bold mt-1">"{topico}"</p>
+          <p className="text-violet-300 text-sm">Organizando lousa, explicações e exemplos sobre</p>
+          <p className="text-violet-200 font-bold mt-1">"{topico}"</p>
         </div>
       </div>
     );
@@ -697,15 +697,15 @@ export default function AulaIA() {
                 animate={{ opacity: 1, x: 0, width: "auto" }}
                 exit={{ opacity: 0, x: 30, width: 0 }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
-                className="md:w-[42%] md:max-w-[480px] md:min-w-[280px] flex flex-col rounded-3xl shadow-lg overflow-hidden bg-white border border-indigo-100"
+                className="md:w-[42%] md:max-w-[480px] md:min-w-[280px] flex flex-col rounded-3xl shadow-lg overflow-hidden bg-white border border-violet-100"
               >
-                <div className="flex items-center justify-between px-3 py-2 border-b border-indigo-100 bg-indigo-50/50">
+                <div className="flex items-center justify-between px-3 py-2 border-b border-violet-100 bg-violet-50/50">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <div className="w-4 h-4 rounded-full bg-indigo-500 flex items-center justify-center flex-shrink-0">
+                    <div className="w-4 h-4 rounded-full bg-violet-500 flex items-center justify-center flex-shrink-0">
                       <ImageIcon className="w-2.5 h-2.5 text-white" />
                     </div>
                     <span className="text-xs font-bold text-slate-700 truncate">{imagemGerada.topico}</span>
-                    <span className="text-[9px] text-indigo-600 font-semibold bg-white px-1.5 py-0.5 rounded-full flex-shrink-0">IA</span>
+                    <span className="text-[9px] text-violet-600 font-semibold bg-white px-1.5 py-0.5 rounded-full flex-shrink-0">IA</span>
                   </div>
                   <button onClick={() => setImagemGerada(null)}
                     className="w-5 h-5 rounded-full bg-white hover:bg-slate-100 flex items-center justify-center flex-shrink-0">

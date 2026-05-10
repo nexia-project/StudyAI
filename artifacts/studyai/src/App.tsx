@@ -325,8 +325,8 @@ function ClerkProviderWithRoutes() {
           headerTitle: "text-slate-900 font-black text-xl",
           headerSubtitle: "text-slate-500 text-sm",
           socialButtonsBlockButton: "border border-slate-200 rounded-xl font-semibold",
-          formButtonPrimary: "bg-indigo-600 hover:bg-indigo-700 rounded-xl font-bold",
-          footerActionLink: "text-indigo-600 font-semibold hover:text-indigo-700",
+          formButtonPrimary: "bg-violet-600 hover:bg-violet-700 rounded-xl font-bold",
+          footerActionLink: "text-violet-600 font-semibold hover:text-violet-700",
           // Hide phone number field — Replit-managed Clerk doesn't support SMS/phone
           // and Brazil (+55) is blocked, causing "not supported" errors when auto-filled
           "formField__phoneNumber": { display: "none" },

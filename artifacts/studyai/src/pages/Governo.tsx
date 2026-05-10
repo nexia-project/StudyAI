@@ -74,8 +74,8 @@ export default function GovernoPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center">
-        <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900 flex items-center justify-center">
+        <RefreshCw className="w-8 h-8 text-violet-400 animate-spin" />
       </div>
     );
   }
@@ -102,7 +102,7 @@ export default function GovernoPage() {
   const maxActivity = Math.max(...weeklyActivity.map(w => w.count), 1);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900">
       <div className="max-w-5xl mx-auto px-4 py-8">
 
         {/* Header */}
@@ -112,7 +112,7 @@ export default function GovernoPage() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-indigo-600 rounded-xl">
+            <div className="p-2.5 bg-violet-600 rounded-xl">
               <Globe className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -130,7 +130,7 @@ export default function GovernoPage() {
           {tabs.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-medium transition-all
-                ${activeTab === tab.id ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400 hover:text-white hover:bg-slate-700"}`}>
+                ${activeTab === tab.id ? "bg-violet-600 text-white shadow-lg" : "text-slate-400 hover:text-white hover:bg-slate-700"}`}>
               <tab.icon className="w-4 h-4" />
               <span>{tab.label}</span>
             </button>
@@ -143,9 +143,9 @@ export default function GovernoPage() {
             {/* Main stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {[
-                { label: "Total de usuários", value: overview.totalUsers.toLocaleString("pt-BR"), icon: Users, color: "text-indigo-400" },
+                { label: "Total de usuários", value: overview.totalUsers.toLocaleString("pt-BR"), icon: Users, color: "text-violet-400" },
                 { label: "Ativos (30 dias)", value: overview.activeUsers30.toLocaleString("pt-BR"), icon: Activity, color: "text-emerald-400" },
-                { label: "Novos este mês", value: overview.newUsersThisMonth.toLocaleString("pt-BR"), icon: TrendingUp, color: "text-blue-400" },
+                { label: "Novos este mês", value: overview.newUsersThisMonth.toLocaleString("pt-BR"), icon: TrendingUp, color: "text-violet-400" },
                 { label: "Engajamento 30d", value: `${overview.engagementRate30d}%`, icon: BarChart2, color: "text-amber-400" },
               ].map(s => (
                 <motion.div key={s.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
@@ -160,7 +160,7 @@ export default function GovernoPage() {
             {/* Learning stats */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
               {[
-                { label: "Simulados feitos", value: overview.totalSimulados.toLocaleString("pt-BR"), icon: Target, color: "text-indigo-400" },
+                { label: "Simulados feitos", value: overview.totalSimulados.toLocaleString("pt-BR"), icon: Target, color: "text-violet-400" },
                 { label: "Acerto médio", value: `${overview.avgSimAccuracy}%`, icon: BarChart2, color: "text-emerald-400" },
                 { label: "Sessões flashcard", value: overview.totalFlashcards.toLocaleString("pt-BR"), icon: Zap, color: "text-cyan-400" },
                 { label: "Planos gerados", value: overview.totalPlanos.toLocaleString("pt-BR"), icon: BookOpen, color: "text-amber-400" },
@@ -178,7 +178,7 @@ export default function GovernoPage() {
             {/* Subscription breakdown */}
             <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-5">
               <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-                <Users className="w-4 h-4 text-indigo-400" /> Distribuição de planos
+                <Users className="w-4 h-4 text-violet-400" /> Distribuição de planos
               </h3>
               <div className="flex gap-6 mb-4">
                 <div>
@@ -190,7 +190,7 @@ export default function GovernoPage() {
                   <p className="text-slate-400 text-sm">Plano gratuito</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-indigo-400">
+                  <p className="text-2xl font-bold text-violet-400">
                     {overview.totalUsers > 0 ? Math.round((premiumSubs / overview.totalUsers) * 100) : 0}%
                   </p>
                   <p className="text-slate-400 text-sm">Taxa de conversão</p>
@@ -199,7 +199,7 @@ export default function GovernoPage() {
               {/* Bar */}
               <div className="h-3 bg-slate-700 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-emerald-500 to-indigo-500 rounded-full transition-all"
+                  className="h-full bg-gradient-to-r from-emerald-500 to-violet-500 rounded-full transition-all"
                   style={{ width: `${overview.totalUsers > 0 ? (premiumSubs / overview.totalUsers) * 100 : 0}%` }}
                 />
               </div>
@@ -221,7 +221,7 @@ export default function GovernoPage() {
                   {weeklyGrowth.map((w, i) => (
                     <div key={i} className="flex-1 flex flex-col items-center gap-1">
                       <span className="text-slate-400 text-xs">{w.count}</span>
-                      <div className="w-full bg-indigo-600 rounded-t-md transition-all"
+                      <div className="w-full bg-violet-600 rounded-t-md transition-all"
                         style={{ height: `${Math.max(4, (w.count / maxGrowth) * 100)}%` }} />
                       <span className="text-slate-600 text-xs">
                         {new Date(w.week).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
@@ -234,7 +234,7 @@ export default function GovernoPage() {
 
             <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-5">
               <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-                <Target className="w-4 h-4 text-indigo-400" /> Simulados por semana
+                <Target className="w-4 h-4 text-violet-400" /> Simulados por semana
               </h3>
               {weeklyActivity.length === 0 ? (
                 <p className="text-slate-500 text-sm">Sem dados suficientes</p>
@@ -243,7 +243,7 @@ export default function GovernoPage() {
                   {weeklyActivity.map((w, i) => (
                     <div key={i} className="flex-1 flex flex-col items-center gap-1">
                       <span className="text-slate-400 text-xs">{w.count}</span>
-                      <div className="w-full bg-indigo-600 rounded-t-md transition-all"
+                      <div className="w-full bg-violet-600 rounded-t-md transition-all"
                         style={{ height: `${Math.max(4, (w.count / maxActivity) * 100)}%` }} />
                       <span className="text-slate-600 text-xs">
                         {new Date(w.week).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
@@ -262,7 +262,7 @@ export default function GovernoPage() {
                 <p className="text-slate-400 text-sm">Ativos últimos 7 dias</p>
               </div>
               <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-5">
-                <Activity className="w-5 h-5 text-blue-400 mb-2" />
+                <Activity className="w-5 h-5 text-violet-400 mb-2" />
                 <p className="text-2xl font-bold text-white">{overview.activeUsers30.toLocaleString("pt-BR")}</p>
                 <p className="text-slate-400 text-sm">Ativos últimos 30 dias</p>
               </div>
@@ -297,7 +297,7 @@ export default function GovernoPage() {
                           </div>
                         </div>
                         <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all"
+                          <div className="h-full bg-gradient-to-r from-violet-500 to-purple-500 rounded-full transition-all"
                             style={{ width: `${pct}%` }} />
                         </div>
                       </div>

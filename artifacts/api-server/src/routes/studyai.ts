@@ -4,7 +4,7 @@ import multer from "multer";
 import { OR } from "../lib/aiClient";
 import {
   chatCompletionCreateWithFallback,
-  chatCompletionStreamCreateWithFallback,
+  chatCompletionStreamAccumulateWithFallback,
   isMissingModelError,
 } from "../lib/openrouterFallback";
 import { extractJson } from "../lib/claudeAi";
@@ -567,21 +567,24 @@ router.post("/analisar", checkFreeUsage, (req, res, next) => {
       sendSSE({ type: "status", message: "Analisando conteúdo..." });
       const abortCtrl = new AbortController();
       res.on("close", () => abortCtrl.abort());
-      const { stream } = await chatCompletionStreamCreateWithFallback({
-        model: chosenModel,
-        messages: messages as any,
-        max_tokens: MAX_TOKENS,
-        hasVision,
-        signal: abortCtrl.signal,
-      });
       let accumulated = "";
-      for await (const chunk of stream as AsyncIterable<{ choices?: Array<{ delta?: { content?: string } }> }>) {
-        if (abortCtrl.signal.aborted) break;
-        const delta = chunk.choices?.[0]?.delta?.content || "";
-        if (delta) {
-          accumulated += delta;
-          sendSSE({ type: "progress", chars: accumulated.length });
-        }
+      try {
+        const result = await chatCompletionStreamAccumulateWithFallback({
+          model: chosenModel,
+          messages: messages as any,
+          max_tokens: MAX_TOKENS,
+          hasVision,
+          signal: abortCtrl.signal,
+          onChunk: (n) => sendSSE({ type: "progress", chars: n }),
+        });
+        accumulated = result.text;
+      } catch (streamErr) {
+        const friendly = isMissingModelError(streamErr)
+          ? "O provedor de IA não encontrou um modelo disponível. Tentamos várias alternativas — confira créditos OpenRouter ou tente em instantes."
+          : String(streamErr instanceof Error ? streamErr.message : streamErr);
+        sendSSE({ type: "error", message: friendly });
+        res.end();
+        return;
       }
       if (!accumulated) {
         sendSSE({ type: "error", message: "Erro ao gerar o plano." });

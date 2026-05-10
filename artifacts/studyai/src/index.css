@@ -6,46 +6,46 @@
   --font-sans: 'Inter', 'Nunito', sans-serif;
   --font-display: 'Inter', 'Outfit', sans-serif;
 
-  --color-background: hsl(220 20% 98%);
-  --color-foreground: hsl(220 25% 12%);
+  --color-background: hsl(270 40% 98%);
+  --color-foreground: hsl(280 35% 14%);
   
-  --color-primary: hsl(234 85% 55%);
+  --color-primary: hsl(271 81% 56%);
   --color-primary-foreground: hsl(0 0% 100%);
   
-  --color-secondary: hsl(220 20% 96%);
-  --color-secondary-foreground: hsl(220 25% 30%);
+  --color-secondary: hsl(270 35% 96%);
+  --color-secondary-foreground: hsl(280 30% 26%);
   
-  --color-muted: hsl(220 15% 93%);
-  --color-muted-foreground: hsl(220 10% 50%);
+  --color-muted: hsl(270 25% 93%);
+  --color-muted-foreground: hsl(270 12% 46%);
   
-  --color-accent: hsl(160 84% 39%);
+  --color-accent: hsl(292 65% 52%);
   --color-accent-foreground: hsl(0 0% 100%);
   
   --color-destructive: hsl(0 72% 51%);
   --color-destructive-foreground: hsl(0 0% 100%);
   
-  --color-border: hsl(220 20% 90%);
-  --color-ring: hsl(234 85% 55%);
+  --color-border: hsl(270 24% 90%);
+  --color-ring: hsl(271 81% 56%);
   
   --color-card: hsl(0 0% 100%);
   --color-card-foreground: hsl(220 25% 12%);
 }
 
 :root {
-  --background: 220 20% 98%;
-  --foreground: 220 25% 12%;
-  --primary: 234 85% 55%;
+  --background: 270 40% 98%;
+  --foreground: 280 35% 14%;
+  --primary: 271 81% 56%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 220 20% 96%;
-  --secondary-foreground: 220 25% 30%;
-  --muted: 220 15% 93%;
-  --muted-foreground: 220 10% 50%;
-  --accent: 160 84% 39%;
+  --secondary: 270 35% 96%;
+  --secondary-foreground: 280 30% 26%;
+  --muted: 270 25% 93%;
+  --muted-foreground: 270 12% 46%;
+  --accent: 292 65% 52%;
   --accent-foreground: 0 0% 100%;
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
-  --border: 220 20% 90%;
-  --ring: 234 85% 55%;
+  --border: 270 24% 90%;
+  --ring: 271 81% 56%;
   --card: 0 0% 100%;
   --card-foreground: 220 25% 12%;
   --radius: 0.75rem;
@@ -69,11 +69,11 @@
 
 @layer utilities {
   .glass-card {
-    @apply bg-white/90 backdrop-blur-xl border border-gray-200/60 shadow-sm;
+    @apply border border-violet-200/45 bg-white/80 shadow-sm shadow-violet-200/20 backdrop-blur-xl;
   }
   
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-emerald-500;
+    @apply bg-gradient-to-r from-violet-600 via-fuchsia-500 to-purple-700 bg-clip-text text-transparent;
   }
 }
 

@@ -38,7 +38,7 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
     provider: "openrouter",
     model:
       process.env.OPENROUTER_MODEL_CLAUDE ??
-      "anthropic/claude-3-5-sonnet-20241022",
+      "anthropic/claude-3.5-sonnet",
     maxTokens: 2500,
     temperature: 0.8,
     supportsSystemRole: true,
@@ -49,7 +49,7 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
     provider: "openrouter",
     model:
       process.env.OPENROUTER_MODEL_CLAUDE ??
-      "anthropic/claude-3-5-sonnet-20241022",
+      "anthropic/claude-3.5-sonnet",
     maxTokens: 2000,
     temperature: 0.9,
     supportsSystemRole: true,

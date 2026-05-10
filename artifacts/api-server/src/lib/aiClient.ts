@@ -65,10 +65,10 @@ export const OR = {
   // Raciocínio — matemática, física, química
   reasoning:  "deepseek/deepseek-r1-0528",
 
-  // Claude via OpenRouter — slug datado evita 404 "No endpoints" em contas novas
+  // Claude via OpenRouter — slug canónico da documentação OpenRouter (não confundir com 3-5-sonnet-20241022)
   claude:
     process.env.OPENROUTER_MODEL_CLAUDE ??
-    "anthropic/claude-3-5-sonnet-20241022",
+    "anthropic/claude-3.5-sonnet",
   claudeFast: "anthropic/claude-3-haiku",
 } as const;
 

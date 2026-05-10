@@ -103,9 +103,10 @@ export function completionFallbackChain(primary: string, hasVision: boolean): st
   return [
     primary,
     process.env.OPENROUTER_MODEL_CLAUDE,
+    /** Slug oficial na UI OpenRouter; não usar só o ID datado — pode dar 404 mesmo com conta OK */
+    "anthropic/claude-3.5-sonnet",
     "anthropic/claude-3-5-sonnet-20241022",
     "anthropic/claude-3-5-sonnet-20240620",
-    "anthropic/claude-3.5-sonnet",
     "anthropic/claude-3-haiku",
     "openai/gpt-4o",
     "openai/gpt-4-turbo",

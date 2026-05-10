@@ -39,6 +39,15 @@ export const whisperClient = new OpenAI({
   apiKey: _whisperKey,
 });
 
+/** true quando há chave OpenAI real (fallback direto se OpenRouter falhar em todos os modelos). */
+export function hasDirectOpenAiKey(): boolean {
+  const k =
+    process.env.OPENAI_API_KEY ??
+    process.env.AI_INTEGRATIONS_OPENAI_API_KEY ??
+    "";
+  return Boolean(k && k !== "dummy" && k.length > 12);
+}
+
 // ── Model constants ───────────────────────────────────────────────────────────
 export const OR = {
   // Rápido e barato — maioria das tarefas

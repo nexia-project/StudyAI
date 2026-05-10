@@ -1,8 +1,7 @@
 /**
- * OpenRouter — tenta slugs alternativos quando um modelo retorna 404 / sem endpoint.
- * Os erros do SDK costumam vir aninhados (error.error / cause); por isso normalizamos o texto.
+ * OpenRouter — fallback entre modelos + último recurso OpenAI direto (API oficial).
  */
-import { openrouter } from "./aiClient";
+import { openrouter, whisperClient, hasDirectOpenAiKey } from "./aiClient";
 
 /** Extrai texto pesquisável de qualquer erro do SDK / OpenRouter */
 export function stringifyOpenRouterError(err: unknown): string {
@@ -37,6 +36,33 @@ export function stringifyOpenRouterError(err: unknown): string {
   return parts.join(" ");
 }
 
+/** Chave OpenRouter inválida — não adianta tentar 10 modelos */
+export function isFatalAuthError(err: unknown): boolean {
+  const s = stringifyOpenRouterError(err).toLowerCase();
+  const e = err as { status?: number };
+  return (
+    e?.status === 401 ||
+    e?.status === 403 ||
+    s.includes("invalid api key") ||
+    s.includes("incorrect api key") ||
+    s.includes("unauthorized") ||
+    s.includes("permission denied")
+  );
+}
+
+export function isTransientProviderError(err: unknown): boolean {
+  const e = err as { status?: number };
+  const s = stringifyOpenRouterError(err).toLowerCase();
+  return (
+    e?.status === 429 ||
+    e?.status === 503 ||
+    s.includes("rate limit") ||
+    s.includes("too many requests") ||
+    s.includes("overloaded") ||
+    s.includes("temporarily unavailable")
+  );
+}
+
 export function isMissingModelError(err: unknown): boolean {
   const raw = stringifyOpenRouterError(err);
   const s = raw.toLowerCase();
@@ -55,7 +81,13 @@ export function isMissingModelError(err: unknown): boolean {
   );
 }
 
-/** Ordem de fallback: visão (GPT com imagem) vs texto (Claude → Haiku → GPT). */
+/** Vale tentar o próximo modelo na cadeia */
+function shouldTryNextOpenRouterModel(err: unknown): boolean {
+  if (isFatalAuthError(err)) return false;
+  return isMissingModelError(err) || isTransientProviderError(err);
+}
+
+/** Ordem de fallback OpenRouter: visão → texto (Claude → Haiku → GPT via OR). */
 export function completionFallbackChain(primary: string, hasVision: boolean): string[] {
   if (hasVision) {
     return [
@@ -83,6 +115,78 @@ export function completionFallbackChain(primary: string, hasVision: boolean): st
     .filter((x, i, a) => a.indexOf(x) === i);
 }
 
+const DIRECT_OPENAI_MODELS = ["gpt-4o-mini", "gpt-4o"] as const;
+
+async function chatCompletionDirectOpenAi(params: {
+  messages: unknown;
+  max_tokens: number;
+  temperature?: number;
+}): Promise<{ response: { choices: Array<{ message?: { content?: string | null } }> }; modelUsed: string } | null> {
+  if (!hasDirectOpenAiKey()) return null;
+  let lastErr: unknown;
+  for (const model of DIRECT_OPENAI_MODELS) {
+    try {
+      const response = await whisperClient.chat.completions.create({
+        model,
+        messages: params.messages as never,
+        max_tokens: params.max_tokens,
+        ...(params.temperature !== undefined ? { temperature: params.temperature } : {}),
+      });
+      return { response, modelUsed: `openai-direct:${model}` };
+    } catch (err) {
+      lastErr = err;
+      if (shouldTryNextOpenRouterModel(err) || isMissingModelError(err)) continue;
+      if (isFatalAuthError(err)) throw err;
+      continue;
+    }
+  }
+  void lastErr;
+  return null;
+}
+
+async function chatCompletionStreamDirectOpenAiAccumulate(params: {
+  messages: unknown;
+  max_tokens: number;
+  signal?: AbortSignal;
+  onChunk?: (totalChars: number) => void;
+}): Promise<{ text: string; modelUsed: string } | null> {
+  if (!hasDirectOpenAiKey()) return null;
+  let lastErr: unknown;
+  for (const model of DIRECT_OPENAI_MODELS) {
+    try {
+      const stream = await whisperClient.chat.completions.create(
+        {
+          model,
+          messages: params.messages as never,
+          max_tokens: params.max_tokens,
+          stream: true,
+        },
+        { signal: params.signal },
+      );
+      let accumulated = "";
+      for await (const chunk of stream as AsyncIterable<{ choices?: Array<{ delta?: { content?: string } }> }>) {
+        if (params.signal?.aborted) break;
+        const delta = chunk.choices?.[0]?.delta?.content || "";
+        if (delta) {
+          accumulated += delta;
+          params.onChunk?.(accumulated.length);
+        }
+      }
+      if (accumulated.trim().length > 0) {
+        return { text: accumulated, modelUsed: `openai-direct:${model}` };
+      }
+      lastErr = new Error(`Resposta vazia (OpenAI direto ${model})`);
+    } catch (err) {
+      lastErr = err;
+      if (isFatalAuthError(err)) throw err;
+      if (shouldTryNextOpenRouterModel(err) || isMissingModelError(err)) continue;
+      continue;
+    }
+  }
+  void lastErr;
+  return null;
+}
+
 export async function chatCompletionCreateWithFallback(params: {
   model: string;
   messages: unknown;
@@ -103,11 +207,20 @@ export async function chatCompletionCreateWithFallback(params: {
       return { response, modelUsed: model };
     } catch (err) {
       lastErr = err;
-      if (isMissingModelError(err)) continue;
+      if (isFatalAuthError(err)) throw err;
+      if (shouldTryNextOpenRouterModel(err)) continue;
       throw err;
     }
   }
-  throw lastErr ?? new Error("Nenhum modelo de IA disponível");
+
+  const direct = await chatCompletionDirectOpenAi({
+    messages: params.messages,
+    max_tokens: params.max_tokens,
+    temperature: params.temperature,
+  });
+  if (direct) return direct;
+
+  throw lastErr ?? new Error("Nenhum modelo de IA disponível (OpenRouter e OpenAI direto falharam).");
 }
 
 export async function chatCompletionStreamCreateWithFallback(params: {
@@ -133,7 +246,8 @@ export async function chatCompletionStreamCreateWithFallback(params: {
       return { stream: stream as AsyncIterable<unknown>, modelUsed: model };
     } catch (err) {
       lastErr = err;
-      if (isMissingModelError(err)) continue;
+      if (isFatalAuthError(err)) throw err;
+      if (shouldTryNextOpenRouterModel(err)) continue;
       throw err;
     }
   }
@@ -141,7 +255,7 @@ export async function chatCompletionStreamCreateWithFallback(params: {
 }
 
 /**
- * Stream com fallback completo: tenta o próximo modelo se der erro **ou** se o stream vier vazio.
+ * Stream com fallback: OpenRouter (vários modelos) → OpenAI direto se configurado.
  */
 export async function chatCompletionStreamAccumulateWithFallback(params: {
   model: string;
@@ -149,7 +263,6 @@ export async function chatCompletionStreamAccumulateWithFallback(params: {
   max_tokens: number;
   hasVision: boolean;
   signal?: AbortSignal;
-  /** Chamado a cada delta útil (para SSE progress no cliente). */
   onChunk?: (totalChars: number) => void;
 }): Promise<{ text: string; modelUsed: string }> {
   const chain = completionFallbackChain(params.model, params.hasVision);
@@ -185,10 +298,19 @@ export async function chatCompletionStreamAccumulateWithFallback(params: {
       continue;
     } catch (err) {
       lastErr = err;
-      if (isMissingModelError(err)) continue;
+      if (isFatalAuthError(err)) throw err;
+      if (shouldTryNextOpenRouterModel(err)) continue;
       throw err;
     }
   }
 
-  throw lastErr ?? new Error("Nenhum modelo de IA disponível");
+  const direct = await chatCompletionStreamDirectOpenAiAccumulate({
+    messages: params.messages,
+    max_tokens: params.max_tokens,
+    signal: params.signal,
+    onChunk: params.onChunk,
+  });
+  if (direct) return direct;
+
+  throw lastErr ?? new Error("Nenhum modelo de IA disponível (OpenRouter e OpenAI direto falharam).");
 }

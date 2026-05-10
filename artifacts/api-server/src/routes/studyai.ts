@@ -5,7 +5,9 @@ import { OR } from "../lib/aiClient";
 import {
   chatCompletionCreateWithFallback,
   chatCompletionStreamAccumulateWithFallback,
+  isFatalAuthError,
   isMissingModelError,
+  stringifyOpenRouterError,
 } from "../lib/openrouterFallback";
 import { extractJson } from "../lib/claudeAi";
 // Import from lib directly to avoid pdf-parse's startup self-test (reads a file at load time)
@@ -579,9 +581,11 @@ router.post("/analisar", checkFreeUsage, (req, res, next) => {
         });
         accumulated = result.text;
       } catch (streamErr) {
-        const friendly = isMissingModelError(streamErr)
-          ? "O provedor de IA não encontrou um modelo disponível. Tentamos várias alternativas — confira créditos OpenRouter ou tente em instantes."
-          : String(streamErr instanceof Error ? streamErr.message : streamErr);
+        const friendly = isFatalAuthError(streamErr)
+          ? "Chave da API inválida ou sem permissão. Verifique OPENROUTER_API_KEY (e OPENAI_API_KEY para fallback) no servidor."
+          : isMissingModelError(streamErr)
+            ? "Nenhum modelo respondeu via OpenRouter. Confirme créditos OpenRouter e defina OPENAI_API_KEY para fallback direto."
+            : String(streamErr instanceof Error ? streamErr.message : streamErr);
         sendSSE({ type: "error", message: friendly });
         res.end();
         return;
@@ -693,11 +697,13 @@ router.post("/analisar", checkFreeUsage, (req, res, next) => {
       res.json({ plano, conteudoTexto });
     }
   } catch (error) {
-    req.log.error({ error }, "Erro ao processar análise");
+    req.log.error({ error, detail: stringifyOpenRouterError(error) }, "Erro ao processar análise");
     const rawMsg = error instanceof Error ? error.message : String(error);
-    const friendly = isMissingModelError(error)
-      ? "O provedor de IA não encontrou o modelo configurado. Já alternamos automaticamente em novas tentativas — tente de novo."
-      : rawMsg;
+    const friendly = isFatalAuthError(error)
+      ? "Chave da API inválida. Confira OPENROUTER_API_KEY e OPENAI_API_KEY no Railway."
+      : isMissingModelError(error)
+        ? "Todos os modelos falharam no OpenRouter. Verifique créditos/saldo ou configure OPENAI_API_KEY como fallback."
+        : rawMsg;
     if (res.headersSent) {
       try {
         res.write(`data: ${JSON.stringify({ type: "error", message: friendly })}\n\n`);

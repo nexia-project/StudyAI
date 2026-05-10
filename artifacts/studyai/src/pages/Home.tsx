@@ -37,6 +37,7 @@ import {
   Medal,
   History,
   Database,
+  ChevronLeft,
 } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { TutorChat } from "@/components/TutorChat";
@@ -56,6 +57,16 @@ import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
+import {
+  IllStudyPlan,
+  IllTargetExam,
+  IllCalendar,
+  IllStudyRoom,
+  IllMindSpark,
+  IllNotebookStack,
+  IllPaperPen,
+  IllTeacherBoard,
+} from "@/components/nav/NavIllustrations";
 
 const GRADES = [
   "1º Ano - Fundamental",
@@ -229,7 +240,7 @@ export default function Home() {
   const { isPremium } = useSubscription();
   const { profile: studentProfile, saveProfile } = useStudentProfile();
   const [, navigate] = useLocation();
-  const [step, setStep] = useState<"form" | "loading" | "result">("form");
+  const [step, setStep] = useState<"hub" | "form" | "loading" | "result">("hub");
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [formData, setFormData] = useState({
     nome: "",
@@ -265,6 +276,15 @@ export default function Home() {
   const [wallpaperUrl, setWallpaperUrl] = useState<string | null>(null);
   const [loadingWallpaper, setLoadingWallpaper] = useState(false);
   const exerciciosRef = useRef<HTMLDivElement>(null);
+
+  // Deep-link: /app?criar=1 abre o formulário do plano
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("criar") === "1") {
+      setStep("form");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
 
   // Save plan to DB for authenticated users
   const savePlanToDB = async (plan: StudyPlan) => {
@@ -309,6 +329,7 @@ export default function Home() {
     const dias = params.get("dias");
     const planMateria = params.get("planMateria"); // from mapa mental "Abrir plano"
     if (materia || serie || dias) {
+      setStep("form");
       setFormData(prev => ({
         ...prev,
         ...(materia ? { nome: materia } : {}),
@@ -332,6 +353,7 @@ export default function Home() {
           if (match?.plan) {
             handleResumePlan(match.plan);
           } else {
+            setStep("form");
             // No plan found — pre-fill the form with the subject instead
             setFormData(prev => ({ ...prev, nome: planMateria }));
             setTimeout(() => {
@@ -578,7 +600,7 @@ export default function Home() {
     setConteudoTexto("");
     setSavedPlanId(null);
     setErrorMsg(null);
-    setStep("form");
+    setStep("hub");
     setCompletedTopics({});
     setEarnedXp(0);
     setResumaExpanded(true);
@@ -770,7 +792,7 @@ export default function Home() {
     <div className="min-h-screen pb-20 pt-14 md:pt-8 md:pl-64 px-4 sm:px-6 lg:px-8 flex flex-col items-center overflow-x-hidden relative">
 
       {/* ── Shared App Navigation ── */}
-      <AppNav onHome={() => { setStep("form"); window.scrollTo({ top: 0, behavior: "smooth" }); }} />
+      <AppNav onHome={() => { setStep("hub"); window.scrollTo({ top: 0, behavior: "smooth" }); }} />
 
       {/* Login banner after plan is generated (unauthenticated) */}
       <AnimatePresence>
@@ -811,7 +833,7 @@ export default function Home() {
       </AnimatePresence>
 
       {/* Header */}
-      {step === "form" && (
+      {(step === "hub" || step === "form") && (
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -836,13 +858,15 @@ export default function Home() {
             </h1>
           )}
           <p className="text-lg md:text-xl text-muted-foreground font-medium">
-            Diga o que vai estudar — a IA monta seu roteiro completo com exercícios e cronograma.
+            {step === "hub"
+              ? "Escolha um atalho ou monte um plano novo — tudo no ritmo do seu estudo."
+              : "Diga o que vai estudar — a IA monta seu roteiro completo com exercícios e cronograma."}
           </p>
         </motion.div>
       )}
 
       {/* Quick Resume Section — shown on form step for authenticated users with history */}
-      {step === "form" && isAuthenticated && recentPlans.length > 0 && (
+      {(step === "hub" || step === "form") && isAuthenticated && recentPlans.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -903,7 +927,7 @@ export default function Home() {
       )}
 
       {/* Community Feed */}
-      {step === "form" && feedEvents.length > 0 && (
+      {(step === "hub" || step === "form") && feedEvents.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -955,9 +979,139 @@ export default function Home() {
       )}
 
       {/* Main Content Area */}
-      <div id="main-form" className={cn("w-full relative", step === "result" ? "max-w-5xl" : "max-w-3xl")}>
+      <div
+        id="main-form"
+        className={cn(
+          "w-full relative",
+          step === "result" && "max-w-5xl",
+          step === "hub" && "max-w-5xl",
+          step === "form" && "max-w-3xl",
+          step === "loading" && "max-w-3xl",
+        )}
+      >
         <AnimatePresence mode="wait">
           
+          {/* STEP 0: HUB — atalhos rápidos */}
+          {step === "hub" && (
+            <motion.div
+              key="hub"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.25 }}
+              className="w-full space-y-6"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep("form");
+                    setTimeout(() => document.getElementById("main-form")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+                  }}
+                  className="group relative overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-6 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5"
+                >
+                  <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-primary/25 to-accent/15 blur-2xl opacity-80 pointer-events-none" />
+                  <IllStudyPlan className="size-14 mb-4 text-primary relative z-10" />
+                  <h3 className="font-black text-lg text-foreground mb-1 relative z-10">Criar plano de estudos</h3>
+                  <p className="text-sm text-muted-foreground leading-snug relative z-10">
+                    Texto, PDF, foto do caderno ou tema — a IA monta o roteiro completo.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigate("/simulado-enem")}
+                  className="group relative overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-6 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5"
+                >
+                  <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-cyan-400/20 to-primary/15 blur-2xl opacity-80 pointer-events-none" />
+                  <IllTargetExam className="size-14 mb-4 text-primary relative z-10" />
+                  <h3 className="font-black text-lg text-foreground mb-1 relative z-10">Simulado ENEM</h3>
+                  <p className="text-sm text-muted-foreground leading-snug relative z-10">
+                    Treine no formato da prova com correção inteligente.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigate("/cronograma")}
+                  className="group relative overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-6 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5"
+                >
+                  <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-fuchsia-400/15 to-violet-400/20 blur-2xl opacity-80 pointer-events-none" />
+                  <IllCalendar className="size-14 mb-4 text-primary relative z-10" />
+                  <h3 className="font-black text-lg text-foreground mb-1 relative z-10">Cronograma</h3>
+                  <p className="text-sm text-muted-foreground leading-snug relative z-10">
+                    Organize semanas de estudo com clareza.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigate("/sala-estudos")}
+                  className="group relative overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-6 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5"
+                >
+                  <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-amber-400/15 to-primary/15 blur-2xl opacity-80 pointer-events-none" />
+                  <IllStudyRoom className="size-14 mb-4 text-primary relative z-10" />
+                  <h3 className="font-black text-lg text-foreground mb-1 relative z-10">Sala de estudos</h3>
+                  <p className="text-sm text-muted-foreground leading-snug relative z-10">
+                    Foco, Pomodoro e ambiente colaborativo.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigate("/notebook")}
+                  className="group relative overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-6 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5"
+                >
+                  <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-pink-400/15 to-violet-500/15 blur-2xl opacity-80 pointer-events-none" />
+                  <IllMindSpark className="size-14 mb-4 text-primary relative z-10" />
+                  <h3 className="font-black text-lg text-foreground mb-1 relative z-10">Notebook RAG</h3>
+                  <p className="text-sm text-muted-foreground leading-snug relative z-10">
+                    Pergunte aos seus materiais com IA.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigate("/caderno")}
+                  className="group relative overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-6 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5"
+                >
+                  <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-emerald-400/15 to-primary/15 blur-2xl opacity-80 pointer-events-none" />
+                  <IllNotebookStack className="size-14 mb-4 text-primary relative z-10" />
+                  <h3 className="font-black text-lg text-foreground mb-1 relative z-10">Caderno digital</h3>
+                  <p className="text-sm text-muted-foreground leading-snug relative z-10">
+                    Anotações e revisões em um só lugar.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigate("/redacao")}
+                  className="group relative overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-6 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5 sm:col-span-2 lg:col-span-1"
+                >
+                  <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-rose-400/15 to-primary/15 blur-2xl opacity-80 pointer-events-none" />
+                  <IllPaperPen className="size-14 mb-4 text-primary relative z-10" />
+                  <h3 className="font-black text-lg text-foreground mb-1 relative z-10">Redação</h3>
+                  <p className="text-sm text-muted-foreground leading-snug relative z-10">
+                    Corrige e sugere melhorias no estilo ENEM.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigate("/tutor-ia")}
+                  className="group relative overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-6 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5 sm:col-span-2 lg:col-span-2"
+                >
+                  <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-indigo-400/15 to-violet-500/20 blur-2xl opacity-80 pointer-events-none" />
+                  <IllTeacherBoard className="size-14 mb-4 text-primary relative z-10" />
+                  <h3 className="font-black text-lg text-foreground mb-1 relative z-10">Professor Tiagão</h3>
+                  <p className="text-sm text-muted-foreground leading-snug relative z-10">
+                    Tutor por voz e texto — peça explicações, upload de material e vamos juntos.
+                  </p>
+                </button>
+              </div>
+            </motion.div>
+          )}
+
           {/* STEP 1: FORM */}
           {step === "form" && (
             <motion.div
@@ -975,6 +1129,19 @@ export default function Home() {
                   <p className="text-sm font-semibold">{errorMsg}</p>
                 </div>
               )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setStep("hub");
+                  setErrorMsg(null);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-primary hover:text-primary/80 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Voltar aos atalhos
+              </button>
 
               <div className="space-y-10">
                 {/* Section: Profile Summary (compact) */}

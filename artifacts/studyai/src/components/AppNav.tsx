@@ -130,7 +130,7 @@ function NavArtIcon({ Illustration, compact }: { Illustration: NavItem["Illustra
   return (
     <span
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-xl bg-violet-100/65 ring-1 ring-violet-200/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]",
+        "flex shrink-0 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] backdrop-blur-sm",
         compact ? "h-7 w-7" : "h-9 w-9",
       )}
     >
@@ -166,12 +166,12 @@ function ModeSwitcher() {
         onClick={() => setOpen(v => !v)}
         className={cn(
           "flex w-full max-w-full items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all",
-          "border border-violet-200/55 bg-white/70 shadow-sm shadow-violet-200/20 backdrop-blur-xl hover:border-violet-300/70 hover:bg-white/90",
+          "border border-white/25 bg-white/12 text-white shadow-sm shadow-black/25 backdrop-blur-xl hover:border-white/40 hover:bg-white/18",
         )}
       >
         <span>{current.emoji}</span>
-        <span className={current.color}>Modo: {current.label}</span>
-        <ChevronDown className={cn("w-3 h-3 text-violet-400 transition-transform", open && "rotate-180")} />
+        <span className="text-white/95 drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]">Modo: {current.label}</span>
+        <ChevronDown className={cn("w-3 h-3 text-white/80 transition-transform", open && "rotate-180")} />
       </button>
       <AnimatePresence>
         {open && (
@@ -180,7 +180,7 @@ function ModeSwitcher() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 4, scale: 0.97 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 z-50 mt-1.5 w-56 overflow-hidden rounded-2xl border border-violet-100/70 bg-white/88 py-1.5 shadow-xl shadow-violet-300/25 backdrop-blur-2xl"
+            className="absolute top-full left-0 z-50 mt-1.5 w-56 overflow-hidden rounded-2xl border border-white/25 bg-[#2f1458]/95 py-1.5 shadow-xl shadow-black/35 backdrop-blur-2xl"
           >
             {(Object.entries(MODE_CONFIG) as [AppMode, typeof MODE_CONFIG[AppMode]][]).map(([m, cfg]) => (
               <button
@@ -188,16 +188,16 @@ function ModeSwitcher() {
                 type="button"
                 onClick={() => handleSelect(m)}
                 className={cn(
-                  "flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-violet-50/80",
-                  mode === m && "bg-violet-100/60",
+                  "flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-white/10",
+                  mode === m && "bg-white/14",
                 )}
               >
                 <span className="text-xl flex-shrink-0">{cfg.emoji}</span>
                 <div>
-                  <p className={cn("text-sm font-black", mode === m ? cfg.color : "text-purple-900/85")}>{cfg.label}</p>
-                  <p className="text-[10px] leading-snug text-violet-500/85">{cfg.description}</p>
+                  <p className="text-sm font-black text-white/95 drop-shadow-[0_1px_1px_rgba(0,0,0,0.55)]">{cfg.label}</p>
+                  <p className="text-[10px] leading-snug text-violet-100/80">{cfg.description}</p>
                 </div>
-                {mode === m && <span className="ml-auto mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-violet-600 shadow-[0_0_10px_rgba(124,58,237,0.55)]" />}
+                {mode === m && <span className="ml-auto mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-fuchsia-300 shadow-[0_0_10px_rgba(232,121,249,0.6)]" />}
               </button>
             ))}
           </motion.div>
@@ -210,20 +210,22 @@ function ModeSwitcher() {
 function MobileModeSection({ mode, onSelect }: { mode: AppMode; onSelect: (m: AppMode) => void }) {
   const { setMode } = useMode();
   return (
-    <div className="border-b border-violet-100/70 bg-white/40 p-3 backdrop-blur-md">
-      <p className="mb-2 px-2 text-xs font-black uppercase tracking-widest text-violet-400/95">Modo atual</p>
+    <div className="border-b border-white/20 bg-black/10 p-3 backdrop-blur-md">
+      <p className="mb-2 px-2 text-xs font-black uppercase tracking-widest text-violet-100/90 drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]">Modo atual</p>
       <div className="space-y-1">
         {(Object.entries(MODE_CONFIG) as [AppMode, typeof MODE_CONFIG[AppMode]][]).map(([m, cfg]) => (
           <button key={m} type="button"
             onClick={() => { setMode(m); onSelect(m); }}
             className={cn(
               "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors",
-              mode === m ? "bg-violet-100/90 font-bold text-purple-950 ring-1 ring-violet-200/55" : "text-purple-900/75 hover:bg-violet-50/85",
+              mode === m
+                ? "bg-gradient-to-r from-violet-300/35 via-fuchsia-300/30 to-violet-300/35 font-bold text-white ring-1 ring-white/35"
+                : "text-white/92 hover:bg-white/10",
             )}
           >
             <span className="text-lg">{cfg.emoji}</span>
-            {cfg.label}
-            {mode === m && <span className="ml-auto h-2 w-2 rounded-full bg-violet-600 shadow-[0_0_8px_rgba(124,58,237,0.55)]" />}
+            <span className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.55)]">{cfg.label}</span>
+            {mode === m && <span className="ml-auto h-2 w-2 rounded-full bg-fuchsia-200 shadow-[0_0_10px_rgba(232,121,249,0.7)]" />}
           </button>
         ))}
       </div>
@@ -240,6 +242,12 @@ export function AppNav({ onHome }: AppNavProps) {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [mobileOpen, setMobileOpen] = useState(false);
   const { mode } = useMode();
+  const [navTheme, setNavTheme] = useState<"elegante" | "vibrante">(() => {
+    if (typeof window === "undefined") return "elegante";
+    const saved = localStorage.getItem("studyai_nav_theme");
+    return saved === "vibrante" ? "vibrante" : "elegante";
+  });
+  const isVibrante = navTheme === "vibrante";
 
   const currentPath = location;
   const navGroups = getNavGroups(mode);
@@ -249,6 +257,10 @@ export function AppNav({ onHome }: AppNavProps) {
     const g = getNavGroups(mode);
     setExpandedGroups(Object.fromEntries(g.map(gr => [gr.label, true])));
   }, [mode]);
+
+  useEffect(() => {
+    try { localStorage.setItem("studyai_nav_theme", navTheme); } catch { /* ignore */ }
+  }, [navTheme]);
 
   function handleNavigate(path: string) {
     if (path === "/app" && onHome) { onHome(); } else { navigate(path); }
@@ -262,19 +274,50 @@ export function AppNav({ onHome }: AppNavProps) {
   return (
     <>
       {/* ── Desktop: fixed left sidebar ── */}
-      <aside className="hidden md:fixed md:flex top-0 left-0 bottom-0 w-64 z-40 flex-col overflow-hidden border-r border-violet-200/45 bg-white/55 backdrop-blur-2xl shadow-[4px_0_40px_-14px_rgba(109,40,217,0.18)]">
+      <aside className={cn(
+        "hidden md:fixed md:flex top-0 left-0 bottom-0 w-64 z-40 flex-col overflow-hidden border-r backdrop-blur-2xl",
+        isVibrante
+          ? "border-violet-300/35 bg-gradient-to-b from-[#2a0b48] via-[#4b1791] to-[#6a21c9] shadow-[8px_0_50px_-10px_rgba(34,8,66,0.78)]"
+          : "border-violet-300/35 bg-gradient-to-b from-[#1f0b3d] via-[#31105c] to-[#46207a] shadow-[8px_0_45px_-12px_rgba(20,6,42,0.7)]",
+      )}>
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -top-20 -left-16 h-52 w-52 rounded-full bg-fuchsia-400/14 blur-3xl" />
-          <div className="absolute bottom-24 -right-10 h-44 w-44 rounded-full bg-violet-500/12 blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-purple-300/10 blur-3xl" />
+          <div className={cn("absolute -top-20 -left-16 h-52 w-52 rounded-full blur-3xl", isVibrante ? "bg-fuchsia-300/30" : "bg-fuchsia-300/18")} />
+          <div className={cn("absolute bottom-24 -right-10 h-44 w-44 rounded-full blur-3xl", isVibrante ? "bg-violet-300/30" : "bg-violet-300/18")} />
+          <div className={cn("absolute top-1/2 left-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl", isVibrante ? "bg-indigo-300/22" : "bg-indigo-300/13")} />
         </div>
-        <div className="relative z-[1] border-b border-violet-100/60 bg-white/35 p-3 backdrop-blur-xl flex-shrink-0">
-          <button type="button" onClick={() => handleNavigate("/app")} className="flex items-center gap-2.5 w-full rounded-xl p-1 hover:bg-violet-50/60 transition-colors">
+        <div className="relative z-[1] border-b border-white/20 bg-black/10 p-3 backdrop-blur-xl flex-shrink-0">
+          <button type="button" onClick={() => handleNavigate("/app")} className="flex items-center gap-2.5 w-full rounded-xl p-1 hover:bg-white/12 transition-colors">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-fuchsia-500 via-violet-600 to-purple-800 flex items-center justify-center text-white font-black text-sm shadow-md shadow-violet-300/40 ring-1 ring-white/25">S</div>
-            <span className="font-black text-purple-950 text-base tracking-tight">StudyAI</span>
+            <span className="font-black text-white text-base tracking-tight drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]">StudyAI</span>
           </button>
           <div className="mt-3">
             <ModeSwitcher />
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => setNavTheme("elegante")}
+              className={cn(
+                "rounded-lg border px-2 py-1 text-[10px] font-black uppercase tracking-wider transition-colors",
+                navTheme === "elegante"
+                  ? "border-white/45 bg-white/20 text-white"
+                  : "border-white/20 bg-white/8 text-violet-100/85 hover:bg-white/14",
+              )}
+            >
+              Elegante
+            </button>
+            <button
+              type="button"
+              onClick={() => setNavTheme("vibrante")}
+              className={cn(
+                "rounded-lg border px-2 py-1 text-[10px] font-black uppercase tracking-wider transition-colors",
+                navTheme === "vibrante"
+                  ? "border-fuchsia-200/60 bg-fuchsia-300/20 text-white"
+                  : "border-white/20 bg-white/8 text-violet-100/85 hover:bg-white/14",
+              )}
+            >
+              Vibrante
+            </button>
           </div>
         </div>
 
@@ -286,10 +329,10 @@ export function AppNav({ onHome }: AppNavProps) {
                 <button
                   type="button"
                   onClick={() => toggleNavGroup(group.label)}
-                  className="w-full flex items-center justify-between gap-2 px-2 py-2 rounded-lg text-[11px] font-black text-violet-400/95 uppercase tracking-wider hover:bg-violet-100/35 transition-colors text-left"
+                  className="w-full flex items-center justify-between gap-2 px-2 py-2 rounded-lg text-[11px] font-black text-violet-100/90 uppercase tracking-wider hover:bg-white/10 transition-colors text-left drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]"
                 >
                   <span className="truncate">{group.label}</span>
-                  <ChevronDown className={cn("w-3.5 h-3.5 flex-shrink-0 transition-transform text-violet-400/80", expanded && "rotate-180")} />
+                  <ChevronDown className={cn("w-3.5 h-3.5 flex-shrink-0 transition-transform text-violet-100/80", expanded && "rotate-180")} />
                 </button>
                 {expanded && (
                   <div className="mt-1 space-y-0.5 pl-0.5">
@@ -303,16 +346,18 @@ export function AppNav({ onHome }: AppNavProps) {
                           className={cn(
                             "w-full flex items-center gap-2.5 px-2 py-2 rounded-xl text-sm text-left transition-all",
                             isActive
-                              ? "bg-violet-100/85 text-purple-950 font-bold shadow-sm ring-1 ring-violet-200/55"
-                              : "text-purple-900/75 hover:bg-white/75 hover:text-purple-950 hover:ring-1 hover:ring-violet-100"
+                              ? isVibrante
+                                ? "bg-gradient-to-r from-violet-300/40 via-fuchsia-300/40 to-violet-300/40 text-white font-bold shadow-md ring-1 ring-white/35"
+                                : "bg-gradient-to-r from-violet-300/28 via-fuchsia-300/22 to-violet-300/28 text-white font-bold shadow-md ring-1 ring-white/35"
+                              : "text-white/92 hover:bg-white/12 hover:text-white hover:ring-1 hover:ring-white/20"
                           )}
                         >
                           <NavArtIcon Illustration={item.Illustration} />
-                          <span className="truncate flex-1">{item.label}</span>
+                          <span className="truncate flex-1 drop-shadow-[0_1px_1px_rgba(0,0,0,0.55)]">{item.label}</span>
                           {item.badge && !isActive && (
-                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-fuchsia-100/90 text-fuchsia-800 ring-1 ring-fuchsia-200/50 flex-shrink-0">{item.badge}</span>
+                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-fuchsia-300/25 text-fuchsia-50 ring-1 ring-fuchsia-200/50 flex-shrink-0">{item.badge}</span>
                           )}
-                          {isActive && <span className="w-1.5 h-1.5 rounded-full bg-violet-600 flex-shrink-0 shadow-[0_0_8px_rgba(124,58,237,0.65)]" />}
+                          {isActive && <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-200 flex-shrink-0 shadow-[0_0_10px_rgba(232,121,249,0.75)]" />}
                         </button>
                       );
                     })}
@@ -323,7 +368,7 @@ export function AppNav({ onHome }: AppNavProps) {
           })}
         </nav>
 
-        <div className="relative z-[1] border-t border-violet-100/65 bg-white/45 p-3 backdrop-blur-xl flex-shrink-0">
+        <div className="relative z-[1] border-t border-white/20 bg-black/10 p-3 backdrop-blur-xl flex-shrink-0">
           <UserMenu />
         </div>
       </aside>
@@ -377,16 +422,47 @@ export function AppNav({ onHome }: AppNavProps) {
             <motion.div
               initial={{ x: -300 }} animate={{ x: 0 }} exit={{ x: -300 }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="absolute top-0 left-0 bottom-0 w-72 overflow-y-auto border-r border-violet-100/70 bg-white/88 shadow-2xl shadow-violet-300/25 backdrop-blur-2xl"
+              className={cn(
+                "absolute top-0 left-0 bottom-0 w-72 overflow-y-auto border-r shadow-2xl shadow-black/45 backdrop-blur-2xl",
+                isVibrante
+                  ? "border-violet-200/35 bg-gradient-to-b from-[#2a0b48]/95 via-[#4b1791]/95 to-[#6a21c9]/95"
+                  : "border-violet-200/35 bg-gradient-to-b from-[#1f0b3d]/95 via-[#31105c]/95 to-[#46207a]/95",
+              )}
               onClick={e => e.stopPropagation()}>
 
-              <div className="flex items-center justify-between border-b border-violet-100/70 bg-white/50 p-4 backdrop-blur-xl">
+              <div className="flex items-center justify-between border-b border-white/20 bg-black/10 p-4 backdrop-blur-xl">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-fuchsia-500 via-violet-600 to-purple-800 flex items-center justify-center text-white font-black text-sm shadow-md shadow-violet-300/35">S</div>
-                  <span className="font-black text-purple-950">StudyAI</span>
+                  <span className="font-black text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]">StudyAI</span>
                 </div>
-                <button type="button" onClick={() => setMobileOpen(false)} className="p-2 rounded-xl text-violet-400 hover:bg-violet-50">
+                <button type="button" onClick={() => setMobileOpen(false)} className="p-2 rounded-xl text-violet-100 hover:bg-white/10">
                   <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="px-4 pt-2 pb-1 grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setNavTheme("elegante")}
+                  className={cn(
+                    "rounded-lg border px-2 py-1 text-[10px] font-black uppercase tracking-wider transition-colors",
+                    navTheme === "elegante"
+                      ? "border-white/45 bg-white/20 text-white"
+                      : "border-white/20 bg-white/8 text-violet-100/85 hover:bg-white/14",
+                  )}
+                >
+                  Elegante
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNavTheme("vibrante")}
+                  className={cn(
+                    "rounded-lg border px-2 py-1 text-[10px] font-black uppercase tracking-wider transition-colors",
+                    navTheme === "vibrante"
+                      ? "border-fuchsia-200/60 bg-fuchsia-300/20 text-white"
+                      : "border-white/20 bg-white/8 text-violet-100/85 hover:bg-white/14",
+                  )}
+                >
+                  Vibrante
                 </button>
               </div>
 
@@ -396,7 +472,7 @@ export function AppNav({ onHome }: AppNavProps) {
               <div className="p-3 space-y-4">
                 {navGroups.map(group => (
                   <div key={group.label}>
-                    <p className="text-xs font-black text-violet-400/95 uppercase tracking-widest px-2 mb-2">{group.label}</p>
+                    <p className="text-xs font-black text-violet-100/90 uppercase tracking-widest px-2 mb-2 drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]">{group.label}</p>
                     <div className="space-y-0.5">
                       {group.items.map(item => {
                         const isActive = currentPath === item.path || currentPath.startsWith(item.path + "/");
@@ -404,11 +480,15 @@ export function AppNav({ onHome }: AppNavProps) {
                           <button key={item.path + item.label} type="button" onClick={() => handleNavigate(item.path)}
                             className={cn(
                               "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors text-left",
-                              isActive ? "bg-violet-100/90 text-purple-950 font-bold ring-1 ring-violet-200/60" : "text-purple-900/75 hover:bg-violet-50/80 hover:text-purple-950"
+                              isActive
+                                ? isVibrante
+                                  ? "bg-gradient-to-r from-violet-300/40 via-fuchsia-300/40 to-violet-300/40 text-white font-bold ring-1 ring-white/35"
+                                  : "bg-gradient-to-r from-violet-300/28 via-fuchsia-300/22 to-violet-300/28 text-white font-bold ring-1 ring-white/35"
+                                : "text-white/92 hover:bg-white/12 hover:text-white"
                             )}>
                             <NavArtIcon Illustration={item.Illustration} compact />
-                            {item.label}
-                            {item.badge && <span className="ml-auto text-[9px] font-black px-1.5 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-800 ring-1 ring-fuchsia-200/50">{item.badge}</span>}
+                            <span className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.55)]">{item.label}</span>
+                            {item.badge && <span className="ml-auto text-[9px] font-black px-1.5 py-0.5 rounded-full bg-fuchsia-300/25 text-fuchsia-50 ring-1 ring-fuchsia-200/50">{item.badge}</span>}
                           </button>
                         );
                       })}

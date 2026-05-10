@@ -36,7 +36,9 @@ export type ModelConfig = {
 export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
   "lesson-generation": {
     provider: "openrouter",
-    model: "anthropic/claude-3.5-sonnet",
+    model:
+      process.env.OPENROUTER_MODEL_CLAUDE ??
+      "anthropic/claude-3-5-sonnet-20241022",
     maxTokens: 2500,
     temperature: 0.8,
     supportsSystemRole: true,
@@ -45,7 +47,9 @@ export const MODEL_CONFIGS: Record<TaskType, ModelConfig> = {
   },
   "creative": {
     provider: "openrouter",
-    model: "anthropic/claude-3.5-sonnet",
+    model:
+      process.env.OPENROUTER_MODEL_CLAUDE ??
+      "anthropic/claude-3-5-sonnet-20241022",
     maxTokens: 2000,
     temperature: 0.9,
     supportsSystemRole: true,

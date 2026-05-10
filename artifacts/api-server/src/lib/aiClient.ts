@@ -50,16 +50,16 @@ export const OR = {
   pro:        "openai/gpt-4o",
   premium:    "openai/gpt-4o",               // alias de pro
 
-  // Visão — modelo confiável para image_url no OpenRouter
-  // openai/gpt-4o às vezes retorna "No endpoints found that support image input"
-  vision:     "google/gemini-2.0-flash-001",
+  // Visão — apenas GPT (pedido do produto: só OpenAI + Anthropic na OpenRouter)
+  vision:     process.env.OPENROUTER_MODEL_VISION ?? "openai/gpt-4o",
 
   // Raciocínio — matemática, física, química
   reasoning:  "deepseek/deepseek-r1-0528",
 
-  // Claude via OpenRouter — conteúdo educacional pesado
-  // Use the stable 3.5-sonnet slug — claude-sonnet-4 is not yet on OR
-  claude:     "anthropic/claude-3.5-sonnet",
+  // Claude via OpenRouter — slug datado evita 404 "No endpoints" em contas novas
+  claude:
+    process.env.OPENROUTER_MODEL_CLAUDE ??
+    "anthropic/claude-3-5-sonnet-20241022",
   claudeFast: "anthropic/claude-3-haiku",
 } as const;
 
@@ -97,12 +97,14 @@ export async function generateWithGemini(
 
   messages.push({ role: "user", content: userPrompt });
 
-  const completion = await openrouter.chat.completions.create({
+  const { chatCompletionCreateWithFallback } = await import("./openrouterFallback");
+  const { response } = await chatCompletionCreateWithFallback({
     model: OR.claude,
     messages,
     max_tokens: Math.min(maxOutputTokens, 8000),
+    hasVision: false,
     temperature: 0.65,
   });
 
-  return completion.choices[0]?.message?.content ?? "";
+  return response.choices[0]?.message?.content ?? "";
 }

@@ -12,11 +12,12 @@
  *   claudeChat({ system, user, history, ... })    → texto livre com histórico
  */
 
-import { openrouter } from "./aiClient";
+import { openrouter, OR } from "./aiClient";
 
 // Modelos Claude via OpenRouter (prefixo anthropic/)
 export const CLAUDE_OPUS   = "anthropic/claude-3-opus";
-export const CLAUDE_SONNET = "anthropic/claude-3.5-sonnet";
+/** Alias estável — mesmo slug default que `OR.claude` (env OPENROUTER_MODEL_CLAUDE). */
+export const CLAUDE_SONNET = OR.claude;
 
 function jsonClean(raw: string): string {
   return raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();

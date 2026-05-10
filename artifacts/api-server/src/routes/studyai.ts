@@ -1,7 +1,12 @@
 import { Router, type IRouter } from "express";
 import { getKnowledgeContext } from "../utils/knowledge-context";
 import multer from "multer";
-import { openai, openrouter, OR } from "../lib/aiClient";
+import { OR } from "../lib/aiClient";
+import {
+  chatCompletionCreateWithFallback,
+  chatCompletionStreamCreateWithFallback,
+  isMissingModelError,
+} from "../lib/openrouterFallback";
 import { extractJson } from "../lib/claudeAi";
 // Import from lib directly to avoid pdf-parse's startup self-test (reads a file at load time)
 import pdfParse from "pdf-parse/lib/pdf-parse.js";
@@ -29,6 +34,27 @@ function classifyProfile(objetivo?: string, serie?: string): ProfileType {
   if (ser.includes("fundamental")) return "fundamental";
   if (ser.includes("médio") || ser.includes("medio")) return "enem";
   return "generico";
+}
+
+/** Economia: Haiku para tema curto no Fundamental; caso contrário Sonnet (com fallback na camada HTTP). */
+function pickStudyPlanModel(args: {
+  hasVision: boolean;
+  profile: ProfileType;
+  textoLen: number;
+  fileCount: number;
+}): string {
+  if (args.hasVision) return OR.vision;
+  const longOrDocs = args.textoLen > 4500 || args.fileCount > 0;
+  const hardProfile =
+    args.profile === "vestibular" ||
+    args.profile === "concurso" ||
+    args.profile === "superior" ||
+    args.profile === "enem";
+  if (longOrDocs || hardProfile) return OR.claude;
+  if (args.profile === "fundamental" && args.textoLen < 1400 && args.fileCount === 0) {
+    return OR.claudeFast;
+  }
+  return OR.claude;
 }
 
 // ─── JSON Structure (shared across all profiles) ─────────────────────────────
@@ -528,23 +554,30 @@ router.post("/analisar", checkFreeUsage, (req, res, next) => {
     const hasVision = messages.some(
       (m) => Array.isArray(m.content) && m.content.some((p: any) => p.type === "image_url"),
     );
-    const chosenModel = hasVision ? OR.vision : OR.claude;
+    const fileCount = files?.length ?? 0;
+    const chosenModel = pickStudyPlanModel({
+      hasVision,
+      profile,
+      textoLen: textoFinal.length,
+      fileCount,
+    });
     const MAX_TOKENS = hasVision ? 6000 : 8000;
 
     if (wantsStream) {
       sendSSE({ type: "status", message: "Analisando conteúdo..." });
       const abortCtrl = new AbortController();
       res.on("close", () => abortCtrl.abort());
-      const stream = await openrouter.chat.completions.create({
+      const { stream } = await chatCompletionStreamCreateWithFallback({
         model: chosenModel,
         messages: messages as any,
         max_tokens: MAX_TOKENS,
-        stream: true,
-      }, { signal: abortCtrl.signal }) as any;
+        hasVision,
+        signal: abortCtrl.signal,
+      });
       let accumulated = "";
-      for await (const chunk of stream) {
+      for await (const chunk of stream as AsyncIterable<{ choices?: Array<{ delta?: { content?: string } }> }>) {
         if (abortCtrl.signal.aborted) break;
-        const delta = chunk.choices[0]?.delta?.content || "";
+        const delta = chunk.choices?.[0]?.delta?.content || "";
         if (delta) {
           accumulated += delta;
           sendSSE({ type: "progress", chars: accumulated.length });
@@ -557,12 +590,13 @@ router.post("/analisar", checkFreeUsage, (req, res, next) => {
       }
       aiResponse = accumulated;
     } else {
-      const response = await openrouter.chat.completions.create({
+      const { response } = await chatCompletionCreateWithFallback({
         model: chosenModel,
         messages: messages as any,
         max_tokens: MAX_TOKENS,
-      }) as any;
-      const raw = response.choices[0].message.content;
+        hasVision,
+      });
+      const raw = response.choices[0]?.message?.content;
       if (!raw) {
         res.status(500).json({ erro: "Erro ao gerar o plano." });
         return;
@@ -657,14 +691,18 @@ router.post("/analisar", checkFreeUsage, (req, res, next) => {
     }
   } catch (error) {
     req.log.error({ error }, "Erro ao processar análise");
+    const rawMsg = error instanceof Error ? error.message : String(error);
+    const friendly = isMissingModelError(error)
+      ? "O provedor de IA não encontrou o modelo configurado. Já alternamos automaticamente em novas tentativas — tente de novo."
+      : rawMsg;
     if (res.headersSent) {
-      // SSE already started — emit error event and close
       try {
-        res.write(`data: ${JSON.stringify({ type: "error", message: (error as Error).message })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: "error", message: friendly })}\n\n`);
       } catch { /* ignore */ }
       res.end();
     } else {
-      res.status(500).json({ erro: "Erro ao processar: " + (error as Error).message });
+      const status = isMissingModelError(error) ? 503 : 500;
+      res.status(status).json({ erro: friendly });
     }
   }
 });

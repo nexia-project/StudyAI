@@ -677,7 +677,7 @@ export function VoiceProfessor() {
         whileHover={{ scale: 1.08, y: -2 }}
         whileTap={{ scale: 0.92 }}
         onClick={handlePanelToggle}
-        className="fixed bottom-20 md:bottom-6 left-4 md:left-6 z-40 select-none"
+        className="fixed bottom-20 md:bottom-6 left-4 md:left-auto md:right-6 z-40 select-none"
         style={{ background: "none", border: "none", padding: 0 }}
         title="Professor Tiagão — clique para falar"
       >
@@ -695,7 +695,7 @@ export function VoiceProfessor() {
         {showHint && !open && (
           <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -10 }} transition={{ delay: 2, duration: 0.4 }}
-            className="fixed bottom-[5.5rem] md:bottom-8 left-20 z-40 pointer-events-none">
+            className="fixed bottom-[5.5rem] md:bottom-8 left-20 md:left-auto md:right-24 z-40 pointer-events-none">
             <div className="bg-gray-900 text-white text-xs font-medium px-3 py-2 rounded-xl shadow-lg whitespace-nowrap">
               👆 Toque aqui para falar com o Tiagão
               <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1.5 w-2.5 h-2.5 bg-gray-900 rotate-45" />
@@ -711,7 +711,7 @@ export function VoiceProfessor() {
             initial={{ opacity: 0, y: 12, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.95 }}
-            className="fixed bottom-24 left-4 right-4 sm:left-6 sm:right-auto sm:w-80 z-40 bg-white rounded-2xl shadow-xl border border-violet-100 p-3">
+            className="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-6 sm:w-80 z-40 bg-white rounded-2xl shadow-xl border border-violet-100 p-3">
             <div className="flex items-center gap-3">
               <TiagaoCharacter state={phase as CharacterState} size={48} showLabel={false} />
               <div className="flex-1 min-w-0">
@@ -769,7 +769,7 @@ export function VoiceProfessor() {
             className={`fixed z-50 bg-white rounded-3xl shadow-2xl border border-violet-100 overflow-hidden flex flex-col transition-all duration-300 ${
               focusMode
                 ? "inset-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[520px] sm:max-h-[90vh]"
-                : "bottom-[8.5rem] md:bottom-24 left-4 right-4 sm:left-6 sm:right-auto sm:w-[360px] max-h-[70vh]"
+                : "bottom-[8.5rem] md:bottom-24 left-4 right-4 sm:left-auto sm:right-6 sm:w-[360px] max-h-[70vh]"
             }`}
           >
             {/* ── HEADER ── */}

@@ -24,7 +24,12 @@ import {
 import { cn } from "@/lib/utils";
 import { useSubscription } from "@/hooks/useSubscription";
 
-export function UserMenu() {
+interface UserMenuProps {
+  /** Na sidebar desktop o rodapé é em baixo — abrir o menu para cima evita sair da tela */
+  openAccountMenuUpward?: boolean;
+}
+
+export function UserMenu({ openAccountMenuUpward = false }: UserMenuProps) {
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
   const { isPremium, freeAiUsesRemaining, freeAiLimit } = useSubscription();
   const [open, setOpen] = useState(false);
@@ -134,11 +139,22 @@ export function UserMenu() {
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.95 }}
+            initial={{
+              opacity: 0,
+              y: openAccountMenuUpward ? 8 : -8,
+              scale: 0.95,
+            }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.95 }}
+            exit={{
+              opacity: 0,
+              y: openAccountMenuUpward ? 8 : -8,
+              scale: 0.95,
+            }}
             transition={{ duration: 0.12 }}
-            className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl border border-border shadow-xl shadow-black/10 overflow-hidden z-50"
+            className={cn(
+              "absolute right-0 w-52 max-h-[min(70vh,420px)] overflow-y-auto bg-white rounded-2xl border border-border shadow-xl shadow-black/10 z-[100]",
+              openAccountMenuUpward ? "bottom-full mb-2" : "top-full mt-2",
+            )}
           >
             <div className="px-4 py-3 border-b border-border bg-secondary/40">
               <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Conta</p>

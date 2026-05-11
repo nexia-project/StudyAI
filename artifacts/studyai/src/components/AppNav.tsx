@@ -180,7 +180,7 @@ function ModeSwitcher() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 4, scale: 0.97 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 z-50 mt-1.5 w-56 overflow-hidden rounded-2xl border border-white/25 bg-[#2f1458]/95 py-1.5 shadow-xl shadow-black/35 backdrop-blur-2xl"
+            className="absolute top-full left-0 z-[100] mt-1.5 w-56 overflow-hidden rounded-2xl border border-white/25 bg-[#2f1458]/95 py-1.5 shadow-xl shadow-black/35 backdrop-blur-2xl pointer-events-auto"
           >
             {(Object.entries(MODE_CONFIG) as [AppMode, typeof MODE_CONFIG[AppMode]][]).map(([m, cfg]) => (
               <button
@@ -285,7 +285,8 @@ export function AppNav({ onHome }: AppNavProps) {
           <div className={cn("absolute bottom-24 -right-10 h-44 w-44 rounded-full blur-3xl", isVibrante ? "bg-violet-300/30" : "bg-violet-300/18")} />
           <div className={cn("absolute top-1/2 left-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl", isVibrante ? "bg-indigo-300/22" : "bg-indigo-300/13")} />
         </div>
-        <div className="relative z-[1] border-b border-white/20 bg-black/10 p-3 backdrop-blur-xl flex-shrink-0">
+        {/* z-30: dropdown Modo (Aluno/Professor) deve ficar acima do <nav> (z-[1]), senão cliques caem nos links */}
+        <div className="relative z-30 border-b border-white/20 bg-black/10 p-3 backdrop-blur-xl flex-shrink-0">
           <button type="button" onClick={() => handleNavigate("/app")} className="flex items-center gap-2.5 w-full rounded-xl p-1 hover:bg-white/12 transition-colors">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-fuchsia-500 via-violet-600 to-purple-800 flex items-center justify-center text-white font-black text-sm shadow-md shadow-violet-300/40 ring-1 ring-white/25">S</div>
             <span className="font-black text-white text-base tracking-tight drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]">StudyAI</span>
@@ -368,8 +369,8 @@ export function AppNav({ onHome }: AppNavProps) {
           })}
         </nav>
 
-        <div className="relative z-[1] border-t border-white/20 bg-black/10 p-3 backdrop-blur-xl flex-shrink-0">
-          <UserMenu />
+        <div className="relative z-20 border-t border-white/20 bg-black/10 p-3 backdrop-blur-xl flex-shrink-0">
+          <UserMenu openAccountMenuUpward />
         </div>
       </aside>
 

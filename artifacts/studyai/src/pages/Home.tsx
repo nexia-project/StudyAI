@@ -789,7 +789,7 @@ export default function Home() {
         }}
       />
     )}
-    <div className="min-h-screen pb-20 pt-14 md:pt-8 md:pl-64 px-4 sm:px-6 lg:px-8 flex flex-col items-center overflow-x-hidden relative">
+    <div className="min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom,0px))] pt-14 md:pt-8 md:pl-64 px-4 sm:px-6 lg:px-8 flex flex-col items-stretch sm:items-center overflow-x-hidden relative w-full max-w-[100vw]">
 
       {/* ── Shared App Navigation ── */}
       <AppNav onHome={() => { setStep("hub"); window.scrollTo({ top: 0, behavior: "smooth" }); }} />
@@ -871,7 +871,7 @@ export default function Home() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className="w-full max-w-3xl mb-6"
+          className="w-full max-w-3xl mx-auto mb-6"
         >
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
@@ -932,7 +932,7 @@ export default function Home() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="w-full max-w-3xl mb-6"
+          className="w-full max-w-3xl mx-auto mb-6"
         >
           <div className="flex items-center gap-2 mb-3">
             <h2 className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
@@ -982,9 +982,9 @@ export default function Home() {
       <div
         id="main-form"
         className={cn(
-          "w-full relative",
+          "w-full relative mx-auto",
           step === "result" && "max-w-5xl",
-          step === "hub" && "max-w-5xl",
+          step === "hub" && "max-w-6xl",
           step === "form" && "max-w-3xl",
           step === "loading" && "max-w-3xl",
         )}
@@ -999,9 +999,9 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.25 }}
-              className="w-full space-y-6"
+              className="w-full max-w-6xl mx-auto space-y-6"
             >
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 justify-items-stretch">
                 <button
                   type="button"
                   onClick={() => {

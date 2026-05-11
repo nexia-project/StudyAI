@@ -12,7 +12,7 @@
  *  • Melhor tratamento de permissões
  */
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TiagaoCharacter, type CharacterState } from "@/components/TiagaoCharacter";
 import {
@@ -60,6 +60,27 @@ function stopCurrentAudio() {
   try { _currentSource?.stop(); } catch { /* already stopped */ }
   _currentSource = null;
 }
+/**
+ * Web Speech API funciona razoavelmente em Chrome desktop.
+ * Em iOS/Android costuma falhar ou não captar — usamos MediaRecorder + API de transcrição.
+ */
+function shouldUseBrowserSpeechRecognition(): boolean {
+  if (typeof window === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  const isIOS =
+    /iPhone|iPad|iPod/i.test(ua) ||
+    (navigator.platform === "MacIntel" &&
+      ((navigator as Navigator & { maxTouchPoints?: number }).maxTouchPoints ?? 0) > 1);
+  if (isIOS) return false;
+  if (/Android/i.test(ua)) return false;
+  const w = window as unknown as {
+    SpeechRecognition?: new () => unknown;
+    webkitSpeechRecognition?: new () => unknown;
+  };
+  const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
+  return typeof Ctor === "function";
+}
+
 function detectEmotion(text: string): string {
   if (/parabéns|incrível|mandou bem|orgulho|excelente/i.test(text)) return "excited";
   if (/calma|tranquilo|sem pressa|respira|tá tudo bem/i.test(text)) return "calm";
@@ -253,19 +274,18 @@ export function VoiceProfessor() {
   const chatEndRef      = useRef<HTMLDivElement>(null);
   const cameraInputRef  = useRef<HTMLInputElement>(null);
 
-  const hasSpeechInput = typeof window !== "undefined" &&
-    ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+  const useBrowserSpeech = useMemo(() => shouldUseBrowserSpeechRecognition(), []);
 
   // ── Audio capture (VAD + devices + Whisper fallback) ───────────────────────
   const audioCapture = useAudioCapture({
     onVolume: setVolume,
     onSpeechStart: () => {
       // VAD detected speech — switch to listening phase
-      if (!hasSpeechInput) setPhase("listening");
+      if (!useBrowserSpeech) setPhase("listening");
     },
     onSpeechEnd: async (blob, info) => {
       // When SpeechRecognition is unavailable, send blob to Whisper
-      if (hasSpeechInput) return; // SpeechRecognition handles this
+      if (useBrowserSpeech) return; // SpeechRecognition handles this
       setPhase("thinking");
       try {
         const ext = info?.extension ?? "webm";
@@ -600,7 +620,7 @@ export function VoiceProfessor() {
     }
 
     // ── Fallback: sem SpeechRecognition → usa VAD + Whisper ─────────────────
-    if (!hasSpeechInput) {
+    if (!useBrowserSpeech) {
       // Single start — o hook é mutex-protegido (não duplica streams)
       const ok = await audioCapture.start();
       if (!ok) return; // Error shown by hook
@@ -649,7 +669,7 @@ export function VoiceProfessor() {
     };
     recognitionRef.current = rec;
     rec.start();
-  }, [hasSpeechInput, sendMessage, stopSpeaking, phase, audioCapture]);
+  }, [useBrowserSpeech, sendMessage, stopSpeaking, phase, audioCapture]);
 
   const stopListening = useCallback(() => {
     recognitionRef.current?.stop(); setPhase("idle");
@@ -665,6 +685,11 @@ export function VoiceProfessor() {
   };
 
   const lastAssistantMsg = [...history].reverse().find(m => m.role === "assistant")?.text || "";
+  const showReplyHint =
+    open &&
+    phase === "idle" &&
+    history.length > 0 &&
+    history[history.length - 1]?.role === "assistant";
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -979,6 +1004,10 @@ export function VoiceProfessor() {
                   {/* Microfone */}
                   <div>
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">Microfone</p>
+                    <p className="text-[10px] text-slate-500 mb-3 leading-relaxed">
+                      Use o site em <strong className="text-slate-700">https://</strong> (obrigatório no celular). Depois que o Tiagão responde,
+                      toque outra vez no botão de voz — iOS e Android não permitem microfone ligado o tempo todo sem um novo toque seu.
+                    </p>
                     {audioCapture.devices.length === 0 ? (
                       <button onClick={audioCapture.refreshDevices}
                         className="w-full py-2 bg-slate-50 text-slate-500 text-xs rounded-xl border border-dashed border-slate-300 hover:border-violet-300 transition-colors flex items-center justify-center gap-2">
@@ -1069,12 +1098,20 @@ export function VoiceProfessor() {
                 </button>
               ) : (
                 <>
+                  {showReplyHint && (
+                    <p className="text-[10px] text-center text-violet-700 font-semibold mb-2 px-1 leading-snug">
+                      Toque no botão para o microfone ouvir você de novo
+                    </p>
+                  )}
                   <button onClick={startListening} disabled={phase === "thinking"}
-                    className="w-full py-2.5 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 disabled:opacity-50 text-white transition-all"
+                    className={`w-full py-2.5 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 disabled:opacity-50 text-white transition-all ${
+                      showReplyHint ? "ring-2 ring-offset-2 ring-violet-400 ring-offset-white shadow-lg" : ""
+                    }`}
                     style={{ background: "linear-gradient(135deg,#6366f1,#4f46e5)", boxShadow: "0 4px 16px #6366f140" }}>
                     {phase === "thinking"
                       ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Pensando...</>
-                      : <><Mic className="w-3.5 h-3.5" /> {hasSpeechInput ? "Falar com o Tiagão" : "Iniciar voz"}</>
+                      : <><Mic className="w-3.5 h-3.5" />{" "}
+                        {useBrowserSpeech ? "Falar com o Tiagão" : "Gravar minha voz (microfone)"}</>
                     }
                   </button>
 

@@ -789,7 +789,7 @@ export default function Home() {
         }}
       />
     )}
-    <div className="min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom,0px))] pt-14 md:pt-8 md:pl-64 px-4 sm:px-6 lg:px-8 flex flex-col items-stretch sm:items-center overflow-x-hidden relative w-full min-w-0 max-w-full box-border">
+    <div className="studyai-with-sidebar min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom,0px))] pt-14 md:pt-8 px-4 sm:px-6 lg:px-8 flex flex-col items-stretch sm:items-center overflow-x-hidden relative">
 
       {/* ── Shared App Navigation ── */}
       <AppNav onHome={() => { setStep("hub"); window.scrollTo({ top: 0, behavior: "smooth" }); }} />

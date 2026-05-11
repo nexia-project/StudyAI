@@ -538,7 +538,7 @@ export default function BaseConhecimento() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen md:pl-64 pt-14 md:pt-0">
+      <div className="min-h-screen studyai-with-sidebar pt-14 md:pt-0">
         <AppNav />
         <div className="flex flex-col items-center justify-center p-6 pt-8 md:pt-16 text-center">
           <BookOpen className="w-12 h-12 text-violet-400 mb-4" />
@@ -555,7 +555,7 @@ export default function BaseConhecimento() {
   const displayDocs = searchResults !== null ? searchResults : docs;
 
   return (
-    <div className="min-h-screen bg-background md:pl-64 pt-14 md:pt-0">
+    <div className="min-h-screen bg-background studyai-with-sidebar pt-14 md:pt-0">
       <AppNav />
       {/* Toast */}
       <AnimatePresence>

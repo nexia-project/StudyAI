@@ -191,7 +191,7 @@ export default function RankingPage() {
 
   if (!isPremium) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-violet-50 md:pl-64 pt-14 md:pt-0">
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-violet-50 studyai-with-sidebar pt-14 md:pt-0">
         <AppNav />
         <div className="flex flex-col items-center justify-center gap-6 p-8 pt-8 md:pt-16">
           <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center shadow-xl shadow-amber-200">
@@ -215,7 +215,7 @@ export default function RankingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-violet-50 md:pl-64 pt-14 md:pt-0">
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-violet-50 studyai-with-sidebar pt-14 md:pt-0">
       <AppNav />
       {/* Header */}
       <div className="bg-gradient-to-r from-violet-600 to-violet-700 px-4 py-6 shadow-xl shadow-violet-200">

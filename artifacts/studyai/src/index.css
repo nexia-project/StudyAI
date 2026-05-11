@@ -68,6 +68,24 @@
 }
 
 @layer utilities {
+  /**
+   * Conteúdo principal ao lado da sidebar fixa (md:w-64).
+   * margin-left + width calc evita que grids/cartões fiquem geometricamente por baixo da barra
+   * (só padding-left deixa o bloco a 100% da viewport e alguns filhos “rebentam” para a esquerda).
+   */
+  .studyai-with-sidebar {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  @media (min-width: 768px) {
+    .studyai-with-sidebar {
+      margin-left: 16rem;
+      width: calc(100% - 16rem);
+    }
+  }
+
   .glass-card {
     @apply border border-violet-200/45 bg-white/80 shadow-sm shadow-violet-200/20 backdrop-blur-xl;
   }

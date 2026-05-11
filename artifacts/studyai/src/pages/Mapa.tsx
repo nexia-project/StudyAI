@@ -159,7 +159,7 @@ export default function Mapa() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-violet-50 md:pl-64 pt-14 md:pt-0">
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-violet-50 studyai-with-sidebar pt-14 md:pt-0">
         <AppNav />
         <div className="flex flex-col items-center justify-center gap-6 p-8 pt-8 md:pt-16">
           <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-xl shadow-violet-200">
@@ -183,7 +183,7 @@ export default function Mapa() {
 
   if (!isPremium) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-violet-50 md:pl-64 pt-14 md:pt-0">
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 to-violet-50 studyai-with-sidebar pt-14 md:pt-0">
         <AppNav />
         <div className="flex flex-col items-center justify-center gap-6 p-8 pt-8 md:pt-16">
           <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-xl shadow-violet-200">
@@ -214,7 +214,7 @@ export default function Mapa() {
     : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50/30 to-violet-50/40 md:pl-64 pt-14 md:pt-0">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50/30 to-violet-50/40 studyai-with-sidebar pt-14 md:pt-0">
       <AppNav />
       {/* Sub-header */}
       <div className="sticky top-14 md:top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-slate-100">

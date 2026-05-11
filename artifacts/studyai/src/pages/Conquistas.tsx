@@ -119,7 +119,7 @@ export default function ConquistasPage() {
   const categories = Array.from(new Set(BADGES.map(b => b.category))) as BadgeCategory[];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-violet-50 md:pl-64 pt-14 md:pt-0">
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-violet-50 studyai-with-sidebar pt-14 md:pt-0">
       <AppNav />
       {/* Header */}
       <div className="bg-gradient-to-r from-violet-600 to-violet-700 px-4 py-6 shadow-xl shadow-violet-200">

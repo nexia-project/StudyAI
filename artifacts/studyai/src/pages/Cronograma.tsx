@@ -131,7 +131,7 @@ export default function CronogramaPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a12] md:pl-64 pt-14 md:pt-0">
+      <div className="min-h-screen bg-[#0a0a12] studyai-with-sidebar pt-14 md:pt-0">
         <AppNav />
         <div className="flex justify-center items-center h-64">
           <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
@@ -141,7 +141,7 @@ export default function CronogramaPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a12] md:pl-64 pt-14 md:pt-0">
+    <div className="min-h-screen bg-[#0a0a12] studyai-with-sidebar pt-14 md:pt-0">
       <AppNav />
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
         {/* Header */}

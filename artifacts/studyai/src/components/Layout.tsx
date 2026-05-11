@@ -11,7 +11,7 @@ export function Layout({ children, className, onHome }: LayoutProps) {
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top_right,_rgba(192,132,252,0.09),_transparent_55%),radial-gradient(ellipse_at_bottom_left,_rgba(233,213,255,0.45),_transparent_50%),hsl(var(--background))]">
       <AppNav onHome={onHome} />
-      <main className={cn("min-w-0 pt-14 pb-24 md:pb-8 md:pl-64 md:pt-6", className)}>
+      <main className={cn("studyai-with-sidebar min-w-0 pt-14 pb-24 md:pb-8 md:pt-6", className)}>
         {children}
       </main>
     </div>

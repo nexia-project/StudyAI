@@ -4,12 +4,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Menu, X } from "lucide-react";
 import { UserMenu } from "@/components/UserMenu";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 import { useMode, AppMode, MODE_CONFIG } from "@/context/ModeContext";
 import {
   IllStudyPlan, IllTargetExam, IllCalendar, IllStudyRoom, IllNotebookStack, IllOpenBook,
   IllPaperPen, IllPathLevels, IllTeacherBoard, IllBlackboard, IllMindSpark, IllBarsSoft,
   IllRadar, IllHistory, IllFolderStack, IllMedal, IllPodium, IllChatWave, IllPeople,
-  IllClipboard, IllLightbulb, IllExamSheet, IllBuilding,
+  IllClipboard, IllBuilding,
 } from "@/components/nav/NavIllustrations";
 
 interface NavItem {
@@ -33,13 +34,14 @@ const ALUNO_NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     label: "Meu acervo",
     items: [
       { Illustration: IllNotebookStack, label: "Notebook RAG",       path: "/notebook",       badge: "NOVO" },
+      { Illustration: IllFolderStack,   label: "Base de conhecimento", path: "/base-conhecimento" },
       { Illustration: IllOpenBook,      label: "Caderno Digital",      path: "/caderno" },
       { Illustration: IllPaperPen,      label: "Redação",              path: "/redacao" },
       { Illustration: IllPathLevels,    label: "Trilha Mestre",        path: "/trilha" },
       { Illustration: IllTeacherBoard,  label: "Aula com Professor",   path: "/aula-ia" },
       { Illustration: IllBlackboard,    label: "Lousa Imersiva",       path: "/lousa-imersiva", badge: "NOVO" },
-      { Illustration: IllMindSpark,     label: "Tutor IA (GPT/Claude)", path: "/tutor-ia",      badge: "NOVO" },
-      { Illustration: IllClipboard,     label: "Fazedores",             path: "/aluno/fazedores", badge: "NOVO" },
+      { Illustration: IllMindSpark,     label: "Tutor IA (GPT/Claude)", path: "/tutor-ia" },
+      { Illustration: IllClipboard,     label: "Fazedores",             path: "/aluno/fazedores" },
     ],
   },
   {
@@ -48,7 +50,7 @@ const ALUNO_NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { Illustration: IllBarsSoft,    label: "Dashboard",           path: "/dashboard" },
       { Illustration: IllRadar,       label: "Radar de Desempenho", path: "/mapa" },
       { Illustration: IllHistory,     label: "Histórico",           path: "/historico" },
-      { Illustration: IllFolderStack, label: "Meus Conteúdos",      path: "/meus-conteudos", badge: "NOVO" },
+      { Illustration: IllFolderStack, label: "Meus Conteúdos",      path: "/meus-conteudos" },
       { Illustration: IllMedal,       label: "Conquistas",          path: "/conquistas" },
       { Illustration: IllPodium,      label: "Ranking",             path: "/ranking" },
     ],
@@ -59,25 +61,20 @@ const PROFESSOR_NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Painel",
     items: [
-      { Illustration: IllBarsSoft,    label: "Visão Geral", path: "/professor" },
+      {
+        Illustration: IllBarsSoft,
+        label: "Painel do professor",
+        path: "/professor",
+      },
       { Illustration: IllNotebookStack, label: "Notebook IA", path: "/notebook", badge: "NOVO" },
       { Illustration: IllChatWave,    label: "Comunicação", path: "/comunicacao", badge: "NOVO" },
     ],
   },
   {
-    label: "Turmas e alunos",
+    label: "Turmas e atividades",
     items: [
-      { Illustration: IllPeople,      label: "Minhas Turmas", path: "/professor" },
-      { Illustration: IllClipboard,   label: "Atividades",    path: "/atividades" },
-    ],
-  },
-  {
-    label: "Conteúdo",
-    items: [
-      { Illustration: IllLightbulb,   label: "Criador de Conteúdo", path: "/professor" },
-      { Illustration: IllExamSheet,   label: "Gerador de Provas",   path: "/professor" },
-      { Illustration: IllFolderStack, label: "Meus Conteúdos",    path: "/meus-conteudos", badge: "NOVO" },
-      { Illustration: IllBarsSoft,    label: "Relatórios",        path: "/professor" },
+      { Illustration: IllClipboard,   label: "Atividades", path: "/atividades" },
+      { Illustration: IllFolderStack, label: "Meus conteúdos", path: "/meus-conteudos", badge: "NOVO" },
     ],
   },
 ];
@@ -156,6 +153,12 @@ function ModeSwitcher() {
   const current = MODE_CONFIG[mode];
 
   function handleSelect(m: AppMode) {
+    if (m !== mode) {
+      toast({
+        title: `Modo ${MODE_CONFIG[m].label}`,
+        description: "Você está neste modo — menu e atalhos refletem esse perfil.",
+      });
+    }
     setMode(m);
     navigate(MODE_CONFIG[m].defaultPath);
     setOpen(false);
@@ -216,7 +219,16 @@ function MobileModeSection({ mode, onSelect }: { mode: AppMode; onSelect: (m: Ap
       <div className="space-y-1">
         {(Object.entries(MODE_CONFIG) as [AppMode, typeof MODE_CONFIG[AppMode]][]).map(([m, cfg]) => (
           <button key={m} type="button"
-            onClick={() => { setMode(m); onSelect(m); }}
+            onClick={() => {
+              if (m !== mode) {
+                toast({
+                  title: `Modo ${cfg.label}`,
+                  description: "Você está neste modo — menu e atalhos refletem esse perfil.",
+                });
+              }
+              setMode(m);
+              onSelect(m);
+            }}
             className={cn(
               "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors",
               mode === m

@@ -11,6 +11,12 @@ import {
   Hammer,
 } from "lucide-react";
 import { startCheckout } from "@/hooks/useSubscription";
+import { useStudyAuth } from "@/hooks/useStudyAuth";
+import {
+  StudyBooksIllustration,
+  StudyHeroIllustration,
+  StudySparkIllustration,
+} from "@/components/landing/StudyFlatIllustrations";
 
 const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
 const pricingHref = `${BASE}/pricing`.replace(/([^:]\/)\/+/g, "$1");
@@ -125,10 +131,10 @@ const fadeUp: any = {
 };
 
 const STATS = [
-  { v: "+500 mil", l: "estudantes preparados" },
-  { v: "89%", l: "taxa de aprovação média" },
-  { v: "4.9★", l: "avaliação na loja" },
-  { v: "24/7", l: "tutor IA disponível" },
+  { v: "100 mil+", l: "estudantes impactados no ecossistema*" },
+  { v: "Feedback muito positivo", l: "em testes com grupos focados*" },
+  { v: "4.8★", l: "média em pesquisas com usuários piloto*" },
+  { v: "24/7", l: "IA por texto e voz no app" },
 ];
 
 const FEATURES = [
@@ -136,7 +142,7 @@ const FEATURES = [
   { icon: Mic,       label: "Tutor Tiagão 24h",         desc: "Primeiro tutor de voz proativo do Brasil. Chama você, age no app.", color: "text-fuchsia-700", bg: "bg-fuchsia-50/90",  border: "border-fuchsia-200/80" },
   { icon: Layers,    label: "Notebook RAG",              desc: "Transforme qualquer material em aula interativa com IA.", color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-200/80" },
   { icon: PenLine,   label: "Corretor de Redação",       desc: "Nota 0–1000 em 30s nas 5 competências ENEM.", color: "text-violet-800",   bg: "bg-violet-50",   border: "border-violet-200/80"   },
-  { icon: Zap,       label: "Simulado Adaptativo",       desc: "A IA detecta suas lacunas e gera questões cirúrgicas.", color: "text-purple-700",   bg: "bg-purple-50",   border: "border-purple-200/80"   },
+  { icon: Zap,       label: "Simulado e treino no app",  desc: "Simulado ENEM e treinos guiados a partir do hub (`/app`) — sem página legada separada.", color: "text-purple-700",   bg: "bg-purple-50",   border: "border-purple-200/80"   },
   { icon: Users,     label: "Aula ao Vivo 2.0",         desc: "Sala virtual com quadro colaborativo, quiz e gravação automática.", color: "text-violet-700", bg: "bg-violet-50", border: "border-violet-200/80" },
   { icon: BarChart2, label: "Análise Preditiva",         desc: "IA prevê risco de evasão e sugere intervenção em tempo real.", color: "text-fuchsia-700",   bg: "bg-fuchsia-50/80",   border: "border-fuchsia-200/70"   },
   { icon: Trophy,    label: "Gamificação Natural",       desc: "Streaks, conquistas, ranking e desafios semanais por turma.", color: "text-purple-800", bg: "bg-purple-50",  border: "border-purple-200/80"  },
@@ -151,13 +157,13 @@ const FEATURES = [
 
 const STEPS = [
   { num: "01", title: "Conte seus objetivos", desc: "IA analisa seu perfil em 2 minutos — nível, matérias, tempo disponível e data do ENEM.", icon: "🎯" },
-  { num: "02", title: "Receba seu plano personalizado", desc: "Estudo diário, revisões, simulados e flashcards — tudo calculado para a sua realidade.", icon: "📅" },
+  { num: "02", title: "Receba seu plano personalizado", desc: "Estudo diário, revisões, simulados e reforço com IA — tudo calculado para a sua realidade, acessível pelo app.", icon: "📅" },
   { num: "03", title: "Estude com tutor IA 24h", desc: "Dúvidas? O Tiagão explica por voz. Quer aprofundar? O Notebook transforma qualquer material em aula.", icon: "🤖" },
 ];
 
 const TESTIMONIALS = [
   { name: "Mariana S.", role: "Medicina — USP 2024", text: "Tirava 580. Depois de 2 meses com o StudyAI, fui para 724. A Tiagão me chamava quando ficava dias sem estudar. Era como ter uma tutora particular.", before: "580 pts", after: "724 pts", emoji: "🎓" },
-  { name: "Carlos M.", role: "Aprovado no TRF — 3ª tentativa", text: "O Simulado Adaptativo detectou meus pontos cegos. Finalmente passei após 3 anos tentando. A IA sabia onde eu precisava melhorar melhor do que eu mesmo.", before: "3 reprovações", after: "✅ Aprovado", emoji: "📋" },
+  { name: "Carlos M.", role: "Aprovado no TRF — 3ª tentativa", text: "Os simulados e o plano no app mostraram onde eu errava. Finalmente passei após 3 anos tentando — a IA apontou lacunas que eu não via.", before: "3 reprovações", after: "✅ Aprovado", emoji: "📋" },
   { name: "Juliana R.", role: "FUVEST — Direito", text: "Fotografava minha apostila no ônibus. Em 30 segundos tinha exercícios sobre o que ia cair. Nunca estudei tão pouco e aprendi tanto.", before: "Sem foco", after: "✅ Aprovada", emoji: "⚡" },
   { name: "Rafael T.", role: "3ª série — Ensino Médio", text: "Minha redação foi de 640 para 880. O corretor identificou que eu não desenvolvia proposta de intervenção. Nenhum professor havia me dito isso antes.", before: "Redação 640", after: "Redação 880", emoji: "✍️" },
 ];
@@ -221,9 +227,9 @@ const PLANS = [
 ];
 
 const FAQS = [
-  { q: "O StudyAI é gratuito?", a: "Sim! O plano gratuito inclui plano de estudos, simulados, flashcards, redação e acesso ao Tiagão (5 mensagens/dia). O Pro (R$29,90/mês) libera tudo ilimitado." },
+  { q: "O StudyAI é gratuito?", a: "Sim! O plano gratuito inclui plano de estudos, simulados, revisões com IA no app, redação e acesso ao Tiagão (5 mensagens/dia). O Pro (R$29,90/mês) libera tudo ilimitado." },
   { q: "O que é a Professor Tiagão?", a: "Tiagão é o primeiro tutor por voz com IA do Brasil. Age de forma proativa — chama você quando percebe que está dias sem estudar, sabe seu plano e pontos fracos. É como ter um tutor particular 24h." },
-  { q: "Como o plano de estudos é gerado?", a: "Você informa matéria, nível, tempo disponível e objetivo. Pode enviar PDF, DOCX ou foto do caderno. Nossa IA cria um cronograma personalizado dia a dia com tópicos, exercícios e flashcards." },
+  { q: "Como o plano de estudos é gerado?", a: "Você informa matéria, nível, tempo disponível e objetivo. Pode enviar PDF, DOCX ou foto do caderno. Nossa IA cria um cronograma personalizado dia a dia com tópicos, exercícios e revisão no app." },
   { q: "Funciona para ENEM, vestibular e concursos?", a: "Sim! O StudyAI foi criado para estudantes brasileiros. A IA adapta conteúdo para ENEM, FUVEST, UNICAMP, OAB, Receita Federal, PRF, concursos militares e qualquer outra prova." },
   { q: "Como funciona a correção de redação ENEM?", a: "Envie sua redação (texto ou foto). A IA avalia nas 5 competências oficiais: domínio da norma culta, compreensão do tema, argumentos, coesão e proposta de intervenção. Resultado em menos de 30 segundos." },
   { q: "O que é o Notebook RAG?", a: "É o diferencial competitivo do StudyAI. Você sobe qualquer material (PDF, vídeo, site) e nossa IA responde com base exatamente naquele conteúdo — gerando resumos, flashcards, questões e planos de aula diretamente do seu material." },
@@ -286,11 +292,13 @@ const B2B_STUDENTS = ["Até 100 alunos", "101 – 500 alunos", "501 – 2.000 al
 
 export default function Landing() {
   const [, navigate] = useLocation();
+  const { isAuthenticated, isLoading: authLoading } = useStudyAuth();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [activeTest, setActiveTest] = useState(0);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [b2bForm, setB2bForm] = useState({ name: "", email: "", institution: "", type: "", students: "", message: "" });
+  const [b2bLeadConsent, setB2bLeadConsent] = useState(false);
   const [b2bLoading, setB2bLoading] = useState(false);
   const [b2bDone, setB2bDone] = useState(false);
   const [b2bError, setB2bError] = useState("");
@@ -345,6 +353,12 @@ export default function Landing() {
   const handleStart = () => navigate("/app");
   const handleSignIn = () => navigate("/sign-in");
   const handlePro = async () => {
+    if (authLoading) return;
+    if (!isAuthenticated) {
+      try { sessionStorage.setItem("auth_return_to", "/pricing"); } catch { /* private mode */ }
+      navigate("/sign-in");
+      return;
+    }
     setCheckoutLoading(true);
     try { await startCheckout(); } catch { navigate("/pricing"); }
     finally { setCheckoutLoading(false); }
@@ -356,9 +370,18 @@ export default function Landing() {
     if (!b2bForm.name || !b2bForm.email || !b2bForm.institution || !b2bForm.type) {
       setB2bError("Preencha todos os campos obrigatórios."); return;
     }
+    if (!b2bLeadConsent) {
+      setB2bError("Confirme que concorda em enviar estes dados para que possamos retornar o contato.");
+      return;
+    }
     setB2bLoading(true);
     try {
-      const res = await fetch(`${BASE}/api/leads`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b2bForm) });
+      const res = await fetch(`${BASE}/api/leads`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(b2bForm),
+      });
       if (!res.ok) throw new Error("erro");
       setB2bDone(true);
     } catch { setB2bError("Erro ao enviar. Tente novamente ou mande email para contato@study.ia.br."); }
@@ -427,8 +450,11 @@ export default function Landing() {
       </nav>
 
       {/* ── NOVIDADES (primeira dobra, impossível não notar) ── */}
-      <section id="novidades" className="border-b border-violet-900/20 bg-gray-950 text-white">
-        <div className="max-w-6xl mx-auto px-6 py-4 md:py-5">
+      <section id="novidades" className="relative overflow-hidden border-b border-violet-900/20 bg-gray-950 text-white">
+        <div className="pointer-events-none absolute -right-8 bottom-0 hidden md:block w-56 opacity-[0.14]">
+          <StudyBooksIllustration className="w-full h-auto" />
+        </div>
+        <div className="max-w-6xl mx-auto px-6 py-4 md:py-5 relative">
           <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6 mb-4">
             <div className="flex-shrink-0">
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">Lançamentos no app</p>
@@ -509,9 +535,17 @@ export default function Landing() {
               Feito para o ENEM, vestibular e concursos brasileiros.
             </motion.p>
             <motion.p variants={fadeUp} initial="hidden" animate="show" custom={2}
-              className="text-sm text-gray-500 leading-relaxed mb-8 max-w-xl">
+              className="text-sm text-gray-500 leading-relaxed mb-6 max-w-xl">
               No mesmo login você acessa Simulado ENEM, Notebook RAG, Lousa Imersiva, Tutor IA (GPT e Claude), Fazedores, ranking, cronograma e sala de estudos — com ou sem cartão no plano gratuito.
             </motion.p>
+
+            <motion.div variants={fadeUp} initial="hidden" animate="show" custom={2}
+              className="flex flex-wrap items-end gap-4 sm:gap-6 mb-8">
+              <StudyHeroIllustration className="w-[min(100%,300px)] h-auto shrink-0" />
+              <div className="hidden sm:flex items-center justify-center shrink-0 pb-2">
+                <StudySparkIllustration className="w-20 h-20 sm:w-24 sm:h-24" />
+              </div>
+            </motion.div>
 
             <motion.div variants={fadeUp} initial="hidden" animate="show" custom={3}
               className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 mb-10">
@@ -541,12 +575,18 @@ export default function Landing() {
                   <p className="text-gray-500 text-xs sm:text-sm leading-snug mt-0.5">{s.l}</p>
                 </div>
               ))}
+              <p className="col-span-full text-center text-[10px] text-gray-400 leading-snug mt-4 max-w-2xl mx-auto">
+                * Valores ilustrativos para comunicar escala e ritmo; números consolidados variam por canal e não substituem métricas auditadas publicamente.
+              </p>
             </motion.div>
           </div>
 
           <motion.div variants={fadeUp} initial="hidden" animate="show" custom={2}
             className="relative z-10 lg:justify-self-end w-full max-w-lg mx-auto lg:mx-0">
             <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-violet-900/15 ring-1 ring-gray-900/10 bg-black">
+              <span className="absolute top-3 right-3 z-20 inline-flex items-center rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-white ring-1 ring-white/25 backdrop-blur-sm">
+                Demonstração em breve
+              </span>
               <video
                 src={MAIN_DEMO_VIDEO.src}
                 poster={MAIN_DEMO_VIDEO.poster}
@@ -709,7 +749,10 @@ export default function Landing() {
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
             className="mb-12 md:mb-14 rounded-3xl overflow-hidden border border-gray-200 bg-gray-950 shadow-2xl shadow-violet-900/10 ring-1 ring-black/5">
             <div className="grid lg:grid-cols-5 gap-0">
-              <div className="lg:col-span-3 aspect-video bg-black">
+              <div className="lg:col-span-3 aspect-video bg-black relative">
+                <span className="absolute top-3 left-3 z-20 inline-flex items-center rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-white ring-1 ring-white/25 backdrop-blur-sm">
+                  Demonstração em breve
+                </span>
                 <video
                   src={MAIN_DEMO_VIDEO.src}
                   poster={MAIN_DEMO_VIDEO.poster}
@@ -760,6 +803,11 @@ export default function Landing() {
                       <img src={video.poster} alt="" width={1280} height={720} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
                     ) : null}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/20 to-transparent" aria-hidden />
+                    {video.src.includes("flower") && (
+                      <span className="absolute top-14 left-4 z-10 inline-flex items-center rounded-full bg-black/65 px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-white ring-1 ring-white/20 backdrop-blur-sm">
+                        Demonstração em breve
+                      </span>
+                    )}
                     {/* Ruído sutil + grid */}
                     <div className="absolute inset-0 opacity-[0.18] mix-blend-overlay"
                       style={{ backgroundImage: "radial-gradient(circle at 20% 20%, rgba(255,255,255,0.5), transparent 40%), radial-gradient(circle at 80% 80%, rgba(0,0,0,0.3), transparent 40%)" }} />
@@ -902,7 +950,7 @@ export default function Landing() {
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-14">
             <p className="text-xs font-black text-violet-600 uppercase tracking-widest mb-3">Diferenciais</p>
             <h2 className="text-4xl font-black tracking-tight text-gray-900">Tudo integrado. Uma única plataforma.</h2>
-            <p className="text-gray-600 mt-3 max-w-2xl mx-auto">Cada módulo conversa com os outros. Seu erro no simulado vira flashcard, que vira plano de aula, que vira revisão programada automaticamente — com rotas reais como Simulado ENEM, Notebook RAG, Lousa Imersiva, Fazedores e Tutor IA no mesmo login.</p>
+            <p className="text-gray-600 mt-3 max-w-2xl mx-auto">Cada módulo conversa com os outros no mesmo login: simulado, plano, Notebook RAG, revisões e Tutor IA — tudo a partir do hub (`/app`) e das rotas reais (Simulado ENEM, Notebook RAG, Lousa Imersiva, Fazedores e mais).</p>
           </motion.div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {FEATURES.map((f, i) => (
@@ -1227,6 +1275,19 @@ export default function Landing() {
                   rows={3}
                   className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 transition-colors resize-none" />
               </div>
+              <label className="flex items-start gap-3 text-sm text-gray-600 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={b2bLeadConsent}
+                  onChange={e => setB2bLeadConsent(e.target.checked)}
+                  className="mt-1 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                />
+                <span>
+                  Concordo em enviar estes dados para a StudyAI entrar em contato comercial sobre produtos e serviços,
+                  conforme a{" "}
+                  <a href="/privacidade" className="text-violet-600 underline font-medium">Política de Privacidade</a>.
+                </span>
+              </label>
               {b2bError && <p className="text-sm text-red-500 bg-red-50 rounded-xl px-4 py-2">{b2bError}</p>}
               <button type="submit" disabled={b2bLoading}
                 className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-60">

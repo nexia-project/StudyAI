@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
+import { STUDYAI_ACCOUNT_CHANGED } from "@/lib/account-storage";
 
 export interface StudentProfile {
   nome: string;
@@ -37,6 +38,13 @@ export function useStudentProfile() {
   const { isAuthenticated } = useAuth();
   const [profile, setProfile] = useState<StudentProfile | null>(readLocal);
   const [loading, setLoading] = useState(true);
+  const [profileEpoch, setProfileEpoch] = useState(0);
+
+  useEffect(() => {
+    const bump = () => setProfileEpoch((e) => e + 1);
+    window.addEventListener(STUDYAI_ACCOUNT_CHANGED, bump);
+    return () => window.removeEventListener(STUDYAI_ACCOUNT_CHANGED, bump);
+  }, []);
 
   // On mount (or when auth changes): fetch from server if authenticated
   useEffect(() => {
@@ -68,7 +76,7 @@ export function useStudentProfile() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [isAuthenticated]);
+  }, [isAuthenticated, profileEpoch]);
 
   const saveProfile = useCallback(
     async (next: StudentProfile) => {

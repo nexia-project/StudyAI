@@ -1,5 +1,5 @@
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
 import { ptBR } from "@clerk/localizations";
@@ -44,6 +44,7 @@ import { WhatsAppBanner } from "@/components/WhatsAppBanner";
 import { VoiceProfessor } from "@/components/VoiceProfessor";
 import { CookieConsent } from "@/components/CookieConsent";
 import { ModeProvider } from "@/context/ModeContext";
+import { clearStudyaiAccountLocalCaches, STUDYAI_ACCOUNT_CHANGED } from "@/lib/account-storage";
 
 // Hide the floating Tiagão on full-immersive lesson pages so two voices never overlap.
 function VoiceProfessorGate() {
@@ -95,7 +96,9 @@ function ClerkQueryClientCacheInvalidator() {
     const unsubscribe = addListener(({ user }) => {
       const userId = user?.id ?? null;
       if (prevUserIdRef.current !== undefined && prevUserIdRef.current !== userId) {
+        clearStudyaiAccountLocalCaches();
         qc.clear();
+        window.dispatchEvent(new CustomEvent(STUDYAI_ACCOUNT_CHANGED, { detail: { userId } }));
       }
       prevUserIdRef.current = userId;
     });
@@ -213,6 +216,21 @@ function RedirectTo({ to }: { to: string }) {
   return null;
 }
 
+/** Aviso curto antes de enviar rotas legadas para o hub (`/app`). */
+function LegacyRedirectNotice({ children }: { children: ReactNode }) {
+  const [, navigate] = useLocation();
+  useEffect(() => {
+    const id = window.setTimeout(() => navigate("/app", { replace: true }), 2000);
+    return () => window.clearTimeout(id);
+  }, [navigate]);
+  return (
+    <div className="min-h-[45vh] flex flex-col items-center justify-center gap-4 px-6 text-center font-sans text-slate-700">
+      <p className="max-w-md text-sm leading-relaxed">{children}</p>
+      <p className="text-xs text-slate-500">Redirecionando para o app…</p>
+    </div>
+  );
+}
+
 // Handles Clerk OAuth callback redirects (e.g. after Google sign-in)
 // Clerk redirects to /v1/oauth_callback?err_code=... on failure
 function OAuthCallbackPage() {
@@ -289,9 +307,17 @@ function Router() {
         {/* Clerk OAuth callback — handles Google/GitHub sign-in redirects */}
         <Route path="/v1/oauth_callback" component={OAuthCallbackPage} />
         {/* Aliases: navigation shortcuts */}
-        <Route path="/simulado" component={() => <RedirectTo to="/app" />} />
-        <Route path="/simulado-adaptativo" component={() => <RedirectTo to="/app" />} />
-        <Route path="/flashcards" component={() => <RedirectTo to="/app" />} />
+        <Route path="/simulado" component={() => <RedirectTo to="/simulado-enem" />} />
+        <Route path="/simulado-adaptativo" component={() => (
+          <LegacyRedirectNotice>
+            Integramos o simulado adaptativo e os treinos guiados no app principal — use o hub e o Simulado ENEM a partir de um único lugar.
+          </LegacyRedirectNotice>
+        )} />
+        <Route path="/flashcards" component={() => (
+          <LegacyRedirectNotice>
+            Integramos flashcards e revisões espaçadas no app principal — continue pelo hub para acessar tudo com o mesmo login.
+          </LegacyRedirectNotice>
+        )} />
         <Route path="/pomodoro" component={() => <RedirectTo to="/sala-estudos" />} />
         <Route path="/plano" component={() => <RedirectTo to="/app" />} />
         <Route component={NotFound} />

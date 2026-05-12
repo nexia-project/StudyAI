@@ -500,8 +500,18 @@ export function VoiceProfessor() {
         setError(typeof j.erro === "string" ? j.erro : "Não consegui ler estes arquivos.");
         return;
       }
+      const filenames = Array.isArray(j.filenames)
+        ? (j.filenames as unknown[]).filter((x): x is string => typeof x === "string")
+        : [];
+      try {
+        const rawLog = sessionStorage.getItem("studyai_tiagao_attachment_log");
+        const prev = rawLog ? (JSON.parse(rawLog) as unknown) : [];
+        const list = Array.isArray(prev) ? (prev as { t: number; f: string[] }[]) : [];
+        list.push({ t: Date.now(), f: filenames.length ? filenames : ["anexo"] });
+        sessionStorage.setItem("studyai_tiagao_attachment_log", JSON.stringify(list.slice(-12)));
+      } catch { /* ignore */ }
       const extracted = String(j.extracted || "").slice(0, 14_000);
-      const names = Array.isArray(j.filenames) ? j.filenames.join(", ") : "anexo";
+      const names = filenames.length ? filenames.join(", ") : "anexo";
       await sendMessage(
         `Anexei material para montarmos o plano de estudos (${names}). Lê com calma e me orienta — conteúdo:\n\n${extracted}`,
         false,

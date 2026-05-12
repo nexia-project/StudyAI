@@ -26,6 +26,10 @@ export interface StudentContext {
   paginaAtual?: string;
   /** Últimas respostas do Tiagão (painel) — servidor evita repetir */
   ultimasFalasTiagao?: string[];
+  /** Resumo do plano visível na Home (progresso + matéria) */
+  planoResumo?: string;
+  /** Nomes de arquivos anexados recentemente ao Tiagão (painel) */
+  materiaisAnexadosRecentemente?: string;
 }
 
 export function triggerProfessor(text: string, context: ProfessorEventContext = "generic") {
@@ -95,6 +99,34 @@ export function collectStudentContext(): StudentContext {
       }
     })();
 
+    let materiaisAnexadosRecentemente: string | undefined;
+    try {
+      const rawAtt = sessionStorage.getItem("studyai_tiagao_attachment_log");
+      if (rawAtt) {
+        const parsed = JSON.parse(rawAtt) as unknown;
+        const rows = Array.isArray(parsed) ? parsed as { t: number; f: string[] }[] : [];
+        if (rows.length) {
+          materiaisAnexadosRecentemente = rows
+            .slice(-4)
+            .map((row) => {
+              const names = Array.isArray(row.f) ? row.f.filter((x): x is string => typeof x === "string").join(", ") : "";
+              const when = typeof row.t === "number" ? new Date(row.t).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "";
+              return when && names ? `${when}: ${names}` : names || when;
+            })
+            .filter(Boolean)
+            .join(" → ");
+        }
+      }
+    } catch {
+      materiaisAnexadosRecentemente = undefined;
+    }
+
+    let planoResumo: string | undefined;
+    if (ctx?.materia && typeof ctx.diasTotal === "number" && ctx.diasTotal > 0) {
+      const done = typeof ctx.diasCompletos === "number" ? ctx.diasCompletos : 0;
+      planoResumo = `Plano em tela: ${ctx.materia} — ${done}/${ctx.diasTotal} dias ou tópicos concluídos`;
+    }
+
     return {
       nome: profile?.nome || ctx?.nome,
       serie: profile?.serie || ctx?.serie,
@@ -103,10 +135,13 @@ export function collectStudentContext(): StudentContext {
       diasCompletos: ctx?.diasCompletos,
       diasTotal: ctx?.diasTotal,
       xp: ctx?.xp,
+      meta: profile?.meta ?? ctx?.meta,
       ultimosTopicos: ctx?.ultimosTopicos,
       ultimaMensagem: ctx?.ultimaMensagem,
       paginaAtual,
       ultimasFalasTiagao,
+      planoResumo,
+      materiaisAnexadosRecentemente,
     };
   } catch {
     return {};

@@ -206,6 +206,10 @@ interface FrontendContext {
   paginaAtual?: string;
   /** Últimas falas do assistente (cliente) — evitar repetição nas proativas */
   ultimasFalasTiagao?: string[];
+  /** Plano em foco (matéria + progresso), vindo do cliente */
+  planoResumo?: string;
+  /** Nomes de arquivos anexados ao painel recentemente */
+  materiaisAnexadosRecentemente?: string;
 }
 
 // ─── Fetch real student data from DB ─────────────────────────────────────────
@@ -351,6 +355,17 @@ function buildRichContext(
     parts.push(
       `Últimas falas suas ao aluno nesta sessão (NÃO repita o mesmo jeito de falar — mude vocabulário e ângulo): ${frontend.ultimasFalasTiagao.map((s) => `"${s}"`).join(" · ")}`,
     );
+  }
+
+  if (frontend?.planoResumo) {
+    parts.push(frontend.planoResumo);
+  }
+  if (frontend?.materiaisAnexadosRecentemente) {
+    parts.push(`Materiais anexados ao painel do Tiagão (referência): ${frontend.materiaisAnexadosRecentemente}`);
+  }
+  if (frontend?.ultimosTopicos?.length) {
+    const t = frontend.ultimosTopicos.filter(Boolean).slice(0, 8);
+    if (t.length) parts.push(`Tópicos em destaque no plano agora: ${t.join(", ")}`);
   }
 
   // Real DB data
@@ -573,6 +588,38 @@ Regras absolutas de personalização:
 <ir:/admin> — abrir Painel Admin
 <criar_plano:MATERIA> — criar plano de estudos para a matéria`;
 
+/** Política de ferramentas — alinha voz ao “core” do produto (ações reais). */
+const TIAGAO_CORE_TOOL_POLICY = `
+
+═══ CORE DO SISTEMA — FERRAMENTAS (ação, não só conversa) ═══
+Você ORQUESTRA o StudyAI: quando o pedido encaixa, CHAME a função na mesma rodada. Proibido dizer "vou criar" ou "já já faço" sem tool.
+
+Roteamento típico:
+• conteúdo no Notebook / PDFs do aluno → buscar_nos_meus_documentos
+• material ou explicação que vocês já geraram antes → buscar_historico_aluno
+• panorama de desempenho ou "como estou?" → analisar_desempenho_completo
+• "O que estudo hoje?" / organizar o dia → criar_agenda_hoje
+• plano estruturado em dias/semanas → criar_plano_estudos
+• revisão densa ou fichamento → criar_resumo ou criar_flashcards
+• treino pontual → gerar_questao_personalizada | provão → iniciar_simulado ou navegar para simulado
+• texto de redação → corrigir_redacao | aula expositiva na lousa → abrir_aula_ia
+• fato duradouro sobre a pessoa → salvar_memoria_rica ou salvar_memoria
+• data de prova ou prazo → registrar_data_importante
+
+Combine de forma inteligente: busque em documentos ou histórico antes de criar algo novo quando o aluno estiver claramente ancorado num material próprio.
+`;
+
+/** Criatividade variada sem alucinar fatos escolares sensíveis. */
+const TIAGAO_CREATIVITY_BLOCK = `
+
+═══ CRIATIVIDADE VARIADA (com segurança) ═══
+• Em respostas só de conversa, traga PELO MENOS UM elemento novo: analogia diferente, um "plano B" curto de estudo, ou pergunta espontânea que não seja clichê de chatbot.
+• Não repita a mesma fórmula de abertura nem o mesmo bordão em mensagens seguidas.
+• Se o briefing lista últimas falas suas, não repita frases literais — mude vocabulário e ângulo.
+• Datas de prova da escola, normas internas ou fatos que não estão no briefing: não invente; diga que precisa que o aluno confirme ou consulte a fonte oficial.
+• Motive sem prometer nota ou aprovação garantida.
+`;
+
 // ─── Voice Chat — Tiagão Agente com Memória + Function Calling ─────────────────
 router.post("/voice-chat", async (req, res) => {
   try {
@@ -700,7 +747,17 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.
 - Se falta info crítica, pergunte de forma natural: "Rapidão — sobre qual assunto?" (1 pergunta só).
 
 6. Após chamar tools, dê resposta curta (máx 2-3 frases) confirmando o que fez, em PT-BR coloquial. Nunca markdown. Sempre termine com pergunta ou convite.`;
-    const systemContent = BASE_PROMPT + personalizationBlock + rolePersona + studentCtx + kbContext + bnccContext + memoryContext + agentInstructions;
+    const systemContent =
+      BASE_PROMPT
+      + TIAGAO_CORE_TOOL_POLICY
+      + TIAGAO_CREATIVITY_BLOCK
+      + personalizationBlock
+      + rolePersona
+      + studentCtx
+      + kbContext
+      + bnccContext
+      + memoryContext
+      + agentInstructions;
 
     // ── Primeira chamada com tools ───────────────────────────────────────────
     const apiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
@@ -755,7 +812,7 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.
       // ── Resposta instantânea pré-definida — sem 2ª chamada LLM ──────────────
       // Navegação, flashcards e ferramentas pesadas: resposta imediata (+1-2s ganhos).
       const VOICE_INSTANT_TYPES = new Set(["ir", "navegar", "abrir_aula_ia", "criar_slides",
-        "criar_mapa_mental", "criar_infografico", "criar_resumo", "criar_plano_estudo", "flashcards_criados"]);
+        "criar_mapa_mental", "criar_infografico", "criar_resumo", "criar_plano_estudos", "flashcards_criados"]);
       const toolsUsed = firstMsg.tool_calls?.map((tc: any) => tc.function.name) ?? [];
       const usedHeavy = toolsUsed.some((n: string) => VOICE_INSTANT_TYPES.has(n));
       const isInstantAction = primaryAction && (["ir", "navegar", "abrir_aula_ia"].includes(primaryAction.type) || usedHeavy);
@@ -769,7 +826,7 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.
         let quickReply: string;
         if (primaryAction.type === "abrir_aula_ia") {
           quickReply = `Abrindo a aula sobre ${primaryAction.topico} pra você!`;
-        } else if (primaryAction.type === "criar_slides" || primaryAction.type === "criar_mapa_mental" || primaryAction.type === "criar_infografico" || primaryAction.type === "criar_resumo") {
+        } else if (primaryAction.type === "criar_slides" || primaryAction.type === "criar_mapa_mental" || primaryAction.type === "criar_infografico" || primaryAction.type === "criar_resumo" || primaryAction.type === "criar_plano_estudos") {
           const topico = primaryAction.titulo || primaryAction.topico || "";
           quickReply = topico ? `Pronto! Seu material sobre ${topico} está aqui.` : "Pronto! Abrindo o material gerado.";
         } else if (primaryAction.type === "flashcards_criados") {
@@ -909,6 +966,7 @@ router.post("/tiagao-opening", async (req, res) => {
     const pagina = (context?.paginaAtual || "StudyAI").trim();
     const v = Math.floor(Math.random() * 24) + 1;
     const anti = (context?.ultimasFalasTiagao || []).slice(0, 4).filter(Boolean).join(" | ");
+    const extraCtx = [context?.planoResumo, context?.materiaisAnexadosRecentemente].filter(Boolean).join(" · ");
     const system = `Você é o Professor Tiagão do StudyAI. Gere UMA mensagem para ser LIDA EM VOZ ALTA (2 a 4 frases curtas), português brasileiro, tom natural de professor parceiro.
 Estilo variação #${v}. Proibido: markdown, asteriscos, listas com traço, emojis, inglês.
 Inclua de forma orgânica (ordem livre):
@@ -923,7 +981,7 @@ ${anti ? `Não soe parecido com: ${anti}` : ""}`;
       model: CHAT_MODEL,
       messages: [
         { role: "system", content: system },
-        { role: "user", content: `Onde o aluno está no app agora: ${pagina}. Gere só a mensagem falada, nada mais.` },
+        { role: "user", content: `Onde o aluno está no app agora: ${pagina}.${extraCtx ? ` Contexto extra: ${extraCtx}.` : ""} Gere só a mensagem falada, nada mais.` },
       ],
       max_tokens: 260,
       temperature: 0.93,

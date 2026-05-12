@@ -23,8 +23,6 @@ const MAIN_DEMO_VIDEO = {
 };
 
 const UNSPLASH = {
-  hero:
-    "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=82",
   studyDesk:
     "https://images.unsplash.com/photo-1513258496099-48168024aec0?auto=format&fit=crop&w=1000&q=82",
   library:
@@ -83,6 +81,38 @@ const APP_SHOWCASE = [
     img: UNSPLASH.writing,
     extraPath: "/sala-estudos",
     extraLabel: "Sala de Estudos",
+  },
+] as const;
+
+/** Primeira dobra: destaque explícito das novidades (rotas reais). */
+const NOVIDADES_BAND = [
+  {
+    title: "Fazedores",
+    accent: "Novo",
+    desc: "Microdesafios: consertar, organizar, criar e estudar com método.",
+    path: "/aluno/fazedores",
+    img: UNSPLASH.studyDesk,
+  },
+  {
+    title: "Notebook RAG",
+    accent: "Material seu",
+    desc: "PDFs e links viram aula, resumo e questões ancoradas no texto.",
+    path: "/notebook",
+    img: UNSPLASH.library,
+  },
+  {
+    title: "Lousa Imersiva",
+    accent: "Imersivo",
+    desc: "Quadro em tela cheia com narração para aprofundar sem distração.",
+    path: "/lousa-imersiva",
+    img: UNSPLASH.classroom,
+  },
+  {
+    title: "Tutor IA (GPT e Claude)",
+    accent: "Chat",
+    desc: "Compare respostas e mergulhe em dúvidas longas com contexto.",
+    path: "/tutor-ia",
+    img: UNSPLASH.laptop,
   },
 ] as const;
 
@@ -347,6 +377,7 @@ export default function Landing() {
           </a>
 
           <div className="hidden md:flex items-center gap-5 flex-1 flex-wrap justify-end">
+            <a href="#novidades" className="text-sm font-semibold text-violet-700 hover:text-violet-800 transition-colors">Novidades</a>
             <a href="#recursos-app" className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors">Recursos no app</a>
             <a href="#videos" className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors">Vídeos</a>
             <a href="#para-alunos" className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors">Para alunos</a>
@@ -375,6 +406,7 @@ export default function Landing() {
               className="overflow-hidden border-t border-gray-200 bg-white md:hidden">
               <div className="px-6 py-4 flex flex-col gap-4">
                 {[
+                  ["#novidades", "Novidades"],
                   ["#recursos-app", "Recursos no app"],
                   ["#videos", "Vídeos"],
                   ["#para-alunos", "Para alunos"],
@@ -394,8 +426,55 @@ export default function Landing() {
         </AnimatePresence>
       </nav>
 
+      {/* ── NOVIDADES (primeira dobra, impossível não notar) ── */}
+      <section id="novidades" className="border-b border-violet-900/20 bg-gray-950 text-white">
+        <div className="max-w-6xl mx-auto px-6 py-4 md:py-5">
+          <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6 mb-4">
+            <div className="flex-shrink-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">Lançamentos no app</p>
+              <p className="text-sm md:text-base font-bold text-white mt-0.5">
+                Fazedores, Notebook RAG, Lousa Imersiva e Tutor multi-modelo — já no ar para alunos.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 md:ml-auto">
+              <button type="button" onClick={handleStart} className="rounded-xl bg-white px-4 py-2 text-xs font-bold text-gray-900 hover:bg-violet-100 transition-colors">
+                Criar conta grátis
+              </button>
+              <a href="#videos" className="rounded-xl border border-white/25 px-4 py-2 text-xs font-semibold text-white hover:bg-white/10 transition-colors inline-flex items-center justify-center">
+                Ver vídeo na página
+              </a>
+            </div>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory md:grid md:grid-cols-4 md:overflow-visible">
+            {NOVIDADES_BAND.map((item) => (
+              <button
+                key={item.title}
+                type="button"
+                onClick={() => navigate(item.path)}
+                className="snap-start shrink-0 w-[min(100%,220px)] md:w-auto text-left rounded-2xl overflow-hidden ring-1 ring-white/10 bg-gray-900/80 hover:ring-violet-400/60 hover:bg-gray-900 transition-all group"
+              >
+                <div className="relative h-24 overflow-hidden">
+                  <img src={item.img} alt="" width={400} height={240} loading="lazy" decoding="async" className="h-full w-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/20 to-transparent" />
+                  <span className="absolute top-2 left-2 rounded-md bg-violet-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white">
+                    {item.accent}
+                  </span>
+                </div>
+                <div className="p-3">
+                  <p className="text-xs font-black text-white leading-tight">{item.title}</p>
+                  <p className="text-[11px] text-gray-400 mt-1 leading-snug line-clamp-2">{item.desc}</p>
+                  <span className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-violet-300 group-hover:text-violet-200">
+                    Abrir <ArrowRight className="w-3 h-3" />
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── HERO ── */}
-      <section className="relative pt-20 pb-16 md:pt-24 md:pb-20 px-6 overflow-hidden bg-white">
+      <section className="relative pt-20 pb-16 md:pt-24 md:pb-20 px-6 overflow-hidden bg-slate-50">
         <div aria-hidden className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-24 right-0 h-[420px] w-[420px] rounded-full bg-violet-100/50 blur-3xl" />
           <div className="absolute bottom-0 left-0 h-[320px] w-[320px] rounded-full bg-emerald-50/60 blur-3xl" />
@@ -414,15 +493,16 @@ export default function Landing() {
 
             <motion.h1 variants={fadeUp} initial="hidden" animate="show" custom={1}
               className="text-4xl sm:text-5xl lg:text-[3.35rem] font-black tracking-tight leading-[1.08] mb-5 text-gray-900">
-              A IA que entende{" "}
+              Plano, voz, materiais e{" "}
               <span className="bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
-                como você aprende
+                desafios reais
               </span>
+              {" "}— no mesmo lugar
             </motion.h1>
 
             <motion.p variants={fadeUp} initial="hidden" animate="show" custom={2}
               className="text-lg sm:text-xl text-gray-600 leading-relaxed mb-3 max-w-xl">
-              Plano de estudos personalizado + Tutor IA 24h + Simulados adaptativos + Tudo integrado.
+              StudyAI é a plataforma brasileira que une plano inteligente, Tiagão por voz, Notebook RAG, Lousa Imersiva, Tutor com GPT e Claude, Simulado ENEM e o módulo <span className="font-semibold text-gray-900">Fazedores</span> para destravar hábitos e rotina.
             </motion.p>
             <motion.p variants={fadeUp} initial="hidden" animate="show" custom={2}
               className="text-base text-gray-700 font-medium leading-relaxed mb-2 max-w-xl">
@@ -466,21 +546,31 @@ export default function Landing() {
 
           <motion.div variants={fadeUp} initial="hidden" animate="show" custom={2}
             className="relative z-10 lg:justify-self-end w-full max-w-lg mx-auto lg:mx-0">
-            <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-violet-900/10 ring-1 ring-gray-200/80 bg-gray-100">
-              <img
-                src={UNSPLASH.hero}
-                alt="Estudantes em ambiente de aprendizagem colaborativa"
-                width={1200}
-                height={900}
-                loading="eager"
-                decoding="async"
-                className="w-full h-auto object-cover aspect-[4/3] sm:aspect-[5/4]"
+            <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-violet-900/15 ring-1 ring-gray-900/10 bg-black">
+              <video
+                src={MAIN_DEMO_VIDEO.src}
+                poster={MAIN_DEMO_VIDEO.poster}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
+                className="w-full aspect-[4/3] sm:aspect-video object-cover"
+                aria-label="Prévia em vídeo da experiência StudyAI (demonstração CC0)"
               />
-              <div className="absolute inset-0 bg-gradient-to-tr from-violet-900/25 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-tr from-violet-950/40 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2 rounded-xl bg-black/55 px-3 py-2 text-[11px] text-white backdrop-blur-sm ring-1 ring-white/10">
+                <span className="font-semibold">Prévia em vídeo · substitua pelo tour oficial quando gravar</span>
+                <button type="button" onClick={(e) => openVideo(VIDEOS[0], e)} className="shrink-0 rounded-lg bg-white px-2 py-1 text-[10px] font-black uppercase tracking-wide text-gray-900 hover:bg-violet-100">
+                  Tela cheia
+                </button>
+              </div>
             </div>
-            <div className="mt-4 sm:mt-0 sm:absolute sm:-bottom-4 sm:-left-2 sm:left-4 max-w-[min(100%,280px)] rounded-2xl bg-white/95 backdrop-blur-md border border-gray-200 shadow-lg p-4 text-left">
-              <p className="text-[10px] font-black uppercase tracking-widest text-violet-600 mb-1">Por dentro do app</p>
-              <p className="text-sm font-bold text-gray-900 leading-snug">Notebook RAG + Lousa Imersiva + Simulado ENEM no mesmo fluxo.</p>
+            <div className="mt-4 sm:mt-0 sm:absolute sm:-bottom-4 sm:-left-2 sm:left-4 max-w-[min(100%,300px)] rounded-2xl bg-white/95 backdrop-blur-md border border-gray-200 shadow-lg p-4 text-left">
+              <p className="text-[10px] font-black uppercase tracking-widest text-violet-600 mb-1">Destaques ativos</p>
+              <p className="text-sm font-bold text-gray-900 leading-snug">
+                Fazedores + Notebook RAG + Lousa + Tutor multi-modelo — rotas reais, um login.
+              </p>
             </div>
           </motion.div>
         </div>

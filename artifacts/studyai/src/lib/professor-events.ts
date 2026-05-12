@@ -24,6 +24,8 @@ export interface StudentContext {
   ultimosTopicos?: string[];
   ultimaMensagem?: string;
   paginaAtual?: string;
+  /** Últimas respostas do Tiagão (painel) — servidor evita repetir */
+  ultimasFalasTiagao?: string[];
 }
 
 export function triggerProfessor(text: string, context: ProfessorEventContext = "generic") {
@@ -82,6 +84,17 @@ export function collectStudentContext(): StudentContext {
 
     const paginaAtual = detectCurrentPage();
 
+    const ultimasFalasTiagao = (() => {
+      try {
+        const raw = sessionStorage.getItem("studyai_tiagao_recent_assistant");
+        if (!raw) return undefined;
+        const arr = JSON.parse(raw) as unknown;
+        return Array.isArray(arr) ? arr.filter((x): x is string => typeof x === "string").slice(-5) : undefined;
+      } catch {
+        return undefined;
+      }
+    })();
+
     return {
       nome: profile?.nome || ctx?.nome,
       serie: profile?.serie || ctx?.serie,
@@ -93,6 +106,7 @@ export function collectStudentContext(): StudentContext {
       ultimosTopicos: ctx?.ultimosTopicos,
       ultimaMensagem: ctx?.ultimaMensagem,
       paginaAtual,
+      ultimasFalasTiagao,
     };
   } catch {
     return {};

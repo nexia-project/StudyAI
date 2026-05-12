@@ -67,6 +67,7 @@ export function triggerProfessorAction(type: string, param: string) {
 // Detect current page from URL (works regardless of base path)
 function detectCurrentPage(): string {
   const path = window.location.pathname;
+  if (path.includes("/aluno/fazedores") || path.includes("/fazedores")) return "Módulo Fazedores";
   if (path.includes("/mapa")) return "Mapa de Desempenho";
   if (path.includes("/dashboard")) return "Dashboard de Progresso";
   if (path.includes("/redacao")) return "Correção de Redação ENEM";

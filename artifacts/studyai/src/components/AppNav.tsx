@@ -39,6 +39,7 @@ const ALUNO_NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { Illustration: IllTeacherBoard,  label: "Aula com Professor",   path: "/aula-ia" },
       { Illustration: IllBlackboard,    label: "Lousa Imersiva",       path: "/lousa-imersiva", badge: "NOVO" },
       { Illustration: IllMindSpark,     label: "Tutor IA (GPT/Claude)", path: "/tutor-ia",      badge: "NOVO" },
+      { Illustration: IllClipboard,     label: "Fazedores",             path: "/aluno/fazedores", badge: "NOVO" },
     ],
   },
   {

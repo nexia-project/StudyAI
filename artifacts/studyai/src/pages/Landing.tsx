@@ -8,10 +8,113 @@ import {
   Radio, Cpu, Layers, Shield, Building2, Globe, MessageSquare,
   TrendingUp, Bell, Play, Menu, X, MessageCircle, AlertTriangle,
   Video, Film, Award, Quote, Volume2, ArrowUpRight,
+  Hammer,
 } from "lucide-react";
 import { startCheckout } from "@/hooks/useSubscription";
 
 const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+const pricingHref = `${BASE}/pricing`.replace(/([^:]\/)\/+/g, "$1");
+
+/** Mídia estável (CC0 / CDN público) + posters Unsplash com largura fixa. */
+const MAIN_DEMO_VIDEO = {
+  src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+  poster:
+    "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1920&q=82",
+};
+
+const UNSPLASH = {
+  studyDesk:
+    "https://images.unsplash.com/photo-1513258496099-48168024aec0?auto=format&fit=crop&w=1000&q=82",
+  library:
+    "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=1000&q=82",
+  writing:
+    "https://images.unsplash.com/photo-1456513080510-7fe3d7a3362f?auto=format&fit=crop&w=1000&q=82",
+  classroom:
+    "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=1000&q=82",
+  laptop:
+    "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1000&q=82",
+  focus:
+    "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=1000&q=82",
+};
+
+const APP_SHOWCASE = [
+  {
+    title: "Simulado ENEM",
+    desc: "Simulado completo com foco no vestibular brasileiro, integrado ao plano e ao radar de desempenho.",
+    path: "/simulado-enem",
+    icon: Target,
+    img: UNSPLASH.focus,
+  },
+  {
+    title: "Notebook RAG",
+    desc: "Transforme PDFs, links e materiais em aula interativa: resumos, questões e respostas ancoradas na sua biblioteca.",
+    path: "/notebook",
+    icon: Layers,
+    img: UNSPLASH.library,
+  },
+  {
+    title: "Tutor IA (GPT e Claude)",
+    desc: "Converse com modelos de ponta, com contexto do seu estudo — complementa o Tiagão por voz no app.",
+    path: "/tutor-ia",
+    icon: Brain,
+    img: UNSPLASH.laptop,
+  },
+  {
+    title: "Lousa Imersiva",
+    desc: "Quadro, narração e materiais em tela cheia para aulas profundas sem distrações.",
+    path: "/lousa-imersiva",
+    icon: Video,
+    img: UNSPLASH.classroom,
+  },
+  {
+    title: "Fazedores",
+    desc: "Desafios guiados para consertar rotina, organizar conteúdo, criar e estudar com passos claros.",
+    path: "/aluno/fazedores",
+    icon: Hammer,
+    img: UNSPLASH.studyDesk,
+  },
+  {
+    title: "Cronograma e Sala de Estudos",
+    desc: "Organize a semana com a IA e entre na sala para foco, Pomodoro e revisão no mesmo ecossistema.",
+    path: "/cronograma",
+    icon: Clock,
+    img: UNSPLASH.writing,
+    extraPath: "/sala-estudos",
+    extraLabel: "Sala de Estudos",
+  },
+] as const;
+
+/** Primeira dobra: destaque explícito das novidades (rotas reais). */
+const NOVIDADES_BAND = [
+  {
+    title: "Fazedores",
+    accent: "Novo",
+    desc: "Microdesafios: consertar, organizar, criar e estudar com método.",
+    path: "/aluno/fazedores",
+    img: UNSPLASH.studyDesk,
+  },
+  {
+    title: "Notebook RAG",
+    accent: "Material seu",
+    desc: "PDFs e links viram aula, resumo e questões ancoradas no texto.",
+    path: "/notebook",
+    img: UNSPLASH.library,
+  },
+  {
+    title: "Lousa Imersiva",
+    accent: "Imersivo",
+    desc: "Quadro em tela cheia com narração para aprofundar sem distração.",
+    path: "/lousa-imersiva",
+    img: UNSPLASH.classroom,
+  },
+  {
+    title: "Tutor IA (GPT e Claude)",
+    accent: "Chat",
+    desc: "Compare respostas e mergulhe em dúvidas longas com contexto.",
+    path: "/tutor-ia",
+    img: UNSPLASH.laptop,
+  },
+] as const;
 
 const fadeUp: any = {
   hidden: { opacity: 0, y: 24 },
@@ -37,6 +140,13 @@ const FEATURES = [
   { icon: Users,     label: "Aula ao Vivo 2.0",         desc: "Sala virtual com quadro colaborativo, quiz e gravação automática.", color: "text-violet-700", bg: "bg-violet-50", border: "border-violet-200/80" },
   { icon: BarChart2, label: "Análise Preditiva",         desc: "IA prevê risco de evasão e sugere intervenção em tempo real.", color: "text-fuchsia-700",   bg: "bg-fuchsia-50/80",   border: "border-fuchsia-200/70"   },
   { icon: Trophy,    label: "Gamificação Natural",       desc: "Streaks, conquistas, ranking e desafios semanais por turma.", color: "text-purple-800", bg: "bg-purple-50",  border: "border-purple-200/80"  },
+  { icon: GraduationCap, label: "Aula com Professor IA", desc: "Aulas estruturadas com IA, materiais e ritmo de sala — integrado ao seu plano.", color: "text-violet-700", bg: "bg-violet-50", border: "border-violet-200/80" },
+  { icon: Map,       label: "Trilha Mestre",             desc: "Percursos por nível com checkpoints, reforço e revisão espaçada.", color: "text-fuchsia-700", bg: "bg-fuchsia-50/80", border: "border-fuchsia-200/70" },
+  { icon: BookOpen,  label: "Caderno Digital",           desc: "Organize anotações, anexos e leituras com busca e links para o Notebook RAG.", color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-200/80" },
+  { icon: Video,     label: "Lousa Imersiva",            desc: "Experiência imersiva de quadro e narração para aprofundar tópicos difíceis.", color: "text-violet-800", bg: "bg-violet-50", border: "border-violet-200/80" },
+  { icon: Hammer,    label: "Fazedores",                 desc: "Microdesafios práticos para destravar hábitos, organizar estudo e criar conteúdo.", color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-200/80" },
+  { icon: Sparkles,  label: "Tutor IA (GPT e Claude)",   desc: "Chat com modelos de ponta para tirar dúvidas longas e comparar abordagens.", color: "text-indigo-700", bg: "bg-indigo-50", border: "border-indigo-200/80" },
+  { icon: Globe,     label: "Base de Conhecimento",      desc: "Centralize fontes e documentos para consulta rápida e uso em turmas.", color: "text-teal-700", bg: "bg-teal-50", border: "border-teal-200/80" },
 ];
 
 const STEPS = [
@@ -120,8 +230,7 @@ const FAQS = [
   { q: "Vale mais do que um cursinho?", a: "Cursinhos tradicionais custam R$200–800/mês com conteúdo igual para todos. O StudyAI oferece plano 100% personalizado, simulados ilimitados e tutor IA 24h por R$29,90/mês — ou gratuitamente no plano básico." },
 ];
 
-// ─── Vídeos institucionais ────────────────────────────────────────────────
-// Fontes públicas (Google sample CDN) — substitua por URLs próprias quando produzir.
+// ─── Vídeos demonstrativos (MP4 estáveis + poster Unsplash) ───────────────
 const VIDEOS = [
   {
     id: "intro",
@@ -132,8 +241,8 @@ const VIDEOS = [
     tagColor: "bg-violet-50 text-violet-700 border-violet-200",
     gradient: "from-violet-500 via-violet-500 to-purple-600",
     icon: Sparkles,
-    src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-    poster: "",
+    src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+    poster: MAIN_DEMO_VIDEO.poster,
   },
   {
     id: "tiagao",
@@ -144,8 +253,9 @@ const VIDEOS = [
     tagColor: "bg-orange-50 text-orange-700 border-orange-200",
     gradient: "from-orange-400 via-rose-500 to-fuchsia-500",
     icon: Mic,
-    src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-    poster: "",
+    src: "https://www.w3schools.com/html/mov_bbb.mp4",
+    poster:
+      "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1280&q=82",
   },
   {
     id: "escolas",
@@ -156,8 +266,9 @@ const VIDEOS = [
     tagColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
     gradient: "from-emerald-500 via-teal-500 to-cyan-600",
     icon: Building2,
-    src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-    poster: "",
+    src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+    poster:
+      "https://images.unsplash.com/photo-1580582932707-52087e40d367?auto=format&fit=crop&w=1280&q=82",
   },
 ];
 
@@ -232,6 +343,7 @@ export default function Landing() {
   }, []);
 
   const handleStart = () => navigate("/app");
+  const handleSignIn = () => navigate("/sign-in");
   const handlePro = async () => {
     setCheckoutLoading(true);
     try { await startCheckout(); } catch { navigate("/pricing"); }
@@ -264,18 +376,21 @@ export default function Landing() {
             <span className="font-black text-lg tracking-tight text-gray-900">Study<span className="text-violet-600">.IA</span></span>
           </a>
 
-          <div className="hidden md:flex items-center gap-6 flex-1">
+          <div className="hidden md:flex items-center gap-5 flex-1 flex-wrap justify-end">
+            <a href="#novidades" className="text-sm font-semibold text-violet-700 hover:text-violet-800 transition-colors">Novidades</a>
+            <a href="#recursos-app" className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors">Recursos no app</a>
             <a href="#videos" className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors">Vídeos</a>
             <a href="#para-alunos" className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors">Para alunos</a>
             <a href="#para-professores" className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors">Para professores</a>
             <a href="#para-escolas" className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors">Para escolas</a>
-            <a href="#precos" className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors">Preços</a>
+            <a href={pricingHref} className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors">Preços</a>
+            <a href="#precos" className="text-sm text-violet-600 hover:text-violet-700 font-semibold transition-colors">Tabela de planos</a>
           </div>
 
           <div className="md:hidden flex-1" />
 
           <div className="flex items-center gap-2.5">
-            <button onClick={handleStart} className="hidden sm:block text-sm text-gray-600 hover:text-gray-900 transition-colors font-medium px-2">Entrar</button>
+            <button type="button" onClick={handleSignIn} className="hidden sm:block text-sm text-gray-600 hover:text-gray-900 transition-colors font-medium px-2">Entrar</button>
             <button onClick={handleStart}
               className="text-sm font-bold px-5 py-2 rounded-xl text-white bg-violet-600 hover:bg-violet-500 transition-all shadow-lg shadow-violet-500/30 hover:scale-[1.02] active:scale-[0.98]">
               Começar grátis
@@ -290,10 +405,19 @@ export default function Landing() {
             <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }}
               className="overflow-hidden border-t border-gray-200 bg-white md:hidden">
               <div className="px-6 py-4 flex flex-col gap-4">
-                {["#videos", "#para-alunos", "#para-professores", "#para-escolas", "#precos"].map((href, i) => (
-                  <a key={i} href={href} onClick={() => setMobileMenuOpen(false)}
+                {[
+                  ["#novidades", "Novidades"],
+                  ["#recursos-app", "Recursos no app"],
+                  ["#videos", "Vídeos"],
+                  ["#para-alunos", "Para alunos"],
+                  ["#para-professores", "Para professores"],
+                  ["#para-escolas", "Para escolas"],
+                  [pricingHref, "Preços (página)"],
+                  ["#precos", "Tabela de planos"],
+                ].map(([href, label]) => (
+                  <a key={href} href={href} onClick={() => setMobileMenuOpen(false)}
                     className="text-gray-700 hover:text-gray-900 font-medium transition-colors">
-                    {["Vídeos", "Para alunos", "Para professores", "Para escolas", "Preços"][i]}
+                    {label}
                   </a>
                 ))}
               </div>
@@ -302,64 +426,152 @@ export default function Landing() {
         </AnimatePresence>
       </nav>
 
+      {/* ── NOVIDADES (primeira dobra, impossível não notar) ── */}
+      <section id="novidades" className="border-b border-violet-900/20 bg-gray-950 text-white">
+        <div className="max-w-6xl mx-auto px-6 py-4 md:py-5">
+          <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6 mb-4">
+            <div className="flex-shrink-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">Lançamentos no app</p>
+              <p className="text-sm md:text-base font-bold text-white mt-0.5">
+                Fazedores, Notebook RAG, Lousa Imersiva e Tutor multi-modelo — já no ar para alunos.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 md:ml-auto">
+              <button type="button" onClick={handleStart} className="rounded-xl bg-white px-4 py-2 text-xs font-bold text-gray-900 hover:bg-violet-100 transition-colors">
+                Criar conta grátis
+              </button>
+              <a href="#videos" className="rounded-xl border border-white/25 px-4 py-2 text-xs font-semibold text-white hover:bg-white/10 transition-colors inline-flex items-center justify-center">
+                Ver vídeo na página
+              </a>
+            </div>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory md:grid md:grid-cols-4 md:overflow-visible">
+            {NOVIDADES_BAND.map((item) => (
+              <button
+                key={item.title}
+                type="button"
+                onClick={() => navigate(item.path)}
+                className="snap-start shrink-0 w-[min(100%,220px)] md:w-auto text-left rounded-2xl overflow-hidden ring-1 ring-white/10 bg-gray-900/80 hover:ring-violet-400/60 hover:bg-gray-900 transition-all group"
+              >
+                <div className="relative h-24 overflow-hidden">
+                  <img src={item.img} alt="" width={400} height={240} loading="lazy" decoding="async" className="h-full w-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/20 to-transparent" />
+                  <span className="absolute top-2 left-2 rounded-md bg-violet-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white">
+                    {item.accent}
+                  </span>
+                </div>
+                <div className="p-3">
+                  <p className="text-xs font-black text-white leading-tight">{item.title}</p>
+                  <p className="text-[11px] text-gray-400 mt-1 leading-snug line-clamp-2">{item.desc}</p>
+                  <span className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-violet-300 group-hover:text-violet-200">
+                    Abrir <ArrowRight className="w-3 h-3" />
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── HERO ── */}
-      <section className="relative pt-24 pb-20 px-6 overflow-hidden bg-gradient-to-br from-violet-50/50 via-white to-emerald-50/30">
-        {/* Decoração suave: orbs gradientes flutuantes (estilo coreano clean) */}
+      <section className="relative pt-20 pb-16 md:pt-24 md:pb-20 px-6 overflow-hidden bg-slate-50">
         <div aria-hidden className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-32 -left-24 w-[480px] h-[480px] rounded-full bg-violet-200/30 blur-3xl" />
-          <div className="absolute top-40 -right-24 w-[420px] h-[420px] rounded-full bg-emerald-200/25 blur-3xl" />
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-violet-200/60 to-transparent" />
+          <div className="absolute -top-24 right-0 h-[420px] w-[420px] rounded-full bg-violet-100/50 blur-3xl" />
+          <div className="absolute bottom-0 left-0 h-[320px] w-[320px] rounded-full bg-emerald-50/60 blur-3xl" />
         </div>
 
-        <div className="relative max-w-5xl mx-auto text-center">
-          <motion.div variants={fadeUp} initial="hidden" animate="show" custom={0} className="flex flex-wrap items-center justify-center gap-2 mb-8">
-            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-white text-violet-700 border border-violet-200 shadow-sm shadow-violet-100">
-              <Radio className="w-3 h-3 animate-pulse text-violet-600" /> Novo: Tutor Tiagão — Voz proativa em PT-BR
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
-              <Award className="w-3 h-3" /> Top 10 EdTech Brasil 2025
-            </span>
-          </motion.div>
-
-          <motion.h1 variants={fadeUp} initial="hidden" animate="show" custom={1}
-            className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight leading-[1.04] mb-6 text-gray-900">
-            A IA que entende{" "}
-            <span className="bg-gradient-to-r from-violet-600 via-violet-600 to-purple-600 bg-clip-text text-transparent">
-              como você aprende
-            </span>
-          </motion.h1>
-
-          <motion.p variants={fadeUp} initial="hidden" animate="show" custom={2}
-            className="text-xl text-gray-600 leading-relaxed max-w-3xl mx-auto mb-10">
-            Plano de estudos personalizado + Tutor IA 24h + Simulados adaptativos + Tudo integrado.<br />
-            <span className="text-gray-800 font-medium">Feito para o ENEM, vestibular e concursos brasileiros.</span>
-          </motion.p>
-
-          <motion.div variants={fadeUp} initial="hidden" animate="show" custom={3}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-            <button onClick={handleStart}
-              className="group flex items-center gap-2.5 px-8 py-4 rounded-2xl font-bold text-white bg-violet-600 hover:bg-violet-500 transition-all hover:scale-[1.03] active:scale-[0.97] shadow-xl shadow-violet-500/30 text-base">
-              Começar grátis — 2 minutos
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </button>
-            <button onClick={(e) => openVideo(VIDEOS[0], e)}
-              className="group flex items-center gap-2.5 px-8 py-4 rounded-2xl font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 transition-all text-base shadow-sm">
-              <span className="w-7 h-7 rounded-full bg-violet-600 text-white flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Play className="w-3 h-3 ml-0.5" fill="currentColor" />
+        <div className="relative max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+          <div>
+            <motion.div variants={fadeUp} initial="hidden" animate="show" custom={0} className="flex flex-wrap items-center gap-2 mb-6">
+              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-violet-50 text-violet-800 border border-violet-200/90 shadow-sm">
+                <Radio className="w-3 h-3 animate-pulse text-violet-600 shrink-0" /> Novo: Tutor Tiagão — Voz proativa em PT-BR
               </span>
-              Ver demonstração — 1:32
-            </button>
-          </motion.div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                <Award className="w-3 h-3 shrink-0" /> Top 10 EdTech Brasil 2025
+              </span>
+            </motion.div>
 
-          {/* Stats */}
-          <motion.div variants={fadeUp} initial="hidden" animate="show" custom={4}
-            className="flex flex-wrap items-center justify-center gap-8 text-sm">
-            {STATS.map((s, i) => (
-              <div key={i} className="flex items-center gap-2.5">
-                <span className="font-black text-violet-600 text-xl">{s.v}</span>
-                <span className="text-gray-500">{s.l}</span>
+            <motion.h1 variants={fadeUp} initial="hidden" animate="show" custom={1}
+              className="text-4xl sm:text-5xl lg:text-[3.35rem] font-black tracking-tight leading-[1.08] mb-5 text-gray-900">
+              Plano, voz, materiais e{" "}
+              <span className="bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
+                desafios reais
+              </span>
+              {" "}— no mesmo lugar
+            </motion.h1>
+
+            <motion.p variants={fadeUp} initial="hidden" animate="show" custom={2}
+              className="text-lg sm:text-xl text-gray-600 leading-relaxed mb-3 max-w-xl">
+              StudyAI é a plataforma brasileira que une plano inteligente, Tiagão por voz, Notebook RAG, Lousa Imersiva, Tutor com GPT e Claude, Simulado ENEM e o módulo <span className="font-semibold text-gray-900">Fazedores</span> para destravar hábitos e rotina.
+            </motion.p>
+            <motion.p variants={fadeUp} initial="hidden" animate="show" custom={2}
+              className="text-base text-gray-700 font-medium leading-relaxed mb-2 max-w-xl">
+              Feito para o ENEM, vestibular e concursos brasileiros.
+            </motion.p>
+            <motion.p variants={fadeUp} initial="hidden" animate="show" custom={2}
+              className="text-sm text-gray-500 leading-relaxed mb-8 max-w-xl">
+              No mesmo login você acessa Simulado ENEM, Notebook RAG, Lousa Imersiva, Tutor IA (GPT e Claude), Fazedores, ranking, cronograma e sala de estudos — com ou sem cartão no plano gratuito.
+            </motion.p>
+
+            <motion.div variants={fadeUp} initial="hidden" animate="show" custom={3}
+              className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 mb-10">
+              <button type="button" onClick={handleStart}
+                className="group inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-2xl font-bold text-white bg-violet-600 hover:bg-violet-500 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-violet-500/25 text-sm sm:text-base">
+                Começar grátis — 2 minutos
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </button>
+              <button type="button" onClick={(e) => openVideo(VIDEOS[0], e)}
+                className="group inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-2xl font-medium text-gray-800 bg-white hover:bg-gray-50 border border-gray-200 transition-all text-sm sm:text-base shadow-sm">
+                <span className="w-8 h-8 rounded-full bg-violet-600 text-white flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <Play className="w-3.5 h-3.5 ml-0.5" fill="currentColor" />
+                </span>
+                Ver demonstração — 1:32
+              </button>
+              <a href={pricingHref}
+                className="inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl text-sm font-semibold text-violet-700 hover:text-violet-800 hover:bg-violet-50/80 border border-transparent hover:border-violet-200 transition-all">
+                  Ver preços e Pro <ArrowUpRight className="w-4 h-4" />
+              </a>
+            </motion.div>
+
+            <motion.div variants={fadeUp} initial="hidden" animate="show" custom={4}
+              className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 text-sm border-t border-gray-100 pt-8">
+              {STATS.map((s, i) => (
+                <div key={i} className="min-w-0">
+                  <p className="font-black text-violet-600 text-lg sm:text-xl tabular-nums">{s.v}</p>
+                  <p className="text-gray-500 text-xs sm:text-sm leading-snug mt-0.5">{s.l}</p>
+                </div>
+              ))}
+            </motion.div>
+          </div>
+
+          <motion.div variants={fadeUp} initial="hidden" animate="show" custom={2}
+            className="relative z-10 lg:justify-self-end w-full max-w-lg mx-auto lg:mx-0">
+            <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-violet-900/15 ring-1 ring-gray-900/10 bg-black">
+              <video
+                src={MAIN_DEMO_VIDEO.src}
+                poster={MAIN_DEMO_VIDEO.poster}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
+                className="w-full aspect-[4/3] sm:aspect-video object-cover"
+                aria-label="Prévia em vídeo da experiência StudyAI (demonstração CC0)"
+              />
+              <div className="absolute inset-0 bg-gradient-to-tr from-violet-950/40 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2 rounded-xl bg-black/55 px-3 py-2 text-[11px] text-white backdrop-blur-sm ring-1 ring-white/10">
+                <span className="font-semibold">Prévia em vídeo · substitua pelo tour oficial quando gravar</span>
+                <button type="button" onClick={(e) => openVideo(VIDEOS[0], e)} className="shrink-0 rounded-lg bg-white px-2 py-1 text-[10px] font-black uppercase tracking-wide text-gray-900 hover:bg-violet-100">
+                  Tela cheia
+                </button>
               </div>
-            ))}
+            </div>
+            <div className="mt-4 sm:mt-0 sm:absolute sm:-bottom-4 sm:-left-2 sm:left-4 max-w-[min(100%,300px)] rounded-2xl bg-white/95 backdrop-blur-md border border-gray-200 shadow-lg p-4 text-left">
+              <p className="text-[10px] font-black uppercase tracking-widest text-violet-600 mb-1">Destaques ativos</p>
+              <p className="text-sm font-bold text-gray-900 leading-snug">
+                Fazedores + Notebook RAG + Lousa + Tutor multi-modelo — rotas reais, um login.
+              </p>
+            </div>
           </motion.div>
         </div>
       </section>
@@ -385,6 +597,70 @@ export default function Landing() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ── RECURSOS NO APP (rotas reais) ── */}
+      <section id="recursos-app" className="py-20 md:py-24 px-6 bg-white border-t border-gray-100">
+        <div className="max-w-6xl mx-auto">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
+            className="max-w-3xl mb-12 md:mb-14">
+            <p className="text-xs font-black text-violet-600 uppercase tracking-widest mb-3">Recursos no app</p>
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-gray-900 mb-4">
+              Tudo o que você vê no menu do aluno — em destaque para conversão
+            </h2>
+            <p className="text-gray-600 text-lg leading-relaxed">
+              Estas são rotas vivas do StudyAI: entre com sua conta (ou crie em segundos) e abra cada módulo. Abaixo, os mesmos fluxos que aparecem na navegação lateral — Simulado ENEM, Notebook RAG, Tutor IA, Lousa Imersiva, Fazedores, cronograma e sala de estudos.
+            </p>
+          </motion.div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+            {APP_SHOWCASE.map((item, i) => {
+              const Icon = item.icon;
+              return (
+                <motion.article
+                  key={item.path + item.title}
+                  variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i * 0.06}
+                  className="group flex flex-col rounded-3xl border border-gray-200 bg-gray-50/40 hover:bg-white hover:border-violet-200 hover:shadow-lg hover:shadow-violet-500/5 transition-all overflow-hidden"
+                >
+                  <div className="relative aspect-[16/10] overflow-hidden bg-gray-200">
+                    <img src={item.img} alt="" width={1000} height={625} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-gray-900/55 via-transparent to-transparent" />
+                    <div className="absolute bottom-3 left-3 right-3 flex items-center gap-2 text-white">
+                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <h3 className="font-black text-sm sm:text-base leading-tight drop-shadow-sm">{item.title}</h3>
+                    </div>
+                  </div>
+                  <div className="flex flex-1 flex-col p-5">
+                    <p className="text-gray-600 text-sm leading-relaxed flex-1 mb-4">{item.desc}</p>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={() => navigate(item.path)}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-violet-500 transition-colors">
+                        Abrir no app <ArrowRight className="h-3.5 w-3.5" />
+                      </button>
+                      {"extraPath" in item && item.extraPath && (
+                        <button type="button" onClick={() => navigate(item.extraPath)}
+                          className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-semibold text-gray-800 hover:border-violet-200 transition-colors">
+                          {item.extraLabel}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </motion.article>
+              );
+            })}
+          </div>
+
+          <motion.p variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
+            className="mt-10 text-center text-sm text-gray-500 max-w-2xl mx-auto">
+            Também disponíveis: Aula com Professor IA, Caderno digital, Trilha Mestre, Radar de desempenho, ranking, conquistas e comunicação para turmas —{" "}
+            <button type="button" onClick={handleStart} className="font-semibold text-violet-600 hover:text-violet-700 underline-offset-2 hover:underline">
+              entrar no app
+            </button>
+            {" "}e explorar o menu completo.
+          </motion.p>
         </div>
       </section>
 
@@ -420,14 +696,52 @@ export default function Landing() {
         </div>
         <div className="relative max-w-6xl mx-auto">
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
-            className="text-center mb-14">
+            className="text-center mb-10 md:mb-12">
             <p className="inline-flex items-center gap-1.5 text-xs font-black text-violet-600 uppercase tracking-widest mb-3">
               <Film className="w-3 h-3" /> Em ação
             </p>
             <h2 className="text-4xl md:text-5xl font-black tracking-tight text-gray-900">Veja o Study.IA por dentro</h2>
             <p className="text-gray-600 mt-3 max-w-2xl mx-auto text-lg">
-              Três vídeos institucionais mostram como alunos, professores e escolas usam a plataforma no dia a dia.
+              Vídeo em destaque com mídia CC0 estável (substitua por tour gravado no app quando estiver pronto). Abaixo, três cortes demonstrativos e atalhos para explorar os módulos reais.
             </p>
+          </motion.div>
+
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
+            className="mb-12 md:mb-14 rounded-3xl overflow-hidden border border-gray-200 bg-gray-950 shadow-2xl shadow-violet-900/10 ring-1 ring-black/5">
+            <div className="grid lg:grid-cols-5 gap-0">
+              <div className="lg:col-span-3 aspect-video bg-black">
+                <video
+                  src={MAIN_DEMO_VIDEO.src}
+                  poster={MAIN_DEMO_VIDEO.poster}
+                  controls
+                  playsInline
+                  muted
+                  loop
+                  preload="metadata"
+                  className="h-full w-full object-cover"
+                  aria-label="Demonstração de vídeo em alta definição (conteúdo CC0)"
+                />
+              </div>
+              <div className="lg:col-span-2 flex flex-col justify-center gap-4 p-6 md:p-8 bg-gradient-to-br from-gray-900 to-gray-950 text-left">
+                <p className="text-xs font-black uppercase tracking-widest text-violet-300/90">Demonstração imediata</p>
+                <h3 className="text-xl md:text-2xl font-black text-white leading-tight">
+                  Experiência fluida de streaming no app
+                </h3>
+                <p className="text-sm text-gray-300 leading-relaxed">
+                  Este trecho usa arquivo público hospedado pela Mozilla (CC0) para provar carregamento rápido e controles acessíveis. Quando sua gravação institucional estiver pronta, basta trocar a URL no código — a estrutura de poster + legenda já está preparada.
+                </p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button type="button" onClick={handleStart}
+                    className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-gray-900 hover:bg-violet-50 transition-colors">
+                    Abrir o app <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                  <button type="button" onClick={(e) => openVideo(VIDEOS[1], e)}
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-xs font-semibold text-white hover:bg-white/10 transition-colors">
+                    Ver outro exemplo (MP4) <Play className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-5 md:gap-6">
@@ -442,6 +756,10 @@ export default function Landing() {
                 >
                   {/* Thumbnail */}
                   <div className={`relative aspect-video overflow-hidden bg-gradient-to-br ${video.gradient}`}>
+                    {video.poster ? (
+                      <img src={video.poster} alt="" width={1280} height={720} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
+                    ) : null}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/20 to-transparent" aria-hidden />
                     {/* Ruído sutil + grid */}
                     <div className="absolute inset-0 opacity-[0.18] mix-blend-overlay"
                       style={{ backgroundImage: "radial-gradient(circle at 20% 20%, rgba(255,255,255,0.5), transparent 40%), radial-gradient(circle at 80% 80%, rgba(0,0,0,0.3), transparent 40%)" }} />
@@ -492,9 +810,9 @@ export default function Landing() {
           {/* CTA secundário */}
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
             className="mt-12 text-center">
-            <a href="#para-alunos"
+            <a href="#recursos-app"
               className="inline-flex items-center gap-2 text-sm font-bold text-violet-600 hover:text-violet-500 transition-colors">
-              Conhecer todos os recursos da plataforma <ArrowRight className="w-4 h-4" />
+              Ver recursos com rotas do app <ArrowRight className="w-4 h-4" />
             </a>
           </motion.div>
         </div>
@@ -584,7 +902,7 @@ export default function Landing() {
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-14">
             <p className="text-xs font-black text-violet-600 uppercase tracking-widest mb-3">Diferenciais</p>
             <h2 className="text-4xl font-black tracking-tight text-gray-900">Tudo integrado. Uma única plataforma.</h2>
-            <p className="text-gray-600 mt-3 max-w-2xl mx-auto">Cada módulo conversa com os outros. Seu erro no simulado vira flashcard, que vira plano de aula, que vira revisão programada automaticamente.</p>
+            <p className="text-gray-600 mt-3 max-w-2xl mx-auto">Cada módulo conversa com os outros. Seu erro no simulado vira flashcard, que vira plano de aula, que vira revisão programada automaticamente — com rotas reais como Simulado ENEM, Notebook RAG, Lousa Imersiva, Fazedores e Tutor IA no mesmo login.</p>
           </motion.div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {FEATURES.map((f, i) => (
@@ -819,7 +1137,7 @@ export default function Landing() {
       </section>
 
       {/* ── FAQ ── */}
-      <section className="py-24 px-6">
+      <section id="faq" className="py-24 px-6">
         <div className="max-w-3xl mx-auto">
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-12">
             <p className="text-xs font-black text-violet-600 uppercase tracking-widest mb-3">Dúvidas frequentes</p>
@@ -971,6 +1289,7 @@ export default function Landing() {
                 <video
                   key={activeVideo.id}
                   src={activeVideo.src}
+                  poster={activeVideo.poster}
                   controls
                   autoPlay
                   playsInline
@@ -1012,7 +1331,7 @@ export default function Landing() {
             <div>
               <p className="font-black text-gray-400 text-xs uppercase tracking-widest mb-3">Produto</p>
               <ul className="space-y-2">
-                {[["Funcionalidades", "#funcoes"], ["Para alunos", "#para-alunos"], ["Para professores", "#para-professores"], ["Para escolas", "#para-escolas"]].map(([label, href]) => (
+                {[["Recursos no app", "#recursos-app"], ["Funcionalidades", "#funcoes"], ["Para alunos", "#para-alunos"], ["Para professores", "#para-professores"], ["Para escolas", "#para-escolas"]].map(([label, href]) => (
                   <li key={label}><a href={href} className="text-sm text-gray-500 hover:text-white transition-colors">{label}</a></li>
                 ))}
               </ul>
@@ -1020,7 +1339,7 @@ export default function Landing() {
             <div>
               <p className="font-black text-gray-400 text-xs uppercase tracking-widest mb-3">Plataforma</p>
               <ul className="space-y-2">
-                {[["Preços", "#precos"], ["FAQ", "#faq"], ["Blog", "#"], ["Carreiras", "#"]].map(([label, href]) => (
+                {[["Preços (página)", pricingHref], ["Tabela de planos", "#precos"], ["FAQ", "#faq"], ["Blog", "#"], ["Carreiras", "#"]].map(([label, href]) => (
                   <li key={label}><a href={href} className="text-sm text-gray-500 hover:text-white transition-colors">{label}</a></li>
                 ))}
               </ul>
@@ -1037,7 +1356,7 @@ export default function Landing() {
             </div>
           </div>
           <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-gray-500 text-xs">© 2025 Study.IA — Feito com 💜 no Brasil</p>
+            <p className="text-gray-500 text-xs">© 2026 Study.IA — Feito com 💜 no Brasil</p>
             <div className="flex items-center gap-4">
               <a href="mailto:contato@study.ia.br" className="text-xs text-gray-500 hover:text-white transition-colors">contato@study.ia.br</a>
               <span className="w-1 h-1 rounded-full bg-gray-600" />

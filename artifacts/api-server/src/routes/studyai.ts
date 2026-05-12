@@ -716,4 +716,61 @@ router.post("/analisar", checkFreeUsage, (req, res, next) => {
   }
 });
 
+/** Leitura leve de PDF/Word/imagem para o painel do Tiagão (sem gerar plano completo). */
+router.post("/tutor-extract-files", upload.array("files", 8), async (req, res) => {
+  try {
+    const files = req.files as Express.Multer.File[] | undefined;
+    if (!files?.length) {
+      res.status(400).json({ erro: "Envie pelo menos um arquivo." });
+      return;
+    }
+    const parts: string[] = [];
+    for (const file of files) {
+      if (isPdf(file.mimetype, file.originalname) || isWord(file.mimetype, file.originalname)) {
+        const t = await extractTextFromFile(file);
+        if (t?.trim()) {
+          parts.push(`--- ${file.originalname} ---\n${t.trim().slice(0, 18_000)}`);
+        }
+      } else if (isImage(file.mimetype)) {
+        const buf = file.buffer.length > 1_048_576 ? file.buffer.slice(0, 1_048_576) : file.buffer;
+        const dataUrl = `data:${file.mimetype};base64,${buf.toString("base64")}`;
+        const { response } = await chatCompletionCreateWithFallback({
+          model: OR.pro,
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: "Descreva em português brasileiro o conteúdo educacional desta imagem (caderno, livro, slide, prova). Seja objetivo: até 5 frases corridas, sem markdown, sem listas com traço.",
+                },
+                { type: "image_url", image_url: { url: dataUrl } },
+              ],
+            },
+          ],
+          max_tokens: 320,
+          hasVision: true,
+          temperature: 0.35,
+        });
+        const desc = response.choices[0]?.message?.content?.trim();
+        if (desc) parts.push(`--- ${file.originalname} (leitura visual) ---\n${desc}`);
+      } else {
+        parts.push(`--- ${file.originalname} ---\n(tipo não suportado para leitura automática — envie PDF, Word ou imagem)`);
+      }
+    }
+    const extracted = parts.join("\n\n").slice(0, 45_000);
+    if (!extracted.trim()) {
+      res.status(400).json({ erro: "Não foi possível extrair texto ou ler as imagens." });
+      return;
+    }
+    res.json({
+      extracted,
+      filenames: files.map((f) => f.originalname),
+    });
+  } catch (error) {
+    req.log?.error({ error, detail: stringifyOpenRouterError(error) }, "tutor-extract-files");
+    res.status(500).json({ erro: "Erro ao processar os arquivos. Tente novamente." });
+  }
+});
+
 export default router;

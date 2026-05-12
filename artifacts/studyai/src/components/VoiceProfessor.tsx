@@ -17,7 +17,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { TiagaoCharacter, type CharacterState } from "@/components/TiagaoCharacter";
 import {
   Mic, MicOff, X, Square, VolumeX, Volume2, ThumbsUp, ThumbsDown,
-  Timer, Maximize2, Minimize2, Send, Camera, Loader2, MessageSquare,
+  Timer, Maximize2, Minimize2, Send, Paperclip, Loader2, MessageSquare,
   Zap, Settings, RefreshCw, ChevronDown, Radio, Eye, EyeOff,
   RotateCcw, Trash2,
 } from "lucide-react";
@@ -31,8 +31,8 @@ import {
 import { useAudioCapture } from "@/hooks/useAudioCapture";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
-const IDLE_TRIGGER_MS    = 3 * 60 * 1000;
-const PROACTIVE_MIN_GAP  = 8 * 60 * 1000;
+const IDLE_TRIGGER_MS    = 10 * 60 * 1000;
+const PROACTIVE_MIN_GAP  = 15 * 60 * 1000;
 const CHECK_INTERVAL     = 30 * 1000;
 
 // ─── Shared AudioContext ──────────────────────────────────────────────────────
@@ -258,7 +258,7 @@ export function VoiceProfessor() {
   const [actionNotif, setActionNotif] = useState<{ text: string; path?: string } | null>(null);
   const [history, setHistory]     = useState<HistoryMsg[]>([]);
   const [volume, setVolume]       = useState(0);
-  const [analisandoImagem, setAnalisandoImagem] = useState(false);
+  const [planIngestBusy, setPlanIngestBusy] = useState(false);
   const [retrying, setRetrying]   = useState(false);
   const [sessionMsgs, setSessionMsgs] = useState(0);
 
@@ -272,12 +272,15 @@ export function VoiceProfessor() {
   const proactiveTimerRef   = useRef<ReturnType<typeof setInterval> | null>(null);
   const focusTimerRef   = useRef<ReturnType<typeof setInterval> | null>(null);
   const chatEndRef      = useRef<HTMLDivElement>(null);
-  const cameraInputRef  = useRef<HTMLInputElement>(null);
+  const planMaterialRef = useRef<HTMLInputElement>(null);
 
   const useBrowserSpeech = useMemo(() => shouldUseBrowserSpeechRecognition(), []);
 
   // ── Audio capture (VAD + devices + Whisper fallback) ───────────────────────
   const audioCapture = useAudioCapture({
+    silenceTimeoutMs: 1150,
+    minSpeechMs: 220,
+    vadThreshold: useBrowserSpeech ? 14 : 10,
     onVolume: setVolume,
     onSpeechStart: () => {
       // VAD detected speech — switch to listening phase
@@ -480,6 +483,81 @@ export function VoiceProfessor() {
     }
   }, [speak, handleAgentActions, voicePure]);
 
+  const ingestPlanMaterial = useCallback(async (files: FileList | null) => {
+    if (!files?.length) return;
+    setPlanIngestBusy(true);
+    setError(null);
+    try {
+      const form = new FormData();
+      for (const f of Array.from(files)) form.append("files", f);
+      const r = await fetch(`${BASE_URL}/api/tutor-extract-files`, {
+        method: "POST",
+        body: form,
+        credentials: "include",
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setError(typeof j.erro === "string" ? j.erro : "Não consegui ler estes arquivos.");
+        return;
+      }
+      const extracted = String(j.extracted || "").slice(0, 14_000);
+      const names = Array.isArray(j.filenames) ? j.filenames.join(", ") : "anexo";
+      await sendMessage(
+        `Anexei material para montarmos o plano de estudos (${names}). Lê com calma e me orienta — conteúdo:\n\n${extracted}`,
+        false,
+      );
+    } catch {
+      setError("Falha ao enviar os arquivos. Tenta de novo.");
+    } finally {
+      setPlanIngestBusy(false);
+      if (planMaterialRef.current) planMaterialRef.current.value = "";
+    }
+  }, [sendMessage]);
+
+  // ── Saudação variada ao abrir o painel (uma vez por carga da página) ────────
+  useEffect(() => {
+    if (!open) return;
+    if (greetedRef.current) return;
+    unlockAudioSync();
+    let cancelled = false;
+    (async () => {
+      let greeting = "";
+      try {
+        const r = await fetch(`${BASE_URL}/api/tiagao-opening`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ context: collectStudentContext() }),
+          credentials: "include",
+        });
+        if (r.ok) {
+          const j = await r.json();
+          greeting = String(j.text || "").trim();
+        }
+      } catch { /* ignore */ }
+      if (cancelled) return;
+      const ctx = collectStudentContext();
+      if (!greeting || greeting.length < 25) {
+        const n = ctx.nome && ctx.nome !== "Herói" ? ctx.nome.split(/\s+/)[0] : "";
+        greeting = n
+          ? `E aí, ${n}! Sou o Tiagão. O que você quer dominar agora? A gente pode montar um plano de estudos juntos — se tiver PDF, Word ou foto do caderno, anexa aqui no clipe que eu já leio. Por onde começamos?`
+          : `Oi! Tiagão aqui. Me conta o foco de hoje: prova, matéria ou revisão? Posso criar um plano com você; manda PDF, Word ou imagem no anexo que eu já uso. Bora?`;
+      }
+      greetedRef.current = true;
+      historyRef.current = [{ role: "assistant", content: greeting }];
+      lastProactiveRef.current = Date.now();
+      setHistory([{ role: "assistant", text: greeting, ts: Date.now() }]);
+      setTimeout(() => { if (!cancelled) void speak(greeting); }, 300);
+    })();
+    return () => { cancelled = true; };
+  }, [open, speak]);
+
+  useEffect(() => {
+    const lines = history.filter(m => m.role === "assistant").slice(-4).map(m => m.text.slice(0, 160));
+    try {
+      sessionStorage.setItem("studyai_tiagao_recent_assistant", JSON.stringify(lines));
+    } catch { /* ignore */ }
+  }, [history]);
+
   // ── Proactive ───────────────────────────────────────────────────────────────
   const runProactive = useCallback(async (triggerReason?: string) => {
     if (phase !== "idle" || mutedRef.current) return;
@@ -505,23 +583,6 @@ export function VoiceProfessor() {
       await speak(message);
     } catch { /* ignore */ }
   }, [phase, speak, handleAgentActions]);
-
-  // ── Camera / Gemini ─────────────────────────────────────────────────────────
-  const analisarImagem = useCallback(async (file: File) => {
-    setAnalisandoImagem(true);
-    try {
-      const form = new FormData();
-      form.append("imagem", file);
-      if (textInput.trim()) form.append("pergunta", textInput.trim());
-      const r = await fetch(`${BASE_URL}/api/gemini/analisar-problema`, { method: "POST", body: form });
-      if (r.ok) {
-        const { resposta } = await r.json();
-        if (resposta) sendMessage(`📸 [Analisei a imagem] ${resposta}`);
-        setTextInput("");
-      }
-    } catch { /* silent */ }
-    finally { setAnalisandoImagem(false); }
-  }, [textInput, sendMessage]);
 
   // ── Events from app ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -579,33 +640,19 @@ export function VoiceProfessor() {
     };
   }, [runProactive]);
 
-  // ── First open — unlock audio + greet ──────────────────────────────────────
+  // ── First open / close panel ───────────────────────────────────────────────
   const handlePanelToggle = useCallback(() => {
     setShowHint(false);
     setOpen(o => {
       const next = !o;
-      if (next && !greetedRef.current) {
-        greetedRef.current = true;
-        unlockAudioSync();
-        // Start volume capture for VAD visualization
-        audioCapture.start().catch(() => { /* silencioso */ });
-        const ctx = collectStudentContext();
-        const greeting = ctx.nome
-          ? `Oi, ${ctx.nome}! Aqui é o Tiagão, seu professor. Pode me chamar quando quiser!`
-          : "Oi! Aqui é o Tiagão, seu professor de estudos. Pode me chamar a qualquer hora!";
-        historyRef.current.push({ role: "assistant", content: greeting });
-        lastProactiveRef.current = Date.now();
-        setHistory([{ role: "assistant", text: greeting, ts: Date.now() }]);
-        setTimeout(() => speak(greeting), 300);
-      }
+      if (next) unlockAudioSync();
       if (!next) {
-        // Stop VAD when closed
         audioCapture.stop();
         setVolume(0);
       }
       return next;
     });
-  }, [speak, audioCapture]);
+  }, [audioCapture]);
 
   // ── Speech recognition ──────────────────────────────────────────────────────
   const startListening = useCallback(async () => {
@@ -672,8 +719,11 @@ export function VoiceProfessor() {
   }, [useBrowserSpeech, sendMessage, stopSpeaking, phase, audioCapture]);
 
   const stopListening = useCallback(() => {
-    recognitionRef.current?.stop(); setPhase("idle");
-  }, []);
+    try { recognitionRef.current?.stop(); } catch { /* ok */ }
+    audioCapture.stop();
+    setVolume(0);
+    setPhase("idle");
+  }, [audioCapture]);
 
   // ── UI config ───────────────────────────────────────────────────────────────
   const phaseColor: Record<Phase, string> = {
@@ -1115,14 +1165,24 @@ export function VoiceProfessor() {
                     }
                   </button>
 
-                  {/* Text input + camera */}
+                  {/* Text input + anexo (PDF / Word / imagem) para plano */}
                   <div className="flex gap-1.5 mt-2">
-                    <input ref={cameraInputRef as any} type="file" accept="image/*" capture="environment"
+                    <input
+                      ref={planMaterialRef}
+                      type="file"
+                      multiple
+                      accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*"
                       className="hidden"
-                      onChange={e => { const f = e.target.files?.[0]; if (f) analisarImagem(f); e.target.value = ""; }} />
-                    <button onClick={() => cameraInputRef.current?.click()} disabled={analisandoImagem}
-                      className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors">
-                      {analisandoImagem ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+                      onChange={e => { void ingestPlanMaterial(e.target.files); }}
+                    />
+                    <button
+                      type="button"
+                      title="Anexar PDF, Word ou imagem para o plano"
+                      onClick={() => planMaterialRef.current?.click()}
+                      disabled={planIngestBusy || phase === "thinking"}
+                      className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors disabled:opacity-50"
+                    >
+                      {planIngestBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Paperclip className="w-3.5 h-3.5" />}
                     </button>
                     <input type="text" value={textInput} onChange={e => setTextInput(e.target.value)}
                       onKeyDown={e => { if (e.key === "Enter" && textInput.trim()) { sendMessage(textInput); setTextInput(""); } }}

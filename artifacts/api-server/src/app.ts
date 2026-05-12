@@ -162,6 +162,8 @@ const authLimiter = rateLimit({
 
 app.use("/api/auth", authLimiter);
 app.use("/api/analisar", aiLimiter);
+app.use("/api/tutor-extract-files", aiLimiter);
+app.use("/api/tiagao-opening", aiLimiter);
 app.use("/api/redacao", aiLimiter);
 app.use("/api/simulado", aiLimiter);
 app.use("/api/simulado-adaptativo", aiLimiter);

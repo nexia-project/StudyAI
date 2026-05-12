@@ -1,6 +1,9 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
+import { useUser } from "@clerk/react";
+import { normalizeTiagaoLegacyPath } from "@/lib/tiagao-navigation";
+import { triggerProfessorAction } from "@/lib/professor-events";
 import {
   MessageCircle,
   X,
@@ -25,6 +28,7 @@ import {
   FileCode2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { STUDYAI_ACCOUNT_CHANGED } from "@/lib/account-storage";
 import { StudyPlan } from "@/hooks/use-study-plan";
 
 interface Message {
@@ -189,6 +193,16 @@ const MAX_STORED_MESSAGES = 40;
 
 export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopicos, topicosAtual }: TutorChatProps) {
   const [, navigate] = useLocation();
+  const { user } = useUser();
+  const userId = user?.id;
+  const materiaSlug = useMemo(
+    () => plan.materia?.replace(/\s+/g, "_").toLowerCase() ?? "geral",
+    [plan.materia],
+  );
+  const storageKey = useMemo(
+    () => `tiagao_chat_u_${userId ?? "guest"}_${materiaSlug}`,
+    [userId, materiaSlug],
+  );
   const [isOpen, setIsOpen] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
@@ -201,19 +215,45 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
   const abortRef = useRef<AbortController | null>(null);
   const notifTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Persistent conversation memory (survives page navigation) ───────────────
-  const storageKey = `tiagao_chat_${plan.materia?.replace(/\s+/g, "_").toLowerCase() ?? "geral"}`;
+  // ── Persistent conversation memory (scoped by signed-in user when available) ─
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [chatHydrated, setChatHydrated] = useState(false);
 
-  const [messages, setMessages] = useState<Message[]>(() => {
+  useEffect(() => {
+    const onAccountChange = () => {
+      setMessages([]);
+      setChatHydrated(false);
+    };
+    window.addEventListener(STUDYAI_ACCOUNT_CHANGED, onAccountChange);
+    return () => window.removeEventListener(STUDYAI_ACCOUNT_CHANGED, onAccountChange);
+  }, []);
+
+  useEffect(() => {
+    setChatHydrated(false);
     try {
-      const stored = localStorage.getItem(storageKey);
-      if (stored) {
-        const parsed = JSON.parse(stored) as Message[];
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      let raw = localStorage.getItem(storageKey);
+      if (!raw && userId) {
+        const legacy = `tiagao_chat_${materiaSlug}`;
+        raw = localStorage.getItem(legacy);
+        if (raw) {
+          localStorage.setItem(storageKey, raw);
+          localStorage.removeItem(legacy);
+        }
       }
-    } catch { /* ignore */ }
-    return [];
-  });
+      if (raw) {
+        const parsed = JSON.parse(raw) as Message[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMessages(parsed);
+          setChatHydrated(true);
+          return;
+        }
+      }
+      setMessages([]);
+    } catch {
+      setMessages([]);
+    }
+    setChatHydrated(true);
+  }, [storageKey, userId, materiaSlug]);
 
   // Save messages to localStorage whenever they change (throttled)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -233,18 +273,20 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
   }, []);
 
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
-      const greeting: Message = {
-        role: "assistant",
-        content: `Olá, ${plan.aluno}! 👋 Sou seu Tutor IA — estou aqui para te ajudar a dominar **${plan.materia}** e arrasar na prova! 🎯\n\nPosso explicar qualquer coisa, criar flashcards, slides, provas, mapas mentais, plano de estudos e muito mais. Lembro de tudo que conversamos! 🧠`,
-      };
-      setMessages([greeting]);
-    }
-    if (isOpen) {
-      setHasUnread(false);
-      setTimeout(() => inputRef.current?.focus(), 300);
-    }
+    if (!isOpen) return;
+    setHasUnread(false);
+    setTimeout(() => inputRef.current?.focus(), 300);
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !chatHydrated) return;
+    if (messages.length > 0) return;
+    const greeting: Message = {
+      role: "assistant",
+      content: `Olá, ${plan.aluno}! 👋 Sou seu Tutor IA — estou aqui para te ajudar a dominar **${plan.materia}** e arrasar na prova! 🎯\n\nPosso explicar qualquer coisa, criar flashcards, slides, provas, mapas mentais, plano de estudos e muito mais. Lembro de tudo que conversamos! 🧠`,
+    };
+    setMessages([greeting]);
+  }, [isOpen, chatHydrated, plan.aluno, plan.materia, messages.length]);
 
   const clearHistory = () => {
     try { localStorage.removeItem(storageKey); } catch { /* ignore */ }
@@ -275,11 +317,20 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
 
     switch (action.type) {
       case "ir":
-        setTimeout(() => navigate(action.param ?? "/app"), 600);
+        setTimeout(() => navigate(normalizeTiagaoLegacyPath(action.param ?? "/app")), 600);
         break;
 
+      case "criar_plano": {
+        const topic = typeof action.param === "string" ? action.param.trim() : "";
+        navigate("/app");
+        window.setTimeout(() => {
+          triggerProfessorAction("criar_plano", topic || "Plano de estudos personalizado (com o Tiagão)");
+        }, 650);
+        break;
+      }
+
       case "navegar":
-        setTimeout(() => navigate(action.path ?? "/app"), 700);
+        setTimeout(() => navigate(normalizeTiagaoLegacyPath(action.path ?? "/app")), 700);
         break;
 
       case "abrir_aula_ia":
@@ -459,6 +510,7 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         signal: abortRef.current.signal,
         body: JSON.stringify({
           messages: updated,
@@ -474,6 +526,17 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
           },
         }),
       });
+
+      if (!res.ok) {
+        let detail = "";
+        try {
+          const errBody = await res.json() as { _debug?: string };
+          if (import.meta.env.DEV && typeof errBody?._debug === "string") {
+            detail = `: ${String(errBody._debug).slice(0, 500)}`;
+          }
+        } catch { /* ignore */ }
+        throw new Error(`Erro do servidor (${res.status})${detail}`);
+      }
 
       if (!res.body) throw new Error("Sem corpo na resposta");
 

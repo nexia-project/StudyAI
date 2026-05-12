@@ -29,6 +29,8 @@ import {
   type ProfessorProactiveDetail,
   type ProfessorBehaviorDetail,
 } from "@/lib/professor-events";
+import { normalizeTiagaoLegacyPath } from "@/lib/tiagao-navigation";
+import { STUDYAI_ACCOUNT_CHANGED } from "@/lib/account-storage";
 import { useAudioCapture } from "@/hooks/useAudioCapture";
 import { useStudyAuth } from "@/hooks/useStudyAuth";
 
@@ -318,6 +320,20 @@ export function VoiceProfessor() {
   // ── Helpers ─────────────────────────────────────────────────────────────────
   useEffect(() => { mutedRef.current = muted; }, [muted]);
 
+  useEffect(() => {
+    const onAccountChange = () => {
+      setHistory([]);
+      historyRef.current = [];
+      setSessionMsgs(0);
+      setError(null);
+      setPhase("idle");
+      setPlanIngestBusy(false);
+      greetedRef.current = false;
+    };
+    window.addEventListener(STUDYAI_ACCOUNT_CHANGED, onAccountChange);
+    return () => window.removeEventListener(STUDYAI_ACCOUNT_CHANGED, onAccountChange);
+  }, []);
+
   const fmtFocusTime = (s: number) =>
     `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
@@ -361,9 +377,15 @@ export function VoiceProfessor() {
     notifications: Record<string, any>[]
   ) => {
     if (!action) return;
-    if (action.type === "ir") setTimeout(() => navigate(action.param), 600);
-    else if (action.type === "criar_plano") triggerProfessorAction("criar_plano", action.param);
-    else if (action.type === "navegar") setTimeout(() => navigate(action.path ?? "/app"), 700);
+    if (action.type === "ir") setTimeout(() => navigate(normalizeTiagaoLegacyPath(action.param)), 600);
+    else if (action.type === "criar_plano") {
+      const topic = typeof action.param === "string" ? action.param.trim() : "";
+      navigate("/app");
+      window.setTimeout(() => {
+        triggerProfessorAction("criar_plano", topic || "Plano de estudos personalizado (com o Tiagão)");
+      }, 650);
+    }
+    else if (action.type === "navegar") setTimeout(() => navigate(normalizeTiagaoLegacyPath(action.path ?? "/app")), 700);
     else if (action.type === "abrir_aula_ia") {
       localStorage.setItem("tiagao_aula_topico", action.topico ?? "");
       localStorage.setItem("tiagao_aula_estilo", action.estilo ?? "ENEM");
@@ -464,7 +486,11 @@ export function VoiceProfessor() {
       });
       if (!res.ok) {
         const errBody = await res.json().catch(() => ({}));
-        throw new Error(`HTTP ${res.status}${errBody?._debug ? `: ${errBody._debug}` : ""}`);
+        const debugSnippet =
+          import.meta.env.DEV && typeof errBody?._debug === "string"
+            ? `: ${String(errBody._debug).slice(0, 500)}`
+            : "";
+        throw new Error(`HTTP ${res.status}${debugSnippet}`);
       }
       const { text, action, notifications } = await res.json();
       historyRef.current.push({ role: "assistant", content: text || "" });

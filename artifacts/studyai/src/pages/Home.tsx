@@ -61,10 +61,7 @@ import {
   IllStudyPlan,
   IllTargetExam,
   IllCalendar,
-  IllStudyRoom,
-  IllMindSpark,
   IllNotebookStack,
-  IllPaperPen,
   IllTeacherBoard,
 } from "@/components/nav/NavIllustrations";
 
@@ -1301,24 +1298,11 @@ export default function Home() {
 
                 <button
                   type="button"
-                  onClick={() => navigate("/sala-estudos")}
-                  className="group relative overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-6 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5"
-                >
-                  <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-amber-400/15 to-primary/15 blur-2xl opacity-80 pointer-events-none" />
-                  <IllStudyRoom className="size-14 mb-4 text-primary relative z-10" />
-                  <h3 className="font-black text-lg text-foreground mb-1 relative z-10">Sala de estudos</h3>
-                  <p className="text-sm text-muted-foreground leading-snug relative z-10">
-                    Foco, Pomodoro e ambiente colaborativo.
-                  </p>
-                </button>
-
-                <button
-                  type="button"
                   onClick={() => navigate("/notebook")}
                   className="group relative overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-6 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5"
                 >
                   <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-pink-400/15 to-violet-500/15 blur-2xl opacity-80 pointer-events-none" />
-                  <IllMindSpark className="size-14 mb-4 text-primary relative z-10" />
+                  <IllNotebookStack className="size-14 mb-4 text-primary relative z-10" />
                   <h3 className="font-black text-lg text-foreground mb-1 relative z-10">Notebook RAG</h3>
                   <p className="text-sm text-muted-foreground leading-snug relative z-10">
                     Pergunte aos seus materiais com IA.
@@ -1327,34 +1311,8 @@ export default function Home() {
 
                 <button
                   type="button"
-                  onClick={() => navigate("/caderno")}
-                  className="group relative overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-6 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5"
-                >
-                  <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-emerald-400/15 to-primary/15 blur-2xl opacity-80 pointer-events-none" />
-                  <IllNotebookStack className="size-14 mb-4 text-primary relative z-10" />
-                  <h3 className="font-black text-lg text-foreground mb-1 relative z-10">Caderno digital</h3>
-                  <p className="text-sm text-muted-foreground leading-snug relative z-10">
-                    Anotações e revisões em um só lugar.
-                  </p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => navigate("/redacao")}
-                  className="group relative overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-6 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5 sm:col-span-2 lg:col-span-1"
-                >
-                  <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-rose-400/15 to-primary/15 blur-2xl opacity-80 pointer-events-none" />
-                  <IllPaperPen className="size-14 mb-4 text-primary relative z-10" />
-                  <h3 className="font-black text-lg text-foreground mb-1 relative z-10">Redação</h3>
-                  <p className="text-sm text-muted-foreground leading-snug relative z-10">
-                    Corrige e sugere melhorias no estilo ENEM.
-                  </p>
-                </button>
-
-                <button
-                  type="button"
                   onClick={() => navigate("/tutor-ia")}
-                  className="group relative overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-6 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5 sm:col-span-2 lg:col-span-2"
+                  className="group relative overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-6 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5 sm:col-span-2 xl:col-span-3"
                 >
                   <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-indigo-400/15 to-violet-500/20 blur-2xl opacity-80 pointer-events-none" />
                   <IllTeacherBoard className="size-14 mb-4 text-primary relative z-10" />

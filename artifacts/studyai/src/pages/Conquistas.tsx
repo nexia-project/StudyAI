@@ -32,10 +32,11 @@ interface Badge {
 const BADGES: Badge[] = [
   // XP / Progressão
   { id: "primeiroXP",     category: "xp",        emoji: "✨", title: "Faísca",            description: "Ganhe seu primeiro XP",                            condition: s => s.xp >= 1,    color: "from-yellow-400 to-amber-500" },
-  { id: "bronze",         category: "xp",        emoji: "🥉", title: "Bronze",             description: "Alcance 500 XP",                                   condition: s => s.xp >= 500,  color: "from-amber-600 to-yellow-700" },
-  { id: "prata",          category: "xp",        emoji: "🥈", title: "Prata",              description: "Alcance 1.500 XP",                                 condition: s => s.xp >= 1500, color: "from-slate-400 to-gray-500" },
-  { id: "ouro",           category: "xp",        emoji: "🥇", title: "Ouro",               description: "Alcance 3.000 XP",                                 condition: s => s.xp >= 3000, color: "from-yellow-400 to-amber-500" },
-  { id: "platina",        category: "xp",        emoji: "🔮", title: "Platina",            description: "Alcance 6.000 XP",                                 condition: s => s.xp >= 6000, color: "from-violet-500 to-violet-600" },
+  { id: "bronze",         category: "xp",        emoji: "🥉", title: "Bronze",             description: "Alcance 2.500 XP",                                 condition: s => s.xp >= 2_500,  color: "from-amber-600 to-yellow-700" },
+  { id: "prata",          category: "xp",        emoji: "🥈", title: "Prata",              description: "Alcance 12.000 XP",                                condition: s => s.xp >= 12_000, color: "from-slate-400 to-gray-500" },
+  { id: "ouro",           category: "xp",        emoji: "🥇", title: "Ouro",               description: "Alcance 45.000 XP",                                condition: s => s.xp >= 45_000, color: "from-yellow-400 to-amber-500" },
+  { id: "platina",        category: "xp",        emoji: "🔮", title: "Platina",            description: "Alcance 120.000 XP",                               condition: s => s.xp >= 120_000, color: "from-violet-500 to-violet-600" },
+  { id: "monge",          category: "xp",        emoji: "🧘", title: "Monge dos Estudos",  description: "Alcance 120.000 XP (nível máximo do ranking)",     condition: s => s.xp >= 120_000, color: "from-teal-400 to-emerald-700" },
 
   // Simulados
   { id: "primSim",        category: "simulados", emoji: "🎯", title: "Primeiro Disparo",   description: "Complete seu primeiro simulado",                    condition: s => s.simCount >= 1,  color: "from-violet-400 to-violet-500" },

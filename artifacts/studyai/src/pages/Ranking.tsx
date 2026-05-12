@@ -37,21 +37,25 @@ interface RankingData {
   totalPlayers: number;
 }
 
+/**
+ * XP tier thresholds (match `api-server/src/routes/ranking.ts` getTier).
+ * Bronze 0–2.5k → Prata → Ouro → Platina → Monge dos Estudos (120k+).
+ */
 const TIER_ORDER = [
-  { name: "Bronze",   emoji: "🥉", color: "#cd7c3a", minXp: 0,    maxXp: 500  },
-  { name: "Prata",    emoji: "🥈", color: "#94a3b8", minXp: 500,  maxXp: 1500 },
-  { name: "Ouro",     emoji: "🥇", color: "#f59e0b", minXp: 1500, maxXp: 3000 },
-  { name: "Platina",  emoji: "🔮", color: "#a855f7", minXp: 3000, maxXp: 6000 },
-  { name: "Diamante", emoji: "💎", color: "#06b6d4", minXp: 6000, maxXp: Infinity },
+  { name: "Bronze",            emoji: "🥉", color: "#cd7c3a", minXp: 0,       maxXp: 2_500 },
+  { name: "Prata",             emoji: "🥈", color: "#94a3b8", minXp: 2_500,   maxXp: 12_000 },
+  { name: "Ouro",              emoji: "🥇", color: "#f59e0b", minXp: 12_000,  maxXp: 45_000 },
+  { name: "Platina",           emoji: "🔮", color: "#a855f7", minXp: 45_000,  maxXp: 120_000 },
+  { name: "Monge dos Estudos", emoji: "🧘", color: "#0f766e", minXp: 120_000, maxXp: Infinity },
 ];
 
 function getTierGradient(name: string) {
   switch (name) {
-    case "Diamante": return "from-cyan-400 to-purple-500";
-    case "Platina":  return "from-violet-500 to-violet-600";
-    case "Ouro":     return "from-amber-400 to-yellow-500";
-    case "Prata":    return "from-slate-400 to-slate-500";
-    default:         return "from-orange-400 to-amber-500";
+    case "Monge dos Estudos": return "from-teal-400 to-emerald-700";
+    case "Platina":           return "from-violet-500 to-violet-600";
+    case "Ouro":              return "from-amber-400 to-yellow-500";
+    case "Prata":             return "from-slate-400 to-slate-500";
+    default:                  return "from-orange-400 to-amber-500";
   }
 }
 
@@ -71,8 +75,8 @@ function Avatar({ entry, size = "md" }: { entry: RankEntry; size?: "sm" | "md" |
 function XpBar({ xp, tier }: { xp: number; tier: TierInfo }) {
   const next = TIER_ORDER.find((t) => t.minXp > tier.minXp);
   if (!next) return (
-    <div className="flex items-center gap-1.5 text-xs text-cyan-500 font-black">
-      <Sparkles className="w-3 h-3" /> NÍVEL MÁXIMO
+    <div className="flex items-center gap-1.5 text-xs text-teal-600 font-black">
+      <Sparkles className="w-3 h-3" /> NÍVEL MÁXIMO — Monge dos Estudos
     </div>
   );
   const range = next.minXp - tier.minXp;

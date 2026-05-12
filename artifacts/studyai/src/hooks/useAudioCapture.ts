@@ -95,9 +95,9 @@ function pickMimeType(): { mimeType: string; extension: string } {
 
 export function useAudioCapture(options: AudioCaptureOptions = {}) {
   const {
-    silenceTimeoutMs = 700,   // antes: 1200 — reduz "delay morto" entre fim de fala e início do pipeline
-    minSpeechMs = 250,         // antes: 300 — aceita falas curtas mais rápido
-    vadThreshold = 15,
+    silenceTimeoutMs = 1000,
+    minSpeechMs = 220,
+    vadThreshold = 12,
     onSpeechStart,
     onSpeechEnd,
     onVolume,
@@ -243,27 +243,27 @@ export function useAudioCapture(options: AudioCaptureOptions = {}) {
     }
 
     try {
-      // Constraints flexíveis — usar `ideal` para evitar OverconstrainedError em devices restritos
-      const audioConstraints: MediaTrackConstraints = {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      };
-      if (selectedDeviceId) {
-        audioConstraints.deviceId = { ideal: selectedDeviceId };
-      }
-      const constraints: MediaStreamConstraints = { audio: audioConstraints };
-
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-      } catch (e1: any) {
-        // Fallback: se OverconstrainedError, tenta com `audio: true` puro
-        if (e1?.name === "OverconstrainedError" || e1?.name === "ConstraintNotSatisfiedError") {
-          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        } else {
-          throw e1;
+      const devicePart = selectedDeviceId
+        ? { deviceId: { ideal: selectedDeviceId } as const }
+        : {};
+      const attempts: MediaStreamConstraints[] = [
+        { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, ...devicePart } },
+        { audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: true, ...devicePart } },
+        { audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true, ...devicePart } },
+        { audio: true },
+      ];
+      let stream: MediaStream | undefined;
+      let lastErr: unknown;
+      for (const c of attempts) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(c);
+          break;
+        } catch (e) {
+          lastErr = e;
         }
+      }
+      if (!stream) {
+        throw lastErr ?? new Error("getUserMedia failed");
       }
       streamRef.current = stream;
 

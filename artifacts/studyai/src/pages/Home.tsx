@@ -47,7 +47,7 @@ import { PomodoroWidget } from "@/components/Pomodoro";
 import { UserMenu } from "@/components/UserMenu";
 import { AppNav } from "@/components/AppNav";
 import { PremiumGate } from "@/components/PremiumGate";
-import { streamStudyPlan, StudyPlan, StudyPlanTopic } from "@/hooks/use-study-plan";
+import { streamStudyPlan, StudyPlan, StudyPlanDay, StudyPlanTopic } from "@/hooks/use-study-plan";
 import { exportStudyPlanPDF } from "@/hooks/use-pdf-export";
 import { Onboarding, hasOnboarded } from "@/components/Onboarding";
 import { triggerProfessor } from "@/lib/professor-events";
@@ -235,6 +235,197 @@ function ChallengeCard({ desafio, color }: { desafio: { enunciado: string; gabar
   );
 }
 
+/** XP awarded once per plan topic after quiz pass; keep in sync with /api/xp/award single-call cap. */
+const TOPIC_XP = 100;
+
+type PlanTopicQuizItem = { question: string; choices: string[]; correctIndex: number };
+
+function stableShuffleStrings(seed: string, items: string[]): string[] {
+  const arr = [...items];
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = Math.imul(31, h) + seed.charCodeAt(i) | 0;
+  let state = h >>> 0;
+  for (let i = arr.length - 1; i > 0; i--) {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    const j = state % (i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/**
+ * Two local self-check questions (MCQ). Not a substitute for professor review; blocks arbitrary checkbox XP.
+ * Simulados / fluxo de simulado permanecem inalterados (outras telas).
+ */
+function buildTopicQuizQuestions(
+  dia: StudyPlanDay,
+  topicIdx: number,
+  nome: string,
+  topicoObj: StudyPlanTopic | null
+): PlanTopicQuizItem[] {
+  const safe = Array.isArray(dia.topicos) ? dia.topicos : [];
+  const siblingNames = safe
+    .map((t, i) => (i !== topicIdx ? (typeof t === "object" && t ? (t as StudyPlanTopic).nome : (t as string)) : null))
+    .filter((x): x is string => !!x);
+
+  const seedBase = `studyai-quiz|${dia.numero}|${topicIdx}|${nome}`;
+
+  const wrongName1 = siblingNames[0] ?? "Um assunto paralelo não prioritário neste dia";
+  const wrongName2 = siblingNames[1] ?? "Revisão superficial misturando vários temas";
+  const c1choices = stableShuffleStrings(`${seedBase}|q1`, [nome, wrongName1, wrongName2]);
+  const q1: PlanTopicQuizItem = {
+    question: "Qual destes melhor descreve o foco principal deste tópico no plano?",
+    choices: c1choices,
+    correctIndex: Math.max(0, c1choices.indexOf(nome)),
+  };
+
+  const ex = topicoObj?.exercicio?.pergunta && topicoObj?.exercicio?.resposta ? topicoObj.exercicio : null;
+  let q2: PlanTopicQuizItem;
+  if (ex) {
+    const ans = ex.resposta.trim().slice(0, 400);
+    const distractorA = siblingNames[0]
+      ? `Foco exclusivo em “${siblingNames[0]}” para a prova`
+      : "Decorar fórmulas sem entender o contexto";
+    const expl = topicoObj?.explicacao?.trim() ?? "";
+    const distractorB = expl.length > 40
+      ? `${expl.slice(0, 120)}… (trecho parcial, não é a resposta da questão)`
+      : "Responder de memória sem alinhar ao enunciado";
+    const c2choices = stableShuffleStrings(`${seedBase}|q2`, [ans, distractorA, distractorB]);
+    q2 = {
+      question: ex.pergunta,
+      choices: c2choices,
+      correctIndex: Math.max(0, c2choices.indexOf(ans)),
+    };
+  } else {
+    const right = "Ler a explicação em tela e só pedir XP após responder ao autoquiz com honestidade.";
+    const wrongA = "Marcar concluído sem ler o conteúdo, só para subir no ranking";
+    const wrongB = "Pular o bloco e dizer que estudou por fora sem evidência no app";
+    const c2choices = stableShuffleStrings(`${seedBase}|q2h`, [right, wrongA, wrongB]);
+    q2 = {
+      question: "O que o app exige para liberar XP neste tópico (política de honestidade)?",
+      choices: c2choices,
+      correctIndex: Math.max(0, c2choices.indexOf(right)),
+    };
+  }
+
+  return [q1, q2];
+}
+
+function TopicValidationModal({
+  open,
+  onClose,
+  onPassed,
+  dia,
+  topicIdx,
+  nome,
+  topicoObj,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onPassed: () => void;
+  dia: StudyPlanDay;
+  topicIdx: number;
+  nome: string;
+  topicoObj: StudyPlanTopic | null;
+}) {
+  const [a0, setA0] = useState<number | null>(null);
+  const [a1, setA1] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setA0(null);
+      setA1(null);
+      setError(null);
+    }
+  }, [open, dia.numero, topicIdx]);
+
+  if (!open) return null;
+
+  const quiz = buildTopicQuizQuestions(dia, topicIdx, nome, topicoObj);
+
+  const submit = () => {
+    if (a0 !== quiz[0].correctIndex || a1 !== quiz[1].correctIndex) {
+      setError("Uma ou mais respostas estão incorretas. Releia o tópico e tente de novo.");
+      return;
+    }
+    onPassed();
+  };
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        key="backdrop"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <motion.div
+        key="panel"
+        initial={{ opacity: 0, y: 24, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 16, scale: 0.98 }}
+        className="fixed left-1/2 top-1/2 z-[61] w-[min(100%,28rem)] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-border bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-xs font-black uppercase tracking-wider text-violet-600 mb-1">Validação do tópico</p>
+        <h3 className="text-lg font-black text-foreground leading-snug mb-4">{nome}</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          Responda às duas perguntas. O XP só conta após acertar as duas — não dá para marcar &quot;concluído&quot; sem passar por aqui.
+        </p>
+
+        <div className="space-y-5 mb-4">
+          {[0, 1].map((qi) => (
+            <div key={qi} className="rounded-2xl border border-border bg-secondary/30 p-4 space-y-2">
+              <p className="text-sm font-bold text-foreground">{quiz[qi].question}</p>
+              <div className="space-y-2">
+                {quiz[qi].choices.map((c, ci) => (
+                  <label
+                    key={ci}
+                    className={cn(
+                      "flex items-start gap-2 rounded-xl border px-3 py-2 text-sm cursor-pointer transition-colors",
+                      (qi === 0 ? a0 : a1) === ci ? "border-violet-500 bg-violet-50" : "border-transparent bg-white hover:bg-secondary/50"
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      className="mt-1"
+                      name={qi === 0 ? "tq0" : "tq1"}
+                      checked={(qi === 0 ? a0 : a1) === ci}
+                      onChange={() => (qi === 0 ? setA0(ci) : setA1(ci))}
+                    />
+                    <span className="font-medium leading-snug">{c}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {error && (
+          <p className="text-sm font-semibold text-red-600 mb-3">{error}</p>
+        )}
+
+        <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+          <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl font-bold text-muted-foreground hover:bg-secondary transition-colors">
+            Cancelar
+          </button>
+          <button
+            type="button"
+            disabled={a0 === null || a1 === null}
+            onClick={submit}
+            className="px-4 py-2.5 rounded-xl font-black bg-violet-600 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-95 transition-opacity"
+          >
+            Confirmar (+{TOPIC_XP} XP)
+          </button>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 export default function Home() {
   const { isAuthenticated, login } = useAuth();
   const { isPremium } = useSubscription();
@@ -263,9 +454,18 @@ export default function Home() {
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const [streamChars, setStreamChars] = useState(0);
 
-  // Gamification State
+  // Gamification State — XP idempotency: keys in xpAwardedKeys mirror localStorage `studyai_{aluno}_xp_awarded`
   const [completedTopics, setCompletedTopics] = useState<Record<string, boolean>>({});
   const [earnedXp, setEarnedXp] = useState(0);
+  const [xpAwardedKeys, setXpAwardedKeys] = useState<Record<string, boolean>>({});
+  const [topicQuizTarget, setTopicQuizTarget] = useState<null | {
+    dia: StudyPlanDay;
+    topicIdx: number;
+    nome: string;
+    topicoObj: StudyPlanTopic | null;
+  }>(null);
+  const xpAwardedKeysRef = useRef<Record<string, boolean>>({});
+  const topicXpInFlightRef = useRef<Set<string>>(new Set());
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
   const [resumaoExpanded, setResumaExpanded] = useState(true);
   const [resumaoData, setResumaData] = useState<any>(null);
@@ -276,6 +476,10 @@ export default function Home() {
   const [wallpaperUrl, setWallpaperUrl] = useState<string | null>(null);
   const [loadingWallpaper, setLoadingWallpaper] = useState(false);
   const exerciciosRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    xpAwardedKeysRef.current = xpAwardedKeys;
+  }, [xpAwardedKeys]);
 
   // Deep-link: /app?criar=1 abre o formulário do plano
   useEffect(() => {
@@ -410,12 +614,17 @@ export default function Home() {
       const { plano, conteudoTexto: ct } = JSON.parse(saved);
       if (!plano) return;
       // Clear any stale completed-topics for this student
-      try { localStorage.removeItem(`studyai_${plano.aluno}_topics`); } catch { /* ignore */ }
+      try {
+        localStorage.removeItem(`studyai_${plano.aluno}_topics`);
+        localStorage.removeItem(`studyai_${plano.aluno}_xp_awarded`);
+      } catch { /* ignore */ }
       setPlanResult(plano);
       setConteudoTexto(ct || "");
       setStep("result");
       setExpandedDay(plano.dias?.[0]?.numero || 1);
       setCompletedTopics({});
+      setXpAwardedKeys({});
+      xpAwardedKeysRef.current = {};
       setEarnedXp(0);
       setResumaData(null);
       setResumaLoading(false);
@@ -481,25 +690,51 @@ export default function Home() {
     setLoadingMsgIdx(idx >= 0 ? idx : 0);
   }, [streamChars, step]);
 
-  // Load progress from local storage when plan loads
+  // Load topic progress + idempotent XP keys from localStorage when plan loads
   useEffect(() => {
-    if (planResult && planResult.aluno) {
-      const saved = localStorage.getItem(`studyai_${planResult.aluno}_topics`);
-      if (saved) {
+    if (!planResult?.aluno) {
+      setCompletedTopics({});
+      setXpAwardedKeys({});
+      xpAwardedKeysRef.current = {};
+      return;
+    }
+    const LS_TOPICS = `studyai_${planResult.aluno}_topics`;
+    const LS_AWARDED = `studyai_${planResult.aluno}_xp_awarded`;
+    let parsed: Record<string, boolean> = {};
+    let awarded: Record<string, boolean> = {};
+    try {
+      const savedTopics = localStorage.getItem(LS_TOPICS);
+      if (savedTopics) parsed = JSON.parse(savedTopics);
+    } catch { /* ignore */ }
+    try {
+      const savedAwarded = localStorage.getItem(LS_AWARDED);
+      if (savedAwarded) awarded = JSON.parse(savedAwarded);
+    } catch { /* ignore */ }
+
+    // One-time migration: topics marked done before xp_awarded existed → seed keys (prevents double server XP on re-clicks)
+    if (Object.keys(awarded).length === 0) {
+      for (const [k, v] of Object.entries(parsed)) {
+        if (v) awarded[k] = true;
+      }
+      if (Object.keys(awarded).length) {
         try {
-          const parsed = JSON.parse(saved);
-          setCompletedTopics(parsed);
-          // calculate xp
-          let xp = 0;
-          planResult.dias.forEach(d => {
-            (Array.isArray(d.topicos) ? d.topicos : []).forEach((t, i) => {
-              if (parsed[`${d.numero}-${i}`]) xp += 100; // assuming 100 xp per topic
-            });
-          });
-          setEarnedXp(xp);
-        } catch (e) { }
+          localStorage.setItem(LS_AWARDED, JSON.stringify(awarded));
+        } catch { /* ignore */ }
       }
     }
+
+    xpAwardedKeysRef.current = awarded;
+    setXpAwardedKeys(awarded);
+    setCompletedTopics(parsed);
+
+    let xp = 0;
+    for (const d of planResult.dias || []) {
+      const len = Array.isArray(d.topicos) ? d.topicos.length : 0;
+      for (let i = 0; i < len; i++) {
+        if (awarded[`${d.numero}-${i}`]) xp += TOPIC_XP;
+      }
+    }
+    setEarnedXp(xp);
   }, [planResult]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -546,12 +781,17 @@ export default function Home() {
         if (data.plano) {
           // Clear any saved progress for this student so the useEffect
           // doesn't restore old checkmarks from a previous plan
-          try { localStorage.removeItem(`studyai_${data.plano.aluno}_topics`); } catch { /* ignore */ }
+          try {
+            localStorage.removeItem(`studyai_${data.plano.aluno}_topics`);
+            localStorage.removeItem(`studyai_${data.plano.aluno}_xp_awarded`);
+          } catch { /* ignore */ }
           setPlanResult(data.plano);
           setConteudoTexto(data.conteudoTexto || "");
           setStep("result");
           setExpandedDay(data.plano.dias?.[0]?.numero || 1);
           setCompletedTopics({});
+          setXpAwardedKeys({});
+          xpAwardedKeysRef.current = {};
           setEarnedXp(0);
           savePlanToDB(data.plano);
           generateResumo(data.plano, data.conteudoTexto || "");
@@ -579,12 +819,17 @@ export default function Home() {
 
   const handleResumePlan = (plan: any) => {
     const ct = buildConteudoTextoFromPlan(plan);
-    try { localStorage.removeItem(`studyai_${plan.aluno}_topics`); } catch { /* ignore */ }
+    try {
+      localStorage.removeItem(`studyai_${plan.aluno}_topics`);
+      localStorage.removeItem(`studyai_${plan.aluno}_xp_awarded`);
+    } catch { /* ignore */ }
     setPlanResult(plan);
     setConteudoTexto(ct);
     setStep("result");
     setExpandedDay(plan.dias?.[0]?.numero || 1);
     setCompletedTopics({});
+    setXpAwardedKeys({});
+    xpAwardedKeysRef.current = {};
     setEarnedXp(0);
     setResumaData(null);
     setResumaLoading(false);
@@ -602,6 +847,8 @@ export default function Home() {
     setErrorMsg(null);
     setStep("hub");
     setCompletedTopics({});
+    setXpAwardedKeys({});
+    xpAwardedKeysRef.current = {};
     setEarnedXp(0);
     setResumaExpanded(true);
     setResumaData(null);
@@ -696,63 +943,71 @@ export default function Home() {
 
   const BASE_URL_API = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-  const toggleTopic = (dayNum: number, topicIdx: number) => {
+  /** After mini-quiz pass: mark topic done, persist, award XP at most once per `${dia}-${idx}` (see xpAwardedKeysRef). */
+  const commitTopicCompletionAfterQuiz = (dayNum: number, topicIdx: number) => {
+    if (!planResult) return;
     const key = `${dayNum}-${topicIdx}`;
-    setCompletedTopics(prev => {
-      const isCompleted = !prev[key];
-      const next = { ...prev, [key]: isCompleted };
-      
-      if (planResult) {
-        localStorage.setItem(`studyai_${planResult.aluno}_topics`, JSON.stringify(next));
+    if (topicXpInFlightRef.current.has(key)) return;
+    if (xpAwardedKeysRef.current[key]) return;
+    topicXpInFlightRef.current.add(key);
+    try {
+      const nextAwarded = { ...xpAwardedKeysRef.current, [key]: true };
+      xpAwardedKeysRef.current = nextAwarded;
+      setXpAwardedKeys(nextAwarded);
+      try {
+        localStorage.setItem(`studyai_${planResult.aluno}_xp_awarded`, JSON.stringify(nextAwarded));
+      } catch { /* ignore */ }
+
+      const diaRow = planResult.dias.find((d) => d.numero === dayNum);
+      setCompletedTopics((prev) => {
+        const next = { ...prev, [key]: true };
+        try {
+          localStorage.setItem(`studyai_${planResult.aluno}_topics`, JSON.stringify(next));
+        } catch { /* ignore */ }
+        if (diaRow && Array.isArray(diaRow.topicos)) {
+          const allDayDone = diaRow.topicos.every((_, idx) => next[`${dayNum}-${idx}`]);
+          if (allDayDone) {
+            setTimeout(
+              () =>
+                triggerProfessor(
+                  `Parabéns! Você concluiu o Dia ${dayNum} do seu plano. Isso é dedicação de verdade! Quando quiser começar o próximo dia é só me chamar que eu te ajudo.`,
+                  "xp_gained"
+                ),
+              1200
+            );
+          }
+        }
+        return next;
+      });
+
+      if (isAuthenticated) {
+        fetch(`${BASE_URL_API}/api/xp/award`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ amount: TOPIC_XP }),
+        }).catch(() => {});
       }
 
-      if (isCompleted) {
-        // Award 100 XP in the backend (persisted, counted in ranking)
-        if (isAuthenticated) {
-          fetch(`${BASE_URL_API}/api/xp/award`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ amount: 100 }),
-          }).catch(() => {});
-        }
-
-        setEarnedXp(x => {
-          const newXp = x + 100;
-          // Every 500 XP milestone: proactive professor congratulation
-          if (newXp > 0 && newXp % 500 === 0) {
-            const nomeAluno = studentProfile?.nome && studentProfile.nome !== "Herói" ? `, ${studentProfile.nome}` : "";
-            setTimeout(() => triggerProfessor(
-              `Incrível${nomeAluno}! Você acabou de atingir ${newXp} pontos de XP! Está indo muito bem. Continue com esse ritmo e você vai fechar o plano antes do tempo!`,
-              "xp_gained"
-            ), 800);
-          }
-          return newXp;
-        });
-        triggerConfetti();
-
-        // Check if entire day is completed
-        if (planResult) {
-          const dia = planResult.dias.find(d => d.numero === dayNum);
-          if (dia) {
-            const allDayDone = Array.isArray(dia.topicos) && dia.topicos.every((_, idx) => {
-              const k = `${dayNum}-${idx}`;
-              return k === key || next[k];
-            });
-            if (allDayDone) {
-              setTimeout(() => triggerProfessor(
-                `Parabéns! Você concluiu o Dia ${dayNum} do seu plano. Isso é dedicação de verdade! Quando quiser começar o próximo dia é só me chamar que eu te ajudo.`,
+      setEarnedXp((x) => {
+        const newXp = x + TOPIC_XP;
+        if (newXp > 0 && newXp % 500 === 0) {
+          const nomeAluno = studentProfile?.nome && studentProfile.nome !== "Herói" ? `, ${studentProfile.nome}` : "";
+          setTimeout(
+            () =>
+              triggerProfessor(
+                `Incrível${nomeAluno}! Você acabou de atingir ${newXp} pontos de XP! Está indo muito bem. Continue com esse ritmo e você vai fechar o plano antes do tempo!`,
                 "xp_gained"
-              ), 1200);
-            }
-          }
+              ),
+            800
+          );
         }
-      } else {
-        setEarnedXp(x => Math.max(0, x - 100));
-      }
-
-      return next;
-    });
+        return newXp;
+      });
+      triggerConfetti();
+    } finally {
+      topicXpInFlightRef.current.delete(key);
+    }
   };
 
   const totalTopics = Array.isArray(planResult?.dias) ? planResult!.dias.reduce((acc, d) => acc + (Array.isArray(d.topicos) ? d.topicos.length : 0), 0) || 1 : 1;
@@ -1896,6 +2151,7 @@ export default function Home() {
                                 </div>
 
                                 {/* Topics with explanations */}
+                                {/* POLÍTICA DE CONCLUSÃO (plano / Q&A): XP só após mini-quiz local (2 MCQs). Simulados seguem o fluxo da própria tela de simulado. */}
                                 <div>
                                   <h4 className="font-black text-xl mb-4 text-foreground flex items-center gap-2">
                                     <Brain className="w-6 h-6" style={{ color: diaColor }} /> Tópicos para Dominar
@@ -1915,29 +2171,41 @@ export default function Home() {
                                             isChecked ? "border-emerald-300 bg-emerald-50/50" : "border-border bg-white"
                                           )}
                                         >
-                                          {/* Topic header - checkbox */}
-                                          <label className="flex items-start gap-4 p-4 cursor-pointer">
-                                            <div className="relative flex items-center justify-center pt-0.5 flex-shrink-0">
-                                              <input
-                                                type="checkbox"
-                                                className="peer sr-only"
-                                                checked={isChecked}
-                                                onChange={() => toggleTopic(dia.numero, idx)}
-                                              />
-                                              <div className={cn(
-                                                "w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors",
-                                                isChecked ? "bg-emerald-500 border-emerald-500" : "bg-white border-muted-foreground/30"
-                                              )}>
-                                                <CheckCircle2 className={cn("w-4 h-4 text-white transition-transform scale-0", isChecked && "scale-100")} strokeWidth={4} />
+                                          <div className="p-4 border-b border-border/60">
+                                            {isChecked ? (
+                                              <div className="flex items-start gap-3">
+                                                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center">
+                                                  <CheckCircle2 className="w-5 h-5 text-white" strokeWidth={3} />
+                                                </div>
+                                                <div>
+                                                  <p className="text-xs font-black uppercase tracking-wide text-emerald-700">Tópico validado</p>
+                                                  <p className="text-lg font-bold text-foreground">{nome}</p>
+                                                  <p className="text-xs text-muted-foreground mt-1">
+                                                    +{TOPIC_XP} XP contabilizado no máximo uma vez por tópico neste plano.
+                                                  </p>
+                                                </div>
                                               </div>
-                                            </div>
-                                            <span className={cn(
-                                              "text-lg font-bold transition-colors pt-0.5 flex-1",
-                                              isChecked ? "text-muted-foreground line-through" : "text-foreground"
-                                            )}>
-                                              {nome}
-                                            </span>
-                                          </label>
+                                            ) : (
+                                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                                <p className="text-lg font-bold text-foreground flex-1">{nome}</p>
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    setTopicQuizTarget({
+                                                      dia,
+                                                      topicIdx: idx,
+                                                      nome,
+                                                      topicoObj,
+                                                    })
+                                                  }
+                                                  className="flex-shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black text-white text-sm shadow-md hover:opacity-95 transition-opacity"
+                                                  style={{ backgroundColor: diaColor }}
+                                                >
+                                                  <PenLine className="w-4 h-4" /> Validar conclusão (+{TOPIC_XP} XP)
+                                                </button>
+                                              </div>
+                                            )}
+                                          </div>
 
                                           {/* Explanation */}
                                           {topicoObj?.explicacao && (
@@ -2113,6 +2381,21 @@ export default function Home() {
                 })()
               : []
           }
+        />
+      )}
+
+      {topicQuizTarget && (
+        <TopicValidationModal
+          open
+          onClose={() => setTopicQuizTarget(null)}
+          onPassed={() => {
+            commitTopicCompletionAfterQuiz(topicQuizTarget.dia.numero, topicQuizTarget.topicIdx);
+            setTopicQuizTarget(null);
+          }}
+          dia={topicQuizTarget.dia}
+          topicIdx={topicQuizTarget.topicIdx}
+          nome={topicQuizTarget.nome}
+          topicoObj={topicQuizTarget.topicoObj}
         />
       )}
     </div>

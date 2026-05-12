@@ -171,14 +171,14 @@ export const TIAGAO_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "navegar",
-      description: "Navega fisicamente para uma tela do StudyAI. Use SOMENTE quando o usuário quer IR para algum lugar — com verbos como 'me leva para', 'abre', 'vai para', 'quero ir ao', 'abrir o'. NUNCA use esta ferramenta quando o usuário perguntar sobre seu desempenho, resultados, estatísticas, progresso ou pedir análise — nesses casos, analise os dados diretamente na resposta sem navegar a lugar algum.",
+      description: "Navega fisicamente para uma tela do StudyAI. Use SOMENTE quando o usuário quer IR para algum lugar — com verbos como 'me leva para', 'abre', 'vai para', 'quero ir ao', 'abrir o'. Destino 'home' = /app (Home com gerador de plano de estudos por matérias/dias — fluxo principal; não confundir com criar_slides). NUNCA use esta ferramenta quando o usuário perguntar sobre seu desempenho, resultados, estatísticas, progresso ou pedir análise — nesses casos, analise os dados diretamente na resposta sem navegar a lugar algum.",
       parameters: {
         type: "object",
         properties: {
           destino: {
             type: "string",
             enum: ["home", "simulado", "flashcards", "redacao", "cronograma", "aula-ia", "trilha", "dashboard", "sala-estudos", "ranking", "notebook", "mapa-mental", "caderno", "perfil"],
-            description: "Destino da navegação",
+            description: "Tela de destino. home=/app (gerador de plano de estudos na Home). notebook e caderno=/notebook. cronograma=/cronograma. simulado=/simulado-enem. flashcards=/app.",
           },
         },
         required: ["destino"],
@@ -233,7 +233,7 @@ export const TIAGAO_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "criar_cronograma",
-      description: "Abre a tela de criação de cronograma de estudos. Use quando o usuário quer organizar os estudos.",
+      description: "Abre a tela de cronograma (/cronograma): calendário de horários e blocos de estudo. Use quando pedem organizar horários, semanas no calendário ou 'meu cronograma'. Não use para 'plano de estudos' no sentido de gerador da Home (matérias/dias) — aí prefira navegar para 'home' (/app); nem para gerar plano em HTML — aí é criar_plano_estudos.",
       parameters: { type: "object", properties: {} },
     },
   },
@@ -241,7 +241,7 @@ export const TIAGAO_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "criar_slides",
-      description: "Cria uma apresentação de slides completa sobre qualquer tema. Use quando o usuário pede slides, apresentação, material visual.",
+      description: "Cria livro digital / apresentação em HTML (slides densos) sobre um TEMA. Use quando pedem explicitamente slides, apresentação, livro digital ou material visual de aula. NÃO use para pedidos genéricos de 'plano de estudos', 'me organiza as matérias' ou montagem do plano na Home — isso é navegar destino 'home' (/app) ou, se quiserem plano em página HTML no Notebook, criar_plano_estudos.",
       parameters: {
         type: "object",
         properties: {
@@ -306,7 +306,7 @@ export const TIAGAO_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "criar_plano_estudos",
-      description: "Cria um plano de estudos personalizado. Use quando o usuário quer criar um plano, cronograma de revisão ou organização para uma matéria.",
+      description: "Gera um plano de estudos como material HTML (salvo no Notebook): semanas, blocos, visual para revisar/compartilhar. Use quando pedem plano em HTML/PDF/material gerado, 'me faz um plano para imprimir', etc. Se o aluno só quer montar o plano interativo com matérias e dias na ferramenta principal do app, prefira navegar destino 'home' (/app). Não confundir com criar_slides (apresentação por tema) nem com criar_cronograma (calendário /cronograma).",
       parameters: {
         type: "object",
         properties: {

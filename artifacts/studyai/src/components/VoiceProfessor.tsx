@@ -17,7 +17,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { TiagaoCharacter, type CharacterState } from "@/components/TiagaoCharacter";
 import {
   Mic, MicOff, X, Square, VolumeX, Volume2, ThumbsUp, ThumbsDown,
-  Timer, Maximize2, Minimize2, Send, Camera, Loader2, MessageSquare,
+  Timer, Maximize2, Minimize2, Send, Paperclip, Loader2, MessageSquare,
   Zap, Settings, RefreshCw, ChevronDown, Radio, Eye, EyeOff,
   RotateCcw, Trash2,
 } from "lucide-react";
@@ -25,14 +25,16 @@ import { useLocation } from "wouter";
 import {
   collectStudentContext,
   triggerProfessorAction,
+  triggerProfessor,
   type ProfessorProactiveDetail,
   type ProfessorBehaviorDetail,
 } from "@/lib/professor-events";
 import { useAudioCapture } from "@/hooks/useAudioCapture";
+import { useStudyAuth } from "@/hooks/useStudyAuth";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
-const IDLE_TRIGGER_MS    = 3 * 60 * 1000;
-const PROACTIVE_MIN_GAP  = 8 * 60 * 1000;
+const IDLE_TRIGGER_MS    = 10 * 60 * 1000;
+const PROACTIVE_MIN_GAP  = 15 * 60 * 1000;
 const CHECK_INTERVAL     = 30 * 1000;
 
 // ─── Shared AudioContext ──────────────────────────────────────────────────────
@@ -235,7 +237,8 @@ function VolumeBar({ level }: { level: number }) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export function VoiceProfessor() {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+  const { isAuthenticated, isLoading: authLoading } = useStudyAuth();
   const [open, setOpen]           = useState(false);
   const [tab, setTab]             = useState<Tab>("conversa");
   const [phase, setPhase]         = useState<Phase>("idle");
@@ -258,7 +261,7 @@ export function VoiceProfessor() {
   const [actionNotif, setActionNotif] = useState<{ text: string; path?: string } | null>(null);
   const [history, setHistory]     = useState<HistoryMsg[]>([]);
   const [volume, setVolume]       = useState(0);
-  const [analisandoImagem, setAnalisandoImagem] = useState(false);
+  const [planIngestBusy, setPlanIngestBusy] = useState(false);
   const [retrying, setRetrying]   = useState(false);
   const [sessionMsgs, setSessionMsgs] = useState(0);
 
@@ -272,12 +275,15 @@ export function VoiceProfessor() {
   const proactiveTimerRef   = useRef<ReturnType<typeof setInterval> | null>(null);
   const focusTimerRef   = useRef<ReturnType<typeof setInterval> | null>(null);
   const chatEndRef      = useRef<HTMLDivElement>(null);
-  const cameraInputRef  = useRef<HTMLInputElement>(null);
+  const planMaterialRef = useRef<HTMLInputElement>(null);
 
   const useBrowserSpeech = useMemo(() => shouldUseBrowserSpeechRecognition(), []);
 
   // ── Audio capture (VAD + devices + Whisper fallback) ───────────────────────
   const audioCapture = useAudioCapture({
+    silenceTimeoutMs: 1150,
+    minSpeechMs: 220,
+    vadThreshold: useBrowserSpeech ? 14 : 10,
     onVolume: setVolume,
     onSpeechStart: () => {
       // VAD detected speech — switch to listening phase
@@ -480,6 +486,144 @@ export function VoiceProfessor() {
     }
   }, [speak, handleAgentActions, voicePure]);
 
+  /**
+   * Ingest plano: envia arquivos para extração leve no servidor e empurra para o voice-chat.
+   *
+   * Otimizações vs versão anterior:
+   * - Mostra mensagem de progresso "Lendo o material..." no histórico (placeholder
+   *   substituível) em vez de o usuário ficar olhando spinner mudo no clipe.
+   * - 90s AbortController de timeout — se /tutor-extract-files travar, o usuário
+   *   recebe erro acionável (com botão Retry) em vez de loading infinito.
+   * - Truncate agressivo client-side (3500 chars) ANTES do voice-chat. O voice-chat
+   *   já corta cada msg, então mandar 14k era puro desperdício de banda e tokens.
+   * - Trim filename prefix antes do conteúdo: o modelo já recebe via `messages` a
+   *   meta dos arquivos via context; aqui foco é só o conteúdo útil.
+   */
+  const ingestPlanMaterial = useCallback(async (files: FileList | null) => {
+    if (!files?.length) return;
+    setPlanIngestBusy(true);
+    setError(null);
+
+    // ── Placeholder visível no histórico — "Lendo material..." ────────────────
+    const progressId = Date.now();
+    const fileNamesPreview = Array.from(files).map(f => f.name).join(", ");
+    setHistory(h => [
+      ...h,
+      {
+        role: "assistant",
+        text: `📎 Lendo o material que você me mandou (${fileNamesPreview})… isso costuma levar uns segundos.`,
+        ts: progressId,
+      },
+    ]);
+
+    const timeoutAc = new AbortController();
+    const timeoutId = setTimeout(() => timeoutAc.abort(), 90_000);
+
+    try {
+      const form = new FormData();
+      for (const f of Array.from(files)) form.append("files", f);
+      const r = await fetch(`${BASE_URL}/api/tutor-extract-files`, {
+        method: "POST",
+        body: form,
+        credentials: "include",
+        signal: timeoutAc.signal,
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setError(typeof j.erro === "string" ? j.erro : "Não consegui ler estes arquivos.");
+        // Substitui o placeholder pelo erro curto
+        setHistory(h => h.map(m =>
+          m.ts === progressId
+            ? { ...m, text: "Hmm, não consegui ler esses arquivos. Pode mandar de novo?" }
+            : m,
+        ));
+        return;
+      }
+      const filenames = Array.isArray(j.filenames)
+        ? (j.filenames as unknown[]).filter((x): x is string => typeof x === "string")
+        : [];
+      try {
+        const rawLog = sessionStorage.getItem("studyai_tiagao_attachment_log");
+        const prev = rawLog ? (JSON.parse(rawLog) as unknown) : [];
+        const list = Array.isArray(prev) ? (prev as { t: number; f: string[] }[]) : [];
+        list.push({ t: Date.now(), f: filenames.length ? filenames : ["anexo"] });
+        sessionStorage.setItem("studyai_tiagao_attachment_log", JSON.stringify(list.slice(-12)));
+      } catch { /* ignore */ }
+
+      // ── Truncate agressivo: voice-chat corta msgs >4k chars; e o Tiagão usa
+      // esse texto só pra ENTENDER, não pra reescrever. 3500 chars já cobre 1-2
+      // páginas A4 de conteúdo, suficiente para esboçar plano de estudos.
+      const extracted = String(j.extracted || "").slice(0, 3_500);
+      const names = filenames.length ? filenames.join(", ") : "anexo";
+
+      // Remove o placeholder antes do sendMessage (o sendMessage vai adicionar
+      // a mensagem do usuário e a resposta — placeholder fica sobrando)
+      setHistory(h => h.filter(m => m.ts !== progressId));
+
+      await sendMessage(
+        `Anexei material para montarmos o plano de estudos (${names}). Lê com calma e me orienta — conteúdo:\n\n${extracted}`,
+        false,
+      );
+    } catch (e: any) {
+      const isTimeout = e?.name === "AbortError";
+      const msg = isTimeout
+        ? "Demorou demais para ler os arquivos. Tenta arquivos menores ou um por vez."
+        : "Falha ao enviar os arquivos. Tenta de novo.";
+      setError(msg);
+      setHistory(h => h.map(m =>
+        m.ts === progressId ? { ...m, text: msg } : m,
+      ));
+    } finally {
+      clearTimeout(timeoutId);
+      setPlanIngestBusy(false);
+      if (planMaterialRef.current) planMaterialRef.current.value = "";
+    }
+  }, [sendMessage]);
+
+  // ── Saudação variada ao abrir o painel (uma vez por carga da página) ────────
+  useEffect(() => {
+    if (!open) return;
+    if (greetedRef.current) return;
+    unlockAudioSync();
+    let cancelled = false;
+    (async () => {
+      let greeting = "";
+      try {
+        const r = await fetch(`${BASE_URL}/api/tiagao-opening`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ context: collectStudentContext(), origem: "painel" }),
+          credentials: "include",
+        });
+        if (r.ok) {
+          const j = await r.json();
+          greeting = String(j.text || "").trim();
+        }
+      } catch { /* ignore */ }
+      if (cancelled) return;
+      const ctx = collectStudentContext();
+      if (!greeting || greeting.length < 25) {
+        const n = ctx.nome && ctx.nome !== "Herói" ? ctx.nome.split(/\s+/)[0] : "";
+        greeting = n
+          ? `E aí, ${n}! Sou o Tiagão. O que você quer dominar agora? A gente pode montar um plano de estudos juntos — se tiver PDF, Word ou foto do caderno, anexa aqui no clipe que eu já leio. Por onde começamos?`
+          : `Oi! Tiagão aqui. Me conta o foco de hoje: prova, matéria ou revisão? Posso criar um plano com você; manda PDF, Word ou imagem no anexo que eu já uso. Bora?`;
+      }
+      greetedRef.current = true;
+      historyRef.current = [{ role: "assistant", content: greeting }];
+      lastProactiveRef.current = Date.now();
+      setHistory([{ role: "assistant", text: greeting, ts: Date.now() }]);
+      setTimeout(() => { if (!cancelled) void speak(greeting); }, 300);
+    })();
+    return () => { cancelled = true; };
+  }, [open, speak]);
+
+  useEffect(() => {
+    const lines = history.filter(m => m.role === "assistant").slice(-4).map(m => m.text.slice(0, 160));
+    try {
+      sessionStorage.setItem("studyai_tiagao_recent_assistant", JSON.stringify(lines));
+    } catch { /* ignore */ }
+  }, [history]);
+
   // ── Proactive ───────────────────────────────────────────────────────────────
   const runProactive = useCallback(async (triggerReason?: string) => {
     if (phase !== "idle" || mutedRef.current) return;
@@ -506,23 +650,6 @@ export function VoiceProfessor() {
     } catch { /* ignore */ }
   }, [phase, speak, handleAgentActions]);
 
-  // ── Camera / Gemini ─────────────────────────────────────────────────────────
-  const analisarImagem = useCallback(async (file: File) => {
-    setAnalisandoImagem(true);
-    try {
-      const form = new FormData();
-      form.append("imagem", file);
-      if (textInput.trim()) form.append("pergunta", textInput.trim());
-      const r = await fetch(`${BASE_URL}/api/gemini/analisar-problema`, { method: "POST", body: form });
-      if (r.ok) {
-        const { resposta } = await r.json();
-        if (resposta) sendMessage(`📸 [Analisei a imagem] ${resposta}`);
-        setTextInput("");
-      }
-    } catch { /* silent */ }
-    finally { setAnalisandoImagem(false); }
-  }, [textInput, sendMessage]);
-
   // ── Events from app ─────────────────────────────────────────────────────────
   useEffect(() => {
     const handler = (e: Event) => {
@@ -536,6 +663,82 @@ export function VoiceProfessor() {
     window.addEventListener("professor:proactive", handler);
     return () => window.removeEventListener("professor:proactive", handler);
   }, [speak]);
+
+  // ── Boas-vindas na entrada do app (1× por sessão) — primeira impressão ─────
+  useEffect(() => {
+    if (authLoading || !isAuthenticated) return;
+    const path = location || "/";
+    if (/^\/($|sign-in|sign-up)/.test(path)) return;
+
+    const KEY = "studyai_tiagao_app_entry_greet_v1";
+    let cancelled = false;
+    let sto: ReturnType<typeof setTimeout> | undefined;
+
+    try {
+      if (sessionStorage.getItem(KEY)) return;
+    } catch {
+      return;
+    }
+
+    const delayMs = 3000;
+    sto = setTimeout(() => {
+      void (async () => {
+        if (cancelled) return;
+        try {
+          if (sessionStorage.getItem(KEY)) return;
+          sessionStorage.setItem(KEY, "pending");
+        } catch {
+          return;
+        }
+
+        if (mutedRef.current || greetedRef.current) {
+          try { sessionStorage.setItem(KEY, "1"); } catch { /* ignore */ }
+          return;
+        }
+
+        let greeting = "";
+        try {
+          const r = await fetch(`${BASE_URL}/api/tiagao-opening`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ context: collectStudentContext(), origem: "app_entry" }),
+            credentials: "include",
+          });
+          if (r.ok) {
+            const j = await r.json();
+            greeting = String(j.text || "").trim();
+          }
+        } catch { /* ignore */ }
+
+        if (cancelled || mutedRef.current || greetedRef.current) {
+          try { sessionStorage.setItem(KEY, "1"); } catch { /* ignore */ }
+          return;
+        }
+
+        const ctx = collectStudentContext();
+        if (!greeting || greeting.length < 25) {
+          const n = ctx.nome && ctx.nome !== "Herói" ? ctx.nome.split(/\s+/)[0] : "";
+          greeting = n
+            ? `Oi, ${n}! Tiagão aqui com você no StudyAI. Me diz: por onde você quer que a gente comece hoje?`
+            : `Oi! Tiagão por aqui no StudyAI. O que você quer organizar ou estudar primeiro?`;
+        }
+
+        try { sessionStorage.setItem(KEY, "1"); } catch { /* ignore */ }
+        greetedRef.current = true;
+        lastProactiveRef.current = Date.now();
+        triggerProfessor(greeting, "app_entry");
+        setShowHint(true);
+      })();
+    }, delayMs);
+
+    return () => {
+      cancelled = true;
+      if (sto) clearTimeout(sto);
+      try {
+        if (sessionStorage.getItem(KEY) === "pending") sessionStorage.removeItem(KEY);
+      } catch { /* ignore */ }
+    };
+  }, [speak, isAuthenticated, authLoading, location]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -579,33 +782,19 @@ export function VoiceProfessor() {
     };
   }, [runProactive]);
 
-  // ── First open — unlock audio + greet ──────────────────────────────────────
+  // ── First open / close panel ───────────────────────────────────────────────
   const handlePanelToggle = useCallback(() => {
     setShowHint(false);
     setOpen(o => {
       const next = !o;
-      if (next && !greetedRef.current) {
-        greetedRef.current = true;
-        unlockAudioSync();
-        // Start volume capture for VAD visualization
-        audioCapture.start().catch(() => { /* silencioso */ });
-        const ctx = collectStudentContext();
-        const greeting = ctx.nome
-          ? `Oi, ${ctx.nome}! Aqui é o Tiagão, seu professor. Pode me chamar quando quiser!`
-          : "Oi! Aqui é o Tiagão, seu professor de estudos. Pode me chamar a qualquer hora!";
-        historyRef.current.push({ role: "assistant", content: greeting });
-        lastProactiveRef.current = Date.now();
-        setHistory([{ role: "assistant", text: greeting, ts: Date.now() }]);
-        setTimeout(() => speak(greeting), 300);
-      }
+      if (next) unlockAudioSync();
       if (!next) {
-        // Stop VAD when closed
         audioCapture.stop();
         setVolume(0);
       }
       return next;
     });
-  }, [speak, audioCapture]);
+  }, [audioCapture]);
 
   // ── Speech recognition ──────────────────────────────────────────────────────
   const startListening = useCallback(async () => {
@@ -672,16 +861,25 @@ export function VoiceProfessor() {
   }, [useBrowserSpeech, sendMessage, stopSpeaking, phase, audioCapture]);
 
   const stopListening = useCallback(() => {
-    recognitionRef.current?.stop(); setPhase("idle");
-  }, []);
+    try { recognitionRef.current?.stop(); } catch { /* ok */ }
+    audioCapture.stop();
+    setVolume(0);
+    setPhase("idle");
+  }, [audioCapture]);
 
   // ── UI config ───────────────────────────────────────────────────────────────
+  // Cores alinhadas ao tema do StudyAI (violeta/fúcsia da sidebar).
   const phaseColor: Record<Phase, string> = {
-    idle: "#22c55e", listening: "#ef4444", thinking: "#f59e0b", speaking: "#6366f1",
+    idle:      "#34d399", // emerald-400 — online
+    listening: "#f43f5e", // rose-500 — gravando
+    thinking:  "#f59e0b", // amber-500 — pensando
+    speaking:  "#a78bfa", // violet-400 — falando
   };
   const phaseLabel: Record<Phase, string> = {
-    idle: "Online — pode falar", listening: "Ouvindo você...",
-    thinking: "Pensando...", speaking: "Falando...",
+    idle:      "Online — pode falar",
+    listening: "Ouvindo você…",
+    thinking:  "Pensando…",
+    speaking:  "Falando…",
   };
 
   const lastAssistantMsg = [...history].reverse().find(m => m.role === "assistant")?.text || "";
@@ -707,49 +905,56 @@ export function VoiceProfessor() {
         title="Professor Tiagão — clique para falar"
       >
         {open ? (
-          <div className="w-12 h-12 rounded-full bg-slate-600 shadow-xl flex items-center justify-center">
-            <X className="w-5 h-5 text-white" />
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#1f0b3d] via-[#4b1791] to-[#c026d3] shadow-xl shadow-purple-950/45 ring-1 ring-white/25 flex items-center justify-center backdrop-blur-md">
+            <X className="w-5 h-5 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]" />
           </div>
         ) : (
           <TiagaoCharacter state={phase as CharacterState} size={88} showLabel={false} className="md:scale-110" />
         )}
       </motion.button>
 
-      {/* Hint tooltip */}
+      {/* Hint tooltip — glassy deep purple */}
       <AnimatePresence>
         {showHint && !open && (
           <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -10 }} transition={{ delay: 2, duration: 0.4 }}
             className="fixed bottom-[5.5rem] md:bottom-8 left-20 md:left-auto md:right-24 z-40 pointer-events-none">
-            <div className="bg-gray-900 text-white text-xs font-medium px-3 py-2 rounded-xl shadow-lg whitespace-nowrap">
+            <div className="bg-[#2f1458]/95 backdrop-blur-xl text-white text-xs font-medium px-3 py-2 rounded-xl shadow-lg shadow-purple-950/45 ring-1 ring-white/15 whitespace-nowrap">
               👆 Toque aqui para falar com o Tiagão
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1.5 w-2.5 h-2.5 bg-gray-900 rotate-45" />
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1.5 w-2.5 h-2.5 bg-[#2f1458]/95 rotate-45 ring-1 ring-white/15" />
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Mini card while speaking/thinking */}
+      {/* Mini card while speaking/thinking — glass, matches sidebar theme */}
       <AnimatePresence>
         {!open && (phase === "speaking" || phase === "thinking") && (
           <motion.div
             initial={{ opacity: 0, y: 12, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.95 }}
-            className="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-6 sm:w-80 z-40 bg-white rounded-2xl shadow-xl border border-violet-100 p-3">
+            className="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-6 sm:w-80 z-40 rounded-2xl bg-white/80 backdrop-blur-2xl shadow-xl shadow-violet-300/30 border border-violet-200/55 p-3"
+          >
             <div className="flex items-center gap-3">
               <TiagaoCharacter state={phase as CharacterState} size={48} showLabel={false} />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-black text-violet-600 mb-1">Professor Tiagão</p>
+                <p className="text-xs font-black tracking-tight bg-gradient-to-r from-violet-600 via-fuchsia-500 to-purple-700 bg-clip-text text-transparent mb-1">Professor Tiagão</p>
                 {phase === "thinking"
-                  ? <div className="flex gap-1 items-center h-4">
-                      {[0,150,300].map(d=><span key={d} className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{animationDelay:`${d}ms`}}/>)}
-                      <span className="text-xs text-gray-400 ml-1">pensando...</span>
+                  ? (
+                    <div className="flex gap-1 items-center h-4">
+                      {[0,150,300].map(d => <span key={d} className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-bounce" style={{ animationDelay: `${d}ms` }} />)}
+                      <span className="text-[11px] text-violet-500/80 ml-1">{phaseLabel.thinking}</span>
                     </div>
+                  )
                   : <VolumeBar level={60} />
                 }
               </div>
-              <button onClick={stopSpeaking} className="px-2.5 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white transition-colors">
+              <button
+                onClick={stopSpeaking}
+                className="px-2.5 py-2 rounded-xl bg-rose-500/95 hover:bg-rose-600 text-white shadow-sm shadow-rose-300/40 transition-colors"
+                title="Parar"
+              >
                 <Square className="w-3.5 h-3.5 fill-current" />
               </button>
             </div>
@@ -757,33 +962,38 @@ export function VoiceProfessor() {
         )}
       </AnimatePresence>
 
-      {/* Action notification toast */}
+      {/* Action notification toast — glass, fuchsia accent */}
       <AnimatePresence>
         {actionNotif && (
           <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             className="fixed bottom-28 md:bottom-24 left-4 right-4 sm:left-auto sm:right-6 sm:w-80 z-50">
-            <div className="bg-emerald-600 text-white text-sm font-semibold px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3">
+            <div className="bg-gradient-to-r from-emerald-600/95 to-teal-600/95 backdrop-blur-md text-white text-sm font-semibold px-4 py-3 rounded-2xl shadow-xl shadow-emerald-400/30 ring-1 ring-emerald-300/40 flex items-center gap-3">
               <span className="flex-1">{actionNotif.text}</span>
               {actionNotif.path && (
                 <button onClick={() => { navigate(actionNotif.path!); setActionNotif(null); }}
-                  className="text-xs bg-white/20 hover:bg-white/30 px-2.5 py-1 rounded-lg whitespace-nowrap transition-colors">Ver</button>
+                  className="text-xs bg-white/20 hover:bg-white/30 ring-1 ring-white/30 px-2.5 py-1 rounded-lg whitespace-nowrap transition-colors">Ver</button>
               )}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Focus mode overlay */}
+      {/* Focus mode overlay — deep purple wash, matches sidebar gradient */}
       <AnimatePresence>
         {focusMode && open && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-30" style={{ background: "rgba(5,5,16,0.88)", backdropFilter: "blur(8px)" }} />
+            className="fixed inset-0 z-30"
+            style={{
+              background: "radial-gradient(circle at 30% 20%, rgba(120,50,210,0.55), rgba(15,5,40,0.92))",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+            }} />
         )}
       </AnimatePresence>
 
-      {/* ── MAIN PANEL ── */}
+      {/* ── MAIN PANEL — glassmorphism, sidebar-matching purple ── */}
       <AnimatePresence>
         {open && (
           <motion.div
@@ -791,67 +1001,110 @@ export function VoiceProfessor() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.96 }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className={`fixed z-50 bg-white rounded-3xl shadow-2xl border border-violet-100 overflow-hidden flex flex-col transition-all duration-300 ${
+            className={`fixed z-50 rounded-3xl shadow-2xl shadow-purple-950/35 ring-1 ring-violet-200/40 overflow-hidden flex flex-col transition-all duration-300 ${
               focusMode
                 ? "inset-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[520px] sm:max-h-[90vh]"
-                : "bottom-[8.5rem] md:bottom-24 left-4 right-4 sm:left-auto sm:right-6 sm:w-[360px] max-h-[70vh]"
+                : "bottom-[8.5rem] md:bottom-24 left-4 right-4 sm:left-auto sm:right-6 sm:w-[368px] max-h-[72vh]"
             }`}
+            style={{
+              background: "linear-gradient(160deg, rgba(255,255,255,0.92) 0%, rgba(245,238,255,0.86) 100%)",
+              backdropFilter: "blur(28px)",
+              WebkitBackdropFilter: "blur(28px)",
+            }}
           >
-            {/* ── HEADER ── */}
-            <div className="px-4 py-3 flex items-center gap-2.5 flex-shrink-0"
-              style={{ background: "linear-gradient(135deg,#6366f1,#4f46e5)" }}>
+            {/* Soft top gradient sheen */}
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-fuchsia-300/20 via-violet-200/10 to-transparent" />
+
+            {/* ── HEADER — sidebar-matching deep purple, slightly translucent ── */}
+            <div
+              className="relative px-4 py-3 flex items-center gap-2.5 flex-shrink-0 border-b border-white/15"
+              style={{
+                background:
+                  "linear-gradient(135deg, rgba(31,11,61,0.95) 0%, rgba(49,16,92,0.92) 45%, rgba(70,32,122,0.92) 100%)",
+              }}
+            >
+              {/* Glow blobs to match sidebar feel */}
+              <div className="pointer-events-none absolute -top-10 -left-6 h-24 w-24 rounded-full bg-fuchsia-400/25 blur-2xl" />
+              <div className="pointer-events-none absolute -bottom-10 right-0 h-20 w-20 rounded-full bg-violet-400/25 blur-2xl" />
+
               <div className="relative flex-shrink-0">
                 <TiagaoCharacter state={phase as CharacterState} size={44} showLabel={false} />
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white"
-                  style={{ background: phaseColor[phase] }} />
+                <span
+                  className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#1f0b3d] shadow-[0_0_8px_rgba(255,255,255,0.5)]"
+                  style={{ background: phaseColor[phase] }}
+                />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white font-black text-sm leading-none">Professor Tiagão</p>
-                <p className="text-violet-200 text-[11px] mt-0.5">{phaseLabel[phase]}</p>
+              <div className="relative flex-1 min-w-0">
+                <p className="text-white font-black text-sm leading-none tracking-tight drop-shadow-[0_1px_1px_rgba(0,0,0,0.55)]">
+                  Professor Tiagão
+                </p>
+                <p className="text-violet-100/85 text-[11px] mt-1 flex items-center gap-1.5">
+                  {/* SINGLE source of truth for phase status — header pill */}
+                  {phase === "thinking" ? (
+                    <>
+                      {[0, 130, 260].map(d => (
+                        <span
+                          key={d}
+                          className="w-1 h-1 rounded-full bg-amber-300 animate-bounce"
+                          style={{ animationDelay: `${d}ms` }}
+                        />
+                      ))}
+                      <span className="ml-0.5">{phaseLabel.thinking}</span>
+                    </>
+                  ) : (
+                    phaseLabel[phase]
+                  )}
+                </p>
                 {focusMode && (
-                  <span className="inline-flex items-center gap-1 text-violet-200 text-[10px] bg-white/10 px-2 py-0.5 rounded-full mt-1">
+                  <span className="inline-flex items-center gap-1 text-violet-100 text-[10px] bg-white/15 ring-1 ring-white/20 backdrop-blur-md px-2 py-0.5 rounded-full mt-1">
                     <Timer className="w-2.5 h-2.5" /> {fmtFocusTime(focusSeconds)}
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-1">
+              <div className="relative flex items-center gap-0.5">
                 <button onClick={() => setVoicePure(v => !v)} title={voicePure ? "Mostrar texto" : "Modo voz pura"}
-                  className={`p-1.5 rounded-lg transition-colors ${voicePure ? "text-amber-300 bg-white/15" : "text-white/60 hover:text-white"}`}>
+                  className={`p-1.5 rounded-lg transition-colors ${voicePure ? "text-amber-200 bg-white/15 ring-1 ring-white/20" : "text-white/70 hover:text-white hover:bg-white/10"}`}>
                   {voicePure ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 </button>
                 <button onClick={() => setFocusMode(f => !f)} title={focusMode ? "Sair do foco" : "Modo foco"}
-                  className={`p-1.5 rounded-lg transition-colors ${focusMode ? "text-amber-300 bg-white/15" : "text-white/60 hover:text-white"}`}>
+                  className={`p-1.5 rounded-lg transition-colors ${focusMode ? "text-amber-200 bg-white/15 ring-1 ring-white/20" : "text-white/70 hover:text-white hover:bg-white/10"}`}>
                   {focusMode ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
                 </button>
                 <button onClick={() => setMuted(m => !m)} title={muted ? "Ativar som" : "Silenciar"}
-                  className="text-white/60 hover:text-white transition-colors p-1.5">
+                  className="text-white/70 hover:text-white hover:bg-white/10 transition-colors p-1.5 rounded-lg">
                   {muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
                 </button>
-                <button onClick={handlePanelToggle} className="text-white/60 hover:text-white transition-colors p-1.5">
+                <button onClick={handlePanelToggle} className="text-white/70 hover:text-white hover:bg-white/10 transition-colors p-1.5 rounded-lg">
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
 
-            {/* ── TABS ── */}
-            <div className="flex bg-slate-50 border-b border-slate-100 flex-shrink-0">
+            {/* ── TABS — glassy, violet accents ── */}
+            <div className="flex bg-white/55 backdrop-blur-md border-b border-violet-100/60 flex-shrink-0">
               {([
                 { key: "conversa", icon: MessageSquare, label: "Conversa" },
                 { key: "comandos", icon: Zap,           label: "Comandos" },
                 { key: "config",   icon: Settings,      label: "Config"   },
               ] as const).map(t => (
                 <button key={t.key} onClick={() => setTab(t.key)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold transition-all border-b-2 ${
+                  className={`relative flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold transition-all ${
                     tab === t.key
-                      ? "border-violet-500 text-violet-700 bg-white"
-                      : "border-transparent text-slate-400 hover:text-slate-600"
+                      ? "text-violet-700"
+                      : "text-slate-500/80 hover:text-violet-600"
                   }`}>
                   <t.icon className="w-3.5 h-3.5" />
                   {t.label}
                   {t.key === "conversa" && history.length > 0 && (
-                    <span className="min-w-[16px] h-4 px-1 rounded-full bg-violet-600 text-white text-[9px] font-black flex items-center justify-center">
+                    <span className="min-w-[16px] h-4 px-1 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white text-[9px] font-black flex items-center justify-center shadow-sm shadow-violet-300/40">
                       {Math.min(99, history.length)}
                     </span>
+                  )}
+                  {tab === t.key && (
+                    <motion.span
+                      layoutId="tiagao-tab-underline"
+                      className="absolute left-3 right-3 -bottom-px h-[2px] rounded-full bg-gradient-to-r from-violet-600 via-fuchsia-500 to-purple-700"
+                    />
                   )}
                 </button>
               ))}
@@ -863,25 +1116,22 @@ export function VoiceProfessor() {
               {/* CONVERSA TAB */}
               {tab === "conversa" && (
                 <div className="flex-1 flex flex-col overflow-hidden">
-                  {/* Avatar + last message — shown in voice-pure OR when no history */}
+                  {/* Avatar + last message — shown in voice-pure OR when no history.
+                      Loading state lives ONLY in the header pill + the typing bubble
+                      at the bottom of the history; we no longer render a third
+                      "pensando..." line here. */}
                   {(voicePure || history.length === 0) && (
-                    <div className="flex flex-col items-center px-4 py-4 gap-3 flex-shrink-0">
+                    <div className="flex flex-col items-center px-4 py-5 gap-3 flex-shrink-0">
                       <TiagaoCharacter state={phase as CharacterState} size={focusMode ? 120 : 90} showLabel={true} />
                       {!voicePure && history.length === 0 && (
-                        <p className="text-xs text-slate-400 text-center">Fale ou escreva para começar</p>
-                      )}
-                      {phase === "thinking" && (
-                        <div className="flex gap-1.5 items-center text-violet-400 text-xs">
-                          {[0,150,300].map(d => <span key={d} className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{animationDelay:`${d}ms`}}/>)}
-                          <span className="text-gray-400 ml-1">pensando...</span>
-                        </div>
+                        <p className="text-xs text-violet-500/80 text-center font-medium">Fale ou escreva para começar</p>
                       )}
                     </div>
                   )}
 
-                  {/* Full conversation history */}
+                  {/* Full conversation history — glass bubbles, violet/fuchsia */}
                   {!voicePure && history.length > 0 && (
-                    <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5">
+                    <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5 [scrollbar-width:thin] [scrollbar-color:rgba(139,92,246,0.4)_transparent]">
                       {history.map((msg, i) => (
                         <div key={i} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                           {msg.role === "assistant" && (
@@ -891,25 +1141,31 @@ export function VoiceProfessor() {
                                 size={28} showLabel={false} />
                             </div>
                           )}
-                          <div className={`max-w-[80%] px-3 py-2.5 rounded-2xl text-xs leading-relaxed ${
+                          <div className={`max-w-[80%] px-3 py-2.5 rounded-2xl text-xs leading-relaxed shadow-sm ${
                             msg.role === "user"
-                              ? "bg-violet-600 text-white rounded-tr-sm"
-                              : "bg-violet-50 border border-violet-100 text-slate-700 rounded-tl-sm"
+                              ? "bg-gradient-to-br from-violet-600 to-purple-700 text-white rounded-tr-sm shadow-violet-300/40"
+                              : "bg-white/75 backdrop-blur-md ring-1 ring-violet-200/55 text-slate-700 rounded-tl-sm shadow-violet-200/30"
                           }`}>
                             <p className="whitespace-pre-wrap">{msg.text}</p>
-                            <p className={`text-[9px] mt-1 ${msg.role === "user" ? "text-violet-200" : "text-slate-400"}`}>
+                            <p className={`text-[9px] mt-1 ${msg.role === "user" ? "text-violet-100/85" : "text-violet-400/70"}`}>
                               {new Date(msg.ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                             </p>
                           </div>
                         </div>
                       ))}
 
-                      {/* Thinking indicator at bottom of history */}
+                      {/* Single typing indicator at the bottom of history */}
                       {phase === "thinking" && (
                         <div className="flex gap-2 justify-start">
                           <TiagaoCharacter state="thinking" size={28} showLabel={false} />
-                          <div className="bg-violet-50 border border-violet-100 px-3 py-2.5 rounded-2xl flex items-center gap-1.5">
-                            {[0,150,300].map(d => <span key={d} className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{animationDelay:`${d}ms`}}/>)}
+                          <div className="bg-white/75 backdrop-blur-md ring-1 ring-violet-200/55 px-3 py-2.5 rounded-2xl rounded-tl-sm flex items-center gap-1.5 shadow-sm shadow-violet-200/30">
+                            {[0, 130, 260].map(d => (
+                              <span
+                                key={d}
+                                className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-bounce"
+                                style={{ animationDelay: `${d}ms` }}
+                              />
+                            ))}
                           </div>
                         </div>
                       )}
@@ -921,25 +1177,29 @@ export function VoiceProfessor() {
                   {!voicePure && lastAssistantMsg && phase === "idle" && (
                     <div className="px-3 pb-1 flex-shrink-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-slate-400 mr-auto">Ajudou?</span>
+                        <span className="text-[10px] text-violet-500/80 mr-auto font-medium">Ajudou?</span>
                         <button onClick={() => { setReaction("up"); sendMessage("👍 Entendi bem! Pode continuar."); }}
                           disabled={reaction !== null}
                           className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                            reaction === "up" ? "bg-emerald-500 text-white" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 disabled:opacity-40"
+                            reaction === "up"
+                              ? "bg-emerald-500 text-white shadow-sm shadow-emerald-300/50"
+                              : "bg-emerald-50/80 text-emerald-700 hover:bg-emerald-100 ring-1 ring-emerald-200/50 disabled:opacity-40"
                           }`}>
                           <ThumbsUp className="w-3 h-3" /> {reaction === "up" ? "Ótimo!" : "Sim"}
                         </button>
                         <button onClick={() => { setReaction("down"); sendMessage("Não entendi. Explica de outro jeito, mais simples?"); }}
                           disabled={reaction !== null}
                           className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                            reaction === "down" ? "bg-orange-500 text-white" : "bg-orange-50 text-orange-600 hover:bg-orange-100 disabled:opacity-40"
+                            reaction === "down"
+                              ? "bg-orange-500 text-white shadow-sm shadow-orange-300/50"
+                              : "bg-orange-50/80 text-orange-700 hover:bg-orange-100 ring-1 ring-orange-200/50 disabled:opacity-40"
                           }`}>
                           <ThumbsDown className="w-3 h-3" /> Não
                         </button>
                         {history.length > 2 && (
                           <button onClick={() => { setHistory([]); historyRef.current = []; setSessionMsgs(0); }}
                             title="Limpar conversa"
-                            className="p-1 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+                            className="p-1 rounded-lg text-violet-300/70 hover:text-rose-500 hover:bg-rose-50/70 transition-colors">
                             <Trash2 className="w-3 h-3" />
                           </button>
                         )}
@@ -947,41 +1207,41 @@ export function VoiceProfessor() {
                     </div>
                   )}
 
-                  {/* Error */}
+                  {/* Error chip — glass red */}
                   {error && (
-                    <div className="mx-3 mb-2 bg-red-50 text-red-600 text-xs rounded-xl px-3 py-2 border border-red-100 flex items-center gap-2 flex-shrink-0">
+                    <div className="mx-3 mb-2 bg-rose-50/80 backdrop-blur-md text-rose-700 text-xs rounded-xl px-3 py-2 ring-1 ring-rose-200/70 flex items-center gap-2 flex-shrink-0 shadow-sm shadow-rose-200/30">
                       <span className="flex-1">{error}</span>
                       {retrying && (
                         <button onClick={() => {
                           const lastUser = [...historyRef.current].reverse().find(m => m.role === "user")?.content;
                           if (lastUser) sendMessage(lastUser, true);
                           setError(null);
-                        }} className="flex items-center gap-1 text-red-600 font-bold hover:text-red-800">
+                        }} className="flex items-center gap-1 text-rose-700 font-bold hover:text-rose-900">
                           <RotateCcw className="w-3 h-3" /> Retry
                         </button>
                       )}
-                      <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600"><X className="w-3 h-3" /></button>
+                      <button onClick={() => setError(null)} className="text-rose-400 hover:text-rose-700"><X className="w-3 h-3" /></button>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* COMANDOS TAB */}
+              {/* COMANDOS TAB — glassy violet tiles */}
               {tab === "comandos" && (
                 <div className="flex-1 overflow-y-auto px-3 py-3">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-3">Toque para perguntar</p>
+                  <p className="text-[10px] font-black text-violet-500/85 uppercase tracking-widest mb-3">Toque para perguntar</p>
                   <div className="grid grid-cols-2 gap-2">
                     {QUICK_COMMANDS.map((cmd, i) => (
                       <button key={i}
                         onClick={() => { sendMessage(cmd.text); setTab("conversa"); }}
                         disabled={phase !== "idle"}
-                        className="text-left px-3 py-2.5 rounded-2xl bg-violet-50 hover:bg-violet-100 border border-violet-100 text-xs font-bold text-violet-800 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 leading-snug">
+                        className="text-left px-3 py-2.5 rounded-2xl bg-white/65 hover:bg-white/85 ring-1 ring-violet-200/50 hover:ring-violet-300 backdrop-blur-md text-xs font-bold text-violet-800 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 leading-snug shadow-sm shadow-violet-200/30">
                         {cmd.label}
                       </button>
                     ))}
                   </div>
-                  <div className="mt-4 pt-4 border-t border-slate-100">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Comandos de voz</p>
+                  <div className="mt-4 pt-4 border-t border-violet-100/60">
+                    <p className="text-[10px] font-black text-violet-500/85 uppercase tracking-widest mb-2">Comandos de voz</p>
                     {[
                       { cmd: "\"Abra o simulado\"",         desc: "Navega para simulados" },
                       { cmd: "\"Crie um plano de estudos\"", desc: "Cria plano personalizado" },
@@ -990,27 +1250,27 @@ export function VoiceProfessor() {
                       { cmd: "\"Pare / continue\"",          desc: "Controla a fala" },
                     ].map((item, i) => (
                       <div key={i} className="flex items-start gap-2 mb-2">
-                        <code className="text-[10px] bg-slate-100 text-slate-700 px-2 py-1 rounded-lg font-mono flex-shrink-0">{item.cmd}</code>
-                        <span className="text-[10px] text-slate-500 pt-1">{item.desc}</span>
+                        <code className="text-[10px] bg-violet-50/80 ring-1 ring-violet-100 text-violet-800 px-2 py-1 rounded-lg font-mono flex-shrink-0">{item.cmd}</code>
+                        <span className="text-[10px] text-slate-600 pt-1">{item.desc}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* CONFIG TAB */}
+              {/* CONFIG TAB — glassy cards */}
               {tab === "config" && (
                 <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
                   {/* Microfone */}
                   <div>
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">Microfone</p>
-                    <p className="text-[10px] text-slate-500 mb-3 leading-relaxed">
-                      Use o site em <strong className="text-slate-700">https://</strong> (obrigatório no celular). Depois que o Tiagão responde,
+                    <p className="text-[10px] font-black text-violet-600/90 uppercase tracking-widest mb-2">Microfone</p>
+                    <p className="text-[10px] text-slate-600 mb-3 leading-relaxed">
+                      Use o site em <strong className="text-violet-800">https://</strong> (obrigatório no celular). Depois que o Tiagão responde,
                       toque outra vez no botão de voz — iOS e Android não permitem microfone ligado o tempo todo sem um novo toque seu.
                     </p>
                     {audioCapture.devices.length === 0 ? (
                       <button onClick={audioCapture.refreshDevices}
-                        className="w-full py-2 bg-slate-50 text-slate-500 text-xs rounded-xl border border-dashed border-slate-300 hover:border-violet-300 transition-colors flex items-center justify-center gap-2">
+                        className="w-full py-2 bg-white/50 backdrop-blur-md text-violet-600 text-xs rounded-xl ring-1 ring-dashed ring-violet-300/60 hover:ring-violet-400 hover:bg-white/80 transition-colors flex items-center justify-center gap-2">
                         <RefreshCw className="w-3.5 h-3.5" /> Detectar microfones
                       </button>
                     ) : (
@@ -1020,14 +1280,14 @@ export function VoiceProfessor() {
                             onClick={() => audioCapture.setSelectedDeviceId(d.deviceId)}
                             className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                               audioCapture.selectedDeviceId === d.deviceId
-                                ? "bg-violet-600 text-white"
-                                : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+                                ? "bg-gradient-to-r from-violet-600 to-purple-700 text-white shadow-sm shadow-violet-300/40"
+                                : "bg-white/55 backdrop-blur-md ring-1 ring-violet-100 text-slate-700 hover:bg-white/85"
                             }`}>
                             🎙️ {d.label}
                           </button>
                         ))}
                         <button onClick={audioCapture.refreshDevices}
-                          className="text-[10px] text-slate-400 hover:text-slate-600 flex items-center gap-1 pt-1">
+                          className="text-[10px] text-violet-500/80 hover:text-violet-700 flex items-center gap-1 pt-1">
                           <RefreshCw className="w-2.5 h-2.5" /> Atualizar lista
                         </button>
                       </div>
@@ -1036,23 +1296,25 @@ export function VoiceProfessor() {
 
                   {/* Volume test */}
                   <div>
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">Nível do microfone</p>
-                    <div className="bg-slate-50 rounded-xl p-3 flex items-center gap-3">
+                    <p className="text-[10px] font-black text-violet-600/90 uppercase tracking-widest mb-2">Nível do microfone</p>
+                    <div className="bg-white/55 backdrop-blur-md ring-1 ring-violet-100 rounded-xl p-3 flex items-center gap-3 shadow-sm shadow-violet-200/30">
                       <VolumeBar level={volume} />
-                      <span className="text-[10px] text-slate-400">{volume > 5 ? "✅ Detectando áudio" : "Fale algo..."}</span>
+                      <span className="text-[10px] text-slate-600">{volume > 5 ? "✅ Detectando áudio" : "Fale algo..."}</span>
                     </div>
                   </div>
 
                   {/* Modo voz pura */}
                   <div>
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">Experiência</p>
+                    <p className="text-[10px] font-black text-violet-600/90 uppercase tracking-widest mb-2">Experiência</p>
                     <button onClick={() => setVoicePure(v => !v)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-xs font-bold transition-all ${
-                        voicePure ? "bg-violet-600 text-white border-violet-600" : "bg-white text-slate-600 border-slate-200 hover:border-violet-300"
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl ring-1 text-xs font-bold transition-all ${
+                        voicePure
+                          ? "bg-gradient-to-r from-violet-600 to-purple-700 text-white ring-violet-700 shadow-sm shadow-violet-300/50"
+                          : "bg-white/65 backdrop-blur-md text-slate-700 ring-violet-200 hover:ring-violet-400"
                       }`}>
                       {voicePure ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                       <span className="flex-1 text-left">Modo voz pura (sem texto)</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full ${voicePure ? "bg-white/20" : "bg-slate-100 text-slate-500"}`}>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full ${voicePure ? "bg-white/25" : "bg-violet-100 text-violet-700"}`}>
                         {voicePure ? "ON" : "OFF"}
                       </span>
                     </button>
@@ -1060,15 +1322,15 @@ export function VoiceProfessor() {
 
                   {/* Stats */}
                   <div>
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">Sessão atual</p>
+                    <p className="text-[10px] font-black text-violet-600/90 uppercase tracking-widest mb-2">Sessão atual</p>
                     <div className="grid grid-cols-2 gap-2">
                       {[
                         { label: "Mensagens", value: sessionMsgs },
                         { label: "No histórico", value: history.length },
                       ].map(s => (
-                        <div key={s.label} className="bg-slate-50 rounded-xl px-3 py-2 text-center">
-                          <p className="text-lg font-black text-violet-600">{s.value}</p>
-                          <p className="text-[10px] text-slate-400">{s.label}</p>
+                        <div key={s.label} className="bg-white/55 backdrop-blur-md ring-1 ring-violet-100 rounded-xl px-3 py-2 text-center shadow-sm shadow-violet-200/30">
+                          <p className="text-lg font-black bg-gradient-to-r from-violet-600 to-fuchsia-500 bg-clip-text text-transparent">{s.value}</p>
+                          <p className="text-[10px] text-violet-500/80 font-medium">{s.label}</p>
                         </div>
                       ))}
                     </div>
@@ -1077,8 +1339,8 @@ export function VoiceProfessor() {
               )}
             </div>
 
-            {/* ── CONTROLS (always visible) ── */}
-            <div className="px-3 pb-3 flex-shrink-0 bg-white border-t border-slate-50 pt-2.5">
+            {/* ── CONTROLS — glassy footer ── */}
+            <div className="px-3 pb-3 flex-shrink-0 bg-white/55 backdrop-blur-md border-t border-violet-100/60 pt-2.5">
               {/* Volume bar while listening */}
               {phase === "listening" && (
                 <div className="mb-2 px-2">
@@ -1088,49 +1350,76 @@ export function VoiceProfessor() {
 
               {phase === "speaking" ? (
                 <button onClick={stopSpeaking}
-                  className="w-full py-2.5 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors">
+                  className="w-full py-2.5 rounded-2xl bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-rose-300/45">
                   <Square className="w-3.5 h-3.5 fill-current" /> Interromper Tiagão
                 </button>
               ) : phase === "listening" ? (
                 <button onClick={stopListening}
-                  className="w-full py-2.5 rounded-2xl bg-red-500 text-white font-bold text-xs flex items-center justify-center gap-2 animate-pulse">
+                  className="w-full py-2.5 rounded-2xl bg-gradient-to-r from-rose-500 to-rose-600 text-white font-bold text-xs flex items-center justify-center gap-2 animate-pulse shadow-md shadow-rose-300/45">
                   <MicOff className="w-3.5 h-3.5" /> Parar de falar
                 </button>
               ) : (
                 <>
                   {showReplyHint && (
-                    <p className="text-[10px] text-center text-violet-700 font-semibold mb-2 px-1 leading-snug">
+                    <p className="text-[10px] text-center text-violet-700/90 font-semibold mb-2 px-1 leading-snug">
                       Toque no botão para o microfone ouvir você de novo
                     </p>
                   )}
                   <button onClick={startListening} disabled={phase === "thinking"}
-                    className={`w-full py-2.5 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 disabled:opacity-50 text-white transition-all ${
-                      showReplyHint ? "ring-2 ring-offset-2 ring-violet-400 ring-offset-white shadow-lg" : ""
+                    className={`relative overflow-hidden w-full py-2.5 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 disabled:opacity-60 text-white transition-all ${
+                      showReplyHint ? "ring-2 ring-offset-2 ring-fuchsia-400 ring-offset-white/0 shadow-lg shadow-violet-400/50" : "shadow-md shadow-violet-300/45"
                     }`}
-                    style={{ background: "linear-gradient(135deg,#6366f1,#4f46e5)", boxShadow: "0 4px 16px #6366f140" }}>
-                    {phase === "thinking"
-                      ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Pensando...</>
-                      : <><Mic className="w-3.5 h-3.5" />{" "}
-                        {useBrowserSpeech ? "Falar com o Tiagão" : "Gravar minha voz (microfone)"}</>
-                    }
+                    style={{
+                      // Sidebar deep purple → vibrant violet → fuchsia accent
+                      background: "linear-gradient(135deg, #1f0b3d 0%, #6d28d9 55%, #c026d3 100%)",
+                    }}>
+                    <span className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-white/0 via-white/15 to-white/0 opacity-60" />
+                    {phase === "thinking" ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> {phaseLabel.thinking}
+                      </>
+                    ) : (
+                      <>
+                        <Mic className="w-3.5 h-3.5" />
+                        {useBrowserSpeech ? "Falar com o Tiagão" : "Gravar minha voz (microfone)"}
+                      </>
+                    )}
                   </button>
 
-                  {/* Text input + camera */}
+                  {/* Text input + anexo (PDF / Word / imagem) para plano */}
                   <div className="flex gap-1.5 mt-2">
-                    <input ref={cameraInputRef as any} type="file" accept="image/*" capture="environment"
+                    <input
+                      ref={planMaterialRef}
+                      type="file"
+                      multiple
+                      accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*"
                       className="hidden"
-                      onChange={e => { const f = e.target.files?.[0]; if (f) analisarImagem(f); e.target.value = ""; }} />
-                    <button onClick={() => cameraInputRef.current?.click()} disabled={analisandoImagem}
-                      className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors">
-                      {analisandoImagem ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+                      onChange={e => { void ingestPlanMaterial(e.target.files); }}
+                    />
+                    <button
+                      type="button"
+                      title="Anexar PDF, Word ou imagem para o plano"
+                      onClick={() => planMaterialRef.current?.click()}
+                      disabled={planIngestBusy || phase === "thinking"}
+                      className={`p-2 rounded-xl ring-1 transition-colors disabled:opacity-50 ${
+                        planIngestBusy
+                          ? "bg-violet-600 text-white ring-violet-700 shadow-sm shadow-violet-300/50"
+                          : "bg-white/65 ring-violet-200 text-violet-700 hover:bg-white/85 hover:ring-violet-300"
+                      }`}
+                    >
+                      {planIngestBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Paperclip className="w-3.5 h-3.5" />}
                     </button>
-                    <input type="text" value={textInput} onChange={e => setTextInput(e.target.value)}
+                    <input
+                      type="text"
+                      value={textInput}
+                      onChange={e => setTextInput(e.target.value)}
                       onKeyDown={e => { if (e.key === "Enter" && textInput.trim()) { sendMessage(textInput); setTextInput(""); } }}
-                      placeholder="Ou escreva sua dúvida..."
-                      className="flex-1 text-xs bg-slate-50 rounded-xl px-3 py-2 text-slate-700 placeholder-slate-400 border border-slate-200 focus:outline-none focus:border-violet-300 transition-colors" />
+                      placeholder="Ou escreva sua dúvida…"
+                      className="flex-1 text-xs bg-white/65 backdrop-blur-md rounded-xl px-3 py-2 text-slate-700 placeholder-violet-400/70 ring-1 ring-violet-200/70 focus:outline-none focus:ring-2 focus:ring-violet-400/70 focus:bg-white/85 transition-all"
+                    />
                     <button onClick={() => { if (textInput.trim()) { sendMessage(textInput); setTextInput(""); } }}
                       disabled={!textInput.trim()}
-                      className="p-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white disabled:opacity-40 transition-colors">
+                      className="p-2 rounded-xl bg-gradient-to-br from-violet-600 to-purple-700 hover:from-violet-500 hover:to-purple-600 text-white disabled:opacity-40 transition-colors shadow-sm shadow-violet-300/50">
                       <Send className="w-3.5 h-3.5" />
                     </button>
                   </div>

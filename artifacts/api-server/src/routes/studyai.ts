@@ -716,4 +716,108 @@ router.post("/analisar", checkFreeUsage, (req, res, next) => {
   }
 });
 
+/**
+ * Leitura leve de PDF/Word/imagem para o painel do Tiagão (sem gerar plano completo).
+ *
+ * Otimizações de performance:
+ * - Files processados em PARALELO (Promise.all) — antes era sequencial, multiplicando
+ *   o tempo por número de anexos.
+ * - Per-file timeout (20s) via Promise.race — evita travar todo o lote por causa
+ *   de um único arquivo lento (modelo de visão demorou, PDF gigante, etc).
+ * - Caps de texto reduzidos: per-file 18k→8k, total 45k→14k. O Tiagão usa esse
+ *   texto apenas como referência conversacional, não para gerar planos completos
+ *   (rota `/analisar` continua aceitando 12k para o gerador de plano de fato).
+ * - Vision: max_tokens 320→200 (descrição curta = resposta mais rápida).
+ */
+const TUTOR_EXTRACT_PER_FILE_TIMEOUT_MS = 20_000;
+const TUTOR_EXTRACT_PER_FILE_TEXT_CAP   = 8_000;
+const TUTOR_EXTRACT_TOTAL_CAP           = 14_000;
+
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const id = setTimeout(() => reject(new Error(`timeout:${label}`)), ms);
+    p.then(
+      (v) => { clearTimeout(id); resolve(v); },
+      (e) => { clearTimeout(id); reject(e); },
+    );
+  });
+}
+
+async function extractOneTutorFile(file: Express.Multer.File): Promise<string | null> {
+  if (isPdf(file.mimetype, file.originalname) || isWord(file.mimetype, file.originalname)) {
+    const t = await withTimeout(
+      extractTextFromFile(file),
+      TUTOR_EXTRACT_PER_FILE_TIMEOUT_MS,
+      `extract:${file.originalname}`,
+    ).catch(() => null);
+    if (t?.trim()) {
+      return `--- ${file.originalname} ---\n${t.trim().slice(0, TUTOR_EXTRACT_PER_FILE_TEXT_CAP)}`;
+    }
+    return null;
+  }
+  if (isImage(file.mimetype)) {
+    const buf = file.buffer.length > 1_048_576 ? file.buffer.slice(0, 1_048_576) : file.buffer;
+    const dataUrl = `data:${file.mimetype};base64,${buf.toString("base64")}`;
+    const visionCall = chatCompletionCreateWithFallback({
+      model: OR.vision,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Descreva em português brasileiro o conteúdo educacional desta imagem (caderno, livro, slide, prova). Seja objetivo: até 4 frases corridas, sem markdown, sem listas com traço.",
+            },
+            { type: "image_url", image_url: { url: dataUrl } },
+          ],
+        },
+      ],
+      max_tokens: 200,
+      hasVision: true,
+      temperature: 0.3,
+    });
+    const result = await withTimeout(
+      visionCall,
+      TUTOR_EXTRACT_PER_FILE_TIMEOUT_MS,
+      `vision:${file.originalname}`,
+    ).catch(() => null);
+    const desc = result?.response.choices[0]?.message?.content?.trim();
+    if (desc) {
+      return `--- ${file.originalname} (leitura visual) ---\n${desc.slice(0, TUTOR_EXTRACT_PER_FILE_TEXT_CAP)}`;
+    }
+    return `--- ${file.originalname} (leitura visual) ---\n(não consegui descrever esta imagem; tente outra ou envie o texto)`;
+  }
+  return `--- ${file.originalname} ---\n(tipo não suportado para leitura automática — envie PDF, Word ou imagem)`;
+}
+
+router.post("/tutor-extract-files", upload.array("files", 8), async (req, res) => {
+  try {
+    const files = req.files as Express.Multer.File[] | undefined;
+    if (!files?.length) {
+      res.status(400).json({ erro: "Envie pelo menos um arquivo." });
+      return;
+    }
+
+    const results = await Promise.all(
+      files.map((file) =>
+        extractOneTutorFile(file).catch(() => null),
+      ),
+    );
+    const parts = results.filter((x): x is string => Boolean(x && x.trim()));
+
+    const extracted = parts.join("\n\n").slice(0, TUTOR_EXTRACT_TOTAL_CAP);
+    if (!extracted.trim()) {
+      res.status(400).json({ erro: "Não foi possível extrair texto ou ler as imagens." });
+      return;
+    }
+    res.json({
+      extracted,
+      filenames: files.map((f) => f.originalname),
+    });
+  } catch (error) {
+    req.log?.error({ error, detail: stringifyOpenRouterError(error) }, "tutor-extract-files");
+    res.status(500).json({ erro: "Erro ao processar os arquivos. Tente novamente." });
+  }
+});
+
 export default router;

@@ -6,12 +6,16 @@ import { eq, sql, desc } from "drizzle-orm";
 
 const router: IRouter = Router();
 
+/**
+ * Tier thresholds — keep in sync with `artifacts/studyai/src/pages/Ranking.tsx` and Conquistas XP badges.
+ * Steep curve: top tier "Monge dos Estudos" is a long-term goal (120k+ XP).
+ */
 function getTier(xp: number): { name: string; color: string; emoji: string; minXp: number; maxXp: number } {
-  if (xp >= 6000) return { name: "Diamante", color: "#06b6d4", emoji: "💎", minXp: 6000, maxXp: Infinity };
-  if (xp >= 3000) return { name: "Platina", color: "#a855f7", emoji: "🔮", minXp: 3000, maxXp: 6000 };
-  if (xp >= 1500) return { name: "Ouro", color: "#f59e0b", emoji: "🥇", minXp: 1500, maxXp: 3000 };
-  if (xp >= 500)  return { name: "Prata", color: "#94a3b8", emoji: "🥈", minXp: 500, maxXp: 1500 };
-  return { name: "Bronze", color: "#cd7c3a", emoji: "🥉", minXp: 0, maxXp: 500 };
+  if (xp >= 120_000) return { name: "Monge dos Estudos", color: "#0f766e", emoji: "🧘", minXp: 120_000, maxXp: Infinity };
+  if (xp >= 45_000) return { name: "Platina", color: "#a855f7", emoji: "🔮", minXp: 45_000, maxXp: 120_000 };
+  if (xp >= 12_000) return { name: "Ouro", color: "#f59e0b", emoji: "🥇", minXp: 12_000, maxXp: 45_000 };
+  if (xp >= 2_500) return { name: "Prata", color: "#94a3b8", emoji: "🥈", minXp: 2_500, maxXp: 12_000 };
+  return { name: "Bronze", color: "#cd7c3a", emoji: "🥉", minXp: 0, maxXp: 2_500 };
 }
 
 router.get("/ranking", async (req: Request, res: Response) => {

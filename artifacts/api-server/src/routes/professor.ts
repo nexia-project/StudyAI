@@ -586,7 +586,27 @@ Regras absolutas de personalização:
 <ir:/trilha> — abrir Trilha Mestre (prática progressiva, Kumon-style, Matemática e Português)
 <ir:/professor> — abrir Painel do Professor
 <ir:/admin> — abrir Painel Admin
-<criar_plano:MATERIA> — criar plano de estudos para a matéria`;
+<criar_plano:MATERIA> — atalho legado; no app abre o fluxo de plano (equivalente a ir à Home /app)`;
+
+/** Mapa compacto: o que é cada parte do StudyAI (evita confundir plano de estudos com slides). */
+const TIAGAO_MAPA_STUDYAI = `
+
+═══ MAPA DO STUDYAI (o que é cada coisa — siga ao rotear ferramentas) ═══
+• Plano de estudos personalizado (gerador na Home: matérias, dias, fluxo principal) → navegar destino "home" (path /app). Alias legado: <ir:/plano>. NÃO use criar_slides para isso.
+• Plano como material HTML (livro digital no Notebook, para revisar offline/compartilhar) → criar_plano_estudos.
+• Slides / livro digital interativo sobre um TEMA (apresentação visual densa) → criar_slides. Nunca por pedido genérico de "plano de estudos" sem pedirem slides/apresentação/livro digital explicitamente.
+• Cronograma (calendário de horários/blocos) → criar_cronograma ou navegar "cronograma" (/cronograma). Não substitui o gerador de plano da Home.
+• Notebook RAG (PDFs, busca nos documentos, artefatos salvos) → navegar "notebook" (/notebook); perguntas sobre PDFs → buscar_nos_meus_documentos.
+• Agenda do dia ("o que estudo hoje?") → criar_agenda_hoje.
+• Simulado ENEM → iniciar_simulado ou navegar "simulado" (/simulado-enem).
+• Flashcards → criar_flashcards; navegar "flashcards" (/app — Home).
+• Redação → navegar "redacao" (/redacao).
+• Aula na lousa (explicação longa) → abrir_aula_ia; navegar "aula-ia" (/aula-ia).
+• Trilha Mestre → navegar "trilha" (/trilha).
+• Mapa mental (hierárquico) → criar_mapa_mental; navegar "mapa-mental" (/mapa-mental).
+• Radar de desempenho (heatmap) → tela /mapa; legado <ir:/mapa> (não é mapa mental).
+• Dashboard, Sala de estudos, Ranking, Perfil → navegar "dashboard" (/dashboard), "sala-estudos" (/sala-estudos), "ranking" (/ranking), "perfil" (/perfil).
+`;
 
 /** Política de ferramentas — alinha voz ao “core” do produto (ações reais). */
 const TIAGAO_CORE_TOOL_POLICY = `
@@ -599,7 +619,8 @@ Roteamento típico:
 • material ou explicação que vocês já geraram antes → buscar_historico_aluno
 • panorama de desempenho ou "como estou?" → analisar_desempenho_completo
 • "O que estudo hoje?" / organizar o dia → criar_agenda_hoje
-• plano estruturado em dias/semanas → criar_plano_estudos
+• montar plano com matérias/dias na ferramenta principal (fluxo da Home) → navegar destino "home" (/app) — preferir isso quando for só "quero um plano de estudos", "me organiza as matérias"
+• plano em página HTML/material no Notebook (explicitamente querem material gerado, imprimir, HTML) → criar_plano_estudos
 • revisão densa ou fichamento → criar_resumo ou criar_flashcards
 • treino pontual → gerar_questao_personalizada | provão → iniciar_simulado ou navegar para simulado
 • texto de redação → corrigir_redacao | aula expositiva na lousa → abrir_aula_ia
@@ -634,13 +655,28 @@ router.post("/voice-chat", async (req, res) => {
     }
 
     // ── OTIMIZAÇÃO VOICE: histórico curto (voz não precisa de 20 msgs) ────────
-    const cleanMessages = messages
+    // O tamanho por mensagem é 1000 chars (voz é curto). EXCEÇÃO: a ÚLTIMA mensagem
+    // do usuário pode trazer material anexado (PDF/Word/imagem) via /tutor-extract-files
+    // — nessa rota subimos o cap para 4000 chars para o modelo enxergar o conteúdo,
+    // sem disparar o custo de tokens das mensagens anteriores.
+    const VOICE_MSG_CAP        = 1000;
+    const VOICE_LAST_USER_CAP  = 4000;
+    const trimmed = messages
       .filter((m) => m.role && m.content)
-      .slice(-10)                                     // era -20; voz usa só últimas 10
-      .map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: String(m.content).slice(0, 1000),   // era 2000; voz é mais curto
-      }));
+      .slice(-10);                                    // era -20; voz usa só últimas 10
+    const lastUserIdx = (() => {
+      for (let i = trimmed.length - 1; i >= 0; i--) {
+        if (trimmed[i].role === "user") return i;
+      }
+      return -1;
+    })();
+    const cleanMessages = trimmed.map((m, i) => ({
+      role: m.role as "user" | "assistant",
+      content: String(m.content).slice(
+        0,
+        i === lastUserIdx && m.role === "user" ? VOICE_LAST_USER_CAP : VOICE_MSG_CAP,
+      ),
+    }));
 
     const lastUserMsg = cleanMessages.filter(m => m.role === "user").slice(-1)[0]?.content ?? "";
 
@@ -710,14 +746,15 @@ INSTRUÇÕES DE AGENTE — LEIA ANTES DE QUALQUER RESPOSTA:
 
 2. FERRAMENTAS REAIS — USE-AS DE VERDADE:
 - salvar_memoria: SEMPRE que o usuário revelar info pessoal (objetivos, dificuldades, matérias, vida pessoal). Silencioso.
-- navegar: quando pede pra ir a algum lugar.
+- navegar: quando pede pra ir a algum lugar. Para "plano de estudos" no sentido de montar matérias/dias no app → destino "home" (/app), não criar_slides.
 - abrir_aula_ia: quando quer explicação completa ou aula.
 - criar_flashcards: quando pede flashcards — cria E salva automaticamente.
-- criar_slides: quando pede apresentação, slides, material visual.
+- criar_slides: quando pede apresentação, slides ou livro digital sobre um tema — NUNCA para pedido só de "plano de estudos" (use home ou criar_plano_estudos conforme o MAPA).
 - criar_mapa_mental: quando pede mapa mental ou organização visual.
 - criar_infografico: quando pede infográfico.
 - criar_prova: quando pede prova, lista de exercícios, atividade.
-- criar_plano_estudos: quando pede plano, cronograma de revisão.
+- criar_plano_estudos: quando querem plano em material HTML no Notebook; se querem só usar o gerador da Home → navegar "home".
+- criar_cronograma: calendário de estudos (/cronograma) — não confundir com plano da Home nem com criar_plano_estudos.
 - criar_resumo: quando pede resumo, síntese, ficha de estudo.
 - criar_agenda_hoje: quando pergunta "o que estudo hoje?".
 - gerar_questao_personalizada: quando pede questão, exercício, desafio.
@@ -742,13 +779,14 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.
 - Adapte TUDO: vocabulário, ritmo, profundidade, tom emocional.
 
 5. AUTONOMIA TOTAL — Você não pede permissão para agir:
-- Aluno pede slides? Cria IMEDIATAMENTE sem perguntar "sobre o que?".
+- Aluno pede apresentação, slides ou livro digital (não plano de estudos na Home)? Cria com criar_slides IMEDIATAMENTE sem perguntar "sobre o que?".
 - Professor pede email pra turma? Redige e envia sem pedir aprovação linha a linha.
 - Se falta info crítica, pergunte de forma natural: "Rapidão — sobre qual assunto?" (1 pergunta só).
 
 6. Após chamar tools, dê resposta curta (máx 2-3 frases) confirmando o que fez, em PT-BR coloquial. Nunca markdown. Sempre termine com pergunta ou convite.`;
     const systemContent =
       BASE_PROMPT
+      + TIAGAO_MAPA_STUDYAI
       + TIAGAO_CORE_TOOL_POLICY
       + TIAGAO_CREATIVITY_BLOCK
       + personalizationBlock
@@ -774,7 +812,7 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.
       messages: apiMessages,
       tools: TIAGAO_TOOLS,
       tool_choice: "auto",
-      max_tokens: 450,   // era 1200 — voz precisa de 3 frases (~300 tokens)
+      max_tokens: 380,   // era 450 — voz precisa de 2-3 frases curtas (~250-300 tokens)
       temperature: 0.85,
     });
 
@@ -960,15 +998,17 @@ ${richContext}`;
 /** Saudação inicial variada para o painel flutuante do Tiagão (sem repetir script fixo). */
 router.post("/tiagao-opening", async (req, res) => {
   try {
-    const { context } = req.body as { context?: FrontendContext };
+    const { context, origem } = req.body as { context?: FrontendContext; origem?: "app_entry" | "painel" };
     const nome = (context?.nome || "").trim() || "estudante";
     const serie = (context?.serie || "").trim();
     const pagina = (context?.paginaAtual || "StudyAI").trim();
     const v = Math.floor(Math.random() * 24) + 1;
     const anti = (context?.ultimasFalasTiagao || []).slice(0, 4).filter(Boolean).join(" | ");
     const extraCtx = [context?.planoResumo, context?.materiaisAnexadosRecentemente].filter(Boolean).join(" · ");
+    const entradaApp = origem === "app_entry";
     const system = `Você é o Professor Tiagão do StudyAI. Gere UMA mensagem para ser LIDA EM VOZ ALTA (2 a 4 frases curtas), português brasileiro, tom natural de professor parceiro.
 Estilo variação #${v}. Proibido: markdown, asteriscos, listas com traço, emojis, inglês.
+${entradaApp ? `CONTEXTO: a pessoa ACABOU DE ENTRAR no StudyAI nesta sessão — primeira impressão. Seja acolhedor, leve, curioso; não soar telemarketing nem robô lendo script.` : ""}
 Inclua de forma orgânica (ordem livre):
 - Cumprimentar "${nome}"${serie ? ` e mencionar de leve o contexto escolar (${serie})` : ""}
 - Perguntar o que a pessoa quer trabalhar AGORA (pergunta espontânea, não clichê de chatbot)
@@ -981,7 +1021,7 @@ ${anti ? `Não soe parecido com: ${anti}` : ""}`;
       model: CHAT_MODEL,
       messages: [
         { role: "system", content: system },
-        { role: "user", content: `Onde o aluno está no app agora: ${pagina}.${extraCtx ? ` Contexto extra: ${extraCtx}.` : ""} Gere só a mensagem falada, nada mais.` },
+        { role: "user", content: `${entradaApp ? "Primeira chegada ao app nesta sessão. " : ""}Onde a pessoa está agora: ${pagina}.${extraCtx ? ` Contexto extra: ${extraCtx}.` : ""} Gere só a mensagem falada, nada mais.` },
       ],
       max_tokens: 260,
       temperature: 0.93,

@@ -5,6 +5,7 @@ export type ProfessorEventContext =
   | "xp_gained"
   | "streak"
   | "redacao_done"
+  | "app_entry"
   | "generic";
 
 export interface ProfessorProactiveDetail {

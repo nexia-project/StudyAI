@@ -202,6 +202,7 @@ const QUICK_COMMANDS = [
   { label: "⚡ Simulado rápido",      text: "Quero fazer um simulado rápido agora." },
   { label: "📖 Explicar matéria",     text: "Me explica a matéria mais difícil pra mim." },
   { label: "🃏 Criar flashcards",     text: "Cria flashcards do que estudei hoje." },
+  { label: "🔧 Desafio Fazedor",      text: "[Módulo Fazedores] Quero um Desafio Fazedor. Apresenta as 4 categorias (Consertar, Organizar, Criar, Estudar) e, depois que eu escolher uma, crie UMA situação completa seguindo: contexto do dia a dia; 3 perguntas antes de qualquer solução; só então um plano em 5 passos claros; um desafio +1; conexão com estudos; mensagem de orgulho. Nunca dê a solução pronta antes das minhas respostas. Respeite segurança: sem eletricidade aberta, fogo, químicos fortes ou trabalho em altura — só ferramentas simples e ajuda de adulto quando precisar." },
   { label: "📊 Meu desempenho",       text: "Como está meu desempenho geral?" },
   { label: "🎯 Dica de estudo",       text: "Me dá uma dica de estudo pra agora." },
   { label: "📝 Corrigir redação",     text: "Quero corrigir uma redação." },

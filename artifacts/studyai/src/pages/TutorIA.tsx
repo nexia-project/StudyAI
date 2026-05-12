@@ -1,4 +1,5 @@
 import { useRef, useEffect } from "react";
+import { Link } from "wouter";
 import { Trash2, Bot } from "lucide-react";
 import ChatForm, { type TaskType, type AiProvider } from "../components/ChatForm";
 import ChatResponse from "../components/ChatResponse";
@@ -47,6 +48,11 @@ export default function TutorIA() {
                 Pergunte qualquer coisa sobre ENEM, vestibular ou qualquer matéria.
                 Posso responder de forma rápida, aprofundada ou gerar slides!
               </p>
+              <Link href="/aluno/fazedores">
+                <span className="inline-flex mt-4 text-sm font-bold text-violet-600 hover:text-violet-800 underline-offset-2 hover:underline cursor-pointer">
+                  Ir para Fazedores — desafios práticos &quot;como nossos pais faziam&quot;
+                </span>
+              </Link>
             </div>
           )}
 

@@ -204,6 +204,8 @@ interface FrontendContext {
   ultimosTopicos?: string[];
   ultimaMensagem?: string;
   paginaAtual?: string;
+  /** Últimas falas do assistente (cliente) — evitar repetição nas proativas */
+  ultimasFalasTiagao?: string[];
 }
 
 // ─── Fetch real student data from DB ─────────────────────────────────────────
@@ -345,6 +347,11 @@ function buildRichContext(
   // Current page context
   if (frontend?.paginaAtual) parts.push(`Página atual no app: ${frontend.paginaAtual}`);
   if (frontend?.materia) parts.push(`Matéria em foco agora: ${frontend.materia}`);
+  if (frontend?.ultimasFalasTiagao?.length) {
+    parts.push(
+      `Últimas falas suas ao aluno nesta sessão (NÃO repita o mesmo jeito de falar — mude vocabulário e ângulo): ${frontend.ultimasFalasTiagao.map((s) => `"${s}"`).join(" · ")}`,
+    );
+  }
 
   // Real DB data
   if (dbData) {
@@ -859,7 +866,8 @@ REGRAS ABSOLUTAS:
 - Escreva UMA mensagem curta (2 frases no máximo, tom humano brasileiro, zero markdown, zero asterisco)
 - Se genuinamente não tem nada útil: responda exatamente NULL
 - Use dados reais do aluno — nunca finja não saber
-- Não repita o que já foi dito antes
+- Não repita literalmente a última mensagem que você mesmo enviou; troque o ângulo, a pergunta ou o exemplo
+- Varie o vocabulário: se na última vez você falou de simulado, agora pode falar de revisão, descanso, ou matéria fraca com outra abordagem
 - Pode incluir UMA ação: <ir:/ranking>, <ir:/mapa>, <ir:/mapa-mental>, <ir:/simulado>, <ir:/flashcards>, <criar_plano:MATERIA>
 ${richContext}`;
 
@@ -889,6 +897,56 @@ ${richContext}`;
     res.json({ message, action });
   } catch {
     res.json({ message: null });
+  }
+});
+
+/** Saudação inicial variada para o painel flutuante do Tiagão (sem repetir script fixo). */
+router.post("/tiagao-opening", async (req, res) => {
+  try {
+    const { context } = req.body as { context?: FrontendContext };
+    const nome = (context?.nome || "").trim() || "estudante";
+    const serie = (context?.serie || "").trim();
+    const pagina = (context?.paginaAtual || "StudyAI").trim();
+    const v = Math.floor(Math.random() * 24) + 1;
+    const anti = (context?.ultimasFalasTiagao || []).slice(0, 4).filter(Boolean).join(" | ");
+    const system = `Você é o Professor Tiagão do StudyAI. Gere UMA mensagem para ser LIDA EM VOZ ALTA (2 a 4 frases curtas), português brasileiro, tom natural de professor parceiro.
+Estilo variação #${v}. Proibido: markdown, asteriscos, listas com traço, emojis, inglês.
+Inclua de forma orgânica (ordem livre):
+- Cumprimentar "${nome}"${serie ? ` e mencionar de leve o contexto escolar (${serie})` : ""}
+- Perguntar o que a pessoa quer trabalhar AGORA (pergunta espontânea, não clichê de chatbot)
+- Oferecer montar um PLANO DE ESTUDOS personalizado junto
+- Dizer que pode ANEXAR aqui no painel material em FOTO, PDF ou Word que você lê e usa para encaixar no plano
+- Fechar com UMA pergunta curta e diferente
+${anti ? `Não soe parecido com: ${anti}` : ""}`;
+
+    const completion = await gptChat.chat.completions.create({
+      model: CHAT_MODEL,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: `Onde o aluno está no app agora: ${pagina}. Gere só a mensagem falada, nada mais.` },
+      ],
+      max_tokens: 260,
+      temperature: 0.93,
+    });
+    let text = completion.choices[0]?.message?.content?.trim() || "";
+    text = text
+      .replace(/\*\*/g, "")
+      .replace(/^#+\s*/gm, "")
+      .replace(/^[-•*]\s*/gm, "")
+      .replace(/\n+/g, " ")
+      .trim();
+    const first = nome !== "estudante" ? nome.split(/\s+/)[0] : "";
+    if (!text || text.length < 30) {
+      text =
+        first
+          ? `E aí, ${first}! Tiagão aqui. O que você quer dominar agora? A gente pode montar um plano de estudos juntos, e se tiver PDF, Word ou foto do caderno, anexa aqui no clipe que eu já leio e encaixo no teu ritmo. Por onde a gente começa?`
+          : `Oi! Sou o Tiagão. Me conta: qual foco hoje — prova, matéria ou revisão? Posso criar um plano com você; se tiver material em PDF, Word ou imagem, manda no anexo aqui do painel que eu já uso. Bora nessa?`;
+    }
+    res.json({ text });
+  } catch {
+    res.json({
+      text: "Oi! Aqui é o Tiagão. O que você quer treinar agora? Posso montar um plano de estudos com você — e se tiver PDF, Word ou foto do material, anexa aqui no ícone de clipe que eu já leio tudo. Por onde começamos?",
+    });
   }
 });
 

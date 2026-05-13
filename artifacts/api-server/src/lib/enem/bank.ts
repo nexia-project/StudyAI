@@ -1,12 +1,30 @@
 /**
- * ENEM bank — operações de leitura sobre o seed (PR-3, data scaffolding).
+ * ENEM bank — operações de leitura sobre o banco de questões.
  *
- * Quando o banco oficial estiver carregado em Postgres, este módulo passa a
- * delegar para repositórios reais. Por ora, opera in-memory sobre `ENEM_SEED`.
+ * Composição da fonte de dados (in-memory por enquanto; Postgres em PR futura):
+ *   1. `ENEM_SEED` (lib/enem/seed.ts) — placeholders curados manualmente, mantidos
+ *      apenas as entradas marcadas como `__REAL__` (Redação 2023 hoje).
+ *   2. `seed-questions.json` — banco oficial de ~500+ questões importado via
+ *      `scripts/ingest-enem.ts` (espelho api.enem.dev).
+ *
+ * Os placeholders `__SEED_PLACEHOLDER__` do seed antigo NÃO entram mais no banco
+ * agora que temos dados oficiais — eram um fallback temporário.
  */
 
 import { ENEM_SEED } from "./seed";
+import seedFromJson from "./seed-questions.json";
 import type { EnemArea, EnemAno, EnemQuestao } from "./types";
+
+const OFFICIAL_QUESTOES = seedFromJson as unknown as EnemQuestao[];
+
+/**
+ * Banco efetivo: questões oficiais importadas + entradas reais curadas do seed
+ * (como o tema oficial da Redação 2023).
+ */
+export const ENEM_BANK: readonly EnemQuestao[] = Object.freeze([
+  ...ENEM_SEED.filter((q) => q.flag === "__REAL__"),
+  ...OFFICIAL_QUESTOES,
+]);
 
 // ─── Utilidades internas ─────────────────────────────────────────────────────
 
@@ -51,7 +69,7 @@ export function searchEnem(opts: SearchEnemOpts = {}): EnemQuestao[] {
   const limit = Math.min(Math.max(opts.limit ?? 20, 1), 50);
 
   const filtered: EnemQuestao[] = [];
-  for (const q of ENEM_SEED) {
+  for (const q of ENEM_BANK) {
     if (opts.area && q.area !== opts.area) continue;
     if (opts.ano && q.ano !== opts.ano) continue;
     if (!matchesQuery(q, tokens)) continue;
@@ -64,7 +82,7 @@ export function searchEnem(opts: SearchEnemOpts = {}): EnemQuestao[] {
 /** Lookup direto por id (estável). Retorna null quando não encontra. */
 export function getQuestao(id: string): EnemQuestao | null {
   if (!id) return null;
-  const hit = ENEM_SEED.find((q) => q.id === id);
+  const hit = ENEM_BANK.find((q) => q.id === id);
   return hit ?? null;
 }
 
@@ -75,7 +93,7 @@ export function getQuestao(id: string): EnemQuestao | null {
 export function getRandomQuestao(
   opts: { area?: EnemArea; ano?: EnemAno } = {},
 ): EnemQuestao | null {
-  const pool = ENEM_SEED.filter((q) => {
+  const pool = ENEM_BANK.filter((q) => {
     if (opts.area && q.area !== opts.area) return false;
     if (opts.ano && q.ano !== opts.ano) return false;
     return true;
@@ -85,7 +103,7 @@ export function getRandomQuestao(
   return pool[idx] ?? null;
 }
 
-/** Total de questões disponíveis no seed (debug / health). */
+/** Total de questões disponíveis no banco (debug / health). */
 export function getEnemSeedStats(): {
   total: number;
   porArea: Record<EnemArea, number>;
@@ -93,12 +111,12 @@ export function getEnemSeedStats(): {
 } {
   const porArea: Record<EnemArea, number> = { LC: 0, MT: 0, CN: 0, CH: 0, R: 0 };
   const anosSet = new Set<EnemAno>();
-  for (const q of ENEM_SEED) {
+  for (const q of ENEM_BANK) {
     porArea[q.area] += 1;
     anosSet.add(q.ano);
   }
   return {
-    total: ENEM_SEED.length,
+    total: ENEM_BANK.length,
     porArea,
     anos: [...anosSet].sort((a, b) => a - b),
   };

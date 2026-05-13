@@ -54,8 +54,15 @@ export interface EnemQuestao {
   resolucao: string;
   /** Códigos BNCC alinhados (opcional, preenchido por alinhamento manual ou heurístico). */
   bnccCodigos?: string[];
-  /** Marca interna para registros que precisam ser substituídos por dado oficial. */
-  flag?: "__SEED_PLACEHOLDER__" | "__REAL__";
+  /**
+   * Marca interna de proveniência:
+   *   - `__SEED_PLACEHOLDER__`: placeholder do seed inicial (texto inventado), a
+   *     ser substituído por dado oficial.
+   *   - `__REAL__`: dado oficial inserido manualmente (curado).
+   *   - `__OFFICIAL__`: dado oficial importado automaticamente via
+   *     `scripts/ingest-enem.ts` (espelho api.enem.dev).
+   */
+  flag?: "__SEED_PLACEHOLDER__" | "__REAL__" | "__OFFICIAL__";
   /** URL canônica da prova/imagem oficial, quando conhecida. */
   fonteUrl?: string;
 }

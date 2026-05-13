@@ -1260,14 +1260,25 @@ export default function Home() {
                     setStep("form");
                     setTimeout(() => document.getElementById("main-form")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
                   }}
-                  className="group relative overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-6 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5"
+                  className="group relative flex flex-col overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-0 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5"
                 >
-                  <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-primary/25 to-accent/15 blur-2xl opacity-80 pointer-events-none" />
-                  <IllStudyPlan className="size-14 mb-4 text-primary relative z-10" />
-                  <h3 className="font-black text-lg text-foreground mb-1 relative z-10">Criar plano de estudos</h3>
-                  <p className="text-sm text-muted-foreground leading-snug relative z-10">
-                    Texto, PDF, foto do caderno ou tema — a IA monta o roteiro completo.
-                  </p>
+                  <div className="relative aspect-[21/5] w-full max-h-[180px] min-h-[120px] shrink-0 overflow-hidden sm:max-h-[180px]">
+                    <img
+                      src={`${import.meta.env.BASE_URL}banners/plano-estudos-hero.png`}
+                      alt="Banner ilustrativo: criar plano de estudos personalizado com apoio de IA."
+                      className="absolute inset-0 h-full w-full object-cover object-center"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </div>
+                  <div className="relative p-6 text-left">
+                    <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-primary/25 to-accent/15 blur-2xl opacity-80 pointer-events-none" />
+                    <IllStudyPlan className="relative z-10 mb-4 size-14 text-primary" />
+                    <h3 className="relative z-10 mb-1 font-black text-lg text-foreground">Criar plano de estudos</h3>
+                    <p className="relative z-10 text-sm leading-snug text-muted-foreground">
+                      Texto, PDF, foto do caderno ou tema — a IA monta o roteiro completo.
+                    </p>
+                  </div>
                 </button>
 
                 <button

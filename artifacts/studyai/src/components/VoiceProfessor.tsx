@@ -62,6 +62,38 @@ function markTiagaoFirstVisitDone(clerkUserId: string | undefined): void {
   } catch { /* ignore */ }
 }
 
+/** Once per browser session on marketing `/` — avoids repeating the long pitch on every panel open. */
+const TIAGAO_LANDING_INTRO_SESSION_KEY = "studyai_tiagao_landing_intro_shown";
+
+const LANDING_LONG_GREETING =
+  "Oi! Sou o Tiagão — aqui na página inicial eu tô pra te orientar sobre o Study.IA: como funciona, pra quem é, planos e o que você ganha quando criar sua conta. Posso explicar com calma, sem pressa. Quando você entrar no app com login, aí sim eu acompanho seu estudo de perto — plano, simulado, notebook e atalhos. Por onde você quer começar: preços, recursos ou como começar grátis?";
+
+const LANDING_RETURN_GREETINGS = [
+  "Fala de novo! Quer saber sobre planos, recursos ou como começar grátis?",
+  "Tô por aqui — tem dúvida sobre o Study.IA ou quer um resumo do que muda no app depois do cadastro?",
+  "Me diz: é dúvida sobre preço, sobre o que tem no app, ou como funciona o começo grátis?",
+];
+
+function pickShortLandingReturnGreeting(): string {
+  const d = new Date().toISOString().slice(0, 13);
+  let h = 2166136261;
+  for (let i = 0; i < d.length; i++) {
+    h ^= d.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const idx = Math.abs(h) % LANDING_RETURN_GREETINGS.length;
+  return LANDING_RETURN_GREETINGS[idx];
+}
+
+const LANDING_QUICK_COMMANDS = [
+  { label: "🎓 O que é o Study.IA?", text: "Em poucas frases: o que é o Study.IA e pra quem foi feito?" },
+  { label: "💳 Planos e preços", text: "Como funcionam os planos Grátis e Pro? Quanto custa o Pro?" },
+  { label: "🚀 Começar grátis", text: "Como eu começo grátis? Preciso de cartão de crédito?" },
+  { label: "🎤 Tiagão no app", text: "Depois que eu criar conta, o que o Tiagão faz diferente no app?" },
+  { label: "📚 Notebook RAG", text: "O que é o Notebook RAG e por que é diferencial?" },
+  { label: "📝 Redação e ENEM", text: "Como funciona a correção de redação e o foco no ENEM?" },
+];
+
 const TIAGAO_SHORT_GREETINGS = [
   "E aí{nm}! Por onde você quer começar hoje — revisão, simulado ou matéria nova?",
   "Tiagão por aqui{nm}. Qual tópico ou dia do plano a gente ataca agora?",
@@ -348,8 +380,15 @@ function VolumeBar({ level }: { level: number }) {
   );
 }
 
+export type VoiceProfessorVariant = "app" | "landing";
+
+export type VoiceProfessorProps = {
+  /** `landing`: marketing `/` only — no navegação nem ações no app; `app`: comportamento atual. */
+  variant?: VoiceProfessorVariant;
+};
+
 // ─── Component ────────────────────────────────────────────────────────────────
-export function VoiceProfessor() {
+export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
   const [location, navigate] = useLocation();
   const { isAuthenticated, isLoading: authLoading, user } = useStudyAuth();
   const clerkUserId = user?.id;
@@ -445,6 +484,17 @@ export function VoiceProfessor() {
     return () => window.removeEventListener(STUDYAI_ACCOUNT_CHANGED, onAccountChange);
   }, []);
 
+  useEffect(() => {
+    greetedRef.current = false;
+    setHistory([]);
+    historyRef.current = [];
+    setSessionMsgs(0);
+    setError(null);
+    setPhase("idle");
+    setPlanIngestBusy(false);
+    setActionNotif(null);
+  }, [variant]);
+
   const fmtFocusTime = (s: number) =>
     `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
@@ -487,6 +537,7 @@ export function VoiceProfessor() {
     action: Record<string, any> | null | undefined,
     notifications: Record<string, any>[]
   ) => {
+    if (variant === "landing") return;
     if (!action) return;
     if (action.type === "ir") setTimeout(() => navigate(normalizeTiagaoLegacyPath(action.param)), 400);
     else if (action.type === "criar_plano") {
@@ -588,7 +639,7 @@ export function VoiceProfessor() {
         setTimeout(() => setActionNotif(null), 6000);
       }
     }
-  }, [navigate]);
+  }, [navigate, variant]);
 
   // ── Send message ────────────────────────────────────────────────────────────
   const sendMessage = useCallback(async (userText: string, isRetry = false) => {
@@ -604,9 +655,11 @@ export function VoiceProfessor() {
     }
 
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (variant === "landing") headers["X-Tiagao-Context"] = "landing";
       const res = await fetch(`${BASE_URL}/api/voice-chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           messages: historyRef.current.slice(-20),
           context: collectStudentContext(),
@@ -641,7 +694,7 @@ export function VoiceProfessor() {
         setRetrying(true);
       }
     }
-  }, [speak, handleAgentActions, voicePure]);
+  }, [speak, handleAgentActions, voicePure, variant]);
 
   /**
    * Ingest plano: envia arquivos para extração leve no servidor e empurra para o voice-chat.
@@ -657,6 +710,7 @@ export function VoiceProfessor() {
    *   meta dos arquivos via context; aqui foco é só o conteúdo útil.
    */
   const ingestPlanMaterial = useCallback(async (files: FileList | null) => {
+    if (variant === "landing") return;
     if (!files?.length) return;
     setPlanIngestBusy(true);
     setError(null);
@@ -735,22 +789,39 @@ export function VoiceProfessor() {
       setPlanIngestBusy(false);
       if (planMaterialRef.current) planMaterialRef.current.value = "";
     }
-  }, [sendMessage]);
+  }, [sendMessage, variant]);
 
   // ── Saudação ao abrir o painel (uma vez por carga da página) ───────────────
   useEffect(() => {
     if (!open) return;
     if (greetedRef.current) return;
     if (authLoading) return;
-    if (isAuthenticated && !clerkUserId) return;
+    if (variant !== "landing" && isAuthenticated && !clerkUserId) return;
     unlockAudioSync();
     let cancelled = false;
     (async () => {
-      const { text: greeting } = await resolveTiagaoOpeningText({
-        origem: "painel",
-        clerkUserId,
-        isAuthenticated,
-      });
+      let greeting: string;
+      if (variant === "landing") {
+        let firstInSession = true;
+        try {
+          firstInSession = sessionStorage.getItem(TIAGAO_LANDING_INTRO_SESSION_KEY) !== "1";
+        } catch { /* private mode */ }
+        if (firstInSession) {
+          greeting = LANDING_LONG_GREETING;
+          try {
+            sessionStorage.setItem(TIAGAO_LANDING_INTRO_SESSION_KEY, "1");
+          } catch { /* ignore */ }
+        } else {
+          greeting = pickShortLandingReturnGreeting();
+        }
+      } else {
+        const { text } = await resolveTiagaoOpeningText({
+          origem: "painel",
+          clerkUserId,
+          isAuthenticated,
+        });
+        greeting = text;
+      }
       if (cancelled) return;
       greetedRef.current = true;
       historyRef.current = [{ role: "assistant", content: greeting }];
@@ -759,7 +830,7 @@ export function VoiceProfessor() {
       setTimeout(() => { if (!cancelled) void speak(greeting); }, 120);
     })();
     return () => { cancelled = true; };
-  }, [open, speak, isAuthenticated, clerkUserId, authLoading]);
+  }, [open, speak, isAuthenticated, clerkUserId, authLoading, variant]);
 
   useEffect(() => {
     const lines = history.filter(m => m.role === "assistant").slice(-4).map(m => m.text.slice(0, 160));
@@ -770,6 +841,7 @@ export function VoiceProfessor() {
 
   // ── Proactive ───────────────────────────────────────────────────────────────
   const runProactive = useCallback(async (triggerReason?: string) => {
+    if (variant === "landing") return;
     if (phase !== "idle" || mutedRef.current) return;
     if (Date.now() - lastProactiveRef.current < PROACTIVE_MIN_GAP) return;
     const context = collectStudentContext();
@@ -792,7 +864,7 @@ export function VoiceProfessor() {
       handleAgentActions(action, notifications ?? []);
       await speak(message);
     } catch { /* ignore */ }
-  }, [phase, speak, handleAgentActions]);
+  }, [phase, speak, handleAgentActions, variant]);
 
   // ── Events from app ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -810,6 +882,7 @@ export function VoiceProfessor() {
 
   // ── Boas-vindas na entrada do app (1× por sessão) — conteúdo longo só na 1ª visita com login (localStorage)
   useEffect(() => {
+    if (variant === "landing") return;
     if (authLoading || !isAuthenticated) return;
     if (!clerkUserId) return;
     const path = location || "/";
@@ -868,7 +941,7 @@ export function VoiceProfessor() {
         if (sessionStorage.getItem(KEY) === "pending") sessionStorage.removeItem(KEY);
       } catch { /* ignore */ }
     };
-  }, [isAuthenticated, authLoading, location, clerkUserId]);
+  }, [isAuthenticated, authLoading, location, clerkUserId, variant]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -883,6 +956,7 @@ export function VoiceProfessor() {
 
   // ── Activity tracking ───────────────────────────────────────────────────────
   useEffect(() => {
+    if (variant === "landing") return;
     const record = () => { lastUserActivityRef.current = Date.now(); };
     window.addEventListener("click", record, { passive: true });
     window.addEventListener("keydown", record, { passive: true });
@@ -910,7 +984,7 @@ export function VoiceProfessor() {
       document.removeEventListener("visibilitychange", handleVis);
       if (proactiveTimerRef.current) clearInterval(proactiveTimerRef.current);
     };
-  }, [runProactive]);
+  }, [runProactive, variant]);
 
   // ── First open / close panel ───────────────────────────────────────────────
   const handlePanelToggle = useCallback(() => {
@@ -1018,6 +1092,23 @@ export function VoiceProfessor() {
     phase === "idle" &&
     history.length > 0 &&
     history[history.length - 1]?.role === "assistant";
+
+  const quickCommands = variant === "landing" ? LANDING_QUICK_COMMANDS : QUICK_COMMANDS;
+  const voiceHintRows =
+    variant === "landing"
+      ? [
+          { cmd: "\"Quanto custa o Pro?\"", desc: "Preços e planos" },
+          { cmd: "\"Preciso de cartão?\"", desc: "Começo grátis" },
+          { cmd: "\"O que é o Notebook RAG?\"", desc: "Diferencial do produto" },
+          { cmd: "\"Pare / continue\"", desc: "Controla a fala" },
+        ]
+      : [
+          { cmd: "\"Abra o simulado\"",         desc: "Navega para simulados" },
+          { cmd: "\"Crie um plano de estudos\"", desc: "Cria plano personalizado" },
+          { cmd: "\"Me explica [matéria]\"",    desc: "Abre aula sobre o tema" },
+          { cmd: "\"Cria flashcards\"",          desc: "Gera e salva flashcards" },
+          { cmd: "\"Pare / continue\"",          desc: "Controla a fala" },
+        ];
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -1359,9 +1450,11 @@ export function VoiceProfessor() {
               {/* COMANDOS TAB — glassy violet tiles */}
               {tab === "comandos" && (
                 <div className="flex-1 overflow-y-auto px-3 py-3">
-                  <p className="text-[10px] font-black text-violet-500/85 uppercase tracking-widest mb-3">Toque para perguntar</p>
+                  <p className="text-[10px] font-black text-violet-500/85 uppercase tracking-widest mb-3">
+                    {variant === "landing" ? "Dúvidas sobre o Study.IA" : "Toque para perguntar"}
+                  </p>
                   <div className="grid grid-cols-2 gap-2">
-                    {QUICK_COMMANDS.map((cmd, i) => (
+                    {quickCommands.map((cmd, i) => (
                       <button key={i}
                         onClick={() => { sendMessage(cmd.text); setTab("conversa"); }}
                         disabled={phase !== "idle"}
@@ -1372,13 +1465,7 @@ export function VoiceProfessor() {
                   </div>
                   <div className="mt-4 pt-4 border-t border-violet-100/60">
                     <p className="text-[10px] font-black text-violet-500/85 uppercase tracking-widest mb-2">Comandos de voz</p>
-                    {[
-                      { cmd: "\"Abra o simulado\"",         desc: "Navega para simulados" },
-                      { cmd: "\"Crie um plano de estudos\"", desc: "Cria plano personalizado" },
-                      { cmd: "\"Me explica [matéria]\"",    desc: "Abre aula sobre o tema" },
-                      { cmd: "\"Cria flashcards\"",          desc: "Gera e salva flashcards" },
-                      { cmd: "\"Pare / continue\"",          desc: "Controla a fala" },
-                    ].map((item, i) => (
+                    {voiceHintRows.map((item, i) => (
                       <div key={i} className="flex items-start gap-2 mb-2">
                         <code className="text-[10px] bg-violet-50/80 ring-1 ring-violet-100 text-violet-800 px-2 py-1 rounded-lg font-mono flex-shrink-0">{item.cmd}</code>
                         <span className="text-[10px] text-slate-600 pt-1">{item.desc}</span>
@@ -1516,29 +1603,33 @@ export function VoiceProfessor() {
                     )}
                   </button>
 
-                  {/* Text input + anexo (PDF / Word / imagem) para plano */}
+                  {/* Text input + anexo (PDF / Word / imagem) — só no app logado */}
                   <div className="flex gap-1.5 mt-2">
-                    <input
-                      ref={planMaterialRef}
-                      type="file"
-                      multiple
-                      accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*"
-                      className="hidden"
-                      onChange={e => { void ingestPlanMaterial(e.target.files); }}
-                    />
-                    <button
-                      type="button"
-                      title="Anexar PDF, Word ou imagem para o plano"
-                      onClick={() => planMaterialRef.current?.click()}
-                      disabled={planIngestBusy || phase === "thinking"}
-                      className={`p-2 rounded-xl ring-1 transition-colors disabled:opacity-50 ${
-                        planIngestBusy
-                          ? "bg-violet-600 text-white ring-violet-700 shadow-sm shadow-violet-300/50"
-                          : "bg-white/65 ring-violet-200 text-violet-700 hover:bg-white/85 hover:ring-violet-300"
-                      }`}
-                    >
-                      {planIngestBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Paperclip className="w-3.5 h-3.5" />}
-                    </button>
+                    {variant !== "landing" && (
+                      <>
+                        <input
+                          ref={planMaterialRef}
+                          type="file"
+                          multiple
+                          accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*"
+                          className="hidden"
+                          onChange={e => { void ingestPlanMaterial(e.target.files); }}
+                        />
+                        <button
+                          type="button"
+                          title="Anexar PDF, Word ou imagem para o plano"
+                          onClick={() => planMaterialRef.current?.click()}
+                          disabled={planIngestBusy || phase === "thinking"}
+                          className={`p-2 rounded-xl ring-1 transition-colors disabled:opacity-50 ${
+                            planIngestBusy
+                              ? "bg-violet-600 text-white ring-violet-700 shadow-sm shadow-violet-300/50"
+                              : "bg-white/65 ring-violet-200 text-violet-700 hover:bg-white/85 hover:ring-violet-300"
+                          }`}
+                        >
+                          {planIngestBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Paperclip className="w-3.5 h-3.5" />}
+                        </button>
+                      </>
+                    )}
                     <input
                       type="text"
                       value={textInput}

@@ -52,7 +52,10 @@ function VoiceProfessorGate() {
   // Routes where the lesson itself uses TTS — suppress floating professor.
   const HIDE_ON = ["/aula-ia", "/notebook", "/lousa-imersiva"];
   if (HIDE_ON.some(p => location.startsWith(p))) return null;
-  return <VoiceProfessor />;
+  // Wouter path is relative to `base`; marketing home is `/` only (not sign-in/up).
+  const path = (location || "/").replace(/\/+$/, "") || "/";
+  const isLanding = path === "/";
+  return <VoiceProfessor variant={isLanding ? "landing" : "app"} />;
 }
 import { useStudyAuth } from "@/hooks/useStudyAuth";
 

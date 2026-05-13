@@ -20,6 +20,7 @@ export function clearStudyaiAccountLocalCaches(): void {
       /^studyai_.+_(topics|xp_awarded)$/.test(k)
     );
   };
+  const keys: string[] = [];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
     if (k && shouldRemoveLs(k)) keys.push(k);

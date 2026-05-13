@@ -56,7 +56,6 @@ const APP_SHOWCASE = [
     path: "/app",
     icon: Mic,
     img: LANDING_IMG.professorTiagao,
-    imgContain: true,
   },
   {
     title: "Simulado ENEM",
@@ -71,7 +70,6 @@ const APP_SHOWCASE = [
     path: "/notebook",
     icon: Layers,
     img: LANDING_IMG.notebookRag,
-    imgContain: true,
   },
   {
     title: "Tutor IA (GPT e Claude)",
@@ -494,8 +492,8 @@ export default function Landing() {
                 onClick={() => navigate(item.path)}
                 className="snap-start shrink-0 w-[min(100%,220px)] md:w-auto text-left rounded-2xl overflow-hidden ring-1 ring-white/10 bg-gray-900/80 hover:ring-violet-400/60 hover:bg-gray-900 transition-all group"
               >
-                <div className="relative h-24 overflow-hidden">
-                  <img src={item.img} alt="" width={400} height={240} loading="lazy" decoding="async" className="h-full w-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" />
+                <div className="relative min-h-[180px] sm:min-h-[200px] w-full overflow-hidden bg-slate-900">
+                  <img src={item.img} alt={`${item.title}: ${item.desc}`} width={400} height={240} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover object-center opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" />
                   <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/20 to-transparent" />
                   <span className="absolute top-2 left-2 rounded-md bg-violet-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white">
                     {item.accent}
@@ -678,19 +676,15 @@ export default function Landing() {
                   variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i * 0.06}
                   className="group flex flex-col rounded-3xl border border-gray-200 bg-gray-50/40 hover:bg-white hover:border-violet-200 hover:shadow-lg hover:shadow-violet-500/5 transition-all overflow-hidden"
                 >
-                  <div className="relative aspect-[16/10] overflow-hidden bg-gray-200">
+                  <div className="relative w-full min-h-[220px] sm:min-h-[260px] lg:min-h-[280px] overflow-hidden bg-slate-100">
                     <img
                       src={item.img}
-                      alt=""
+                      alt={`Captura ou ilustração do módulo ${item.title} no StudyAI`}
                       width={1000}
                       height={625}
                       loading="lazy"
                       decoding="async"
-                      className={`h-full w-full transition-transform duration-500 group-hover:scale-[1.03] ${
-                        "imgContain" in item && item.imgContain
-                          ? "object-contain bg-slate-900/5 p-2 sm:p-4"
-                          : "object-cover"
-                      }`}
+                      className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-gray-900/55 via-transparent to-transparent" />
                     <div className="absolute bottom-3 left-3 right-3 flex items-center gap-2 text-white">
@@ -757,7 +751,7 @@ export default function Landing() {
               custom={0.06}
               className="flex flex-col overflow-hidden rounded-3xl border border-violet-100 bg-white shadow-xl shadow-violet-500/10 ring-1 ring-violet-500/10"
             >
-              <div className="relative aspect-[16/10] w-full bg-slate-900/5 p-3 sm:p-5">
+              <div className="relative w-full min-h-[240px] sm:min-h-[280px] overflow-hidden bg-slate-100">
                 <img
                   src={LANDING_IMG.professorTiagao}
                   alt="Professor Tiagão no app StudyAI"
@@ -765,7 +759,7 @@ export default function Landing() {
                   height={750}
                   loading="lazy"
                   decoding="async"
-                  className="mx-auto max-h-[200px] sm:max-h-[260px] w-full object-contain"
+                  className="absolute inset-0 h-full w-full object-cover object-center"
                 />
               </div>
               <div className="flex flex-1 flex-col p-5 sm:p-6 border-t border-violet-100/80">
@@ -791,7 +785,7 @@ export default function Landing() {
               custom={0.12}
               className="flex flex-col overflow-hidden rounded-3xl border border-violet-100 bg-white shadow-xl shadow-violet-500/10 ring-1 ring-violet-500/10"
             >
-              <div className="relative aspect-[16/10] w-full bg-slate-900/5 p-3 sm:p-5">
+              <div className="relative w-full min-h-[240px] sm:min-h-[280px] overflow-hidden bg-slate-100">
                 <img
                   src={LANDING_IMG.notebookRag}
                   alt="Notebook RAG no StudyAI"
@@ -799,7 +793,7 @@ export default function Landing() {
                   height={750}
                   loading="lazy"
                   decoding="async"
-                  className="mx-auto max-h-[200px] sm:max-h-[260px] w-full object-contain"
+                  className="absolute inset-0 h-full w-full object-cover object-center"
                 />
               </div>
               <div className="flex flex-1 flex-col p-5 sm:p-6 border-t border-violet-100/80">
@@ -1025,7 +1019,7 @@ export default function Landing() {
             <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
               transition={{ delay: 0.3, duration: 0.6 }} className="space-y-5">
               <div className="rounded-3xl border border-violet-100 bg-white p-2 sm:p-3 shadow-xl shadow-violet-500/10 ring-1 ring-violet-500/10 overflow-hidden">
-                <div className="relative aspect-[16/10] w-full rounded-2xl bg-slate-900/5 overflow-hidden">
+                <div className="relative w-full min-h-[240px] sm:min-h-[280px] rounded-2xl overflow-hidden bg-slate-100">
                   <img
                     src={LANDING_IMG.professorTiagao}
                     alt="Interface da Professor Tiagão no StudyAI"
@@ -1033,7 +1027,7 @@ export default function Landing() {
                     height={750}
                     loading="lazy"
                     decoding="async"
-                    className="mx-auto max-h-[220px] sm:max-h-[280px] w-full object-contain"
+                    className="absolute inset-0 h-full w-full object-cover object-center"
                   />
                 </div>
                 <div className="px-2 pt-3 pb-1 flex flex-wrap items-center justify-between gap-2">

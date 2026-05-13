@@ -24,6 +24,13 @@ import {
   buildPersonalizationBlock,
   autoDetectAndSave,
 } from "../lib/tiagao-memory";
+import { pickTeachingMethod, temperatureFor } from "../lib/teaching-method";
+import {
+  composeTiagaoSystemPrompt,
+  detectUserOverride,
+  parseTiagaoMeta,
+} from "../lib/build-tiagao-prompt";
+import { loadMethodState, saveMethodState } from "../lib/tiagao-method-state";
 
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
@@ -68,6 +75,8 @@ interface UserProfile {
   email?: string | null;
   xp?: number | null;
   studentGrade?: string | null;
+  studentGoal?: string | null;
+  studentConcursoAlvo?: string | null;
   // teacher extras
   numTurmas?: number;
   numStudents?: number;
@@ -84,6 +93,8 @@ async function fetchUserProfile(userId: string): Promise<UserProfile> {
     email: usersTable.email,
     xp: usersTable.xp,
     studentGrade: usersTable.studentGrade,
+    studentGoal: usersTable.studentGoal,
+    studentConcursoAlvo: usersTable.studentConcursoAlvo,
   }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
 
   if (!userRow) return { role: "student", name: "Usuário" };
@@ -110,7 +121,13 @@ async function fetchUserProfile(userId: string): Promise<UserProfile> {
     } catch { /* não crítico */ }
   }
 
-  return { role, name, email: userRow.email, xp: userRow.xp, studentGrade: userRow.studentGrade, numTurmas, numStudents, turmaNames };
+  return {
+    role, name, email: userRow.email, xp: userRow.xp,
+    studentGrade: userRow.studentGrade,
+    studentGoal: userRow.studentGoal,
+    studentConcursoAlvo: userRow.studentConcursoAlvo,
+    numTurmas, numStudents, turmaNames,
+  };
 }
 
 // ─── Persona do Tiagão por perfil ─────────────────────────────────────────────
@@ -696,9 +713,10 @@ router.post("/voice-chat", async (req, res) => {
     let bnccContext = "";
     let personalizationBlock = "";
 
+    let methodState: Awaited<ReturnType<typeof loadMethodState>> | null = null;
     if (req.userId) {
       try {
-        const [fetchedDb, fetchedProfile, fetchedMemory, fetchedKb, fetchedBncc, fetchedSessionCtx] = await Promise.all([
+        const [fetchedDb, fetchedProfile, fetchedMemory, fetchedKb, fetchedBncc, fetchedSessionCtx, fetchedMethodState] = await Promise.all([
           fetchStudentData(req.userId!).catch(() => null),
           fetchUserProfile(req.userId!).catch(() => ({ role: "student" as UserRole, name: "Usuário" })),
           getFullMemoryContext(req.userId!, "Usuário").catch(() => ""),
@@ -711,12 +729,14 @@ router.post("/voice-chat", async (req, res) => {
             } catch { return ""; }
           })(),
           loadSessionContext(req.userId!).catch(() => null),
+          loadMethodState(req.userId!).catch(() => null),
         ]);
         dbData = fetchedDb;
         userProfile = fetchedProfile;
         memoryContext = fetchedMemory;
         kbContext = fetchedKb;
         bnccContext = fetchedBncc;
+        methodState = fetchedMethodState;
         if (fetchedSessionCtx) {
           personalizationBlock = buildPersonalizationBlock(fetchedSessionCtx, fetchedProfile.name);
           // Se o perfil tem apelido, usa como nome preferido
@@ -793,7 +813,7 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.
 - Se falta info crítica, pergunte de forma natural: "Rapidão — sobre qual assunto?" (1 pergunta só).
 
 6. Após chamar tools, dê resposta curta (máx 2-3 frases) confirmando o que fez, em PT-BR coloquial. Nunca markdown. Sempre termine com pergunta ou convite.`;
-    const systemContent =
+    const baseSystemContent =
       BASE_PROMPT
       + TIAGAO_MAPA_STUDYAI
       + TIAGAO_CORE_TOOL_POLICY
@@ -806,6 +826,38 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.
       + memoryContext
       + agentInstructions;
 
+    // ── PR-2 — método pedagógico automático + percepção de sentimento ────────
+    // Aluno NÃO escolhe método. Tiagão decide invisivelmente.
+    // Aplicado apenas para alunos; demais perfis mantêm o prompt original.
+    const isStudent = userProfile.role === "student";
+    const userOverride = isStudent ? detectUserOverride(lastUserMsg) : null;
+    const pickedMethod = isStudent
+      ? pickTeachingMethod({
+          objetivo: userProfile.studentGoal ?? null,
+          concursoAlvo: userProfile.studentConcursoAlvo ?? null,
+          serie: userProfile.studentGrade ?? null,
+          lastMethod: methodState?.lastMethod ?? null,
+          lastSentiment: methodState?.lastSentiment ?? null,
+          frustrationStreak: methodState?.frustrationStreak ?? 0,
+        }).method
+      : "conectivo";
+    const persistedOverride = methodState?.methodOverride ?? null;
+    const turnOverride = userOverride?.method ?? persistedOverride ?? null;
+    const composed = isStudent
+      ? composeTiagaoSystemPrompt({
+          basePrompt: baseSystemContent,
+          method: pickedMethod,
+          sentiment: methodState?.lastSentiment ?? "neutro",
+          userOverride: turnOverride
+            ? { method: turnOverride, tone: userOverride?.tone }
+            : userOverride?.tone
+              ? { tone: userOverride.tone }
+              : null,
+        })
+      : { prompt: baseSystemContent, method: pickedMethod, sentimentTone: "" };
+    const systemContent = composed.prompt;
+    const finalMethod = composed.method;
+
     // ── Primeira chamada com tools ───────────────────────────────────────────
     const apiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       { role: "system", content: systemContent },
@@ -816,13 +868,16 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.
     // gpt-4o era usado pra professores mas é 3-4x mais lento sem ganho real em voz
     const chatModel = CHAT_MODEL; // gpt-4o-mini sempre no voice-chat
 
+    // Voz precisa de naturalidade: piso de 0.7 mesmo em modos analítico/pragmático.
+    const voiceTemperature = isStudent ? Math.max(0.7, temperatureFor(finalMethod)) : 0.85;
+
     const firstCall = await gptChat.chat.completions.create({
       model: chatModel,
       messages: apiMessages,
       tools: TIAGAO_TOOLS,
       tool_choice: "auto",
       max_tokens: 380,   // era 450 — voz precisa de 2-3 frases curtas (~250-300 tokens)
-      temperature: 0.85,
+      temperature: voiceTemperature,
     });
 
     if (!firstCall?.choices?.length) {
@@ -830,6 +885,26 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.
     }
     const firstMsg = firstCall.choices[0].message;
     const frontendActions: Record<string, any>[] = [];
+
+    // ── PR-2 — helpers para emitir tiagao_meta + persistir estado ─────────────
+    function buildTiagaoMeta(rawText: string) {
+      if (!isStudent) return undefined;
+      const parsed = parseTiagaoMeta(rawText || "");
+      const method = parsed.method ?? finalMethod;
+      return {
+        cleanText: parsed.cleanText,
+        meta: { method, sentiment: parsed.sentiment },
+      };
+    }
+    function persistMethodState(meta: { method: any; sentiment: any }) {
+      if (!isStudent || !req.userId) return;
+      saveMethodState({
+        userId: req.userId,
+        method: meta.method,
+        sentiment: meta.sentiment,
+        userOverrideMethod: userOverride?.method ?? null,
+      }).catch(() => {});
+    }
 
     // ── Executar tool calls ──────────────────────────────────────────────────
     if (firstMsg.tool_calls && firstMsg.tool_calls.length > 0) {
@@ -883,7 +958,10 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.
           const destName = destMap[dest] || dest.replace("/", "");
           quickReply = destName ? `Abrindo o ${destName} pra você agora!` : "Pronto, estou abrindo!";
         }
-        res.json({ text: quickReply, action: primaryAction, notifications });
+        // Sem texto do LLM neste path → meta fica com método auto e sentimento neutro
+        const metaFallback = isStudent ? { method: finalMethod, sentiment: "neutro" as const } : undefined;
+        if (metaFallback) persistMethodState(metaFallback);
+        res.json({ text: quickReply, action: primaryAction, notifications, tiagao_meta: metaFallback });
         return;
       }
 
@@ -892,10 +970,13 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.
         model: CHAT_MODEL,
         messages: [...apiMessages, ...toolResults],
         max_tokens: 200,
-        temperature: 0.85,
+        temperature: voiceTemperature,
       });
-      const text = finalCall.choices[0]?.message?.content?.trim() || "";
-      res.json({ text, action: primaryAction, notifications });
+      const rawFinal = finalCall.choices[0]?.message?.content?.trim() || "";
+      const builtFinal = buildTiagaoMeta(rawFinal);
+      const cleanFinal = builtFinal?.cleanText ?? rawFinal;
+      if (builtFinal) persistMethodState(builtFinal.meta);
+      res.json({ text: cleanFinal, action: primaryAction, notifications, tiagao_meta: builtFinal?.meta });
     } else {
       // Sem tool calls — resposta direta
       const raw = firstMsg.content?.trim() || "";
@@ -905,10 +986,14 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.
       // Com max_tokens:450 + tool_choice:auto, o modelo raramente promete sem agir.
       // Se ainda prometer (raro), o texto sai natural e o usuário pode pedir de novo — ok pra voz.
 
-      const actionMatch = raw.match(/<(ir|criar_plano):([^>]+)>/);
+      // PR-2: tira o bloco <<META>> antes de aplicar os regex de action.
+      const built = buildTiagaoMeta(raw);
+      const cleaned = built?.cleanText ?? raw;
+      const actionMatch = cleaned.match(/<(ir|criar_plano):([^>]+)>/);
       const legacyAction = actionMatch ? { type: actionMatch[1], param: actionMatch[2] } : null;
-      const text = raw.replace(/<(ir|criar_plano):[^>]+>/g, "").trim();
-      res.json({ text, action: legacyAction, notifications: [] });
+      const text = cleaned.replace(/<(ir|criar_plano):[^>]+>/g, "").trim();
+      if (built) persistMethodState(built.meta);
+      res.json({ text, action: legacyAction, notifications: [], tiagao_meta: built?.meta });
     }
 
     // ── Async memory update (fire-and-forget) ────────────────────────────────

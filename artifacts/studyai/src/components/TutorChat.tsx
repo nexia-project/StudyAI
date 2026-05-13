@@ -36,12 +36,22 @@ import {
   renderTextWithCitations,
 } from "@/components/CitationChip";
 
+/** PR-2 — meta interna devolvida pelo backend: método pedagógico aplicado +
+ * sentimento detectado. NÃO é exibida ao aluno, mas pode reagir avatar/UI. */
+export type TiagaoMethod = "analitico" | "pragmatico" | "conectivo";
+export type TiagaoSentiment = "frustrado" | "confuso" | "cansado" | "animado" | "neutro";
+export interface TiagaoMeta {
+  method: TiagaoMethod;
+  sentiment: TiagaoSentiment;
+}
+
 interface Message {
   role: "user" | "assistant";
   content: string;
   prova?: any;
   video?: { url: string; titulo?: string; formato?: string };
   fontes?: Citation[];
+  tiagao_meta?: TiagaoMeta;
 }
 
 interface ActionNotif {
@@ -191,9 +201,6 @@ function MessageBubble({ message }: { message: Message }) {
     );
   }
 
-  const fontes = message.fontes ?? [];
-  const hasFontes = !isUser && fontes.length > 0;
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 10, scale: 0.96 }}
@@ -206,27 +213,18 @@ function MessageBubble({ message }: { message: Message }) {
       )}>
         {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
       </div>
-      <div className={cn("max-w-[82%] flex flex-col gap-1.5", isUser ? "items-end" : "items-start")}>
-        <div className={cn(
-          "rounded-2xl px-4 py-3 text-sm leading-relaxed",
-          isUser
-            ? "bg-primary text-white rounded-br-sm"
-            : "bg-white border border-border text-foreground rounded-bl-sm shadow-sm",
-        )}>
-          {isUser ? (
-            message.content.split("\n").map((line, i, arr) => (
-              <span key={i}>
-                {line}
-                {i < arr.length - 1 && <br />}
-              </span>
-            ))
-          ) : (
-            <p className="whitespace-pre-wrap break-words">
-              {renderTextWithCitations(message.content, fontes)}
-            </p>
-          )}
-        </div>
-        {hasFontes && <CitationsSection citations={fontes} />}
+      <div className={cn(
+        "max-w-[82%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
+        isUser
+          ? "bg-primary text-white rounded-br-sm"
+          : "bg-white border border-border text-foreground rounded-bl-sm shadow-sm"
+      )}>
+        {message.content.split("\n").map((line, i) => (
+          <span key={i}>
+            {line}
+            {i < message.content.split("\n").length - 1 && <br />}
+          </span>
+        ))}
       </div>
     </motion.div>
   );
@@ -712,18 +710,6 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
         // Ignorado silenciosamente — payload sem efeito útil de UI/rota.
         break;
 
-      case "fontes_externas":
-        // Citações são anexadas à mensagem assistente em curso pela própria
-        // pipeline de streaming (vide sendMessage). Aqui só mostramos a notif.
-        if (Array.isArray(action.sources) && action.sources.length > 0) {
-          showNotif({
-            icon: <BookOpen className="w-5 h-5 flex-shrink-0" />,
-            text: `📚 ${action.sources.length} artigo${action.sources.length > 1 ? "s" : ""} citado${action.sources.length > 1 ? "s" : ""}`,
-            sub: action.query ? `Semantic Scholar · "${action.query}"` : "Semantic Scholar",
-          });
-        }
-        break;
-
       default:
         break;
     }
@@ -801,53 +787,32 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
               fullText += parsed.text;
               setMessages((prev) => {
                 const copy = [...prev];
-                const prevMsg = copy[copy.length - 1];
-                copy[copy.length - 1] = {
-                  ...prevMsg,
-                  role: "assistant",
-                  content: fullText,
-                };
+                const last = copy[copy.length - 1];
+                copy[copy.length - 1] = { ...last, role: "assistant", content: fullText };
                 return copy;
               });
               scrollToBottom();
             }
             if (parsed.action) {
-              // Anexa fontes externas à última mensagem do assistente ANTES de
-              // disparar o handler (que apenas mostra notificação).
-              if (
-                parsed.action.type === "fontes_externas" &&
-                Array.isArray(parsed.action.sources) &&
-                parsed.action.sources.length > 0
-              ) {
-                const newFontes: Citation[] = parsed.action.sources.map((s: any) => ({
-                  numero: Number(s.numero) || 0,
-                  titulo: String(s.titulo ?? "Sem título"),
-                  trecho: typeof s.snippet === "string" ? s.snippet : undefined,
-                  trechoCompleto: typeof s.abstract === "string" && s.abstract.length > 0
-                    ? s.abstract
-                    : typeof s.snippet === "string" ? s.snippet : undefined,
-                  provider: "semantic-scholar",
-                  autores: Array.isArray(s.autores) ? s.autores : [],
-                  ano: typeof s.ano === "number" ? s.ano : null,
-                  venue: typeof s.venue === "string" ? s.venue : null,
-                  url: typeof s.url === "string" ? s.url : undefined,
-                  doi: typeof s.doi === "string" ? s.doi : null,
-                  openAccessPdf: typeof s.openAccessPdf === "string" ? s.openAccessPdf : null,
-                  citationCount: typeof s.citationCount === "number" ? s.citationCount : null,
-                }));
-                setMessages(prev => {
-                  const copy = [...prev];
-                  const last = copy[copy.length - 1];
-                  copy[copy.length - 1] = {
-                    ...last,
-                    role: "assistant",
-                    content: last?.content ?? "",
-                    fontes: [...(last?.fontes ?? []), ...newFontes],
-                  };
-                  return copy;
-                });
-              }
               handleAction(parsed.action);
+            }
+            // PR-2 — meta interna (método + sentimento detectado). Não exibimos
+            // ao aluno, só anexamos à última mensagem do assistant para o
+            // avatar/UI reagir (e debug via React DevTools).
+            if (parsed.tiagao_meta && typeof parsed.tiagao_meta === "object") {
+              const meta = parsed.tiagao_meta as TiagaoMeta;
+              setMessages((prev) => {
+                const copy = [...prev];
+                const last = copy[copy.length - 1];
+                if (last && last.role === "assistant") {
+                  copy[copy.length - 1] = { ...last, tiagao_meta: meta };
+                }
+                return copy;
+              });
+              if (import.meta.env.DEV) {
+                // eslint-disable-next-line no-console
+                console.debug("[Tiagão] meta:", meta);
+              }
             }
           } catch {}
         }

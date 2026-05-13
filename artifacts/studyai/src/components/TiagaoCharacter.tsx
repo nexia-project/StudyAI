@@ -13,7 +13,17 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
 
 /* ─── Types ─────────────────────────────────────────── */
-export type CharacterState = "idle" | "listening" | "thinking" | "speaking" | "excited";
+export type CharacterState =
+  | "idle"
+  | "listening"
+  | "thinking"
+  | "speaking"
+  | "excited"
+  // PR-2 — estados ligados à percepção de sentimento e ao método pedagógico.
+  // São transitórios: overlay aplicado após uma resposta do Tiagão e volta a "idle".
+  | "caring"     // sentimento = frustrado / confuso → expressão empática
+  | "playful"    // sentimento = animado → tom brincalhão, energético
+  | "serious";   // método = analítico → expressão concentrada, sem perder calor
 
 interface Props {
   state?: CharacterState;
@@ -92,6 +102,40 @@ const STATE_CONFIG: Record<CharacterState, {
     label: "Animado!",
     labelColor: "#eab308",
   },
+  // PR-2 — overlays de sentimento / método
+  caring: {
+    floatY: [0, -4, 0],
+    floatDur: 3.6,
+    rotateDeg: [-1.5, 1.5, -1.5],
+    rotateDur: 4.0,
+    auraColor: "rgba(244,114,182,0.25)", // rosa empático
+    auraScale: [1, 1.1, 1],
+    auraDur: 3.0,
+    label: "Empático",
+    labelColor: "#ec4899",
+  },
+  playful: {
+    floatY: [0, -16, -2, -12, 0],
+    floatDur: 0.7,
+    rotateDeg: [-3, 3, -3],
+    rotateDur: 0.7,
+    auraColor: "rgba(34,197,94,0.3)", // verde brincalhão
+    auraScale: [1, 1.28, 1],
+    auraDur: 0.7,
+    label: "Brincalhão",
+    labelColor: "#22c55e",
+  },
+  serious: {
+    floatY: [0, -3, 0],
+    floatDur: 4.5,
+    rotateDeg: [-0.5, 0.5, -0.5],
+    rotateDur: 5.5,
+    auraColor: "rgba(99,102,241,0.18)", // índigo concentrado
+    auraScale: [1, 1.05, 1],
+    auraDur: 4.0,
+    label: "Concentrado",
+    labelColor: "#6366f1",
+  },
 };
 
 /* ─── Imagem por estado ───────────────────────────── */
@@ -101,6 +145,11 @@ const STATE_IMAGE: Record<CharacterState, string> = {
   thinking:  "/tiagao-thinking.png",
   speaking:  "/tiagao-pointing.png",
   excited:   "/tiagao-excited.png",
+  // PR-2 — sem assets dedicados ainda, reusamos imagens existentes que
+  // batem com a emoção dominante de cada overlay.
+  caring:    "/tiagao-character.png",
+  playful:   "/tiagao-excited.png",
+  serious:   "/tiagao-thinking.png",
 };
 
 /* ─── Partículas ──────────────────────────────────── */

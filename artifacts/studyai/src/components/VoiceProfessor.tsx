@@ -33,11 +33,6 @@ import { normalizeTiagaoLegacyPath } from "@/lib/tiagao-navigation";
 import { STUDYAI_ACCOUNT_CHANGED } from "@/lib/account-storage";
 import { useAudioCapture } from "@/hooks/useAudioCapture";
 import { useStudyAuth } from "@/hooks/useStudyAuth";
-import {
-  type Citation,
-  CitationsSection,
-  renderTextWithCitations,
-} from "@/components/CitationChip";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 const IDLE_TRIGGER_MS    = 10 * 60 * 1000;
@@ -343,7 +338,6 @@ interface HistoryMsg {
   role: "user" | "assistant";
   text: string;
   ts: number;
-  fontes?: Citation[];
 }
 
 // ─── Quick commands by context ────────────────────────────────────────────────
@@ -428,6 +422,13 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
   const [open, setOpen]           = useState(false);
   const [tab, setTab]             = useState<Tab>("conversa");
   const [phase, setPhase]         = useState<Phase>("idle");
+  // PR-2 — meta interna devolvida pelo backend (método pedagógico + sentimento
+  // detectado). Não exibimos texto pro aluno; usamos para mudar a expressão
+  // do avatar durante e logo após a fala.
+  const [tiagaoMeta, setTiagaoMeta] = useState<{
+    method: "analitico" | "pragmatico" | "conectivo";
+    sentiment: "frustrado" | "confuso" | "cansado" | "animado" | "neutro";
+  } | null>(null);
   const [muted, setMuted]         = useState(false);
   // Modo voz pura — DEFAULT ON (sem texto, só áudio). Usuário pode ativar texto pelo botão olho.
   const [voicePure, setVoicePure] = useState(() => {
@@ -815,43 +816,6 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
         text: `⏳ Limite diário de vídeos atingido (${action.used ?? "—"}/${action.limit ?? "—"})`,
       });
       setTimeout(() => setActionNotif(null), 6000);
-    } else if (action.type === "fontes_externas") {
-      // RAG externo (Semantic Scholar): anexa fontes à última mensagem do
-      // assistente para que o histórico renderize [Fonte N] como chips.
-      const rawSources = Array.isArray(action.sources) ? action.sources : [];
-      if (rawSources.length > 0) {
-        const fontes: Citation[] = rawSources.map((s: any) => ({
-          numero: Number(s.numero) || 0,
-          titulo: String(s.titulo ?? "Sem título"),
-          trecho: typeof s.snippet === "string" ? s.snippet : undefined,
-          trechoCompleto: typeof s.abstract === "string" && s.abstract.length > 0
-            ? s.abstract
-            : typeof s.snippet === "string" ? s.snippet : undefined,
-          provider: "semantic-scholar",
-          autores: Array.isArray(s.autores) ? s.autores : [],
-          ano: typeof s.ano === "number" ? s.ano : null,
-          venue: typeof s.venue === "string" ? s.venue : null,
-          url: typeof s.url === "string" ? s.url : undefined,
-          doi: typeof s.doi === "string" ? s.doi : null,
-          openAccessPdf: typeof s.openAccessPdf === "string" ? s.openAccessPdf : null,
-          citationCount: typeof s.citationCount === "number" ? s.citationCount : null,
-        }));
-        setHistory(h => {
-          // Anexa à última mensagem do assistente
-          for (let i = h.length - 1; i >= 0; i--) {
-            if (h[i].role === "assistant") {
-              const copy = [...h];
-              copy[i] = { ...copy[i], fontes: [...(copy[i].fontes ?? []), ...fontes] };
-              return copy;
-            }
-          }
-          return h;
-        });
-        setActionNotif({
-          text: `📚 ${fontes.length} artigo${fontes.length > 1 ? "s" : ""} citado${fontes.length > 1 ? "s" : ""}`,
-        });
-        setTimeout(() => setActionNotif(null), 6000);
-      }
     }
     for (const notif of notifications) {
       if (notif.type === "flashcards_criados") {
@@ -895,11 +859,18 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
             : "";
         throw new Error(`HTTP ${res.status}${debugSnippet}`);
       }
-      const { text, action, notifications } = await res.json();
+      const { text, action, notifications, tiagao_meta } = await res.json();
       historyRef.current.push({ role: "assistant", content: text || "" });
       lastProactiveRef.current = Date.now();
       setReaction(null);
       setHistory(h => [...h, { role: "assistant", text: text || "...", ts: Date.now() }]);
+      if (tiagao_meta && typeof tiagao_meta === "object") {
+        setTiagaoMeta(tiagao_meta);
+        if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.debug("[Tiagão] meta (voice):", tiagao_meta);
+        }
+      }
       handleAgentActions(action, notifications ?? []);
       if (!voicePure) {
         // Auto-switch to conversa tab if not there
@@ -1330,6 +1301,25 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
           { cmd: "\"Pare / continue\"",          desc: "Controla a fala" },
         ];
 
+  // ── PR-2 — auto-clear da meta após 8s (volta o avatar ao estado neutro) ──
+  useEffect(() => {
+    if (!tiagaoMeta) return;
+    const id = setTimeout(() => setTiagaoMeta(null), 8000);
+    return () => clearTimeout(id);
+  }, [tiagaoMeta]);
+
+  // ── PR-2 — overlay de estado do avatar com base no método + sentimento ────
+  // Aplicado SOMENTE quando o avatar está em "idle" ou "speaking" (não
+  // queremos quebrar feedback de listening/thinking).
+  const displayState: CharacterState = (() => {
+    if (!tiagaoMeta) return phase as CharacterState;
+    if (phase === "listening" || phase === "thinking") return phase as CharacterState;
+    if (tiagaoMeta.sentiment === "frustrado" || tiagaoMeta.sentiment === "confuso") return "caring";
+    if (tiagaoMeta.sentiment === "animado") return "playful";
+    if (tiagaoMeta.method === "analitico") return "serious";
+    return phase as CharacterState;
+  })();
+
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <>
@@ -1350,7 +1340,7 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
             <X className="w-5 h-5 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]" />
           </div>
         ) : (
-          <TiagaoCharacter state={phase as CharacterState} size={88} showLabel={false} className="md:scale-110" />
+          <TiagaoCharacter state={displayState} size={88} showLabel={false} className="md:scale-110" />
         )}
       </motion.button>
 
@@ -1378,7 +1368,7 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
             className="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-6 sm:w-80 z-40 rounded-2xl bg-white/80 backdrop-blur-2xl shadow-xl shadow-violet-300/30 border border-violet-200/55 p-3"
           >
             <div className="flex items-center gap-3">
-              <TiagaoCharacter state={phase as CharacterState} size={48} showLabel={false} />
+              <TiagaoCharacter state={displayState} size={48} showLabel={false} />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-black tracking-tight bg-gradient-to-r from-violet-600 via-fuchsia-500 to-purple-700 bg-clip-text text-transparent mb-1">Professor Tiagão</p>
                 {phase === "thinking"
@@ -1469,7 +1459,7 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
               <div className="pointer-events-none absolute -bottom-10 right-0 h-20 w-20 rounded-full bg-violet-400/25 blur-2xl" />
 
               <div className="relative flex-shrink-0">
-                <TiagaoCharacter state={phase as CharacterState} size={44} showLabel={false} />
+                <TiagaoCharacter state={displayState} size={44} showLabel={false} />
                 <span
                   className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#1f0b3d] shadow-[0_0_8px_rgba(255,255,255,0.5)]"
                   style={{ background: phaseColor[phase] }}
@@ -1563,7 +1553,7 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
                       "pensando..." line here. */}
                   {(voicePure || history.length === 0) && (
                     <div className="flex flex-col items-center px-4 py-5 gap-3 flex-shrink-0">
-                      <TiagaoCharacter state={phase as CharacterState} size={focusMode ? 120 : 90} showLabel={true} />
+                      <TiagaoCharacter state={displayState} size={focusMode ? 120 : 90} showLabel={true} />
                       {!voicePure && history.length === 0 && (
                         <p className="text-xs text-violet-500/80 text-center font-medium">Fale ou escreva para começar</p>
                       )}
@@ -1573,38 +1563,27 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
                   {/* Full conversation history — glass bubbles, violet/fuchsia */}
                   {!voicePure && history.length > 0 && (
                     <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5 [scrollbar-width:thin] [scrollbar-color:rgba(139,92,246,0.4)_transparent]">
-                      {history.map((msg, i) => {
-                        const fontes = msg.fontes ?? [];
-                        const hasFontes = msg.role === "assistant" && fontes.length > 0;
-                        return (
-                          <div key={i} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                            {msg.role === "assistant" && (
-                              <div className="flex-shrink-0 mt-0.5">
-                                <TiagaoCharacter
-                                  state={i === history.length - 1 && phase !== "idle" ? phase as CharacterState : "idle"}
-                                  size={28} showLabel={false} />
-                              </div>
-                            )}
-                            <div className={`max-w-[80%] flex flex-col gap-1 ${msg.role === "user" ? "items-end" : "items-start"}`}>
-                              <div className={`px-3 py-2.5 rounded-2xl text-xs leading-relaxed shadow-sm ${
-                                msg.role === "user"
-                                  ? "bg-gradient-to-br from-violet-600 to-purple-700 text-white rounded-tr-sm shadow-violet-300/40"
-                                  : "bg-white/75 backdrop-blur-md ring-1 ring-violet-200/55 text-slate-700 rounded-tl-sm shadow-violet-200/30"
-                              }`}>
-                                <p className="whitespace-pre-wrap break-words">
-                                  {msg.role === "assistant"
-                                    ? renderTextWithCitations(msg.text, fontes)
-                                    : msg.text}
-                                </p>
-                                <p className={`text-[9px] mt-1 ${msg.role === "user" ? "text-violet-100/85" : "text-violet-400/70"}`}>
-                                  {new Date(msg.ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                                </p>
-                              </div>
-                              {hasFontes && <CitationsSection citations={fontes} />}
+                      {history.map((msg, i) => (
+                        <div key={i} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                          {msg.role === "assistant" && (
+                            <div className="flex-shrink-0 mt-0.5">
+                              <TiagaoCharacter
+                                state={i === history.length - 1 && phase !== "idle" ? displayState : "idle"}
+                                size={28} showLabel={false} />
                             </div>
+                          )}
+                          <div className={`max-w-[80%] px-3 py-2.5 rounded-2xl text-xs leading-relaxed shadow-sm ${
+                            msg.role === "user"
+                              ? "bg-gradient-to-br from-violet-600 to-purple-700 text-white rounded-tr-sm shadow-violet-300/40"
+                              : "bg-white/75 backdrop-blur-md ring-1 ring-violet-200/55 text-slate-700 rounded-tl-sm shadow-violet-200/30"
+                          }`}>
+                            <p className="whitespace-pre-wrap">{msg.text}</p>
+                            <p className={`text-[9px] mt-1 ${msg.role === "user" ? "text-violet-100/85" : "text-violet-400/70"}`}>
+                              {new Date(msg.ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                            </p>
                           </div>
-                        );
-                      })}
+                        </div>
+                      ))}
 
                       {/* Single typing indicator at the bottom of history */}
                       {phase === "thinking" && (

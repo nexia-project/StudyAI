@@ -21,6 +21,13 @@ import {
   fetchStudentPerformance,
   buildStudentContextBlock,
 } from "../lib/studentContext";
+import { pickTeachingMethod, temperatureFor } from "../lib/teaching-method";
+import {
+  composeTiagaoSystemPrompt,
+  createMetaStreamFilter,
+  detectUserOverride,
+} from "../lib/build-tiagao-prompt";
+import { loadMethodState, saveMethodState } from "../lib/tiagao-method-state";
 
 type UserRole = "student" | "teacher" | "institution_admin" | "government" | "admin" | "researcher";
 
@@ -29,6 +36,8 @@ interface UserProfile {
   name: string;
   xp?: number | null;
   studentGrade?: string | null;
+  studentGoal?: string | null;
+  studentConcursoAlvo?: string | null;
   numTurmas?: number;
   numStudents?: number;
   turmaNames?: string[];
@@ -51,6 +60,7 @@ async function fetchUserProfile(userId: string): Promise<UserProfile> {
     const [userRow] = await db.select({
       role: usersTable.role, firstName: usersTable.firstName, lastName: usersTable.lastName,
       studentName: usersTable.studentName, xp: usersTable.xp, studentGrade: usersTable.studentGrade,
+      studentGoal: usersTable.studentGoal, studentConcursoAlvo: usersTable.studentConcursoAlvo,
     }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
 
     if (!userRow) return { role: "student", name: "Usuário" };
@@ -72,7 +82,12 @@ async function fetchUserProfile(userId: string): Promise<UserProfile> {
         numStudents = new Set(members.map(m => m.studentId)).size;
       }
     }
-    return { role, name, xp: userRow.xp, studentGrade: userRow.studentGrade, numTurmas, numStudents, turmaNames };
+    return {
+      role, name,
+      xp: userRow.xp, studentGrade: userRow.studentGrade,
+      studentGoal: userRow.studentGoal, studentConcursoAlvo: userRow.studentConcursoAlvo,
+      numTurmas, numStudents, turmaNames,
+    };
   } catch {
     return { role: "student", name: "Usuário" };
   }
@@ -295,8 +310,10 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
     res.flushHeaders();
 
     // ── Fetch user context in parallel ────────────────────────────────────────
-    const [userProfile, kbContext, memCtx, perfData] = await Promise.all([
-      req.userId ? fetchUserProfile(req.userId) : Promise.resolve({ role: "student" as UserRole, name: contexto?.aluno || "Aluno" }),
+    const [userProfile, kbContext, memCtx, perfData, methodState] = await Promise.all([
+      req.userId
+        ? fetchUserProfile(req.userId)
+        : Promise.resolve<UserProfile>({ role: "student", name: contexto?.aluno || "Aluno" }),
       getFullKbContext(lastUserMsg, contexto?.materia, 5),
       req.userId
         ? getFullMemoryContext(req.userId, contexto?.aluno || "Aluno")
@@ -304,18 +321,56 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
       req.userId
         ? fetchStudentPerformance(req.userId).catch(() => null)
         : Promise.resolve(null),
+      req.userId ? loadMethodState(req.userId) : Promise.resolve(null),
     ]);
 
     const isAdvanced = isAdvancedMatcher.includes(userProfile.role);
     const perfCtx = perfData ? buildStudentContextBlock(perfData) : "";
 
-    const systemPrompt = buildUniversalSystemPrompt(userProfile, contexto ?? {})
+    const baseSystemPrompt = buildUniversalSystemPrompt(userProfile, contexto ?? {})
       + (memCtx ? `\n\n${memCtx}` : "")
       + (perfCtx ? `\n\n${perfCtx}` : "")
       + (kbContext ? `\n\n${kbContext}` : "");
 
+    // ── PR-2 — método pedagógico automático + percepção de sentimento ────────
+    // Aluno NUNCA escolhe método. Pickagem invisível com base em perfil + estado.
+    // Aplicado APENAS para alunos. Professor/admin/government mantém o tom original.
+    const isStudent = userProfile.role === "student";
+    const userOverride = isStudent ? detectUserOverride(lastUserMsg) : null;
+    const pickedMethod = isStudent
+      ? pickTeachingMethod({
+          objetivo: userProfile.studentGoal ?? null,
+          concursoAlvo: userProfile.studentConcursoAlvo ?? null,
+          serie: userProfile.studentGrade ?? null,
+          lastMethod: methodState?.lastMethod ?? null,
+          lastSentiment: methodState?.lastSentiment ?? null,
+          frustrationStreak: methodState?.frustrationStreak ?? 0,
+        }).method
+      : "conectivo";
+    // Override persistido (válido por 3 turnos) tem precedência sobre auto-pickagem,
+    // mas NOVO override do turno atual ainda sobrescreve.
+    const persistedOverride = methodState?.methodOverride ?? null;
+    const turnOverride = userOverride?.method ?? persistedOverride ?? null;
+    const composed = isStudent
+      ? composeTiagaoSystemPrompt({
+          basePrompt: baseSystemPrompt,
+          method: pickedMethod,
+          sentiment: methodState?.lastSentiment ?? "neutro",
+          userOverride: turnOverride
+            ? { method: turnOverride, tone: userOverride?.tone }
+            : userOverride?.tone
+              ? { tone: userOverride.tone }
+              : null,
+        })
+      : { prompt: baseSystemPrompt, method: pickedMethod, sentimentTone: "" };
+    const systemPrompt = composed.prompt;
+    const finalMethod = composed.method;
+
     const chatModel = isAdvanced ? OR.pro : OR.fast;
     const maxCtxMessages = messages.slice(-16);
+
+    // Temperatura: alunos usam temperatureFor(metodo); demais perfis mantêm 0.4
+    const chatTemperature = isStudent ? temperatureFor(finalMethod) : 0.4;
 
     // ── Ferramentas pesadas: ACK pré-definido imediato ───────────────────────
     const HEAVY_TOOLS = new Set([
@@ -344,7 +399,7 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
       model: chatModel,
       stream: true,
       max_tokens: isAdvanced ? 1200 : 900,
-      temperature: 0.4,
+      temperature: chatTemperature,
       tools: TIAGAO_TOOLS,
       tool_choice: "auto",
       messages: [
@@ -359,6 +414,9 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
     let streamedText = "";
     let ackSent = false;
     let usageIn1 = 0; let usageOut1 = 0;
+    // PR-2: filtra <<META>>{...} do stream antes de entregar ao cliente.
+    // Só ativa para alunos (resto não tem meta no prompt).
+    const metaFilter = isStudent ? createMetaStreamFilter() : null;
 
     for await (const chunk of stream1) {
       const delta = chunk.choices[0]?.delta;
@@ -367,7 +425,10 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
       // Texto puro → encaminha imediatamente ao cliente
       if (delta?.content) {
         streamedText += delta.content;
-        res.write(`data: ${JSON.stringify({ text: delta.content })}\n\n`);
+        const visible = metaFilter ? metaFilter.push(delta.content) : delta.content;
+        if (visible) {
+          res.write(`data: ${JSON.stringify({ text: visible })}\n\n`);
+        }
       }
 
       // Tool call deltas → acumula
@@ -433,7 +494,7 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
           model: chatModel,
           stream: true,
           max_tokens: isAdvanced ? 700 : 500,
-          temperature: isAdvanced ? 0.4 : 0.75,
+          temperature: isAdvanced ? 0.4 : (isStudent ? chatTemperature : 0.75),
           messages: [
             { role: "system", content: systemPrompt },
             ...maxCtxMessages,
@@ -443,7 +504,11 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
         let usageIn2 = 0; let usageOut2 = 0;
         for await (const chunk of stream2) {
           const delta = chunk.choices[0]?.delta?.content;
-          if (delta) res.write(`data: ${JSON.stringify({ text: delta })}\n\n`);
+          if (delta) {
+            streamedText += delta;
+            const visible = metaFilter ? metaFilter.push(delta) : delta;
+            if (visible) res.write(`data: ${JSON.stringify({ text: visible })}\n\n`);
+          }
           if (chunk.usage) { usageIn2 = chunk.usage.prompt_tokens; usageOut2 = chunk.usage.completion_tokens; }
         }
         logAiUsage({ feature: "tiagao-chat-tool-followup", model: chatModel, tokensIn: usageIn2, tokensOut: usageOut2, userId: req.userId ?? null });
@@ -452,6 +517,27 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
 
     }
     // Texto puro já foi transmitido token a token acima — nada mais a fazer
+
+    // ── PR-2 — flush meta filter, emite tiagao_meta e persiste estado ────────
+    if (metaFilter) {
+      const flushed = metaFilter.flush();
+      if (flushed.tail) {
+        res.write(`data: ${JSON.stringify({ text: flushed.tail })}\n\n`);
+      }
+      const sentimentDetected = flushed.meta.sentiment;
+      const methodUsed = flushed.meta.method ?? finalMethod;
+      res.write(`data: ${JSON.stringify({
+        tiagao_meta: { method: methodUsed, sentiment: sentimentDetected },
+      })}\n\n`);
+      if (req.userId) {
+        saveMethodState({
+          userId: req.userId,
+          method: methodUsed,
+          sentiment: sentimentDetected,
+          userOverrideMethod: userOverride?.method ?? null,
+        }).catch(() => {});
+      }
+    }
 
     res.write("data: [DONE]\n\n");
     res.end();

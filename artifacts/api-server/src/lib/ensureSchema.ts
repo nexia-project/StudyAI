@@ -578,6 +578,21 @@ await db.execute(sql`
       CREATE INDEX IF NOT EXISTS idx_tiagao_sessions_user ON tiagao_sessions (user_id, started_at DESC)
     `);
 
+    // ── Estado do método pedagógico do Tiagão (PR-2) ──────────────────────────
+    // Guarda último método aplicado, último sentimento detectado, streak de
+    // frustração e override por comando explícito do utilizador (com TTL).
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS tiagao_method_state (
+        user_id              VARCHAR PRIMARY KEY,
+        last_method          VARCHAR(20),
+        last_sentiment       VARCHAR(20),
+        frustration_streak   INTEGER NOT NULL DEFAULT 0,
+        method_override      VARCHAR(20),
+        method_override_until TIMESTAMPTZ,
+        updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
     // ── Base de conhecimento auto-alimentada (FTS, sem pgvector) ─────────────
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS knowledge_base (

@@ -7,14 +7,19 @@ export const STUDYAI_ACCOUNT_CHANGED = "studyai:account-changed";
 export function clearStudyaiAccountLocalCaches(): void {
   if (typeof localStorage === "undefined") return;
 
-  const shouldRemoveLs = (k: string) =>
-    k.startsWith("tiagao_") ||
-    k === "studyai_current_context" ||
-    k === "studyai_restore_plan" ||
-    k === "studyai_profile" ||
-    /^studyai_.+_(topics|xp_awarded)$/.test(k);
+  // Never remove `studyai_tiagao_first_visit_done_*` — per-Clerk-user onboarding flag must
+  // survive account-cache clears so returning users do not get the long PDF/anexo speech again.
 
-  const keys: string[] = [];
+  const shouldRemoveLs = (k: string) => {
+    if (k.startsWith("studyai_tiagao_first_visit_done_")) return false;
+    return (
+      k.startsWith("tiagao_") ||
+      k === "studyai_current_context" ||
+      k === "studyai_restore_plan" ||
+      k === "studyai_profile" ||
+      /^studyai_.+_(topics|xp_awarded)$/.test(k)
+    );
+  };
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
     if (k && shouldRemoveLs(k)) keys.push(k);

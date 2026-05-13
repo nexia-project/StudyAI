@@ -143,6 +143,9 @@ async function resolveTiagaoOpeningText(params: {
   if (!greeting || greeting.length < 25) {
     greeting = longOnboardingFallbackPainel(nomePrimeiro);
   }
+  // Persist immediately when we commit to long onboarding so effect cleanup / panel close
+  // cannot skip localStorage (prevents repeating the PDF/anexo speech every session).
+  markTiagaoFirstVisitDone(params.clerkUserId);
   return { text: greeting, markFirstVisitDone: true };
 }
 
@@ -738,17 +741,17 @@ export function VoiceProfessor() {
   useEffect(() => {
     if (!open) return;
     if (greetedRef.current) return;
+    if (authLoading) return;
     if (isAuthenticated && !clerkUserId) return;
     unlockAudioSync();
     let cancelled = false;
     (async () => {
-      const { text: greeting, markFirstVisitDone } = await resolveTiagaoOpeningText({
+      const { text: greeting } = await resolveTiagaoOpeningText({
         origem: "painel",
         clerkUserId,
         isAuthenticated,
       });
       if (cancelled) return;
-      if (markFirstVisitDone) markTiagaoFirstVisitDone(clerkUserId);
       greetedRef.current = true;
       historyRef.current = [{ role: "assistant", content: greeting }];
       lastProactiveRef.current = Date.now();
@@ -756,7 +759,7 @@ export function VoiceProfessor() {
       setTimeout(() => { if (!cancelled) void speak(greeting); }, 120);
     })();
     return () => { cancelled = true; };
-  }, [open, speak, isAuthenticated, clerkUserId]);
+  }, [open, speak, isAuthenticated, clerkUserId, authLoading]);
 
   useEffect(() => {
     const lines = history.filter(m => m.role === "assistant").slice(-4).map(m => m.text.slice(0, 160));
@@ -839,7 +842,7 @@ export function VoiceProfessor() {
           return;
         }
 
-        const { text: greeting, markFirstVisitDone } = await resolveTiagaoOpeningText({
+        const { text: greeting } = await resolveTiagaoOpeningText({
           origem: "app_entry",
           clerkUserId,
           isAuthenticated: true,
@@ -849,8 +852,6 @@ export function VoiceProfessor() {
           try { sessionStorage.setItem(KEY, "1"); } catch { /* ignore */ }
           return;
         }
-
-        if (markFirstVisitDone) markTiagaoFirstVisitDone(clerkUserId);
 
         try { sessionStorage.setItem(KEY, "1"); } catch { /* ignore */ }
         greetedRef.current = true;

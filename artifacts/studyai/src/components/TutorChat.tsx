@@ -380,19 +380,36 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
         });
         break;
 
-      case "criar_plano_estudos":
+      case "criar_plano_estudos": {
+        const paramStr = typeof action.param === "string" ? action.param.trim() : "";
+        const tituloStr = typeof action.titulo === "string" ? action.titulo.trim() : "";
+        const topicoStr = typeof action.topico === "string" ? action.topico.trim() : "";
+        const topic = paramStr || tituloStr || topicoStr;
         if (action.html || action.formato === "html_completo") {
-          localStorage.setItem("tiagao_resumo", JSON.stringify({ html: action.html, topico: action.titulo, formato: "html_completo" }));
-          window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_resumo" } }));
-          setTimeout(() => navigate("/notebook"), 800);
+          try {
+            localStorage.setItem(
+              "tiagao_resumo",
+              JSON.stringify({
+                html: action.html,
+                topico: action.titulo ?? action.topico,
+                formato: "html_completo",
+              }),
+            );
+            window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_resumo" } }));
+          } catch { /* ignore quota / private mode */ }
         }
+        navigate("/app");
+        window.setTimeout(() => {
+          triggerProfessorAction("criar_plano", topic || "Plano de estudos personalizado (com o Tiagão)");
+        }, 650);
         showNotif({
           icon: <CalendarDays className="w-5 h-5 flex-shrink-0" />,
-          text: `📅 Plano de estudos criado!`,
-          sub: action.titulo ? `"${action.titulo}"` : undefined,
-          path: "/notebook",
+          text: `📅 Abrindo gerador de plano de estudos`,
+          sub: topic ? `"${topic}"` : undefined,
+          path: "/app",
         });
         break;
+      }
 
       case "criar_mapa_mental":
         if (action.mapa) {

@@ -521,12 +521,31 @@ export function VoiceProfessor() {
         window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_prova_criada" } }));
       }
     } else if (action.type === "criar_plano_estudos") {
+      const paramStr = typeof action.param === "string" ? action.param.trim() : "";
+      const tituloStr = typeof action.titulo === "string" ? action.titulo.trim() : "";
+      const topicoStr = typeof action.topico === "string" ? action.topico.trim() : "";
+      const topic = paramStr || tituloStr || topicoStr;
       if (action.html || action.formato === "html_completo") {
-        localStorage.setItem("tiagao_resumo", JSON.stringify({ html: action.html, topico: action.titulo, formato: "html_completo" }));
-        window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_resumo" } }));
-        setTimeout(() => navigate("/notebook"), 450);
+        try {
+          localStorage.setItem(
+            "tiagao_resumo",
+            JSON.stringify({
+              html: action.html,
+              topico: action.titulo ?? action.topico,
+              formato: "html_completo",
+            }),
+          );
+          window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_resumo" } }));
+        } catch { /* ignore quota / private mode */ }
       }
-      setActionNotif({ text: `📅 Plano "${action.titulo}" criado! Ver no Notebook.`, path: "/notebook" });
+      navigate("/app");
+      window.setTimeout(() => {
+        triggerProfessorAction("criar_plano", topic || "Plano de estudos personalizado (com o Tiagão)");
+      }, 400);
+      setActionNotif({
+        text: topic ? `📅 Abrindo gerador de plano — "${topic}"…` : `📅 Abrindo gerador de plano de estudos…`,
+        path: "/app",
+      });
       setTimeout(() => setActionNotif(null), 8000);
     } else if (action.type === "criar_mapa_mental") {
       if (action.mapa) {

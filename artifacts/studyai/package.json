@@ -44,6 +44,7 @@
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-query": "catalog:",
+    "@types/katex": "^0.16.8",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
@@ -75,8 +76,8 @@
     "zod": "catalog:"
   },
   "optionalDependencies": {
-    "@rollup/rollup-linux-x64-musl": "*",
-    "@rollup/rollup-linux-x64-gnu": "*"
+    "@rollup/rollup-linux-x64-gnu": "*",
+    "@rollup/rollup-linux-x64-musl": "*"
   },
   "dependencies": {
     "@clerk/localizations": "^4.5.3",
@@ -85,6 +86,7 @@
     "@types/canvas-confetti": "^1.9.0",
     "canvas-confetti": "^1.9.4",
     "jspdf": "^4.2.1",
+    "katex": "^0.16.45",
     "pptxgenjs": "^4.0.1",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1"

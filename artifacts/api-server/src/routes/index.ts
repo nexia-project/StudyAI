@@ -44,6 +44,10 @@ import boardRouter from "./board";
 import aiCacheChatRouter from "./ai-cache-chat";
 import fazedoresRouter from "./fazedores";
 import scholarRouter from "./scholar";
+import bnccCurriculumRouter from "./bncc-curriculum";
+import enemBankRouter from "./enem-bank";
+import ragMultiRouter from "./rag-multi";
+import mathRouter from "./math";
 
 const router: IRouter = Router();
 
@@ -92,5 +96,9 @@ router.use(comunicacaoRouter);
 router.use(aiCacheChatRouter);
 router.use(fazedoresRouter);
 router.use(scholarRouter);
+router.use(bnccCurriculumRouter);
+router.use(enemBankRouter);
+router.use(ragMultiRouter);
+router.use(mathRouter);
 
 export default router;

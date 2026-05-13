@@ -7,7 +7,9 @@
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "ingest:bncc": "tsx scripts/ingest-bncc.ts",
+    "ingest:enem": "tsx scripts/ingest-enem.ts"
   },
   "dependencies": {
     "@clerk/express": "^2.1.9",
@@ -17,6 +19,7 @@
     "@workspace/db": "workspace:*",
     "@workspace/integrations-openai-ai-server": "workspace:*",
     "adm-zip": "^0.5.17",
+    "algebrite": "^1.4.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2",
     "drizzle-orm": "catalog:",
@@ -25,6 +28,7 @@
     "helmet": "^8.1.0",
     "http-proxy-middleware": "^3.0.5",
     "mammoth": "^1.12.0",
+    "mathjs": "^15.2.0",
     "multer": "2.1.1",
     "nodemailer": "^8.0.4",
     "openai": "^6.32.0",
@@ -35,7 +39,8 @@
     "resend": "^6.10.0",
     "stripe": "20.0.0",
     "xlsx": "^0.18.5",
-    "youtube-transcript": "^1.3.0"
+    "youtube-transcript": "^1.3.0",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",

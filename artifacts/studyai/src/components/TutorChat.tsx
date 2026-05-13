@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { useUser } from "@clerk/react";
@@ -35,6 +35,63 @@ import {
   CitationsSection,
   renderTextWithCitations,
 } from "@/components/CitationChip";
+import { MathRender, MathSteps } from "@/components/MathRender";
+
+/**
+ * PR-7 — LaTeX rendering.
+ *
+ * Quebra um texto em segmentos preservando ordem:
+ *  • `$$…$$` ou `\[…\]` → bloco (KaTeX displayMode)
+ *  • `$…$` ou `\(…\)`   → inline
+ *  • resto              → texto puro com quebras de linha preservadas
+ *
+ * Block math primeiro na alternação (regex match left-to-right por alternativa)
+ * para que `$$…$$` não seja capturado pelo padrão inline.
+ */
+const MATH_DELIMITER_RE =
+  /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|\$([^\n$]+?)\$/g;
+
+function renderMessageContentWithMath(text: string): ReactNode[] {
+  if (!text) return [];
+  const nodes: ReactNode[] = [];
+  const re = new RegExp(MATH_DELIMITER_RE.source, "g");
+  let lastIdx = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > lastIdx) {
+      nodes.push(
+        <span key={`t-${key++}`} className="whitespace-pre-wrap">
+          {text.slice(lastIdx, match.index)}
+        </span>,
+      );
+    }
+    const blockA = match[1]; // $$...$$
+    const blockB = match[2]; // \[...\]
+    const inlineA = match[3]; // \(...\)
+    const inlineB = match[4]; // $...$
+    const block = blockA ?? blockB;
+    const inline = inlineA ?? inlineB;
+    if (block && block.trim().length > 0) {
+      nodes.push(
+        <div key={`mb-${key++}`} className="my-2 text-center overflow-x-auto">
+          <MathRender latex={block.trim()} displayMode />
+        </div>,
+      );
+    } else if (inline && inline.trim().length > 0) {
+      nodes.push(<MathRender key={`mi-${key++}`} latex={inline.trim()} />);
+    }
+    lastIdx = re.lastIndex;
+  }
+  if (lastIdx < text.length) {
+    nodes.push(
+      <span key={`t-${key++}`} className="whitespace-pre-wrap">
+        {text.slice(lastIdx)}
+      </span>,
+    );
+  }
+  return nodes;
+}
 
 /** PR-2 — meta interna devolvida pelo backend: método pedagógico aplicado +
  * sentimento detectado. NÃO é exibida ao aluno, mas pode reagir avatar/UI. */
@@ -45,6 +102,15 @@ export interface TiagaoMeta {
   sentiment: TiagaoSentiment;
 }
 
+/** PR-7 — payload do tool `resolver_calculo` anexado à última mensagem. */
+export interface MathResultPayload {
+  engine: "wolfram" | "free" | "none";
+  result: string;
+  steps: string[];
+  latex?: string;
+  problema?: string;
+}
+
 interface Message {
   role: "user" | "assistant";
   content: string;
@@ -52,6 +118,8 @@ interface Message {
   video?: { url: string; titulo?: string; formato?: string };
   fontes?: Citation[];
   tiagao_meta?: TiagaoMeta;
+  /** PR-7 — passos de resolução matemática vindos do tool `resolver_calculo`. */
+  mathResult?: MathResultPayload;
 }
 
 interface ActionNotif {
@@ -219,12 +287,48 @@ function MessageBubble({ message }: { message: Message }) {
           ? "bg-primary text-white rounded-br-sm"
           : "bg-white border border-border text-foreground rounded-bl-sm shadow-sm"
       )}>
-        {message.content.split("\n").map((line, i) => (
-          <span key={i}>
-            {line}
-            {i < message.content.split("\n").length - 1 && <br />}
-          </span>
-        ))}
+        {/* PR-7 — texto com suporte a LaTeX inline ($..$) e bloco ($$..$$).
+            Para mensagens do usuário, mantém renderização simples (sem LaTeX). */}
+        {isUser ? (
+          message.content.split("\n").map((line, i, arr) => (
+            <span key={i}>
+              {line}
+              {i < arr.length - 1 && <br />}
+            </span>
+          ))
+        ) : (
+          renderMessageContentWithMath(message.content)
+        )}
+        {/* PR-7 — passos verificáveis do resolver_calculo */}
+        {!isUser && message.mathResult && message.mathResult.steps?.length > 0 && (
+          <div
+            className="mt-3 pt-2 border-t border-gray-200/70 text-xs text-gray-600"
+            data-testid="message-math-steps"
+          >
+            <div className="flex items-center justify-between mb-1">
+              <span className="font-semibold text-gray-700">Passos da resolução</span>
+              <span className="text-[10px] uppercase tracking-wide text-gray-400">
+                {message.mathResult.engine === "wolfram"
+                  ? "Wolfram"
+                  : message.mathResult.engine === "free"
+                    ? "mathjs/algebrite"
+                    : "—"}
+              </span>
+            </div>
+            <MathSteps
+              steps={message.mathResult.steps}
+              className="list-decimal pl-5 space-y-0.5"
+            />
+            {message.mathResult.result && (
+              <p className="mt-2">
+                <span className="font-semibold text-gray-700">Resultado:</span>{" "}
+                {message.mathResult.latex
+                  ? <MathRender latex={message.mathResult.latex} />
+                  : <span>{message.mathResult.result}</span>}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </motion.div>
   );
@@ -481,6 +585,42 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
           path: "/app",
         });
         break;
+
+      // PR-7 — resultado do resolver_calculo: anexa passos verificáveis à última
+      // mensagem do assistente para renderização via MathSteps no bubble.
+      case "math_result": {
+        const payload: MathResultPayload = {
+          engine: action.engine ?? "none",
+          result: typeof action.result === "string" ? action.result : "",
+          steps: Array.isArray(action.steps) ? action.steps.filter((s: unknown) => typeof s === "string") : [],
+          latex: typeof action.latex === "string" ? action.latex : undefined,
+          problema: typeof action.problema === "string" ? action.problema : undefined,
+        };
+        setMessages((prev) => {
+          const copy = [...prev];
+          for (let i = copy.length - 1; i >= 0; i--) {
+            if (copy[i].role === "assistant") {
+              copy[i] = { ...copy[i], mathResult: payload };
+              break;
+            }
+          }
+          return copy;
+        });
+        break;
+      }
+
+      // PR-4 — fontes RAG multi-fonte (notif sutil; bubble fica com texto + [Fonte N]).
+      case "fontes_externas": {
+        const n = Array.isArray(action.sources) ? action.sources.length : 0;
+        if (n > 0) {
+          showNotif({
+            icon: <BookOpen className="w-5 h-5 flex-shrink-0" />,
+            text: `📚 ${n} fonte${n > 1 ? "s" : ""} verificada${n > 1 ? "s" : ""}`,
+            sub: typeof action.query === "string" ? `"${action.query}"` : undefined,
+          });
+        }
+        break;
+      }
 
       case "criar_slides":
         if (action.html || action.formato === "html_completo") {

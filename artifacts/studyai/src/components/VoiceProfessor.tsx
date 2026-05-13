@@ -12,9 +12,10 @@
  *  • Melhor tratamento de permissões
  */
 
-import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TiagaoCharacter, type CharacterState } from "@/components/TiagaoCharacter";
+import { MathRender, MathSteps } from "@/components/MathRender";
 import {
   Mic, MicOff, X, Square, VolumeX, Volume2, ThumbsUp, ThumbsDown,
   Timer, Maximize2, Minimize2, Send, Paperclip, Loader2, MessageSquare,
@@ -334,10 +335,70 @@ async function playTTS(text: string, onStart?: () => void, signal?: AbortSignal)
 type Phase = "idle" | "listening" | "thinking" | "speaking";
 type Tab = "conversa" | "comandos" | "config";
 
+/** PR-7 — payload do tool `resolver_calculo` anexado a uma mensagem do assistente. */
+export interface MathResultPayload {
+  engine: "wolfram" | "free" | "none";
+  result: string;
+  steps: string[];
+  latex?: string;
+  problema?: string;
+}
+
 interface HistoryMsg {
   role: "user" | "assistant";
   text: string;
   ts: number;
+  /** PR-7 — passos verificáveis vindos do tool `resolver_calculo`. */
+  mathResult?: MathResultPayload;
+}
+
+/**
+ * PR-7 — LaTeX rendering.
+ *
+ * Quebra um texto em segmentos preservando ordem:
+ *  • `$$…$$` ou `\[…\]` → bloco (KaTeX displayMode)
+ *  • `$…$` ou `\(…\)`   → inline
+ *  • resto              → texto puro com quebras de linha preservadas
+ */
+const VOICE_MATH_DELIMITER_RE =
+  /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|\$([^\n$]+?)\$/g;
+
+function renderVoiceContentWithMath(text: string): ReactNode[] {
+  if (!text) return [];
+  const nodes: ReactNode[] = [];
+  const re = new RegExp(VOICE_MATH_DELIMITER_RE.source, "g");
+  let lastIdx = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > lastIdx) {
+      nodes.push(
+        <span key={`t-${key++}`} className="whitespace-pre-wrap">
+          {text.slice(lastIdx, match.index)}
+        </span>,
+      );
+    }
+    const block = match[1] ?? match[2];
+    const inline = match[3] ?? match[4];
+    if (block && block.trim().length > 0) {
+      nodes.push(
+        <div key={`mb-${key++}`} className="my-1 text-center overflow-x-auto">
+          <MathRender latex={block.trim()} displayMode />
+        </div>,
+      );
+    } else if (inline && inline.trim().length > 0) {
+      nodes.push(<MathRender key={`mi-${key++}`} latex={inline.trim()} />);
+    }
+    lastIdx = re.lastIndex;
+  }
+  if (lastIdx < text.length) {
+    nodes.push(
+      <span key={`t-${key++}`} className="whitespace-pre-wrap">
+        {text.slice(lastIdx)}
+      </span>,
+    );
+  }
+  return nodes;
 }
 
 // ─── Quick commands by context ────────────────────────────────────────────────
@@ -789,6 +850,37 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
     } else if (action.type === "whatsapp_enviado") {
       setActionNotif({ text: "💬 WhatsApp enviado!" });
       setTimeout(() => setActionNotif(null), 5000);
+    } else if (action.type === "math_result") {
+      // PR-7 — anexa passos verificáveis à última mensagem do assistente.
+      const payload: MathResultPayload = {
+        engine: action.engine ?? "none",
+        result: typeof action.result === "string" ? action.result : "",
+        steps: Array.isArray(action.steps)
+          ? action.steps.filter((s: unknown) => typeof s === "string")
+          : [],
+        latex: typeof action.latex === "string" ? action.latex : undefined,
+        problema: typeof action.problema === "string" ? action.problema : undefined,
+      };
+      setHistory((h) => {
+        const copy = [...h];
+        for (let i = copy.length - 1; i >= 0; i--) {
+          if (copy[i].role === "assistant") {
+            copy[i] = { ...copy[i], mathResult: payload };
+            break;
+          }
+        }
+        return copy;
+      });
+    } else if (action.type === "fontes_externas") {
+      // PR-4 — apenas notifica; o texto da mensagem já vem com [Fonte N].
+      const n = Array.isArray(action.sources) ? action.sources.length : 0;
+      if (n > 0) {
+        setActionNotif({
+          text: `📚 ${n} fonte${n > 1 ? "s" : ""} verificada${n > 1 ? "s" : ""}`,
+          path: undefined,
+        });
+        setTimeout(() => setActionNotif(null), 5000);
+      }
     } else if (action.type === "info") {
       // Ignorado silenciosamente — payload sem efeito de UI/rota.
     } else if (action.type === "criar_video") {
@@ -1577,7 +1669,42 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
                               ? "bg-gradient-to-br from-violet-600 to-purple-700 text-white rounded-tr-sm shadow-violet-300/40"
                               : "bg-white/75 backdrop-blur-md ring-1 ring-violet-200/55 text-slate-700 rounded-tl-sm shadow-violet-200/30"
                           }`}>
-                            <p className="whitespace-pre-wrap">{msg.text}</p>
+                            {/* PR-7 — assistente renderiza LaTeX inline/bloco; usuário continua texto puro. */}
+                            {msg.role === "assistant" ? (
+                              <div>{renderVoiceContentWithMath(msg.text)}</div>
+                            ) : (
+                              <p className="whitespace-pre-wrap">{msg.text}</p>
+                            )}
+                            {/* PR-7 — passos verificáveis do resolver_calculo */}
+                            {msg.role === "assistant" && msg.mathResult && msg.mathResult.steps?.length > 0 && (
+                              <div
+                                className="mt-2 pt-2 border-t border-violet-200/60 text-[11px] text-violet-700/90"
+                                data-testid="voice-math-steps"
+                              >
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="font-semibold">Passos da resolução</span>
+                                  <span className="text-[9px] uppercase tracking-wide text-violet-400/70">
+                                    {msg.mathResult.engine === "wolfram"
+                                      ? "Wolfram"
+                                      : msg.mathResult.engine === "free"
+                                        ? "mathjs/algebrite"
+                                        : "—"}
+                                  </span>
+                                </div>
+                                <MathSteps
+                                  steps={msg.mathResult.steps}
+                                  className="list-decimal pl-4 space-y-0.5"
+                                />
+                                {msg.mathResult.result && (
+                                  <p className="mt-1.5">
+                                    <span className="font-semibold">Resultado:</span>{" "}
+                                    {msg.mathResult.latex
+                                      ? <MathRender latex={msg.mathResult.latex} />
+                                      : <span>{msg.mathResult.result}</span>}
+                                  </p>
+                                )}
+                              </div>
+                            )}
                             <p className={`text-[9px] mt-1 ${msg.role === "user" ? "text-violet-100/85" : "text-violet-400/70"}`}>
                               {new Date(msg.ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                             </p>

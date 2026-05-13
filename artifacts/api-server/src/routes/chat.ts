@@ -28,6 +28,15 @@ import {
   detectUserOverride,
 } from "../lib/build-tiagao-prompt";
 import { loadMethodState, saveMethodState } from "../lib/tiagao-method-state";
+import { isMathQuestion } from "../lib/math-detection";
+import { TIAGAO_LANDING_SYSTEM_PROMPT } from "../lib/tiagao-landing-prompt";
+
+/**
+ * Qwen Math (PR-7) — modelo especializado em exatas via OpenRouter.
+ * Override por env: `OPENROUTER_MODEL_QWEN_MATH`. Default: qwen/qwen-2.5-72b-instruct.
+ */
+const QWEN_MATH_MODEL =
+  process.env.OPENROUTER_MODEL_QWEN_MATH ?? "qwen/qwen-2.5-72b-instruct";
 
 type UserRole = "student" | "teacher" | "institution_admin" | "government" | "admin" | "researcher";
 
@@ -284,6 +293,7 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
     const {
       messages,
       contexto = {},
+      variant,
     }: {
       messages: { role: "user" | "assistant"; content: string }[];
       contexto?: {
@@ -291,6 +301,7 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
         diaAtual?: number; topicosAtual?: string[];
         topicosCompletos?: number; totalTopicos?: number;
       };
+      variant?: string;
     } = req.body;
 
     if (!messages) {
@@ -302,6 +313,14 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
     const openai = getOpenAI();
     const isAdvancedMatcher = ["teacher", "institution_admin", "government", "admin"];
 
+    // ── PR-5 — Landing mode detection ────────────────────────────────────────
+    // Tiagão em /landing é VENDEDOR/ORIENTADOR, não tutor. Sem tools, sem perfil,
+    // sem memória — só conversa consultiva. `checkFreeUsage` já bloqueia
+    // unauth nesta rota, então `isLanding` aqui costuma vir apenas via flag
+    // explícita `variant: "landing"` no body (defesa em profundidade).
+    const headerLanding = (req.headers["x-tiagao-context"] ?? "").toString().toLowerCase() === "landing";
+    const isLanding = variant === "landing" || headerLanding || !req.userId;
+
     // ── Setup SSE ─────────────────────────────────────────────────────────────
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
@@ -309,33 +328,44 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.flushHeaders();
 
-    // ── Fetch user context in parallel ────────────────────────────────────────
-    const [userProfile, kbContext, memCtx, perfData, methodState] = await Promise.all([
-      req.userId
-        ? fetchUserProfile(req.userId)
-        : Promise.resolve<UserProfile>({ role: "student", name: contexto?.aluno || "Aluno" }),
-      getFullKbContext(lastUserMsg, contexto?.materia, 5),
-      req.userId
-        ? getFullMemoryContext(req.userId, contexto?.aluno || "Aluno")
-        : Promise.resolve(""),
-      req.userId
-        ? fetchStudentPerformance(req.userId).catch(() => null)
-        : Promise.resolve(null),
-      req.userId ? loadMethodState(req.userId) : Promise.resolve(null),
-    ]);
+    // ── Fetch user context in parallel (apenas fora da landing) ──────────────
+    const [userProfile, kbContext, memCtx, perfData, methodState] = isLanding
+      ? [
+          { role: "student" as UserRole, name: contexto?.aluno || "Visitante" },
+          "",
+          "",
+          null,
+          null,
+        ] as const
+      : await Promise.all([
+          req.userId
+            ? fetchUserProfile(req.userId)
+            : Promise.resolve<UserProfile>({ role: "student", name: contexto?.aluno || "Aluno" }),
+          getFullKbContext(lastUserMsg, contexto?.materia, 5),
+          req.userId
+            ? getFullMemoryContext(req.userId, contexto?.aluno || "Aluno")
+            : Promise.resolve(""),
+          req.userId
+            ? fetchStudentPerformance(req.userId).catch(() => null)
+            : Promise.resolve(null),
+          req.userId ? loadMethodState(req.userId) : Promise.resolve(null),
+        ]);
 
-    const isAdvanced = isAdvancedMatcher.includes(userProfile.role);
-    const perfCtx = perfData ? buildStudentContextBlock(perfData) : "";
+    const isAdvanced = !isLanding && isAdvancedMatcher.includes(userProfile.role);
+    const perfCtx = !isLanding && perfData ? buildStudentContextBlock(perfData) : "";
 
-    const baseSystemPrompt = buildUniversalSystemPrompt(userProfile, contexto ?? {})
-      + (memCtx ? `\n\n${memCtx}` : "")
-      + (perfCtx ? `\n\n${perfCtx}` : "")
-      + (kbContext ? `\n\n${kbContext}` : "");
+    const baseSystemPrompt = isLanding
+      ? TIAGAO_LANDING_SYSTEM_PROMPT
+      : buildUniversalSystemPrompt(userProfile, contexto ?? {})
+        + (memCtx ? `\n\n${memCtx}` : "")
+        + (perfCtx ? `\n\n${perfCtx}` : "")
+        + (kbContext ? `\n\n${kbContext}` : "");
 
     // ── PR-2 — método pedagógico automático + percepção de sentimento ────────
     // Aluno NUNCA escolhe método. Pickagem invisível com base em perfil + estado.
-    // Aplicado APENAS para alunos. Professor/admin/government mantém o tom original.
-    const isStudent = userProfile.role === "student";
+    // Aplicado APENAS para alunos LOGADOS. Landing/professor/admin/government
+    // mantém o tom base.
+    const isStudent = !isLanding && userProfile.role === "student";
     const userOverride = isStudent ? detectUserOverride(lastUserMsg) : null;
     const pickedMethod = isStudent
       ? pickTeachingMethod({
@@ -366,11 +396,22 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
     const systemPrompt = composed.prompt;
     const finalMethod = composed.method;
 
-    const chatModel = isAdvanced ? OR.pro : OR.fast;
+    // ── PR-7 — roteamento Qwen Math quando a pergunta for de exatas ──────────
+    // Pula em landing (sem geração de conteúdo) e em modo advanced (já tem GPT-4o).
+    const mathQuery = !isLanding && isMathQuestion(lastUserMsg);
+    const baseModel = isAdvanced ? OR.pro : OR.fast;
+    const chatModel = mathQuery && !isAdvanced ? QWEN_MATH_MODEL : baseModel;
     const maxCtxMessages = messages.slice(-16);
 
     // Temperatura: alunos usam temperatureFor(metodo); demais perfis mantêm 0.4
-    const chatTemperature = isStudent ? temperatureFor(finalMethod) : 0.4;
+    // Math mode aceita temp baixa para precisão. Landing fica 0.55 (consultivo).
+    const chatTemperature = isLanding
+      ? 0.55
+      : mathQuery
+        ? 0.2
+        : isStudent
+          ? temperatureFor(finalMethod)
+          : 0.4;
 
     // ── Ferramentas pesadas: ACK pré-definido imediato ───────────────────────
     const HEAVY_TOOLS = new Set([
@@ -395,13 +436,15 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
     // ── 1ª chamada: STREAMING desde o primeiro token ──────────────────────────
     // Texto comum chega ao usuário em <300ms.
     // Tool calls são acumuladas em paralelo e executadas após o stream terminar.
+    // PR-5 landing: zero tools — Tiagão na landing só conversa, não executa.
     const stream1 = await openai.chat.completions.create({
       model: chatModel,
       stream: true,
       max_tokens: isAdvanced ? 1200 : 900,
       temperature: chatTemperature,
-      tools: TIAGAO_TOOLS,
-      tool_choice: "auto",
+      ...(isLanding
+        ? {}
+        : { tools: TIAGAO_TOOLS, tool_choice: "auto" as const }),
       messages: [
         { role: "system", content: systemPrompt },
         ...maxCtxMessages,
@@ -453,7 +496,10 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
         }
       }
     }
-    logAiUsage({ feature: "tiagao-chat", model: chatModel, tokensIn: usageIn1, tokensOut: usageOut1, userId: req.userId ?? null });
+    logAiUsage({
+      feature: isLanding ? "tiagao-chat-landing" : mathQuery ? "tiagao-chat-math" : "tiagao-chat",
+      model: chatModel, tokensIn: usageIn1, tokensOut: usageOut1, userId: req.userId ?? null,
+    });
 
     const toolCalls = Object.values(toolCallsMap);
     const frontendActions: Record<string, any>[] = [];
@@ -543,7 +589,8 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
     res.end();
 
     // ── Async memory update (fire-and-forget, never blocks the response) ──────
-    if (req.userId && messages?.length >= 2) {
+    // Skip on landing — visitante anônimo não tem perfil para evoluir.
+    if (!isLanding && req.userId && messages?.length >= 2) {
       updateProfileAfterSession(req.userId, userProfile.name, messages, "chat").catch(() => {});
     }
 

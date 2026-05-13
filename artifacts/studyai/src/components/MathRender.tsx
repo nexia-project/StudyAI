@@ -1,0 +1,132 @@
+/**
+ * MathRender — Renderização de fórmulas matemáticas via KaTeX (PR-7)
+ *
+ * Componentes para a UI de Matemática / Exatas. Renderiza LaTeX inline ou em
+ * bloco (display mode) com saída sanitizada do KaTeX. CSS do KaTeX é
+ * importado no topo — o Vite injeta no bundle automaticamente.
+ *
+ *   <MathRender latex="\\int_0^1 x^2 \\,dx" displayMode />
+ *   <MathSteps steps={["Passo 1: x = 2", "Passo 2: $y = x^2 = 4$"]} />
+ *
+ * Tolerante a erros: se o KaTeX falhar, mostra a string crua em <code>.
+ */
+
+import "katex/dist/katex.min.css";
+import katex from "katex";
+import { useMemo } from "react";
+
+export interface MathRenderProps {
+  latex: string;
+  displayMode?: boolean;
+  className?: string;
+}
+
+/** Renderiza uma string LaTeX como HTML via KaTeX. */
+export function MathRender({ latex, displayMode = false, className }: MathRenderProps) {
+  const html = useMemo(() => {
+    try {
+      return katex.renderToString(latex, {
+        displayMode,
+        throwOnError: false,
+        output: "html",
+        strict: "ignore",
+      });
+    } catch (err) {
+      console.warn("[MathRender] KaTeX falhou:", err);
+      return "";
+    }
+  }, [latex, displayMode]);
+
+  if (!html) {
+    return (
+      <code className={className} data-testid="math-render-fallback">
+        {latex}
+      </code>
+    );
+  }
+
+  return (
+    <span
+      className={className}
+      data-testid="math-render"
+      // KaTeX produz HTML sanitizado — uso de dangerouslySetInnerHTML é seguro.
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
+export interface MathStepsProps {
+  steps: string[];
+  className?: string;
+}
+
+// Divide uma string em segmentos { type: 'text' | 'math', value: string }
+// usando os delimitadores LaTeX inline `$...$`. Aceita escape `\$`.
+function splitInlineLatex(s: string): Array<{ type: "text" | "math"; value: string }> {
+  const out: Array<{ type: "text" | "math"; value: string }> = [];
+  let i = 0;
+  let buf = "";
+  while (i < s.length) {
+    const ch = s[i];
+    if (ch === "\\" && s[i + 1] === "$") {
+      buf += "$";
+      i += 2;
+      continue;
+    }
+    if (ch === "$") {
+      // Procura o próximo `$` não escapado
+      let j = i + 1;
+      let math = "";
+      while (j < s.length) {
+        const ch2 = s[j];
+        if (ch2 === "\\" && s[j + 1] === "$") {
+          math += "$";
+          j += 2;
+          continue;
+        }
+        if (ch2 === "$") break;
+        math += ch2;
+        j += 1;
+      }
+      if (j < s.length && math.trim().length > 0) {
+        if (buf) out.push({ type: "text", value: buf });
+        out.push({ type: "math", value: math });
+        buf = "";
+        i = j + 1;
+        continue;
+      }
+    }
+    buf += ch;
+    i += 1;
+  }
+  if (buf) out.push({ type: "text", value: buf });
+  return out;
+}
+
+/**
+ * Renderiza uma lista numerada de passos. Trechos delimitados por `$...$`
+ * são renderizados como LaTeX inline; o resto é texto normal.
+ */
+export function MathSteps({ steps, className }: MathStepsProps) {
+  if (!Array.isArray(steps) || steps.length === 0) {
+    return <div className={className} data-testid="math-steps-empty" />;
+  }
+  return (
+    <ol className={className} data-testid="math-steps">
+      {steps.map((step, idx) => {
+        const parts = splitInlineLatex(step ?? "");
+        return (
+          <li key={idx} className="leading-relaxed">
+            {parts.map((p, j) =>
+              p.type === "math"
+                ? <MathRender key={j} latex={p.value} />
+                : <span key={j}>{p.value}</span>,
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+export default MathRender;

@@ -581,6 +581,73 @@ export const TIAGAO_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     },
   },
 
+  // ── RAG Multi-fonte + Exatas + BNCC + ENEM (consolidação PR-3/PR-4/PR-7) ─
+  {
+    type: "function",
+    function: {
+      name: "resolver_calculo",
+      description: "Resolve um problema matemático ou de exatas (álgebra, derivadas, integrais, equações, simplificações, trigonometria). Use SEMPRE que o aluno apresentar uma conta, fórmula, equação, ou pedir 'calcule', 'resolva', 'simplifique', 'derive', 'integre'. Devolve resultado + passos verificáveis.",
+      parameters: {
+        type: "object",
+        properties: {
+          problema: { type: "string", description: "Expressão ou enunciado matemático em texto puro." },
+        },
+        required: ["problema"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "pesquisar_fontes_multi",
+      description: "Busca em múltiplas fontes verificáveis ao mesmo tempo (Semantic Scholar, SciELO, Wikipedia PT, Wikidata, IBGE, arXiv, Crossref). Use sempre que precisar ancorar uma resposta em fatos verificáveis em qualquer tema. Se o aluno perguntar dados oficiais brasileiros (IBGE, censo, PIB), preferir essa tool. Se for artigo acadêmico em PT, usar SciELO automaticamente.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Termo de busca em PT-BR ou EN." },
+          providers: {
+            type: "array",
+            items: { type: "string", enum: ["semantic-scholar", "scielo", "wikipedia", "wikidata", "ibge", "arxiv", "crossref"] },
+            description: "Opcional. Se omitido, são escolhidos automaticamente.",
+          },
+          totalLimit: { type: "number", minimum: 1, maximum: 20 },
+        },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "alinhar_com_bncc",
+      description: "Alinha um tópico de estudo com as competências oficiais da BNCC (Base Nacional Comum Curricular). Use quando o aluno está montando plano de estudos ou quer entender o que precisa saber por série/área. Devolve códigos oficiais EM13XXX###.",
+      parameters: {
+        type: "object",
+        properties: {
+          topico: { type: "string", description: "Tópico de estudo. Ex.: 'funções quadráticas', 'revolução industrial'." },
+          area: { type: "string", enum: ["LGG", "MAT", "CNT", "CHS"], description: "Opcional. Filtra por área." },
+        },
+        required: ["topico"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "buscar_questoes_enem",
+      description: "Busca questões reais do ENEM por tema, área ou ano. Use para gerar mini-simulados, exemplificar dificuldade, ou treinar o aluno em questões oficiais com gabarito comentado.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Tema de busca (ex.: 'cinética química', 'figuras de linguagem')." },
+          area: { type: "string", enum: ["LC", "MT", "CN", "CH", "R"], description: "Opcional. LC=Linguagens, MT=Matemática, CN=Natureza, CH=Humanas, R=Redação." },
+          ano: { type: "number", description: "Opcional. Ano da prova (2009-atual)." },
+          limit: { type: "number", minimum: 1, maximum: 10 },
+        },
+      },
+    },
+  },
+
   // ⚠️ DESATIVADO TEMPORARIAMENTE — plano MiniMax atual não suporta Hailuo-02 e
   // tem RPM muito baixo. Reativar após upgrade do plano OU migração pra outro
   // provider (Replicate/fal.ai). Código inteiro preservado abaixo no executor.
@@ -1634,6 +1701,135 @@ Retorne APENAS este JSON:
           })),
         },
       };
+    }
+
+    // ── Exatas (PR-7) ─────────────────────────────────────────────────────────
+    case "resolver_calculo": {
+      try {
+        const { solveMath } = await import("./math-engine");
+        const problema = String(args.problema ?? "").trim();
+        if (!problema) {
+          return { result: "Sem expressão matemática. Diga qual problema quer resolver." };
+        }
+        const r = await solveMath(problema);
+        const payload = { engine: r.engine, result: r.result, steps: r.steps, latex: r.latex };
+        const resumo = r.engine === "none"
+          ? `Não consegui resolver "${problema}" automaticamente. Resolva manualmente passo a passo e explique ao aluno.`
+          : `Resultado: ${r.result}${r.latex ? ` (LaTeX: ${r.latex})` : ""}. Passos: ${r.steps.join(" | ")}`;
+        return {
+          result: `${resumo}\n\n[mathResult JSON]: ${JSON.stringify(payload)}`,
+          action: { type: "math_result", engine: r.engine, result: r.result, steps: r.steps, latex: r.latex, problema },
+        };
+      } catch (err) {
+        console.error("[tool:resolver_calculo]", err);
+        return { result: "Erro ao resolver o problema matemático." };
+      }
+    }
+
+    // ── RAG Multi-fonte (PR-4) ────────────────────────────────────────────────
+    case "pesquisar_fontes_multi": {
+      try {
+        const { searchExternalRag, pickProvidersForQuery } = await import("./external-rag/aggregate");
+        const query = String(args.query ?? "").trim();
+        if (query.length < 2) {
+          return { result: "Consulta vazia. Diga sobre o que pesquisar." };
+        }
+        const providers = Array.isArray(args.providers) && args.providers.length > 0
+          ? (args.providers as any[]).filter((p) => typeof p === "string")
+          : pickProvidersForQuery(query);
+        const totalLimit = typeof args.totalLimit === "number" ? args.totalLimit : 8;
+        const sources = await searchExternalRag(query, providers as any, { totalLimit });
+        if (sources.length === 0) {
+          return {
+            result: `Não encontrei fontes confiáveis para "${query}" em [${providers.join(", ")}]. Diga ao aluno que não encontrou fontes e ofereça outra base ou outra formulação.`,
+            action: { type: "fontes_externas", providers, query, sources: [] },
+          };
+        }
+        const formatted = sources.map((s, i) => {
+          const autor = s.authors && s.authors[0]
+            ? `${s.authors[0]}${(s.authors?.length ?? 0) > 1 ? " et al." : ""}`
+            : "Autor desconhecido";
+          const ano = s.year ?? "s/d";
+          return `[Fonte ${i + 1} — ${autor} (${ano}) — ${s.provider}]: ${s.title}. ${s.snippet}`;
+        }).join("\n\n");
+        return {
+          result: `Encontrei ${sources.length} fonte${sources.length > 1 ? "s" : ""} sobre "${query}" em [${providers.join(", ")}]. Use APENAS estas fontes e cite com [Fonte N]:\n\n${formatted}`,
+          action: {
+            type: "fontes_externas",
+            providers,
+            query,
+            sources: sources.map((s, i) => ({
+              numero: i + 1,
+              id: s.id,
+              provider: s.provider,
+              titulo: s.title,
+              autores: s.authors ?? [],
+              ano: s.year ?? null,
+              venue: s.venue ?? null,
+              url: s.url,
+              doi: s.doi ?? null,
+              snippet: s.snippet,
+            })),
+          },
+        };
+      } catch (err) {
+        console.error("[tool:pesquisar_fontes_multi]", err);
+        return { result: "Erro ao pesquisar fontes externas." };
+      }
+    }
+
+    // ── BNCC (PR-3) ───────────────────────────────────────────────────────────
+    case "alinhar_com_bncc": {
+      try {
+        const { findBnccCompetencias } = await import("./bncc/search");
+        const topico = String(args.topico ?? "").trim();
+        if (!topico) {
+          return { result: "Tópico vazio. Diga qual tópico alinhar com a BNCC." };
+        }
+        const competencias = findBnccCompetencias(
+          topico,
+          typeof args.area === "string" ? args.area : undefined,
+        ).slice(0, 8);
+        if (competencias.length === 0) {
+          return { result: `Não encontrei competências BNCC alinhadas a "${topico}". Sugira ao aluno reformular o tópico.` };
+        }
+        const formatted = competencias
+          .map((c) => `${c.codigo} (${c.area}): ${c.descricao}`)
+          .join("\n");
+        return {
+          result: `Competências BNCC alinhadas a "${topico}":\n${formatted}`,
+          action: { type: "bncc_alinhamento", topico, competencias },
+        };
+      } catch (err) {
+        console.error("[tool:alinhar_com_bncc]", err);
+        return { result: "Erro ao consultar a BNCC." };
+      }
+    }
+
+    // ── Banco ENEM (PR-3) ─────────────────────────────────────────────────────
+    case "buscar_questoes_enem": {
+      try {
+        const { searchEnem } = await import("./enem/bank");
+        const questoes = searchEnem({
+          query: typeof args.query === "string" ? args.query : undefined,
+          area: typeof args.area === "string" ? (args.area as any) : undefined,
+          ano: typeof args.ano === "number" ? args.ano : undefined,
+          limit: typeof args.limit === "number" ? args.limit : 5,
+        });
+        if (questoes.length === 0) {
+          return { result: "Nenhuma questão ENEM encontrada com esses filtros. Tente outra área, ano ou tema." };
+        }
+        const formatted = questoes.map((q, i) =>
+          `${i + 1}. [${q.area} ${q.ano}] ${q.tema} — ${q.disciplina}: ${q.enunciado.slice(0, 220)}${q.enunciado.length > 220 ? "…" : ""}`,
+        ).join("\n");
+        return {
+          result: `Encontrei ${questoes.length} questão${questoes.length > 1 ? "ões" : ""} ENEM:\n${formatted}`,
+          action: { type: "enem_questoes", questoes },
+        };
+      } catch (err) {
+        console.error("[tool:buscar_questoes_enem]", err);
+        return { result: "Erro ao buscar questões ENEM." };
+      }
     }
 
     default:

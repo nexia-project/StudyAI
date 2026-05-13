@@ -31,6 +31,15 @@ import {
   parseTiagaoMeta,
 } from "../lib/build-tiagao-prompt";
 import { loadMethodState, saveMethodState } from "../lib/tiagao-method-state";
+import { isMathQuestion } from "../lib/math-detection";
+import { TIAGAO_LANDING_SYSTEM_PROMPT } from "../lib/tiagao-landing-prompt";
+
+/**
+ * Qwen Math (PR-7) — modelo especializado em exatas via OpenRouter.
+ * Override por env: `OPENROUTER_MODEL_QWEN_MATH`. Default: qwen/qwen-2.5-72b-instruct.
+ */
+const QWEN_MATH_MODEL =
+  process.env.OPENROUTER_MODEL_QWEN_MATH ?? "qwen/qwen-2.5-72b-instruct";
 
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
@@ -669,15 +678,23 @@ const TIAGAO_CREATIVITY_BLOCK = `
 // ─── Voice Chat — Tiagão Agente com Memória + Function Calling ─────────────────
 router.post("/voice-chat", async (req, res) => {
   try {
-    const { messages, context } = req.body as {
+    const { messages, context, variant } = req.body as {
       messages: Array<{ role: string; content: string }>;
       context?: FrontendContext;
+      variant?: string;
     };
 
     if (!messages || !Array.isArray(messages)) {
       res.status(400).json({ erro: "messages é obrigatório" });
       return;
     }
+
+    // ── PR-5 — Landing mode detection ────────────────────────────────────────
+    // VoiceProfessor já envia `X-Tiagao-Context: landing` quando variant=landing
+    // no frontend. Também aceitamos `variant: "landing"` no body. Por fim,
+    // fallback para ausência de auth (visitante anônimo).
+    const headerLanding = (req.headers["x-tiagao-context"] ?? "").toString().toLowerCase() === "landing";
+    const isLanding = variant === "landing" || headerLanding || !req.userId;
 
     // ── OTIMIZAÇÃO VOICE: histórico curto (voz não precisa de 20 msgs) ────────
     // O tamanho por mensagem é 1000 chars (voz é curto). EXCEÇÃO: a ÚLTIMA mensagem
@@ -714,7 +731,8 @@ router.post("/voice-chat", async (req, res) => {
     let personalizationBlock = "";
 
     let methodState: Awaited<ReturnType<typeof loadMethodState>> | null = null;
-    if (req.userId) {
+    // ── PR-5 — em landing pula TUDO: sem perfil, sem KB, sem BNCC, sem memória.
+    if (!isLanding && req.userId) {
       try {
         const [fetchedDb, fetchedProfile, fetchedMemory, fetchedKb, fetchedBncc, fetchedSessionCtx, fetchedMethodState] = await Promise.all([
           fetchStudentData(req.userId!).catch(() => null),
@@ -745,8 +763,8 @@ router.post("/voice-chat", async (req, res) => {
           }
         }
       } catch { /* não crítico */ }
-    } else {
-      // sem auth: só KB e BNCC
+    } else if (!isLanding) {
+      // sem auth (mas NÃO landing): só KB e BNCC
       [kbContext, bnccContext] = await Promise.all([
         searchKnowledgeBase(lastUserMsg, 3).catch(() => ""),
         (async () => {
@@ -758,14 +776,16 @@ router.post("/voice-chat", async (req, res) => {
         })(),
       ]);
     }
+    // Em landing: kbContext, bnccContext, memoryContext, personalizationBlock,
+    // dbData ficam vazios/null — Tiagão só conversa.
 
-    // Auto-detect info pessoal na mensagem do usuário (fire-and-forget)
-    if (req.userId && lastUserMsg.length > 10) {
+    // Auto-detect info pessoal na mensagem do usuário (fire-and-forget) — só logados.
+    if (!isLanding && req.userId && lastUserMsg.length > 10) {
       autoDetectAndSave(req.userId, lastUserMsg).catch(() => {});
     }
 
-    const rolePersona = buildRolePersona(userProfile);
-    const studentCtx = userProfile.role === "student" ? buildRichContext(context, dbData) : "";
+    const rolePersona = isLanding ? "" : buildRolePersona(userProfile);
+    const studentCtx = !isLanding && userProfile.role === "student" ? buildRichContext(context, dbData) : "";
     const agentInstructions = `
 
 INSTRUÇÕES DE AGENTE — LEIA ANTES DE QUALQUER RESPOSTA:
@@ -813,23 +833,26 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.
 - Se falta info crítica, pergunte de forma natural: "Rapidão — sobre qual assunto?" (1 pergunta só).
 
 6. Após chamar tools, dê resposta curta (máx 2-3 frases) confirmando o que fez, em PT-BR coloquial. Nunca markdown. Sempre termine com pergunta ou convite.`;
-    const baseSystemContent =
-      BASE_PROMPT
-      + TIAGAO_MAPA_STUDYAI
-      + TIAGAO_CORE_TOOL_POLICY
-      + TIAGAO_CREATIVITY_BLOCK
-      + personalizationBlock
-      + rolePersona
-      + studentCtx
-      + kbContext
-      + bnccContext
-      + memoryContext
-      + agentInstructions;
+    // PR-5: na landing, Tiagão é vendedor/orientador — sem persona de tutor,
+    // sem ferramentas, sem dados do aluno. Usa prompt enxuto, dedicado.
+    const baseSystemContent = isLanding
+      ? TIAGAO_LANDING_SYSTEM_PROMPT
+      : BASE_PROMPT
+        + TIAGAO_MAPA_STUDYAI
+        + TIAGAO_CORE_TOOL_POLICY
+        + TIAGAO_CREATIVITY_BLOCK
+        + personalizationBlock
+        + rolePersona
+        + studentCtx
+        + kbContext
+        + bnccContext
+        + memoryContext
+        + agentInstructions;
 
     // ── PR-2 — método pedagógico automático + percepção de sentimento ────────
     // Aluno NÃO escolhe método. Tiagão decide invisivelmente.
-    // Aplicado apenas para alunos; demais perfis mantêm o prompt original.
-    const isStudent = userProfile.role === "student";
+    // Aplicado apenas para alunos LOGADOS. Landing e demais perfis pulam.
+    const isStudent = !isLanding && userProfile.role === "student";
     const userOverride = isStudent ? detectUserOverride(lastUserMsg) : null;
     const pickedMethod = isStudent
       ? pickTeachingMethod({
@@ -866,16 +889,28 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.
 
     // ── OTIMIZAÇÃO VOICE: gpt-4o-mini pra TODOS (voz é conversa, não geração) ─
     // gpt-4o era usado pra professores mas é 3-4x mais lento sem ganho real em voz
-    const chatModel = CHAT_MODEL; // gpt-4o-mini sempre no voice-chat
+    // PR-7: roteamento Qwen Math quando a pergunta for de exatas (apenas
+    // logados; landing nunca roteia para math porque não responde matemática).
+    const mathQuery = !isLanding && isMathQuestion(lastUserMsg);
+    const chatModel = mathQuery ? QWEN_MATH_MODEL : CHAT_MODEL;
 
     // Voz precisa de naturalidade: piso de 0.7 mesmo em modos analítico/pragmático.
-    const voiceTemperature = isStudent ? Math.max(0.7, temperatureFor(finalMethod)) : 0.85;
+    // Math: temp baixa para precisão. Landing: 0.7 — tom consultivo/vendedor.
+    const voiceTemperature = isLanding
+      ? 0.7
+      : mathQuery
+        ? 0.25
+        : isStudent
+          ? Math.max(0.7, temperatureFor(finalMethod))
+          : 0.85;
 
+    // PR-5 landing: zero tools. Tiagão na landing só conversa.
     const firstCall = await gptChat.chat.completions.create({
       model: chatModel,
       messages: apiMessages,
-      tools: TIAGAO_TOOLS,
-      tool_choice: "auto",
+      ...(isLanding
+        ? {}
+        : { tools: TIAGAO_TOOLS, tool_choice: "auto" as const }),
       max_tokens: 380,   // era 450 — voz precisa de 2-3 frases curtas (~250-300 tokens)
       temperature: voiceTemperature,
     });

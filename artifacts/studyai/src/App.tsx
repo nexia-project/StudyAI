@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Landing from "@/pages/Landing";
 import Home from "@/pages/Home";
+import LayoutPreview from "@/pages/LayoutPreview";
 import HistoryPage from "@/pages/History";
 import MeusConteudosPage from "@/pages/MeusConteudos";
 import RankingPage from "@/pages/Ranking";
@@ -272,6 +273,7 @@ function Router() {
         <Route path="/sign-in/*?" component={SignInPage} />
         <Route path="/sign-up/*?" component={SignUpPage} />
         <Route path="/app" component={Home} />
+        <Route path="/app/preview-layout" component={LayoutPreview} />
         <Route path="/app/pricing" component={PricingPage} />
         <Route path="/pricing" component={PricingPage} />
         <Route path="/dashboard" component={DashboardPage} />

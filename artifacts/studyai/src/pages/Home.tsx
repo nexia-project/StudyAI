@@ -1262,11 +1262,11 @@ export default function Home() {
                   }}
                   className="group relative flex flex-col overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-0 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5"
                 >
-                  <div className="relative aspect-[21/5] w-full max-h-[180px] min-h-[120px] shrink-0 overflow-hidden sm:max-h-[180px]">
+                  <div className="relative aspect-auto w-full min-h-[140px] max-h-[200px] shrink-0 overflow-hidden bg-gradient-to-br from-slate-100 to-violet-50/80 sm:min-h-[160px] sm:max-h-[220px]">
                     <img
                       src={`${import.meta.env.BASE_URL}banners/plano-estudos-hero.png`}
                       alt="Banner ilustrativo: criar plano de estudos personalizado com apoio de IA."
-                      className="absolute inset-0 h-full w-full object-cover object-center"
+                      className="absolute inset-0 h-full w-full object-contain object-center"
                       loading="lazy"
                       decoding="async"
                     />
@@ -1286,11 +1286,11 @@ export default function Home() {
                   onClick={() => navigate("/simulado-enem")}
                   className="group relative flex flex-col overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-0 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5"
                 >
-                  <div className="relative aspect-[21/5] w-full max-h-[180px] min-h-[120px] shrink-0 overflow-hidden sm:max-h-[180px]">
+                  <div className="relative aspect-auto w-full min-h-[140px] max-h-[200px] shrink-0 overflow-hidden bg-gradient-to-br from-slate-100 to-violet-50/80 sm:min-h-[160px] sm:max-h-[220px]">
                     <img
                       src={`${import.meta.env.BASE_URL}banners/simulado-enem-hero.png`}
                       alt="Banner ilustrativo: simulado ENEM no formato da prova com correção inteligente."
-                      className="absolute inset-0 h-full w-full object-cover object-center"
+                      className="absolute inset-0 h-full w-full object-contain object-center"
                       loading="lazy"
                     />
                   </div>
@@ -1309,11 +1309,11 @@ export default function Home() {
                   onClick={() => navigate("/cronograma")}
                   className="group relative flex flex-col overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-0 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5"
                 >
-                  <div className="relative aspect-[21/5] w-full max-h-[180px] min-h-[120px] shrink-0 overflow-hidden sm:max-h-[180px]">
+                  <div className="relative aspect-auto w-full min-h-[140px] max-h-[200px] shrink-0 overflow-hidden bg-gradient-to-br from-slate-100 to-violet-50/80 sm:min-h-[160px] sm:max-h-[220px]">
                     <img
                       src={`${import.meta.env.BASE_URL}banners/cronograma-hero.png`}
                       alt="Banner ilustrativo: cronograma de estudos para organizar semanas com clareza."
-                      className="absolute inset-0 h-full w-full object-cover object-center"
+                      className="absolute inset-0 h-full w-full object-contain object-center"
                       loading="lazy"
                       decoding="async"
                     />
@@ -1333,11 +1333,11 @@ export default function Home() {
                   onClick={() => navigate("/notebook")}
                   className="group relative flex flex-col overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-0 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5"
                 >
-                  <div className="relative aspect-[21/5] w-full max-h-[180px] min-h-[120px] shrink-0 overflow-hidden sm:max-h-[180px]">
+                  <div className="relative aspect-auto w-full min-h-[140px] max-h-[200px] shrink-0 overflow-hidden bg-gradient-to-br from-slate-100 to-violet-50/80 sm:min-h-[160px] sm:max-h-[220px]">
                     <img
                       src={`${import.meta.env.BASE_URL}banners/notebook-rag-hero.png`}
                       alt="Notebook RAG: assistente de pesquisa nos seus materiais."
-                      className="absolute inset-0 h-full w-full object-cover object-center"
+                      className="absolute inset-0 h-full w-full object-contain object-center"
                       loading="lazy"
                       decoding="async"
                     />
@@ -1355,14 +1355,24 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => navigate("/tutor-ia")}
-                  className="group relative overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-6 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5 sm:col-span-2 xl:col-span-3"
+                  className="group relative flex flex-col overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-0 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5 sm:col-span-2 xl:col-span-3"
                 >
-                  <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-indigo-400/15 to-violet-500/20 blur-2xl opacity-80 pointer-events-none" />
-                  <IllTeacherBoard className="size-14 mb-4 text-primary relative z-10" />
-                  <h3 className="font-black text-lg text-foreground mb-1 relative z-10">Professor Tiagão</h3>
-                  <p className="text-sm text-muted-foreground leading-snug relative z-10">
-                    Tutor por voz e texto — peça explicações, upload de material e vamos juntos.
-                  </p>
+                  <div className="relative aspect-auto w-full min-h-[140px] max-h-[200px] shrink-0 overflow-hidden bg-gradient-to-br from-slate-100 to-violet-50/80 sm:min-h-[160px] sm:max-h-[220px]">
+                    <img
+                      src={`${import.meta.env.BASE_URL}banners/professor-tiagao-hero.png`}
+                      alt="Professor Tiagão, tutor por voz."
+                      className="absolute inset-0 h-full w-full object-contain object-center"
+                      loading="lazy"
+                    />
+                  </div>
+                  <div className="relative p-6 text-left">
+                    <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-indigo-400/15 to-violet-500/20 blur-2xl opacity-80 pointer-events-none" />
+                    <IllTeacherBoard className="size-14 mb-4 text-primary relative z-10" />
+                    <h3 className="font-black text-lg text-foreground mb-1 relative z-10">Professor Tiagão</h3>
+                    <p className="text-sm text-muted-foreground leading-snug relative z-10">
+                      Tutor por voz e texto — peça explicações, upload de material e vamos juntos.
+                    </p>
+                  </div>
                 </button>
               </div>
             </motion.div>

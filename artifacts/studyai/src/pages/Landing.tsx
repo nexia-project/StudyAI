@@ -21,6 +21,12 @@ import {
 const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
 const pricingHref = `${BASE}/pricing`.replace(/([^:]\/)\/+/g, "$1");
 
+/** Capturas de produto (public/landing) — mesma convenção de BASE_URL que o restante do app. */
+const LANDING_IMG = {
+  professorTiagao: `${BASE}/landing/professor-tiagao-feature.png`.replace(/([^:]\/)\/+/g, "$1"),
+  notebookRag: `${BASE}/landing/notebook-rag-feature.png`.replace(/([^:]\/)\/+/g, "$1"),
+} as const;
+
 /** Mídia estável (CC0 / CDN público) + posters Unsplash com largura fixa. */
 const MAIN_DEMO_VIDEO = {
   src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
@@ -45,6 +51,14 @@ const UNSPLASH = {
 
 const APP_SHOWCASE = [
   {
+    title: "Professor Tiagão",
+    desc: "Tutor por voz proativa no app: chama você, conhece o plano e age nos fluxos — a partir do hub.",
+    path: "/app",
+    icon: Mic,
+    img: LANDING_IMG.professorTiagao,
+    imgContain: true,
+  },
+  {
     title: "Simulado ENEM",
     desc: "Simulado completo com foco no vestibular brasileiro, integrado ao plano e ao radar de desempenho.",
     path: "/simulado-enem",
@@ -56,7 +70,8 @@ const APP_SHOWCASE = [
     desc: "Transforme PDFs, links e materiais em aula interativa: resumos, questões e respostas ancoradas na sua biblioteca.",
     path: "/notebook",
     icon: Layers,
-    img: UNSPLASH.library,
+    img: LANDING_IMG.notebookRag,
+    imgContain: true,
   },
   {
     title: "Tutor IA (GPT e Claude)",
@@ -104,7 +119,7 @@ const NOVIDADES_BAND = [
     accent: "Material seu",
     desc: "PDFs e links viram aula, resumo e questões ancoradas no texto.",
     path: "/notebook",
-    img: UNSPLASH.library,
+    img: LANDING_IMG.notebookRag,
   },
   {
     title: "Lousa Imersiva",
@@ -664,7 +679,19 @@ export default function Landing() {
                   className="group flex flex-col rounded-3xl border border-gray-200 bg-gray-50/40 hover:bg-white hover:border-violet-200 hover:shadow-lg hover:shadow-violet-500/5 transition-all overflow-hidden"
                 >
                   <div className="relative aspect-[16/10] overflow-hidden bg-gray-200">
-                    <img src={item.img} alt="" width={1000} height={625} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+                    <img
+                      src={item.img}
+                      alt=""
+                      width={1000}
+                      height={625}
+                      loading="lazy"
+                      decoding="async"
+                      className={`h-full w-full transition-transform duration-500 group-hover:scale-[1.03] ${
+                        "imgContain" in item && item.imgContain
+                          ? "object-contain bg-slate-900/5 p-2 sm:p-4"
+                          : "object-cover"
+                      }`}
+                    />
                     <div className="absolute inset-0 bg-gradient-to-t from-gray-900/55 via-transparent to-transparent" />
                     <div className="absolute bottom-3 left-3 right-3 flex items-center gap-2 text-white">
                       <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
@@ -701,6 +728,95 @@ export default function Landing() {
             </button>
             {" "}e explorar o menu completo.
           </motion.p>
+        </div>
+      </section>
+
+      {/* ── DOIS PILARES (capturas reais: Tiagão + Notebook RAG) ── */}
+      <section id="dois-pilares" className="py-16 md:py-20 px-6 bg-gradient-to-b from-violet-50/50 via-white to-white border-t border-violet-100/80">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="max-w-2xl mb-10 md:mb-12"
+          >
+            <p className="text-xs font-black text-violet-600 uppercase tracking-widest mb-3">Experiência no produto</p>
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-gray-900 mb-3">Dois pilares do StudyAI</h2>
+            <p className="text-gray-600 text-lg leading-relaxed">
+              O hub com a Tiagão no seu ritmo e o Notebook com respostas ancoradas no seu material — rotas vivas: <span className="font-semibold text-gray-800">/app</span> e <span className="font-semibold text-gray-800">/notebook</span>.
+            </p>
+          </motion.div>
+
+          <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+            <motion.article
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true }}
+              custom={0.06}
+              className="flex flex-col overflow-hidden rounded-3xl border border-violet-100 bg-white shadow-xl shadow-violet-500/10 ring-1 ring-violet-500/10"
+            >
+              <div className="relative aspect-[16/10] w-full bg-slate-900/5 p-3 sm:p-5">
+                <img
+                  src={LANDING_IMG.professorTiagao}
+                  alt="Professor Tiagão no app StudyAI"
+                  width={1200}
+                  height={750}
+                  loading="lazy"
+                  decoding="async"
+                  className="mx-auto max-h-[200px] sm:max-h-[260px] w-full object-contain"
+                />
+              </div>
+              <div className="flex flex-1 flex-col p-5 sm:p-6 border-t border-violet-100/80">
+                <h3 className="font-black text-gray-900 text-lg sm:text-xl tracking-tight mb-2">Professor Tiagão</h3>
+                <p className="text-gray-600 text-sm leading-relaxed flex-1 mb-5">
+                  Tutora por voz proativa no app: integra ao plano, lembra você de estudar e executa ações no fluxo.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate("/app")}
+                  className="inline-flex w-fit items-center gap-2 rounded-2xl bg-violet-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-violet-500/25 transition-colors hover:bg-violet-500"
+                >
+                  Abrir o app <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+            </motion.article>
+
+            <motion.article
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true }}
+              custom={0.12}
+              className="flex flex-col overflow-hidden rounded-3xl border border-violet-100 bg-white shadow-xl shadow-violet-500/10 ring-1 ring-violet-500/10"
+            >
+              <div className="relative aspect-[16/10] w-full bg-slate-900/5 p-3 sm:p-5">
+                <img
+                  src={LANDING_IMG.notebookRag}
+                  alt="Notebook RAG no StudyAI"
+                  width={1200}
+                  height={750}
+                  loading="lazy"
+                  decoding="async"
+                  className="mx-auto max-h-[200px] sm:max-h-[260px] w-full object-contain"
+                />
+              </div>
+              <div className="flex flex-1 flex-col p-5 sm:p-6 border-t border-violet-100/80">
+                <h3 className="font-black text-gray-900 text-lg sm:text-xl tracking-tight mb-2">Notebook RAG</h3>
+                <p className="text-gray-600 text-sm leading-relaxed flex-1 mb-5">
+                  PDFs e links viram aula, resumo e questões com citações no seu conteúdo — sem alucinar fora do material.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate("/notebook")}
+                  className="inline-flex w-fit items-center gap-2 rounded-2xl bg-violet-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-violet-500/25 transition-colors hover:bg-violet-500"
+                >
+                  Abrir o Notebook RAG <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+            </motion.article>
+          </div>
         </div>
       </section>
 
@@ -905,9 +1021,32 @@ export default function Landing() {
               </button>
             </motion.div>
 
-            {/* Visual card do Tiagão */}
+            {/* Captura real do app + prévia de conversa */}
             <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
-              transition={{ delay: 0.3, duration: 0.6 }}>
+              transition={{ delay: 0.3, duration: 0.6 }} className="space-y-5">
+              <div className="rounded-3xl border border-violet-100 bg-white p-2 sm:p-3 shadow-xl shadow-violet-500/10 ring-1 ring-violet-500/10 overflow-hidden">
+                <div className="relative aspect-[16/10] w-full rounded-2xl bg-slate-900/5 overflow-hidden">
+                  <img
+                    src={LANDING_IMG.professorTiagao}
+                    alt="Interface da Professor Tiagão no StudyAI"
+                    width={1200}
+                    height={750}
+                    loading="lazy"
+                    decoding="async"
+                    className="mx-auto max-h-[220px] sm:max-h-[280px] w-full object-contain"
+                  />
+                </div>
+                <div className="px-2 pt-3 pb-1 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Captura do produto</p>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/app")}
+                    className="text-xs font-bold text-violet-600 hover:text-violet-700 inline-flex items-center gap-1"
+                  >
+                    Ir para o app <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
               <div className="relative rounded-2xl bg-white border border-gray-200 p-6 shadow-lg">
                 <div className="flex items-center gap-3 mb-5 pb-4 border-b border-gray-200">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-violet-600 flex items-center justify-center font-black text-white text-sm">T</div>

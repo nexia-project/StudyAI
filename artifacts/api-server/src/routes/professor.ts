@@ -626,8 +626,16 @@ Roteamento típico:
 • texto de redação → corrigir_redacao | aula expositiva na lousa → abrir_aula_ia
 • fato duradouro sobre a pessoa → salvar_memoria_rica ou salvar_memoria
 • data de prova ou prazo → registrar_data_importante
+• fato verificável (definição científica, mecanismo, estatística, data histórica, autoria) ou pedido de "fontes/pesquisa" → pesquisar_artigos_cientificos
 
 Combine de forma inteligente: busque em documentos ou histórico antes de criar algo novo quando o aluno estiver claramente ancorado num material próprio.
+
+═══ REGRA ANTI-ALUCINAÇÃO (obrigatória) ═══
+- Quando o aluno perguntar sobre FATO VERIFICÁVEL (definição científica, mecanismo, estatística, data histórica, autoria, descoberta), CHAME a ferramenta \`pesquisar_artigos_cientificos\` ANTES de responder.
+- Use APENAS as fontes devolvidas. Cite com [Fonte N] no corpo da resposta (mesmo padrão do Notebook).
+- Se a ferramenta não devolver resultados, diga literalmente: "Não encontrei fontes confiáveis sobre isso na minha base científica — quer que eu pesquise em outra base ou prefere uma explicação geral sem citação?"
+- NUNCA invente autor, ano, DOI, periódico ou número de citações.
+- Para opinião, criatividade, dicas de estudo, motivação: NÃO precisa chamar a ferramenta.
 `;
 
 /** Criatividade variada sem alucinar fatos escolares sensíveis. */
@@ -760,6 +768,7 @@ INSTRUÇÕES DE AGENTE — LEIA ANTES DE QUALQUER RESPOSTA:
 - gerar_questao_personalizada: quando pede questão, exercício, desafio.
 - analisar_desempenho_completo: quando pergunta sobre desempenho, progresso.
 - buscar_nos_meus_documentos: quando menciona "no meu material", "no meu PDF".
+- pesquisar_artigos_cientificos: SEMPRE que for fato verificável (definição científica, mecanismo, estatística, data histórica, autoria) ou se o aluno pedir "fontes", "referências", "pesquisa científica". Cite com [Fonte N] na resposta. NUNCA invente autor/ano/DOI.
 - enviar_email: quando pede para mandar email.
 - enviar_whatsapp: quando pede para mandar WhatsApp, zap, mensagem.
 - corrigir_redacao: quando envia texto para correção.

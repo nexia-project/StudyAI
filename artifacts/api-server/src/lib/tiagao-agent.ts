@@ -16,6 +16,7 @@ import { sql } from "drizzle-orm";
 import { MATERIAL_HTML_INSTRUCTIONS, MATERIAL_COMPONENT_GUIDE, wrapMaterialHTML } from "./material-template";
 import { saveMemory, updateProfile, addImportantDate } from "./tiagao-memory";
 import { storeKnowledge, searchKnowledge } from "./knowledge-base";
+import { searchSemanticScholar } from "../routes/scholar";
 
 // Limpa output da IA (remove markdown fences ```html ... ```), extrai apenas o
 // conteúdo do <body> caso a IA tenha retornado um documento completo, e envolve
@@ -553,6 +554,33 @@ export const TIAGAO_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  // ── RAG Externo (Semantic Scholar) ───────────────────────────────────────
+  {
+    type: "function",
+    function: {
+      name: "pesquisar_artigos_cientificos",
+      description: "Pesquisa artigos científicos peer-reviewed sobre um tema na Semantic Scholar. USE SEMPRE que o aluno perguntar sobre um conceito, fato verificável, estatística, definição científica, mecanismo biológico/físico/químico, evento histórico datado ou pedir 'fontes', 'pesquisa científica', 'referências', 'o que diz a ciência'. NÃO use para opinião pessoal, criatividade, exercícios didáticos sem fato verificável.",
+      parameters: {
+        type: "object",
+        properties: {
+          consulta: {
+            type: "string",
+            description: "Termo de busca. Para mais cobertura, prefira termos em inglês (ex: 'calvin cycle photosynthesis' em vez de 'ciclo de calvin fotossíntese').",
+          },
+          ano_minimo: {
+            type: "number",
+            description: "Filtrar artigos a partir do ano (opcional, ex: 2015)",
+          },
+          max_resultados: {
+            type: "number",
+            description: "Número de resultados (1 a 5, padrão 3)",
+          },
+        },
+        required: ["consulta"],
+      },
+    },
+  },
+
   // ⚠️ DESATIVADO TEMPORARIAMENTE — plano MiniMax atual não suporta Hailuo-02 e
   // tem RPM muito baixo. Reativar após upgrade do plano OU migração pra outro
   // provider (Replicate/fal.ai). Código inteiro preservado abaixo no executor.
@@ -1550,6 +1578,62 @@ Retorne APENAS este JSON:
       } catch {
         return { result: "Erro ao buscar histórico." };
       }
+    }
+
+    // ── RAG externo: Semantic Scholar ────────────────────────────────────────
+    // PR-1 do plano de auditoria: tool nova de pesquisa científica peer-reviewed.
+    // Não envolve LLM, então não é instrumentada pelo aiCostLogger.
+    case "pesquisar_artigos_cientificos": {
+      const consulta = String(args.consulta ?? "").trim();
+      if (consulta.length < 2) {
+        return { result: "Consulta vazia. Diga sobre o que pesquisar." };
+      }
+      const max = Math.max(1, Math.min(Number(args.max_resultados ?? 3), 5));
+      const yearMinRaw = Number(args.ano_minimo);
+      const yearMin = Number.isFinite(yearMinRaw) && yearMinRaw >= 1900 && yearMinRaw <= 2100
+        ? yearMinRaw
+        : undefined;
+      const sources = await searchSemanticScholar(consulta, { limit: max, yearMin });
+      if (sources.length === 0) {
+        return {
+          result: `Não encontrei fontes confiáveis na Semantic Scholar para "${consulta}". Diga ao aluno que não encontrou fontes e pergunte se deseja tentar outra base ou outra formulação (de preferência em inglês).`,
+          action: {
+            type: "fontes_externas",
+            provider: "semantic-scholar",
+            query: consulta,
+            sources: [],
+          },
+        };
+      }
+      const formatted = sources.map((s, i) => {
+        const autor = s.authors[0]
+          ? `${s.authors[0]}${s.authors.length > 1 ? " et al." : ""}`
+          : "Autor desconhecido";
+        const ano = s.year ?? "s/d";
+        return `[Fonte ${i + 1} — ${autor} (${ano})]: ${s.title}. ${s.snippet}`;
+      }).join("\n\n");
+      return {
+        result: `Encontrei ${sources.length} artigo${sources.length > 1 ? "s" : ""} sobre "${consulta}". Use APENAS estas fontes para responder e cite com [Fonte N]:\n\n${formatted}`,
+        action: {
+          type: "fontes_externas",
+          provider: "semantic-scholar",
+          query: consulta,
+          sources: sources.map((s, i) => ({
+            numero: i + 1,
+            id: s.id,
+            provider: s.provider,
+            titulo: s.title,
+            autores: s.authors,
+            ano: s.year,
+            venue: s.venue,
+            url: s.url,
+            doi: s.doi,
+            openAccessPdf: s.openAccessPdf,
+            citationCount: s.citationCount,
+            snippet: s.snippet,
+          })),
+        },
+      };
     }
 
     default:

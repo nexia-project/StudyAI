@@ -33,6 +33,11 @@ import { normalizeTiagaoLegacyPath } from "@/lib/tiagao-navigation";
 import { STUDYAI_ACCOUNT_CHANGED } from "@/lib/account-storage";
 import { useAudioCapture } from "@/hooks/useAudioCapture";
 import { useStudyAuth } from "@/hooks/useStudyAuth";
+import {
+  type Citation,
+  CitationsSection,
+  renderTextWithCitations,
+} from "@/components/CitationChip";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 const IDLE_TRIGGER_MS    = 10 * 60 * 1000;
@@ -338,6 +343,7 @@ interface HistoryMsg {
   role: "user" | "assistant";
   text: string;
   ts: number;
+  fontes?: Citation[];
 }
 
 // ─── Quick commands by context ────────────────────────────────────────────────
@@ -809,6 +815,43 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
         text: `⏳ Limite diário de vídeos atingido (${action.used ?? "—"}/${action.limit ?? "—"})`,
       });
       setTimeout(() => setActionNotif(null), 6000);
+    } else if (action.type === "fontes_externas") {
+      // RAG externo (Semantic Scholar): anexa fontes à última mensagem do
+      // assistente para que o histórico renderize [Fonte N] como chips.
+      const rawSources = Array.isArray(action.sources) ? action.sources : [];
+      if (rawSources.length > 0) {
+        const fontes: Citation[] = rawSources.map((s: any) => ({
+          numero: Number(s.numero) || 0,
+          titulo: String(s.titulo ?? "Sem título"),
+          trecho: typeof s.snippet === "string" ? s.snippet : undefined,
+          trechoCompleto: typeof s.abstract === "string" && s.abstract.length > 0
+            ? s.abstract
+            : typeof s.snippet === "string" ? s.snippet : undefined,
+          provider: "semantic-scholar",
+          autores: Array.isArray(s.autores) ? s.autores : [],
+          ano: typeof s.ano === "number" ? s.ano : null,
+          venue: typeof s.venue === "string" ? s.venue : null,
+          url: typeof s.url === "string" ? s.url : undefined,
+          doi: typeof s.doi === "string" ? s.doi : null,
+          openAccessPdf: typeof s.openAccessPdf === "string" ? s.openAccessPdf : null,
+          citationCount: typeof s.citationCount === "number" ? s.citationCount : null,
+        }));
+        setHistory(h => {
+          // Anexa à última mensagem do assistente
+          for (let i = h.length - 1; i >= 0; i--) {
+            if (h[i].role === "assistant") {
+              const copy = [...h];
+              copy[i] = { ...copy[i], fontes: [...(copy[i].fontes ?? []), ...fontes] };
+              return copy;
+            }
+          }
+          return h;
+        });
+        setActionNotif({
+          text: `📚 ${fontes.length} artigo${fontes.length > 1 ? "s" : ""} citado${fontes.length > 1 ? "s" : ""}`,
+        });
+        setTimeout(() => setActionNotif(null), 6000);
+      }
     }
     for (const notif of notifications) {
       if (notif.type === "flashcards_criados") {
@@ -1530,27 +1573,38 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
                   {/* Full conversation history — glass bubbles, violet/fuchsia */}
                   {!voicePure && history.length > 0 && (
                     <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5 [scrollbar-width:thin] [scrollbar-color:rgba(139,92,246,0.4)_transparent]">
-                      {history.map((msg, i) => (
-                        <div key={i} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                          {msg.role === "assistant" && (
-                            <div className="flex-shrink-0 mt-0.5">
-                              <TiagaoCharacter
-                                state={i === history.length - 1 && phase !== "idle" ? phase as CharacterState : "idle"}
-                                size={28} showLabel={false} />
+                      {history.map((msg, i) => {
+                        const fontes = msg.fontes ?? [];
+                        const hasFontes = msg.role === "assistant" && fontes.length > 0;
+                        return (
+                          <div key={i} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                            {msg.role === "assistant" && (
+                              <div className="flex-shrink-0 mt-0.5">
+                                <TiagaoCharacter
+                                  state={i === history.length - 1 && phase !== "idle" ? phase as CharacterState : "idle"}
+                                  size={28} showLabel={false} />
+                              </div>
+                            )}
+                            <div className={`max-w-[80%] flex flex-col gap-1 ${msg.role === "user" ? "items-end" : "items-start"}`}>
+                              <div className={`px-3 py-2.5 rounded-2xl text-xs leading-relaxed shadow-sm ${
+                                msg.role === "user"
+                                  ? "bg-gradient-to-br from-violet-600 to-purple-700 text-white rounded-tr-sm shadow-violet-300/40"
+                                  : "bg-white/75 backdrop-blur-md ring-1 ring-violet-200/55 text-slate-700 rounded-tl-sm shadow-violet-200/30"
+                              }`}>
+                                <p className="whitespace-pre-wrap break-words">
+                                  {msg.role === "assistant"
+                                    ? renderTextWithCitations(msg.text, fontes)
+                                    : msg.text}
+                                </p>
+                                <p className={`text-[9px] mt-1 ${msg.role === "user" ? "text-violet-100/85" : "text-violet-400/70"}`}>
+                                  {new Date(msg.ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                                </p>
+                              </div>
+                              {hasFontes && <CitationsSection citations={fontes} />}
                             </div>
-                          )}
-                          <div className={`max-w-[80%] px-3 py-2.5 rounded-2xl text-xs leading-relaxed shadow-sm ${
-                            msg.role === "user"
-                              ? "bg-gradient-to-br from-violet-600 to-purple-700 text-white rounded-tr-sm shadow-violet-300/40"
-                              : "bg-white/75 backdrop-blur-md ring-1 ring-violet-200/55 text-slate-700 rounded-tl-sm shadow-violet-200/30"
-                          }`}>
-                            <p className="whitespace-pre-wrap">{msg.text}</p>
-                            <p className={`text-[9px] mt-1 ${msg.role === "user" ? "text-violet-100/85" : "text-violet-400/70"}`}>
-                              {new Date(msg.ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                            </p>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
 
                       {/* Single typing indicator at the bottom of history */}
                       {phase === "thinking" && (

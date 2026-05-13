@@ -43,6 +43,7 @@ import contentHistoryRouter from "./content-history";
 import boardRouter from "./board";
 import aiCacheChatRouter from "./ai-cache-chat";
 import fazedoresRouter from "./fazedores";
+import scholarRouter from "./scholar";
 
 const router: IRouter = Router();
 
@@ -90,5 +91,6 @@ router.use(contentHistoryRouter);
 router.use(comunicacaoRouter);
 router.use(aiCacheChatRouter);
 router.use(fazedoresRouter);
+router.use(scholarRouter);
 
 export default router;

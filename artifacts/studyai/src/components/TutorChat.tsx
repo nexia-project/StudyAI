@@ -54,6 +54,22 @@ interface TutorChatProps {
   topicosAtual?: string[];
 }
 
+/**
+ * Defesa client-side: o backend Tiagão às vezes emite `criar_slides`,
+ * `criar_resumo` ou `criar_infografico` com título "Plano de Estudos: ...".
+ * Sem este guard, o pedido vira artefato no Notebook em vez de abrir o
+ * gerador de plano em `/app`. Esse helper detecta a intenção pelo título.
+ */
+function looksLikePlanIntent(action: any): boolean {
+  const t = String(
+    action?.titulo ?? action?.topico ?? action?.tema ?? "",
+  ).toLowerCase().trim();
+  if (!t) return false;
+  return /\bplan(?:o|os|ejamento)\b/.test(t)
+      || /plano\s+de\s+estudo/.test(t)
+      || /cronograma\s+de\s+estudo/.test(t);
+}
+
 const QUICK_ACTIONS = [
   { label: "Me explica o conteúdo de hoje", icon: BookOpen },
   { label: "Me faz uma questão de prova", icon: Zap },
@@ -314,6 +330,33 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
 
   const handleAction = useCallback((action: Record<string, any>) => {
     if (!action?.type) return;
+
+    // ── Plan-intent guard ────────────────────────────────────────────────────
+    // Se o Tiagão emitiu uma ação de artefato (slides/resumo/infografico/plano)
+    // mas o título parece "Plano de Estudos: …", reroteia para o fluxo real de
+    // plano em `/app` em vez de salvar como artefato no Notebook RAG.
+    const guarded = action.type === "criar_slides"
+      || action.type === "criar_resumo"
+      || action.type === "criar_infografico"
+      || action.type === "criar_plano_estudos";
+    if (guarded && looksLikePlanIntent(action)) {
+      const topic =
+        (typeof action.titulo === "string" && action.titulo.trim()) ||
+        (typeof action.topico === "string" && action.topico.trim()) ||
+        (typeof action.tema === "string" && action.tema.trim()) ||
+        "Plano de estudos personalizado";
+      navigate("/app");
+      window.setTimeout(() => {
+        triggerProfessorAction("criar_plano", topic);
+      }, 650);
+      showNotif({
+        icon: <CalendarDays className="w-5 h-5 flex-shrink-0" />,
+        text: `📅 Abrindo o gerador de plano…`,
+        sub: topic ? `"${topic}"` : undefined,
+        path: "/app",
+      });
+      return;
+    }
 
     switch (action.type) {
       case "ir":

@@ -380,6 +380,23 @@ function VolumeBar({ level }: { level: number }) {
   );
 }
 
+/**
+ * Defesa client-side: às vezes o backend Tiagão emite `criar_slides` /
+ * `criar_resumo` / `criar_infografico` com título "Plano de Estudos: ...".
+ * Sem este guard, o pedido vira artefato no Notebook em vez de abrir o
+ * gerador de plano em `/app`. Esse helper detecta intenção de plano pelo
+ * título/tópico/tema, independente do `action.type` que o LLM escolheu.
+ */
+function looksLikePlanIntent(action: any): boolean {
+  const t = String(
+    action?.titulo ?? action?.topico ?? action?.tema ?? "",
+  ).toLowerCase().trim();
+  if (!t) return false;
+  return /\bplan(?:o|os|ejamento)\b/.test(t)
+      || /plano\s+de\s+estudo/.test(t)
+      || /cronograma\s+de\s+estudo/.test(t);
+}
+
 export type VoiceProfessorVariant = "app" | "landing";
 
 export type VoiceProfessorProps = {
@@ -539,6 +556,30 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
   ) => {
     if (variant === "landing") return;
     if (!action) return;
+
+    // ── Plan-intent guard ────────────────────────────────────────────────────
+    // Se o Tiagão emitiu uma ação de artefato (slides/resumo/infografico/plano)
+    // mas o título parece "Plano de Estudos: …", reroteia para o fluxo real de
+    // plano em `/app` em vez de salvar como artefato no Notebook RAG.
+    const guarded = action.type === "criar_slides"
+      || action.type === "criar_resumo"
+      || action.type === "criar_infografico"
+      || action.type === "criar_plano_estudos";
+    if (guarded && looksLikePlanIntent(action)) {
+      const topic =
+        (typeof action.titulo === "string" && action.titulo.trim()) ||
+        (typeof action.topico === "string" && action.topico.trim()) ||
+        (typeof action.tema === "string" && action.tema.trim()) ||
+        "Plano de estudos personalizado";
+      navigate("/app");
+      window.setTimeout(() => {
+        triggerProfessorAction("criar_plano", topic);
+      }, 400);
+      setActionNotif({ text: `📅 Abrindo o gerador de plano…`, path: "/app" });
+      setTimeout(() => setActionNotif(null), 6000);
+      return;
+    }
+
     if (action.type === "ir") setTimeout(() => navigate(normalizeTiagaoLegacyPath(action.param)), 400);
     else if (action.type === "criar_plano") {
       const topic = typeof action.param === "string" ? action.param.trim() : "";

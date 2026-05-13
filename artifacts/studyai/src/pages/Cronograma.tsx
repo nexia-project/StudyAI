@@ -69,6 +69,37 @@ export default function CronogramaPage() {
     materiasFocais: ["Matemática", "Português"],
   });
 
+  // ── Tiagão hand-off ────────────────────────────────────────────────────────
+  // O VoiceProfessor / TutorChat podem chegar aqui via:
+  //   • `agenda_criada` → grava `tiagao_agenda_hoje` (JSON da agenda)
+  //   • desvio do `detectArtifactIntent("cronograma")` → `tiagao_cronograma_intent`
+  // Consumimos uma vez e mostramos banners.
+  // TODO: quando o backend padronizar shape de "agenda do dia", integrar
+  // direto no `Schedule` em vez de mostrar como banner separado.
+  const [tiagaoAgenda, setTiagaoAgenda] = useState<any | null>(null);
+  const [tiagaoCronogramaTopic, setTiagaoCronogramaTopic] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const rawAgenda = localStorage.getItem("tiagao_agenda_hoje");
+      if (rawAgenda) {
+        try {
+          const parsed = JSON.parse(rawAgenda);
+          if (parsed && typeof parsed === "object") setTiagaoAgenda(parsed);
+        } catch { /* ignore */ }
+        localStorage.removeItem("tiagao_agenda_hoje");
+      }
+      const rawIntent = localStorage.getItem("tiagao_cronograma_intent");
+      if (rawIntent) {
+        try {
+          const parsed = JSON.parse(rawIntent);
+          if (parsed?.topic) setTiagaoCronogramaTopic(String(parsed.topic));
+        } catch { /* ignore */ }
+        localStorage.removeItem("tiagao_cronograma_intent");
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     load();
   }, []);
@@ -159,6 +190,54 @@ export default function CronogramaPage() {
             </button>
           )}
         </div>
+
+        {/* ─── Banners do Tiagão (one-shot) ───────────────────────────── */}
+        {tiagaoCronogramaTopic && (
+          <div className="rounded-2xl border border-violet-500/30 bg-violet-600/15 px-4 py-3 flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-violet-500/25 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-5 h-5 text-violet-300" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-violet-100 text-sm leading-tight">
+                🗓️ Tiagão pediu um cronograma
+              </p>
+              <p className="text-xs text-violet-200/80 mt-0.5">Tema: "{tiagaoCronogramaTopic}"</p>
+            </div>
+            <button
+              onClick={() => setTiagaoCronogramaTopic(null)}
+              className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors flex-shrink-0 text-xs"
+            >
+              Fechar
+            </button>
+          </div>
+        )}
+
+        {tiagaoAgenda && (
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-600/10 p-4">
+            <div className="flex items-start justify-between gap-3 mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/25 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-300" />
+                </div>
+                <div>
+                  <p className="font-bold text-emerald-100 text-sm leading-tight">🗓️ Agenda do dia (do Tiagão)</p>
+                  {tiagaoAgenda.titulo && (
+                    <p className="text-xs text-emerald-200/80 mt-0.5">"{tiagaoAgenda.titulo}"</p>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => setTiagaoAgenda(null)}
+                className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors flex-shrink-0 text-xs"
+              >
+                Fechar
+              </button>
+            </div>
+            <pre className="text-xs text-emerald-100/90 leading-relaxed whitespace-pre-wrap font-sans bg-black/20 rounded-xl p-3 max-h-48 overflow-y-auto">
+              {tiagaoAgenda.descricao ?? tiagaoAgenda.resumo ?? JSON.stringify(tiagaoAgenda, null, 2)}
+            </pre>
+          </div>
+        )}
 
         <AnimatePresence mode="wait">
           {/* Form */}

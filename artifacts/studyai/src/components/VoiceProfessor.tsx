@@ -381,20 +381,30 @@ function VolumeBar({ level }: { level: number }) {
 }
 
 /**
- * Defesa client-side: às vezes o backend Tiagão emite `criar_slides` /
- * `criar_resumo` / `criar_infografico` com título "Plano de Estudos: ...".
- * Sem este guard, o pedido vira artefato no Notebook em vez de abrir o
- * gerador de plano em `/app`. Esse helper detecta intenção de plano pelo
- * título/tópico/tema, independente do `action.type` que o LLM escolheu.
+ * Defesa client-side: o backend Tiagão às vezes emite ações "guarda-chuva"
+ * (`criar_slides` / `criar_resumo` / `criar_infografico` / `criar_plano_estudos`)
+ * com títulos do tipo "Plano de Estudos: …", "Mapa mental de …", "Cronograma
+ * semanal …", "Redação sobre …", "Flashcards de …". Sem este detector, esses
+ * pedidos viram artefato genérico no Notebook em vez de abrir a página dedicada
+ * (`/app`, `/cronograma`, `/mapa-mental`, `/redacao`).
+ *
+ * `detectArtifactIntent` olha SÓ para o título/tópico/tema da ação,
+ * independente do `action.type` que o LLM escolheu, e devolve a categoria.
+ *
+ * TODO(roteamento): extrair para um módulo partilhado entre VoiceProfessor.tsx
+ * e TutorChat.tsx (`@/lib/tiagao-intent`) quando for estabilizar.
  */
-function looksLikePlanIntent(action: any): boolean {
-  const t = String(
-    action?.titulo ?? action?.topico ?? action?.tema ?? "",
-  ).toLowerCase().trim();
-  if (!t) return false;
-  return /\bplan(?:o|os|ejamento)\b/.test(t)
-      || /plano\s+de\s+estudo/.test(t)
-      || /cronograma\s+de\s+estudo/.test(t);
+type ArtifactIntent = "plano" | "cronograma" | "mapa_mental" | "redacao" | "flashcards" | null;
+
+function detectArtifactIntent(action: any): ArtifactIntent {
+  const t = String(action?.titulo ?? action?.topico ?? action?.tema ?? "").toLowerCase().trim();
+  if (!t) return null;
+  if (/\bplan(?:o|os|ejamento)\b|\bplano\s+de\s+estudo/.test(t)) return "plano";
+  if (/\bcronograma|\brotina\s+de\s+estud|\borganiza(?:ç|c)ão\s+da\s+semana|\bsemanal/.test(t)) return "cronograma";
+  if (/\bmapa\s+mental|\bmapa\s+conceitual|\bdiagrama\s+(?:hier|conce)/.test(t)) return "mapa_mental";
+  if (/\bflashcards?|\bcart(?:ões|elas)\s+de\s+revis/.test(t)) return "flashcards";
+  if (/\bredação|\btexto\s+dissertativo|\bdissertaç/.test(t)) return "redacao";
+  return null;
 }
 
 export type VoiceProfessorVariant = "app" | "landing";
@@ -557,27 +567,78 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
     if (variant === "landing") return;
     if (!action) return;
 
-    // ── Plan-intent guard ────────────────────────────────────────────────────
-    // Se o Tiagão emitiu uma ação de artefato (slides/resumo/infografico/plano)
-    // mas o título parece "Plano de Estudos: …", reroteia para o fluxo real de
-    // plano em `/app` em vez de salvar como artefato no Notebook RAG.
-    const guarded = action.type === "criar_slides"
-      || action.type === "criar_resumo"
-      || action.type === "criar_infografico"
-      || action.type === "criar_plano_estudos";
-    if (guarded && looksLikePlanIntent(action)) {
-      const topic =
-        (typeof action.titulo === "string" && action.titulo.trim()) ||
-        (typeof action.topico === "string" && action.topico.trim()) ||
-        (typeof action.tema === "string" && action.tema.trim()) ||
-        "Plano de estudos personalizado";
-      navigate("/app");
-      window.setTimeout(() => {
-        triggerProfessorAction("criar_plano", topic);
-      }, 400);
-      setActionNotif({ text: `📅 Abrindo o gerador de plano…`, path: "/app" });
-      setTimeout(() => setActionNotif(null), 6000);
-      return;
+    // ── Multi-intent guard ───────────────────────────────────────────────────
+    // Se o Tiagão emitiu uma ação "guarda-chuva" (criar_slides/criar_slide/
+    // criar_resumo/criar_infografico/criar_plano_estudos) mas o título sugere
+    // outra categoria (plano, cronograma, mapa mental, redação, flashcards),
+    // reroteia para a página dedicada em vez de despejar tudo no Notebook RAG.
+    const GUARDED_TYPES = new Set<string>([
+      "criar_slides", "criar_slide", "criar_resumo",
+      "criar_infografico", "criar_plano_estudos",
+    ]);
+    if (typeof action.type === "string" && GUARDED_TYPES.has(action.type)) {
+      const intent = detectArtifactIntent(action);
+      if (intent) {
+        const topic =
+          (typeof action.titulo === "string" && action.titulo.trim()) ||
+          (typeof action.topico === "string" && action.topico.trim()) ||
+          (typeof action.tema === "string" && action.tema.trim()) ||
+          "Material personalizado";
+        if (intent === "plano") {
+          navigate("/app");
+          window.setTimeout(() => {
+            triggerProfessorAction("criar_plano", topic);
+          }, 400);
+          setActionNotif({ text: "📅 Abrindo o gerador de plano…", path: "/app" });
+          setTimeout(() => setActionNotif(null), 6000);
+          return;
+        }
+        if (intent === "cronograma") {
+          try {
+            localStorage.setItem(
+              "tiagao_cronograma_intent",
+              JSON.stringify({ topic, ts: Date.now() }),
+            );
+          } catch { /* ignore */ }
+          setActionNotif({ text: "🗓️ Abrindo cronograma de estudos…", path: "/cronograma" });
+          setTimeout(() => setActionNotif(null), 6000);
+          setTimeout(() => navigate("/cronograma"), 700);
+          return;
+        }
+        if (intent === "mapa_mental") {
+          try {
+            localStorage.setItem(
+              "tiagao_mapa_mental_intent",
+              JSON.stringify({ topic, ts: Date.now() }),
+            );
+            if (action.mapa) {
+              localStorage.setItem("tiagao_mapa_mental", JSON.stringify(action.mapa));
+            }
+          } catch { /* ignore */ }
+          setActionNotif({ text: "🗺️ Abrindo mapa mental…", path: "/mapa-mental" });
+          setTimeout(() => setActionNotif(null), 6000);
+          setTimeout(() => navigate("/mapa-mental"), 700);
+          return;
+        }
+        if (intent === "redacao") {
+          try {
+            localStorage.setItem(
+              "tiagao_redacao_intent",
+              JSON.stringify({ tema: topic, ts: Date.now() }),
+            );
+          } catch { /* ignore */ }
+          setActionNotif({ text: "✍️ Abrindo correção de redação…", path: "/redacao" });
+          setTimeout(() => setActionNotif(null), 6000);
+          setTimeout(() => navigate("/redacao"), 700);
+          return;
+        }
+        if (intent === "flashcards") {
+          // TODO: criar página `/flashcards` real para receber este desvio.
+          setActionNotif({ text: "🎯 Flashcards estão sendo gerados…" });
+          setTimeout(() => setActionNotif(null), 6000);
+          return;
+        }
+      }
     }
 
     if (action.type === "ir") setTimeout(() => navigate(normalizeTiagaoLegacyPath(action.param)), 400);
@@ -620,17 +681,20 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
       const tituloStr = typeof action.titulo === "string" ? action.titulo.trim() : "";
       const topicoStr = typeof action.topico === "string" ? action.topico.trim() : "";
       const topic = paramStr || tituloStr || topicoStr;
+      // Antes gravávamos em `tiagao_resumo`, o que fazia o Notebook abrir o
+      // plano como "material" na próxima visita (colisão de chaves). O HTML do
+      // plano, quando vier, fica em `tiagao_plano_html` — read-only por
+      // enquanto; o backend já persiste em `notebook_artifacts`.
       if (action.html || action.formato === "html_completo") {
         try {
           localStorage.setItem(
-            "tiagao_resumo",
+            "tiagao_plano_html",
             JSON.stringify({
               html: action.html,
               topico: action.titulo ?? action.topico,
               formato: "html_completo",
             }),
           );
-          window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_resumo" } }));
         } catch { /* ignore quota / private mode */ }
       }
       navigate("/app");
@@ -643,23 +707,33 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
       });
       setTimeout(() => setActionNotif(null), 8000);
     } else if (action.type === "criar_mapa_mental") {
+      // Página dedicada `/mapa-mental` é a destinatária canónica; mantemos o
+      // dispatch `tiagao_artifact` para retro-compat com qualquer listener
+      // antigo no Notebook.
       if (action.mapa) {
         localStorage.setItem("tiagao_mapa_mental", JSON.stringify(action.mapa));
         window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_mapa_mental" } }));
       }
-      setActionNotif({ text: `🗺️ Mapa mental "${action.titulo}" criado! Ver no Notebook.`, path: "/notebook" });
+      setActionNotif({
+        text: `🗺️ Mapa mental "${action.titulo ?? "criado"}" pronto!`,
+        path: "/mapa-mental",
+      });
       setTimeout(() => setActionNotif(null), 8000);
+      setTimeout(() => navigate("/mapa-mental"), 800);
     } else if (action.type === "criar_infografico") {
       if (action.html || action.formato === "html_completo") {
         localStorage.setItem("tiagao_resumo", JSON.stringify({ html: action.html, topico: action.topico, formato: "html_completo" }));
         window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_resumo" } }));
-        setTimeout(() => navigate("/notebook"), 450);
-      } else if (action.infografico) {
-        localStorage.setItem("tiagao_infografico", JSON.stringify(action.infografico));
-        window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_infografico" } }));
+      } else {
+        const infoPayload = action.infografico ?? action.brief;
+        if (infoPayload) {
+          localStorage.setItem("tiagao_infografico", JSON.stringify(infoPayload));
+          window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_infografico" } }));
+        }
       }
       setActionNotif({ text: `📊 Infográfico "${action.topico ?? action.titulo}" criado! Ver no Notebook.`, path: "/notebook" });
       setTimeout(() => setActionNotif(null), 8000);
+      setTimeout(() => navigate("/notebook"), 800);
     } else if (action.type === "criar_resumo") {
       if (action.html || action.formato === "html_completo") {
         localStorage.setItem("tiagao_resumo", JSON.stringify({ html: action.html, topico: action.topico, formato: "html_completo" }));
@@ -670,9 +744,71 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
       }
       setActionNotif({ text: `📚 Material de Resumo "${action.topico ?? action.titulo}" criado! Ver no Notebook.`, path: "/notebook" });
       setTimeout(() => setActionNotif(null), 8000);
+      setTimeout(() => navigate("/notebook"), 800);
     } else if (action.type === "busca_docs") {
       setActionNotif({ text: `🔍 Encontrado nos seus documentos.`, path: "/notebook" });
       setTimeout(() => setActionNotif(null), 5000);
+    } else if (action.type === "agenda_criada") {
+      try {
+        localStorage.setItem(
+          "tiagao_agenda_hoje",
+          JSON.stringify(action.agenda ?? action),
+        );
+      } catch { /* ignore */ }
+      setActionNotif({ text: "🗓️ Agenda do dia criada!", path: "/cronograma" });
+      setTimeout(() => setActionNotif(null), 8000);
+      setTimeout(() => navigate("/cronograma"), 800);
+    } else if (action.type === "correcao_redacao") {
+      try {
+        localStorage.setItem(
+          "tiagao_redacao_correcao",
+          JSON.stringify(action.correcao ?? action),
+        );
+      } catch { /* ignore */ }
+      setActionNotif({ text: "✍️ Redação corrigida!", path: "/redacao" });
+      setTimeout(() => setActionNotif(null), 8000);
+      setTimeout(() => navigate("/redacao"), 800);
+    } else if (action.type === "exportar_pdf") {
+      setActionNotif({
+        text: action.titulo ? `📄 PDF pronto — "${action.titulo}"` : "📄 PDF pronto!",
+      });
+      setTimeout(() => setActionNotif(null), 6000);
+    } else if (action.type === "lembrete_agendado") {
+      setActionNotif({ text: "⏰ Lembrete agendado!" });
+      setTimeout(() => setActionNotif(null), 5000);
+    } else if (action.type === "email_enviado") {
+      setActionNotif({ text: "📧 E-mail enviado!" });
+      setTimeout(() => setActionNotif(null), 5000);
+    } else if (action.type === "whatsapp_enviado") {
+      setActionNotif({ text: "💬 WhatsApp enviado!" });
+      setTimeout(() => setActionNotif(null), 5000);
+    } else if (action.type === "info") {
+      // Ignorado silenciosamente — payload sem efeito de UI/rota.
+    } else if (action.type === "criar_video") {
+      // Paridade com TutorChat: persiste o vídeo para o Notebook e mostra toast.
+      // Não injeta bubble no chat porque o histórico do VoiceProfessor não tem
+      // shape para anexos rich (é só user/assistant texto).
+      try {
+        if (action.video_url) {
+          localStorage.setItem("tiagao_video", JSON.stringify({
+            url: action.video_url,
+            titulo: action.titulo,
+            formato: action.formato,
+            duration_sec: action.duration_sec,
+          }));
+          window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_video" } }));
+        }
+        setActionNotif({
+          text: action.titulo ? `🎬 Vídeo "${action.titulo}" criado!` : "🎬 Vídeo criado!",
+          path: "/notebook",
+        });
+        setTimeout(() => setActionNotif(null), 8000);
+      } catch { /* ignore */ }
+    } else if (action.type === "video_limit_reached") {
+      setActionNotif({
+        text: `⏳ Limite diário de vídeos atingido (${action.used ?? "—"}/${action.limit ?? "—"})`,
+      });
+      setTimeout(() => setActionNotif(null), 6000);
     }
     for (const notif of notifications) {
       if (notif.type === "flashcards_criados") {

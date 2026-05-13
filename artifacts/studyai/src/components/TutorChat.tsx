@@ -55,19 +55,28 @@ interface TutorChatProps {
 }
 
 /**
- * Defesa client-side: o backend Tiagão às vezes emite `criar_slides`,
- * `criar_resumo` ou `criar_infografico` com título "Plano de Estudos: ...".
- * Sem este guard, o pedido vira artefato no Notebook em vez de abrir o
- * gerador de plano em `/app`. Esse helper detecta a intenção pelo título.
+ * Defesa client-side: o backend Tiagão às vezes emite ações "guarda-chuva"
+ * (`criar_slides`/`criar_slide`/`criar_resumo`/`criar_infografico`/
+ * `criar_plano_estudos`) com títulos do tipo "Plano de Estudos: …",
+ * "Mapa mental de …", "Cronograma semanal …", "Redação sobre …",
+ * "Flashcards de …". Sem este detector, esses pedidos viram artefato no
+ * Notebook em vez de abrir a página dedicada (`/app`, `/cronograma`,
+ * `/mapa-mental`, `/redacao`).
+ *
+ * TODO(roteamento): extrair para um módulo partilhado entre
+ * VoiceProfessor.tsx e TutorChat.tsx (`@/lib/tiagao-intent`).
  */
-function looksLikePlanIntent(action: any): boolean {
-  const t = String(
-    action?.titulo ?? action?.topico ?? action?.tema ?? "",
-  ).toLowerCase().trim();
-  if (!t) return false;
-  return /\bplan(?:o|os|ejamento)\b/.test(t)
-      || /plano\s+de\s+estudo/.test(t)
-      || /cronograma\s+de\s+estudo/.test(t);
+type ArtifactIntent = "plano" | "cronograma" | "mapa_mental" | "redacao" | "flashcards" | null;
+
+function detectArtifactIntent(action: any): ArtifactIntent {
+  const t = String(action?.titulo ?? action?.topico ?? action?.tema ?? "").toLowerCase().trim();
+  if (!t) return null;
+  if (/\bplan(?:o|os|ejamento)\b|\bplano\s+de\s+estudo/.test(t)) return "plano";
+  if (/\bcronograma|\brotina\s+de\s+estud|\borganiza(?:ç|c)ão\s+da\s+semana|\bsemanal/.test(t)) return "cronograma";
+  if (/\bmapa\s+mental|\bmapa\s+conceitual|\bdiagrama\s+(?:hier|conce)/.test(t)) return "mapa_mental";
+  if (/\bflashcards?|\bcart(?:ões|elas)\s+de\s+revis/.test(t)) return "flashcards";
+  if (/\bredação|\btexto\s+dissertativo|\bdissertaç/.test(t)) return "redacao";
+  return null;
 }
 
 const QUICK_ACTIONS = [
@@ -331,31 +340,96 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
   const handleAction = useCallback((action: Record<string, any>) => {
     if (!action?.type) return;
 
-    // ── Plan-intent guard ────────────────────────────────────────────────────
-    // Se o Tiagão emitiu uma ação de artefato (slides/resumo/infografico/plano)
-    // mas o título parece "Plano de Estudos: …", reroteia para o fluxo real de
-    // plano em `/app` em vez de salvar como artefato no Notebook RAG.
-    const guarded = action.type === "criar_slides"
-      || action.type === "criar_resumo"
-      || action.type === "criar_infografico"
-      || action.type === "criar_plano_estudos";
-    if (guarded && looksLikePlanIntent(action)) {
-      const topic =
-        (typeof action.titulo === "string" && action.titulo.trim()) ||
-        (typeof action.topico === "string" && action.topico.trim()) ||
-        (typeof action.tema === "string" && action.tema.trim()) ||
-        "Plano de estudos personalizado";
-      navigate("/app");
-      window.setTimeout(() => {
-        triggerProfessorAction("criar_plano", topic);
-      }, 650);
-      showNotif({
-        icon: <CalendarDays className="w-5 h-5 flex-shrink-0" />,
-        text: `📅 Abrindo o gerador de plano…`,
-        sub: topic ? `"${topic}"` : undefined,
-        path: "/app",
-      });
-      return;
+    // ── Multi-intent guard ───────────────────────────────────────────────────
+    // Se o Tiagão emitiu uma ação "guarda-chuva" mas o título sugere outra
+    // categoria (plano, cronograma, mapa mental, redação, flashcards), reroteia
+    // para a página dedicada em vez de despejar tudo no Notebook RAG.
+    const GUARDED_TYPES = new Set<string>([
+      "criar_slides", "criar_slide", "criar_resumo",
+      "criar_infografico", "criar_plano_estudos",
+    ]);
+    if (typeof action.type === "string" && GUARDED_TYPES.has(action.type)) {
+      const intent = detectArtifactIntent(action);
+      if (intent) {
+        const topic =
+          (typeof action.titulo === "string" && action.titulo.trim()) ||
+          (typeof action.topico === "string" && action.topico.trim()) ||
+          (typeof action.tema === "string" && action.tema.trim()) ||
+          "Material personalizado";
+        if (intent === "plano") {
+          navigate("/app");
+          window.setTimeout(() => {
+            triggerProfessorAction("criar_plano", topic);
+          }, 650);
+          showNotif({
+            icon: <CalendarDays className="w-5 h-5 flex-shrink-0" />,
+            text: `📅 Abrindo o gerador de plano…`,
+            sub: topic ? `"${topic}"` : undefined,
+            path: "/app",
+          });
+          return;
+        }
+        if (intent === "cronograma") {
+          try {
+            localStorage.setItem(
+              "tiagao_cronograma_intent",
+              JSON.stringify({ topic, ts: Date.now() }),
+            );
+          } catch { /* ignore */ }
+          showNotif({
+            icon: <CalendarDays className="w-5 h-5 flex-shrink-0" />,
+            text: "🗓️ Abrindo cronograma de estudos…",
+            sub: topic ? `"${topic}"` : undefined,
+            path: "/cronograma",
+          });
+          window.setTimeout(() => navigate("/cronograma"), 700);
+          return;
+        }
+        if (intent === "mapa_mental") {
+          try {
+            localStorage.setItem(
+              "tiagao_mapa_mental_intent",
+              JSON.stringify({ topic, ts: Date.now() }),
+            );
+            if (action.mapa) {
+              localStorage.setItem("tiagao_mapa_mental", JSON.stringify(action.mapa));
+            }
+          } catch { /* ignore */ }
+          showNotif({
+            icon: <Network className="w-5 h-5 flex-shrink-0" />,
+            text: "🗺️ Abrindo mapa mental…",
+            sub: topic ? `"${topic}"` : undefined,
+            path: "/mapa-mental",
+          });
+          window.setTimeout(() => navigate("/mapa-mental"), 700);
+          return;
+        }
+        if (intent === "redacao") {
+          try {
+            localStorage.setItem(
+              "tiagao_redacao_intent",
+              JSON.stringify({ tema: topic, ts: Date.now() }),
+            );
+          } catch { /* ignore */ }
+          showNotif({
+            icon: <ScrollText className="w-5 h-5 flex-shrink-0" />,
+            text: "✍️ Abrindo correção de redação…",
+            sub: topic ? `"${topic}"` : undefined,
+            path: "/redacao",
+          });
+          window.setTimeout(() => navigate("/redacao"), 700);
+          return;
+        }
+        if (intent === "flashcards") {
+          // TODO: criar página `/flashcards` real para receber este desvio.
+          showNotif({
+            icon: <Brain className="w-5 h-5 flex-shrink-0" />,
+            text: "🎯 Flashcards estão sendo gerados…",
+            sub: topic ? `"${topic}"` : undefined,
+          });
+          return;
+        }
+      }
     }
 
     switch (action.type) {
@@ -428,17 +502,20 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
         const tituloStr = typeof action.titulo === "string" ? action.titulo.trim() : "";
         const topicoStr = typeof action.topico === "string" ? action.topico.trim() : "";
         const topic = paramStr || tituloStr || topicoStr;
+        // Antes gravávamos em `tiagao_resumo`, o que fazia o Notebook abrir o
+        // plano como "material" na próxima visita. Movemos para
+        // `tiagao_plano_html` (read-only por enquanto); o backend já persiste
+        // em `notebook_artifacts`.
         if (action.html || action.formato === "html_completo") {
           try {
             localStorage.setItem(
-              "tiagao_resumo",
+              "tiagao_plano_html",
               JSON.stringify({
                 html: action.html,
                 topico: action.titulo ?? action.topico,
                 formato: "html_completo",
               }),
             );
-            window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_resumo" } }));
           } catch { /* ignore quota / private mode */ }
         }
         navigate("/app");
@@ -455,6 +532,9 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
       }
 
       case "criar_mapa_mental":
+        // Página dedicada `/mapa-mental` é a destinatária canónica; o
+        // dispatch `tiagao_artifact` segue para retro-compat com qualquer
+        // listener antigo (ex.: Notebook RAG legacy).
         if (action.mapa) {
           localStorage.setItem("tiagao_mapa_mental", JSON.stringify(action.mapa));
           window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_mapa_mental" } }));
@@ -463,9 +543,9 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
           icon: <Network className="w-5 h-5 flex-shrink-0" />,
           text: `🗺️ Mapa mental criado!`,
           sub: action.titulo ? `"${action.titulo}"` : undefined,
-          path: "/notebook",
+          path: "/mapa-mental",
         });
-        setTimeout(() => navigate("/notebook"), 800);
+        setTimeout(() => navigate("/mapa-mental"), 800);
         break;
 
       case "criar_video": {
@@ -544,6 +624,74 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
           text: `🔍 Busca concluída`,
           sub: action.encontrados ? `${action.encontrados} resultado(s) encontrado(s)` : undefined,
         });
+        break;
+
+      case "agenda_criada":
+        try {
+          localStorage.setItem(
+            "tiagao_agenda_hoje",
+            JSON.stringify(action.agenda ?? action),
+          );
+        } catch { /* ignore */ }
+        showNotif({
+          icon: <CalendarDays className="w-5 h-5 flex-shrink-0" />,
+          text: "🗓️ Agenda do dia criada!",
+          sub: action.titulo ? `"${action.titulo}"` : undefined,
+          path: "/cronograma",
+        });
+        setTimeout(() => navigate("/cronograma"), 800);
+        break;
+
+      case "correcao_redacao":
+        try {
+          localStorage.setItem(
+            "tiagao_redacao_correcao",
+            JSON.stringify(action.correcao ?? action),
+          );
+        } catch { /* ignore */ }
+        showNotif({
+          icon: <ScrollText className="w-5 h-5 flex-shrink-0" />,
+          text: "✍️ Redação corrigida!",
+          sub: action.tema ? `"${action.tema}"` : action.titulo ? `"${action.titulo}"` : undefined,
+          path: "/redacao",
+        });
+        setTimeout(() => navigate("/redacao"), 800);
+        break;
+
+      case "exportar_pdf":
+        showNotif({
+          icon: <FileText className="w-5 h-5 flex-shrink-0" />,
+          text: "📄 PDF pronto!",
+          sub: action.titulo,
+        });
+        break;
+
+      case "lembrete_agendado":
+        showNotif({
+          icon: <CalendarDays className="w-5 h-5 flex-shrink-0" />,
+          text: "⏰ Lembrete agendado!",
+          sub: action.titulo ?? action.quando,
+        });
+        break;
+
+      case "email_enviado":
+        showNotif({
+          icon: <CheckCircle2 className="w-5 h-5 flex-shrink-0" />,
+          text: "📧 E-mail enviado!",
+          sub: action.assunto ?? action.para,
+        });
+        break;
+
+      case "whatsapp_enviado":
+        showNotif({
+          icon: <CheckCircle2 className="w-5 h-5 flex-shrink-0" />,
+          text: "💬 WhatsApp enviado!",
+          sub: action.para,
+        });
+        break;
+
+      case "info":
+        // Ignorado silenciosamente — payload sem efeito útil de UI/rota.
         break;
 
       default:

@@ -1060,6 +1060,39 @@ export default function MapaMentalPage() {
   const [selectedProfMap, setSelectedProfMap] = useState<ProfMap | null>(null);
   const [showProfUpload, setShowProfUpload] = useState(false);
 
+  // ── Tiagão hand-off ────────────────────────────────────────────────────────
+  // O VoiceProfessor / TutorChat podem chegar aqui via desvio do detector de
+  // intent (`detectArtifactIntent`) ou via `criar_mapa_mental`. Quando isso
+  // acontece, eles gravam:
+  //   • `tiagao_mapa_mental`         — JSON do mapa pronto (do backend)
+  //   • `tiagao_mapa_mental_intent`  — só { topic } se ainda não temos o mapa
+  // Consumimos uma vez (one-shot) e mostramos um banner de contexto.
+  // TODO: integrar `mapa` no state principal (`mindData` / `selectedSubject`)
+  // quando o shape do payload do backend estabilizar.
+  const [tiagaoIntent, setTiagaoIntent] = useState<{ topic?: string; mapa?: any } | null>(null);
+  useEffect(() => {
+    try {
+      let next: { topic?: string; mapa?: any } | null = null;
+      const rawMapa = localStorage.getItem("tiagao_mapa_mental");
+      if (rawMapa) {
+        try {
+          const mapa = JSON.parse(rawMapa);
+          if (mapa && typeof mapa === "object") next = { ...(next ?? {}), mapa };
+        } catch { /* ignore */ }
+        localStorage.removeItem("tiagao_mapa_mental");
+      }
+      const rawIntent = localStorage.getItem("tiagao_mapa_mental_intent");
+      if (rawIntent) {
+        try {
+          const parsed = JSON.parse(rawIntent);
+          if (parsed?.topic) next = { ...(next ?? {}), topic: String(parsed.topic) };
+        } catch { /* ignore */ }
+        localStorage.removeItem("tiagao_mapa_mental_intent");
+      }
+      if (next) setTiagaoIntent(next);
+    } catch { /* ignore */ }
+  }, []);
+
   const W = 920; const H = 720;
 
   const buildTree = useCallback((
@@ -1330,6 +1363,32 @@ export default function MapaMentalPage() {
       </div>
 
       <div className="p-4 max-w-6xl mx-auto space-y-4">
+
+        {/* ─── Banner do Tiagão (one-shot) ─────────────────────────────── */}
+        {tiagaoIntent && (
+          <div className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0">
+              <Brain className="w-5 h-5 text-violet-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-violet-800 text-sm leading-tight">
+                {tiagaoIntent.mapa ? "🗺️ Mapa mental criado pelo Tiagão" : "🗺️ Tiagão pediu um mapa mental"}
+              </p>
+              <p className="text-xs text-violet-700/80 mt-0.5">
+                {tiagaoIntent.topic
+                  ? `Tema: "${tiagaoIntent.topic}"`
+                  : "Carregue um documento ou explore os mapas abaixo para aprofundar."}
+              </p>
+            </div>
+            <button
+              onClick={() => setTiagaoIntent(null)}
+              className="p-1.5 rounded-lg hover:bg-violet-100 text-violet-500 transition-colors flex-shrink-0"
+              aria-label="Fechar"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* ─── TAB: ALUNO ────────────────────────────────────────────── */}
         {tab === "aluno" && (

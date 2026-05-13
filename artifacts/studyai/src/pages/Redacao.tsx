@@ -79,6 +79,39 @@ export default function Redacao() {
       .catch(() => {});
   }, [result]);
 
+  // ── Tiagão hand-off ────────────────────────────────────────────────────────
+  // O VoiceProfessor / TutorChat podem chegar aqui via:
+  //   • `correcao_redacao` → grava `tiagao_redacao_correcao` (resultado pronto)
+  //   • desvio do `detectArtifactIntent("redacao")` → `tiagao_redacao_intent`
+  //     (só o tema; o utilizador escreve o texto aqui)
+  // Consumimos uma vez (one-shot) e — se houver correção pronta com shape
+  // compatível com RedacaoResult — passamos direto para o painel de resultado.
+  // TODO: backend deve garantir shape `{ competencias, notaTotal, ... }` em
+  // `correcao_redacao` para ativar este short-circuit; hoje serve só se o
+  // payload já vier no shape certo.
+  useEffect(() => {
+    try {
+      const rawCorrecao = localStorage.getItem("tiagao_redacao_correcao");
+      if (rawCorrecao) {
+        try {
+          const parsed = JSON.parse(rawCorrecao);
+          if (parsed && typeof parsed === "object" && Array.isArray(parsed.competencias)) {
+            setResult(parsed as RedacaoResult);
+          }
+        } catch { /* ignore */ }
+        localStorage.removeItem("tiagao_redacao_correcao");
+      }
+      const rawIntent = localStorage.getItem("tiagao_redacao_intent");
+      if (rawIntent) {
+        try {
+          const parsed = JSON.parse(rawIntent);
+          if (parsed?.tema) setTema(String(parsed.tema));
+        } catch { /* ignore */ }
+        localStorage.removeItem("tiagao_redacao_intent");
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   async function handleOuvir() {
     if (!result?.comentarioGeral) return;
     if (ttsPlaying && audioRef.current) {

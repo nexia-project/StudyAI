@@ -801,7 +801,7 @@ export default function Home() {
               `Perfeito${nomeAluno}! Seu plano de ${materia} ficou ótimo, com ${dias} dias bem distribuídos. Começa pelo primeiro tópico e me chama se tiver qualquer dúvida ao longo do caminho!`,
               "plan_generated"
             );
-          }, 2500);
+          }, 1200);
         } else {
           setErrorMsg("Não foi possível gerar o plano. Tente novamente.");
           setStep("form");
@@ -970,7 +970,7 @@ export default function Home() {
                   `Parabéns! Você concluiu o Dia ${dayNum} do seu plano. Isso é dedicação de verdade! Quando quiser começar o próximo dia é só me chamar que eu te ajudo.`,
                   "xp_gained"
                 ),
-              1200
+              700
             );
           }
         }
@@ -996,7 +996,7 @@ export default function Home() {
                 `Incrível${nomeAluno}! Você acabou de atingir ${newXp} pontos de XP! Está indo muito bem. Continue com esse ritmo e você vai fechar o plano antes do tempo!`,
                 "xp_gained"
               ),
-            800
+            450
           );
         }
         return newXp;
@@ -1022,7 +1022,7 @@ export default function Home() {
       setTimeout(() => triggerProfessor(
         `UAU${nomeAluno}! Você concluiu 100% do plano! Isso é INCRÍVEL! Pouquíssimos alunos chegam até aqui. Que tal fazer um simulado agora pra testar tudo que você aprendeu?`,
         "xp_gained"
-      ), 1500);
+      ), 900);
     }
   }, [isAllComplete, progressPercent]);
 
@@ -1284,14 +1284,24 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => navigate("/simulado-enem")}
-                  className="group relative overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-6 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5"
+                  className="group relative flex flex-col overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-0 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5"
                 >
-                  <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-cyan-400/20 to-primary/15 blur-2xl opacity-80 pointer-events-none" />
-                  <IllTargetExam className="size-14 mb-4 text-primary relative z-10" />
-                  <h3 className="font-black text-lg text-foreground mb-1 relative z-10">Simulado ENEM</h3>
-                  <p className="text-sm text-muted-foreground leading-snug relative z-10">
-                    Treine no formato da prova com correção inteligente.
-                  </p>
+                  <div className="relative aspect-[21/5] w-full max-h-[180px] min-h-[120px] shrink-0 overflow-hidden sm:max-h-[180px]">
+                    <img
+                      src={`${import.meta.env.BASE_URL}banners/simulado-enem-hero.png`}
+                      alt="Banner ilustrativo: simulado ENEM no formato da prova com correção inteligente."
+                      className="absolute inset-0 h-full w-full object-cover object-center"
+                      loading="lazy"
+                    />
+                  </div>
+                  <div className="relative p-6 text-left">
+                    <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-cyan-400/20 to-primary/15 blur-2xl opacity-80 pointer-events-none" />
+                    <IllTargetExam className="size-14 mb-4 text-primary relative z-10" />
+                    <h3 className="font-black text-lg text-foreground mb-1 relative z-10">Simulado ENEM</h3>
+                    <p className="text-sm text-muted-foreground leading-snug relative z-10">
+                      Treine no formato da prova com correção inteligente.
+                    </p>
+                  </div>
                 </button>
 
                 <button

@@ -39,6 +39,113 @@ const IDLE_TRIGGER_MS    = 10 * 60 * 1000;
 const PROACTIVE_MIN_GAP  = 15 * 60 * 1000;
 const CHECK_INTERVAL     = 30 * 1000;
 
+/** Per Clerk user — after first full onboarding, only short rotating greetings. */
+const TIAGAO_FIRST_VISIT_DONE_PREFIX = "studyai_tiagao_first_visit_done_";
+
+function tiagaoFirstVisitDoneKey(clerkUserId: string): string {
+  return `${TIAGAO_FIRST_VISIT_DONE_PREFIX}${clerkUserId}`;
+}
+
+function hasCompletedTiagaoFirstVisit(clerkUserId: string | undefined): boolean {
+  if (!clerkUserId || typeof window === "undefined") return false;
+  try {
+    return localStorage.getItem(tiagaoFirstVisitDoneKey(clerkUserId)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markTiagaoFirstVisitDone(clerkUserId: string | undefined): void {
+  if (!clerkUserId || typeof window === "undefined") return;
+  try {
+    localStorage.setItem(tiagaoFirstVisitDoneKey(clerkUserId), "1");
+  } catch { /* ignore */ }
+}
+
+const TIAGAO_SHORT_GREETINGS = [
+  "E aí{nm}! Por onde você quer começar hoje — revisão, simulado ou matéria nova?",
+  "Tiagão por aqui{nm}. Qual tópico ou dia do plano a gente ataca agora?",
+  "Bora estudar{nm}? Me diz se é dúvida pontual, treino rápido ou organizar o dia.",
+  "Oi{nm}! Tô on: quer flashcards, resumo rápido ou uma dica de foco?",
+  "De volta{nm}! Quer revisar o que já fez ou avançar um conteúdo novo?",
+  "Fala{nm}! Hoje é mais teoria, mais questões ou organizar a agenda de estudo?",
+];
+
+function pickShortTiagaoGreeting(clerkUserId: string | undefined, nomePrimeiro: string): string {
+  const d = new Date().toISOString().slice(0, 10);
+  const seed = `${clerkUserId ?? "guest"}|${d}`;
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const idx = Math.abs(h) % TIAGAO_SHORT_GREETINGS.length;
+  const nm = nomePrimeiro ? `, ${nomePrimeiro}` : "";
+  return TIAGAO_SHORT_GREETINGS[idx].replace(/\{nm\}/g, nm);
+}
+
+/** Long onboarding (PDF/anexo) — só na primeira visita com login, se API falhar. */
+function longOnboardingFallbackPainel(nomePrimeiro: string): string {
+  const n = nomePrimeiro;
+  return n
+    ? `E aí, ${n}! Sou o Tiagão. O que você quer dominar agora? A gente pode montar um plano de estudos juntos — se tiver PDF, Word ou foto do caderno, anexa aqui no clipe que eu já leio. Por onde começamos?`
+    : `Oi! Tiagão aqui. Me conta o foco de hoje: prova, matéria ou revisão? Posso criar um plano com você; manda PDF, Word ou imagem no anexo que eu já uso. Bora?`;
+}
+
+async function fetchTiagaoOpeningFromApi(
+  origem: "painel" | "app_entry",
+  signal?: AbortSignal,
+): Promise<string> {
+  try {
+    const r = await fetch(`${BASE_URL}/api/tiagao-opening`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ context: collectStudentContext(), origem }),
+      credentials: "include",
+      signal,
+    });
+    if (r.ok) {
+      const j = await r.json();
+      return String(j.text || "").trim();
+    }
+  } catch { /* ignore */ }
+  return "";
+}
+
+/**
+ * Decide o texto da saudação.
+ * - Visitante ou já completou primeira visita (localStorage): saudações curtas rotativas (sem “palestra” de PDF).
+ * - Primeiro acesso com login e chave ausente: mensagem completa (API + fallback longo), e `markFirst` true.
+ */
+async function resolveTiagaoOpeningText(params: {
+  origem: "painel" | "app_entry";
+  clerkUserId: string | undefined;
+  isAuthenticated: boolean;
+  signal?: AbortSignal;
+}): Promise<{ text: string; markFirstVisitDone: boolean }> {
+  const ctx = collectStudentContext();
+  const nomePrimeiro =
+    ctx.nome && ctx.nome !== "Herói" ? ctx.nome.split(/\s+/)[0] ?? "" : "";
+
+  const wantFull =
+    params.isAuthenticated &&
+    !!params.clerkUserId &&
+    !hasCompletedTiagaoFirstVisit(params.clerkUserId);
+
+  if (!wantFull) {
+    return {
+      text: pickShortTiagaoGreeting(params.clerkUserId, nomePrimeiro),
+      markFirstVisitDone: false,
+    };
+  }
+
+  let greeting = await fetchTiagaoOpeningFromApi(params.origem, params.signal);
+  if (!greeting || greeting.length < 25) {
+    greeting = longOnboardingFallbackPainel(nomePrimeiro);
+  }
+  return { text: greeting, markFirstVisitDone: true };
+}
+
 // ─── Shared AudioContext ──────────────────────────────────────────────────────
 let _ctx: AudioContext | null = null;
 let _currentSource: AudioBufferSourceNode | null = null;
@@ -241,7 +348,8 @@ function VolumeBar({ level }: { level: number }) {
 // ─── Component ────────────────────────────────────────────────────────────────
 export function VoiceProfessor() {
   const [location, navigate] = useLocation();
-  const { isAuthenticated, isLoading: authLoading } = useStudyAuth();
+  const { isAuthenticated, isLoading: authLoading, user } = useStudyAuth();
+  const clerkUserId = user?.id;
   const [open, setOpen]           = useState(false);
   const [tab, setTab]             = useState<Tab>("conversa");
   const [phase, setPhase]         = useState<Phase>("idle");
@@ -377,19 +485,19 @@ export function VoiceProfessor() {
     notifications: Record<string, any>[]
   ) => {
     if (!action) return;
-    if (action.type === "ir") setTimeout(() => navigate(normalizeTiagaoLegacyPath(action.param)), 600);
+    if (action.type === "ir") setTimeout(() => navigate(normalizeTiagaoLegacyPath(action.param)), 400);
     else if (action.type === "criar_plano") {
       const topic = typeof action.param === "string" ? action.param.trim() : "";
       navigate("/app");
       window.setTimeout(() => {
         triggerProfessorAction("criar_plano", topic || "Plano de estudos personalizado (com o Tiagão)");
-      }, 650);
+      }, 400);
     }
-    else if (action.type === "navegar") setTimeout(() => navigate(normalizeTiagaoLegacyPath(action.path ?? "/app")), 700);
+    else if (action.type === "navegar") setTimeout(() => navigate(normalizeTiagaoLegacyPath(action.path ?? "/app")), 450);
     else if (action.type === "abrir_aula_ia") {
       localStorage.setItem("tiagao_aula_topico", action.topico ?? "");
       localStorage.setItem("tiagao_aula_estilo", action.estilo ?? "ENEM");
-      setTimeout(() => navigate("/aula-ia"), 700);
+      setTimeout(() => navigate("/aula-ia"), 450);
     } else if (action.type === "flashcards_criados") {
       setActionNotif({ text: `✅ ${action.quantidade} flashcards criados sobre "${action.topico}"`, path: "/app" });
       setTimeout(() => setActionNotif(null), 6000);
@@ -399,11 +507,11 @@ export function VoiceProfessor() {
       if (action.html || action.formato === "html_completo") {
         localStorage.setItem("tiagao_slides_criados", JSON.stringify({ html: action.html, titulo: action.titulo, formato: "html_completo" }));
         window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_slides_criados" } }));
-        setTimeout(() => navigate("/notebook"), 1500);
+        setTimeout(() => navigate("/notebook"), 450);
       } else if (action.slides) {
         localStorage.setItem("tiagao_slides_criados", JSON.stringify(action.slides));
         window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_slides_criados" } }));
-        setTimeout(() => navigate("/notebook"), 1500);
+        setTimeout(() => navigate("/notebook"), 450);
       }
     } else if (action.type === "criar_prova") {
       setActionNotif({ text: `📝 Prova "${action.titulo}" criada! Salva no Notebook.`, path: "/notebook" });
@@ -416,7 +524,7 @@ export function VoiceProfessor() {
       if (action.html || action.formato === "html_completo") {
         localStorage.setItem("tiagao_resumo", JSON.stringify({ html: action.html, topico: action.titulo, formato: "html_completo" }));
         window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_resumo" } }));
-        setTimeout(() => navigate("/notebook"), 800);
+        setTimeout(() => navigate("/notebook"), 450);
       }
       setActionNotif({ text: `📅 Plano "${action.titulo}" criado! Ver no Notebook.`, path: "/notebook" });
       setTimeout(() => setActionNotif(null), 8000);
@@ -431,7 +539,7 @@ export function VoiceProfessor() {
       if (action.html || action.formato === "html_completo") {
         localStorage.setItem("tiagao_resumo", JSON.stringify({ html: action.html, topico: action.topico, formato: "html_completo" }));
         window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_resumo" } }));
-        setTimeout(() => navigate("/notebook"), 800);
+        setTimeout(() => navigate("/notebook"), 450);
       } else if (action.infografico) {
         localStorage.setItem("tiagao_infografico", JSON.stringify(action.infografico));
         window.dispatchEvent(new CustomEvent("tiagao_artifact", { detail: { key: "tiagao_infografico" } }));
@@ -607,42 +715,29 @@ export function VoiceProfessor() {
     }
   }, [sendMessage]);
 
-  // ── Saudação variada ao abrir o painel (uma vez por carga da página) ────────
+  // ── Saudação ao abrir o painel (uma vez por carga da página) ───────────────
   useEffect(() => {
     if (!open) return;
     if (greetedRef.current) return;
+    if (isAuthenticated && !clerkUserId) return;
     unlockAudioSync();
     let cancelled = false;
     (async () => {
-      let greeting = "";
-      try {
-        const r = await fetch(`${BASE_URL}/api/tiagao-opening`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ context: collectStudentContext(), origem: "painel" }),
-          credentials: "include",
-        });
-        if (r.ok) {
-          const j = await r.json();
-          greeting = String(j.text || "").trim();
-        }
-      } catch { /* ignore */ }
+      const { text: greeting, markFirstVisitDone } = await resolveTiagaoOpeningText({
+        origem: "painel",
+        clerkUserId,
+        isAuthenticated,
+      });
       if (cancelled) return;
-      const ctx = collectStudentContext();
-      if (!greeting || greeting.length < 25) {
-        const n = ctx.nome && ctx.nome !== "Herói" ? ctx.nome.split(/\s+/)[0] : "";
-        greeting = n
-          ? `E aí, ${n}! Sou o Tiagão. O que você quer dominar agora? A gente pode montar um plano de estudos juntos — se tiver PDF, Word ou foto do caderno, anexa aqui no clipe que eu já leio. Por onde começamos?`
-          : `Oi! Tiagão aqui. Me conta o foco de hoje: prova, matéria ou revisão? Posso criar um plano com você; manda PDF, Word ou imagem no anexo que eu já uso. Bora?`;
-      }
+      if (markFirstVisitDone) markTiagaoFirstVisitDone(clerkUserId);
       greetedRef.current = true;
       historyRef.current = [{ role: "assistant", content: greeting }];
       lastProactiveRef.current = Date.now();
       setHistory([{ role: "assistant", text: greeting, ts: Date.now() }]);
-      setTimeout(() => { if (!cancelled) void speak(greeting); }, 300);
+      setTimeout(() => { if (!cancelled) void speak(greeting); }, 120);
     })();
     return () => { cancelled = true; };
-  }, [open, speak]);
+  }, [open, speak, isAuthenticated, clerkUserId]);
 
   useEffect(() => {
     const lines = history.filter(m => m.role === "assistant").slice(-4).map(m => m.text.slice(0, 160));
@@ -691,9 +786,10 @@ export function VoiceProfessor() {
     return () => window.removeEventListener("professor:proactive", handler);
   }, [speak]);
 
-  // ── Boas-vindas na entrada do app (1× por sessão) — primeira impressão ─────
+  // ── Boas-vindas na entrada do app (1× por sessão) — conteúdo longo só na 1ª visita com login (localStorage)
   useEffect(() => {
     if (authLoading || !isAuthenticated) return;
+    if (!clerkUserId) return;
     const path = location || "/";
     if (/^\/($|sign-in|sign-up)/.test(path)) return;
 
@@ -707,7 +803,8 @@ export function VoiceProfessor() {
       return;
     }
 
-    const delayMs = 3000;
+    // Atraso só para hidratar contexto na página; reduzido para a saudação aparecer mais cedo
+    const delayMs = 900;
     sto = setTimeout(() => {
       void (async () => {
         if (cancelled) return;
@@ -723,32 +820,18 @@ export function VoiceProfessor() {
           return;
         }
 
-        let greeting = "";
-        try {
-          const r = await fetch(`${BASE_URL}/api/tiagao-opening`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ context: collectStudentContext(), origem: "app_entry" }),
-            credentials: "include",
-          });
-          if (r.ok) {
-            const j = await r.json();
-            greeting = String(j.text || "").trim();
-          }
-        } catch { /* ignore */ }
+        const { text: greeting, markFirstVisitDone } = await resolveTiagaoOpeningText({
+          origem: "app_entry",
+          clerkUserId,
+          isAuthenticated: true,
+        });
 
         if (cancelled || mutedRef.current || greetedRef.current) {
           try { sessionStorage.setItem(KEY, "1"); } catch { /* ignore */ }
           return;
         }
 
-        const ctx = collectStudentContext();
-        if (!greeting || greeting.length < 25) {
-          const n = ctx.nome && ctx.nome !== "Herói" ? ctx.nome.split(/\s+/)[0] : "";
-          greeting = n
-            ? `Oi, ${n}! Tiagão aqui com você no StudyAI. Me diz: por onde você quer que a gente comece hoje?`
-            : `Oi! Tiagão por aqui no StudyAI. O que você quer organizar ou estudar primeiro?`;
-        }
+        if (markFirstVisitDone) markTiagaoFirstVisitDone(clerkUserId);
 
         try { sessionStorage.setItem(KEY, "1"); } catch { /* ignore */ }
         greetedRef.current = true;
@@ -765,14 +848,14 @@ export function VoiceProfessor() {
         if (sessionStorage.getItem(KEY) === "pending") sessionStorage.removeItem(KEY);
       } catch { /* ignore */ }
     };
-  }, [speak, isAuthenticated, authLoading, location]);
+  }, [isAuthenticated, authLoading, location, clerkUserId]);
 
   useEffect(() => {
     const handler = (e: Event) => {
       const { reason } = (e as CustomEvent<ProfessorBehaviorDetail>).detail;
       if (mutedRef.current) return;
       lastUserActivityRef.current = Date.now();
-      setTimeout(() => runProactive(reason), 1500);
+      setTimeout(() => runProactive(reason), 600);
     };
     window.addEventListener("professor:behavior", handler);
     return () => window.removeEventListener("professor:behavior", handler);
@@ -790,7 +873,7 @@ export function VoiceProfessor() {
         const away = Date.now() - lastUserActivityRef.current;
         if (away > 5 * 60 * 1000) {
           lastUserActivityRef.current = Date.now();
-          setTimeout(() => runProactive("page_return"), 2000);
+          setTimeout(() => runProactive("page_return"), 900);
         }
       }
     };

@@ -1331,14 +1331,25 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => navigate("/notebook")}
-                  className="group relative overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-6 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5"
+                  className="group relative flex flex-col overflow-hidden rounded-3xl border border-violet-200/70 bg-white/70 backdrop-blur-xl p-0 text-left shadow-lg shadow-violet-500/5 transition hover:border-primary/35 hover:shadow-xl hover:-translate-y-0.5"
                 >
-                  <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-pink-400/15 to-violet-500/15 blur-2xl opacity-80 pointer-events-none" />
-                  <IllNotebookStack className="size-14 mb-4 text-primary relative z-10" />
-                  <h3 className="font-black text-lg text-foreground mb-1 relative z-10">Notebook RAG</h3>
-                  <p className="text-sm text-muted-foreground leading-snug relative z-10">
-                    Pergunte aos seus materiais com IA.
-                  </p>
+                  <div className="relative aspect-[21/5] w-full max-h-[180px] min-h-[120px] shrink-0 overflow-hidden sm:max-h-[180px]">
+                    <img
+                      src={`${import.meta.env.BASE_URL}banners/notebook-rag-hero.png`}
+                      alt="Notebook RAG: assistente de pesquisa nos seus materiais."
+                      className="absolute inset-0 h-full w-full object-cover object-center"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </div>
+                  <div className="relative p-6 text-left">
+                    <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-pink-400/15 to-violet-500/15 blur-2xl opacity-80 pointer-events-none" />
+                    <IllNotebookStack className="relative z-10 mb-4 size-14 text-primary" />
+                    <h3 className="relative z-10 mb-1 font-black text-lg text-foreground">Notebook RAG</h3>
+                    <p className="relative z-10 text-sm leading-snug text-muted-foreground">
+                      Pergunte aos seus materiais com IA.
+                    </p>
+                  </div>
                 </button>
 
                 <button

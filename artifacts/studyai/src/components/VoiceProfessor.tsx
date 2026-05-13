@@ -1163,6 +1163,37 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
     return () => window.removeEventListener("professor:proactive", handler);
   }, [speak]);
 
+  // ── External requests to open / ask Tiagão (used by the new /app Home) ──────
+  // Hero input "send", suggestion chips ("Tirar dúvida…"), and the floating
+  // voice CTA dispatch these events. Keeps wiring decoupled from the global
+  // VoiceProfessor instance mounted in App.tsx.
+  useEffect(() => {
+    if (variant === "landing") return;
+    const onOpen = () => {
+      setShowHint(false);
+      unlockAudioSync();
+      setOpen(true);
+    };
+    const onAsk = (e: Event) => {
+      const detail = (e as CustomEvent<{ text?: string; tab?: Tab }>).detail || {};
+      setShowHint(false);
+      unlockAudioSync();
+      setOpen(true);
+      if (detail.tab) setTab(detail.tab);
+      const text = (detail.text || "").trim();
+      if (text) {
+        // Defer to next tick so the panel is mounted before sending.
+        setTimeout(() => { void sendMessage(text); }, 60);
+      }
+    };
+    window.addEventListener("studyai:open-voice", onOpen);
+    window.addEventListener("studyai:ask-tiagao", onAsk);
+    return () => {
+      window.removeEventListener("studyai:open-voice", onOpen);
+      window.removeEventListener("studyai:ask-tiagao", onAsk);
+    };
+  }, [sendMessage, variant]);
+
   // ── Boas-vindas na entrada do app (1× por sessão) — conteúdo longo só na 1ª visita com login (localStorage)
   useEffect(() => {
     if (variant === "landing") return;

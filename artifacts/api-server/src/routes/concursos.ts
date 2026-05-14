@@ -19,7 +19,7 @@ import {
   getRandomConcurso,
   searchConcursos,
 } from "../lib/concursos/bank";
-import type { ConcursoArea, ConcursoBanca } from "../lib/concursos/types";
+import { CONCURSO_AREAS, type ConcursoArea, type ConcursoBanca } from "../lib/concursos/types";
 
 const router: IRouter = Router();
 
@@ -32,16 +32,10 @@ const VALID_BANCAS = new Set<ConcursoBanca>([
   "OUTRO",
 ]);
 
-const VALID_AREAS = new Set<ConcursoArea>([
-  "DIREITO",
-  "PORTUGUES",
-  "MATEMATICA",
-  "RACIOCINIO_LOGICO",
-  "INFORMATICA",
-  "ATUALIDADES",
-  "LEGISLACAO",
-  "OUTROS",
-]);
+// Derivado da lista canônica em `types.ts` pra nunca divergir entre o
+// tipo (compilação) e a validação HTTP (runtime). Adicionar área nova =
+// um único ponto de edição em types.ts.
+const VALID_AREAS = new Set<ConcursoArea>(CONCURSO_AREAS);
 
 function parseBanca(raw: unknown): { ok: true; value?: ConcursoBanca } | { ok: false; detail: string } {
   if (raw === undefined || raw === "") return { ok: true };
@@ -60,8 +54,7 @@ function parseArea(raw: unknown): { ok: true; value?: ConcursoArea } | { ok: fal
   if (!VALID_AREAS.has(upper as ConcursoArea)) {
     return {
       ok: false,
-      detail:
-        "area: use DIREITO, PORTUGUES, MATEMATICA, RACIOCINIO_LOGICO, INFORMATICA, ATUALIDADES, LEGISLACAO ou OUTROS",
+      detail: `area: use uma de ${[...VALID_AREAS].join(", ")}`,
     };
   }
   return { ok: true, value: upper as ConcursoArea };

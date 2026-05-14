@@ -34,6 +34,9 @@ import {
 import { triggerProfessorAction } from "@/lib/professor-events";
 
 type Banca = "" | "CEBRASPE" | "FGV" | "VUNESP" | "FCC" | "OAB" | "OUTRO";
+// Mantemos sincronizado com `ConcursoArea` em
+// `api-server/src/lib/concursos/types.ts`. Adicionar área nova =
+// atualizar nos dois lugares (e checar typecheck nos dois pacotes).
 type Area =
   | ""
   | "DIREITO"
@@ -43,6 +46,15 @@ type Area =
   | "INFORMATICA"
   | "ATUALIDADES"
   | "LEGISLACAO"
+  | "MEDICINA"
+  | "ENFERMAGEM"
+  | "FARMACIA"
+  | "ODONTOLOGIA"
+  | "FISIOTERAPIA"
+  | "NUTRICAO"
+  | "PSICOLOGIA"
+  | "SERVICO_SOCIAL"
+  | "BIOMEDICINA"
   | "OUTROS";
 
 interface Alternativa {
@@ -94,16 +106,31 @@ const BANCAS: { value: Banca; label: string }[] = [
   { value: "OUTRO", label: "Outras (Revalida, Enare…)" },
 ];
 
+// Ordem: Direito primeiro (concursos gerais), Medicina em destaque (maior
+// volume), depois demais especialidades de saúde alfabéticas, Outros por
+// último. Tópicos clássicos de concursos (Português, Matemática, etc.)
+// ficam após Medicina mas antes das outras áreas de saúde — ainda que o
+// seed atual não tenha questões nelas, deixamos como placeholder pra quando
+// integrarmos CEBRASPE/FGV/etc.
 const AREAS: { value: Area; label: string }[] = [
   { value: "", label: "Todas as áreas" },
   { value: "DIREITO", label: "Direito" },
+  { value: "MEDICINA", label: "Medicina" },
   { value: "PORTUGUES", label: "Português" },
   { value: "MATEMATICA", label: "Matemática" },
   { value: "RACIOCINIO_LOGICO", label: "Raciocínio Lógico" },
   { value: "INFORMATICA", label: "Informática" },
   { value: "ATUALIDADES", label: "Atualidades" },
   { value: "LEGISLACAO", label: "Legislação" },
-  { value: "OUTROS", label: "Outros (Saúde, etc.)" },
+  { value: "ENFERMAGEM", label: "Enfermagem" },
+  { value: "FARMACIA", label: "Farmácia" },
+  { value: "ODONTOLOGIA", label: "Odontologia" },
+  { value: "FISIOTERAPIA", label: "Fisioterapia" },
+  { value: "NUTRICAO", label: "Nutrição" },
+  { value: "PSICOLOGIA", label: "Psicologia" },
+  { value: "SERVICO_SOCIAL", label: "Serviço Social" },
+  { value: "BIOMEDICINA", label: "Biomedicina" },
+  { value: "OUTROS", label: "Outros" },
 ];
 
 function openTiagao() {
@@ -137,7 +164,18 @@ function areaIcon(area?: string) {
   switch (area) {
     case "DIREITO":
       return Scale;
-    case "OUTROS":
+    // Toda a família de saúde (Medicina + especialidades multi-profissionais)
+    // ganha o ícone de estetoscópio — visualmente agrupa o cluster de saúde
+    // mesmo com áreas separadas no filtro.
+    case "MEDICINA":
+    case "ENFERMAGEM":
+    case "FARMACIA":
+    case "ODONTOLOGIA":
+    case "FISIOTERAPIA":
+    case "NUTRICAO":
+    case "PSICOLOGIA":
+    case "SERVICO_SOCIAL":
+    case "BIOMEDICINA":
       return Stethoscope;
     default:
       return GraduationCap;
@@ -653,10 +691,13 @@ function EmptyHint({
   stats: Stats | null;
   onPickSuggestion: (s: { banca: Banca; area: Area }) => void;
 }) {
-  // Sugestões adaptadas ao que temos no banco.
+  // Sugestões adaptadas ao que temos no banco. Apontamos pra MEDICINA
+  // (maior bucket de saúde, ~4.5k questões — Revalida + Enare residência
+  // médica) em vez do antigo OUTRO/OUTROS, que agora é só o resíduo das
+  // sub-especialidades do Enare Multi sem bucket próprio.
   const SUGGESTIONS: { banca: Banca; area: Area; label: string; icon: typeof Scale; tone: string }[] = [
     { banca: "OAB", area: "DIREITO", label: "OAB 1ª fase", icon: Scale, tone: "from-amber-500 to-orange-500" },
-    { banca: "OUTRO", area: "OUTROS", label: "Revalida / Enare", icon: Stethoscope, tone: "from-emerald-500 to-teal-500" },
+    { banca: "", area: "MEDICINA", label: "Revalida / Enare", icon: Stethoscope, tone: "from-emerald-500 to-teal-500" },
     { banca: "", area: "", label: "Surpreenda-me", icon: Sparkles, tone: "from-violet-500 to-fuchsia-500" },
   ];
 

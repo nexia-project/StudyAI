@@ -21,19 +21,63 @@
 export type ConcursoBanca = "CEBRASPE" | "FGV" | "VUNESP" | "FCC" | "OAB" | "OUTRO";
 
 /**
- * Macro-áreas que cobrem o conteúdo típico de concursos públicos. `OUTROS`
- * absorve áreas técnicas (medicina, engenharia, etc.) até criarmos um
- * vocabulário mais rico.
+ * Macro-áreas que cobrem o conteúdo típico de concursos públicos +
+ * licenciamento profissional na saúde.
+ *
+ * Direito cobre OAB. Medicina cobre Revalida + Enare (residência médica).
+ * Especialidades multi-profissionais do Enare Multi viram áreas próprias
+ * sempre que tiverem volume suficiente (≥10 questões) — o resto cai em
+ * `OUTROS` (Saúde coletiva, Fonoaudiologia, Medicina veterinária, etc.).
+ *
+ * Declarado como `as const` array para servir tanto de fonte do tipo
+ * (via `typeof`) quanto de set de validação em runtime (routes/concursos.ts)
+ * — assim a lista nunca diverge entre compilação e validação HTTP.
  */
-export type ConcursoArea =
-  | "DIREITO"
-  | "PORTUGUES"
-  | "MATEMATICA"
-  | "RACIOCINIO_LOGICO"
-  | "INFORMATICA"
-  | "ATUALIDADES"
-  | "LEGISLACAO"
-  | "OUTROS";
+export const CONCURSO_AREAS = [
+  "DIREITO",
+  "PORTUGUES",
+  "MATEMATICA",
+  "RACIOCINIO_LOGICO",
+  "INFORMATICA",
+  "ATUALIDADES",
+  "LEGISLACAO",
+  "MEDICINA",
+  "ENFERMAGEM",
+  "FARMACIA",
+  "ODONTOLOGIA",
+  "FISIOTERAPIA",
+  "NUTRICAO",
+  "PSICOLOGIA",
+  "SERVICO_SOCIAL",
+  "BIOMEDICINA",
+  "OUTROS",
+] as const;
+
+export type ConcursoArea = (typeof CONCURSO_AREAS)[number];
+
+/**
+ * Rótulos PT-BR amigáveis pra UI. Mantemos aqui (e não só no frontend)
+ * porque scripts e logs do backend também precisam exibir nomes legíveis.
+ */
+export const CONCURSO_AREA_LABEL: Record<ConcursoArea, string> = {
+  DIREITO: "Direito",
+  PORTUGUES: "Português",
+  MATEMATICA: "Matemática",
+  RACIOCINIO_LOGICO: "Raciocínio Lógico",
+  INFORMATICA: "Informática",
+  ATUALIDADES: "Atualidades",
+  LEGISLACAO: "Legislação",
+  MEDICINA: "Medicina",
+  ENFERMAGEM: "Enfermagem",
+  FARMACIA: "Farmácia",
+  ODONTOLOGIA: "Odontologia",
+  FISIOTERAPIA: "Fisioterapia",
+  NUTRICAO: "Nutrição",
+  PSICOLOGIA: "Psicologia",
+  SERVICO_SOCIAL: "Serviço Social",
+  BIOMEDICINA: "Biomedicina",
+  OUTROS: "Outros",
+};
 
 export interface ConcursoAlternativa {
   /** Letra da alternativa (geralmente A-E; OAB usa A-D). */

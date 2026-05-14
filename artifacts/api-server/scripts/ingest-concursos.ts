@@ -41,39 +41,16 @@ import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// ─── Tipos (replicados do `src/lib/concursos/types.ts` para deixar o script
-// standalone, sem coupling com o runtime do api-server) ───────────────────────
-
-type ConcursoBanca = "CEBRASPE" | "FGV" | "VUNESP" | "FCC" | "OAB" | "OUTRO";
-type ConcursoArea =
-  | "DIREITO"
-  | "PORTUGUES"
-  | "MATEMATICA"
-  | "RACIOCINIO_LOGICO"
-  | "INFORMATICA"
-  | "ATUALIDADES"
-  | "LEGISLACAO"
-  | "OUTROS";
-
-interface ConcursoAlternativa {
-  letra: string;
-  texto: string;
-  correta: boolean;
-}
-
-interface ConcursoQuestao {
-  id: string;
-  banca?: ConcursoBanca;
-  area?: ConcursoArea;
-  ano?: number;
-  cargo?: string;
-  enunciado: string;
-  alternativas: ConcursoAlternativa[];
-  gabarito: string;
-  explicacao?: string;
-  fonte: string;
-  fonteUrl?: string;
-}
+// Importamos do canonical em `src/lib/concursos/` pra não duplicar enum nem
+// classificador. O módulo de tipos é dependency-free (só `export type ...`)
+// e o classifier é uma função pura sobre strings — ambos seguros pra script.
+import { classifyConcursoArea } from "../src/lib/concursos/area-classifier";
+import type {
+  ConcursoAlternativa,
+  ConcursoArea,
+  ConcursoBanca,
+  ConcursoQuestao,
+} from "../src/lib/concursos/types";
 
 // ─── Config / CLI ────────────────────────────────────────────────────────────
 
@@ -220,10 +197,6 @@ interface OabRow {
   answerKey: string;
 }
 
-const OAB_AREA_BY_TYPE: Record<string, ConcursoArea> = {
-  // Tudo que é OAB cai em DIREITO; mantemos question_type só pra compor cargo.
-};
-
 function mapOab(row: OabRow): ConcursoQuestao | { skipped: true; reason: string } {
   if (row.nullified) return { skipped: true, reason: "anulada" };
 
@@ -253,8 +226,10 @@ function mapOab(row: OabRow): ConcursoQuestao | { skipped: true; reason: string 
   const ano = parseInt(row.exam_year ?? "", 10);
   const tipo = row.question_type ? String(row.question_type).trim() : "";
   const cargo = tipo ? `Advogado (OAB) — ${tipo}` : "Advogado (OAB)";
+  const fonte = "huggingface:eduagarcia/oab_exams (OAB exams — uso educacional)";
 
-  const area: ConcursoArea = OAB_AREA_BY_TYPE[tipo] ?? "DIREITO";
+  // Tudo OAB é DIREITO — passamos `area: "DIREITO"` pro classifier short-circuitar.
+  const area: ConcursoArea = classifyConcursoArea({ area: "DIREITO", cargo, fonte });
 
   return {
     id: `concurso-oab-${row.id}`,
@@ -266,7 +241,7 @@ function mapOab(row: OabRow): ConcursoQuestao | { skipped: true; reason: string 
     alternativas,
     gabarito,
     explicacao: `Gabarito oficial: ${gabarito}. Prova ${row.exam_id} (OAB 1ª fase).`,
-    fonte: "huggingface:eduagarcia/oab_exams (OAB exams — uso educacional)",
+    fonte,
     fonteUrl: "https://huggingface.co/datasets/eduagarcia/oab_exams",
   };
 }
@@ -351,18 +326,24 @@ function mapHealth(row: HealthRow): ConcursoQuestao | { skipped: true; reason: s
     cargoBase: row.source || "Profissional da Saúde",
   };
   const cargo = row.group ? `${meta.cargoBase} — ${row.group}` : meta.cargoBase;
+  const fonte = "huggingface:Larxel/healthqa-br (CC-BY-4.0, D'addario 2025)";
+
+  // Classificador derruba o cargo nas áreas certas (Medicina, Enfermagem,
+  // Farmácia, Odontologia, Fisioterapia, Nutrição, Psicologia, Serviço
+  // Social, Biomedicina) ou cai em OUTROS quando não bate keyword.
+  const area = classifyConcursoArea({ cargo, fonte });
 
   return {
     id: `concurso-healthbr-${row.id}`,
     banca: meta.banca,
-    area: "OUTROS",
+    area,
     ano: typeof row.year === "number" && Number.isFinite(row.year) ? row.year : undefined,
     cargo,
     enunciado,
     alternativas,
     gabarito,
     explicacao: `Gabarito oficial: ${gabarito}. Fonte: ${row.source} ${row.year}${row.group ? ` — ${row.group}` : ""}.`,
-    fonte: "huggingface:Larxel/healthqa-br (CC-BY-4.0, D'addario 2025)",
+    fonte,
     fonteUrl: "https://huggingface.co/datasets/Larxel/healthqa-br",
   };
 }

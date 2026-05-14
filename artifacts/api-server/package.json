@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "ingest:bncc": "tsx scripts/ingest-bncc.ts",
     "ingest:enem": "tsx scripts/ingest-enem.ts",
-    "ingest:concursos": "tsx scripts/ingest-concursos.ts"
+    "ingest:concursos": "tsx scripts/ingest-concursos.ts",
+    "reclassify:concursos": "tsx scripts/reclassify-concursos-areas.ts"
   },
   "dependencies": {
     "@clerk/express": "^2.1.9",

@@ -46,10 +46,8 @@ import fazedoresRouter from "./fazedores";
 import scholarRouter from "./scholar";
 import bnccCurriculumRouter from "./bncc-curriculum";
 import enemBankRouter from "./enem-bank";
-import concursosRouter from "./concursos";
 import ragMultiRouter from "./rag-multi";
 import mathRouter from "./math";
-import inlineSearchRouter from "./inline-search";
 
 const router: IRouter = Router();
 
@@ -105,9 +103,7 @@ router.use(scholarRouter);
 // BNCC — A1 follow-up: rotas canônicas em /api/bncc/{areas,competencias,align}.
 router.use("/bncc", bnccCurriculumRouter);
 router.use(enemBankRouter);
-router.use(concursosRouter);
 router.use(ragMultiRouter);
 router.use(mathRouter);
-router.use(inlineSearchRouter);
 
 export default router;

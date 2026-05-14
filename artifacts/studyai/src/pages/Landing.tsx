@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { startCheckout } from "@/hooks/useSubscription";
 import { useStudyAuth } from "@/hooks/useStudyAuth";
-import { Logo } from "@/components/Logo";
 import {
   StudyBooksIllustration,
   StudyHeroIllustration,
@@ -412,8 +411,9 @@ export default function Landing() {
       {/* ── NAV ── */}
       <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center gap-6">
-          <a href="/" className="flex items-center flex-shrink-0" aria-label="Study.IA — início">
-            <Logo variant="horizontal" className="h-8 w-auto" />
+          <a href="/" className="flex items-center gap-2 flex-shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-violet-500/30">S</div>
+            <span className="font-black text-lg tracking-tight text-gray-900">Study<span className="text-violet-600">.IA</span></span>
           </a>
 
           <div className="hidden md:flex items-center gap-5 flex-1 flex-wrap justify-end">
@@ -1592,8 +1592,9 @@ export default function Landing() {
         <div className="max-w-5xl mx-auto">
           <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-8 mb-10">
             <div>
-              <div className="flex items-center mb-4">
-                <Logo variant="horizontal" tone="white" className="h-7 w-auto" />
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center text-white font-black text-sm">S</div>
+                <span className="font-black text-white">Study<span className="text-violet-400">.IA</span></span>
               </div>
               <p className="text-gray-500 text-xs leading-relaxed">A IA que entende como você aprende. Feito com 💜 no Brasil.</p>
             </div>

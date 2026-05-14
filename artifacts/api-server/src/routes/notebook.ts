@@ -320,8 +320,7 @@ router.delete("/notebook/cadernos/:id", async (req: Request, res: Response) => {
 });
 
 // ─── Text extraction ──────────────────────────────────────────────────────────
-// Exportada para reuso fora do Notebook (ex: /api/files/analyze do Home /app).
-export async function extractText(file: Express.Multer.File): Promise<string> {
+async function extractText(file: Express.Multer.File): Promise<string> {
   const mime = file.mimetype;
   const name = (file.originalname ?? "").toLowerCase();
 

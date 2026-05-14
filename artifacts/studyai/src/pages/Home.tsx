@@ -4,17 +4,9 @@
  * Tiagão como co-pilot central conversacional. Input grande + chips de intenção,
  * trilho secundário de 5 ferramentas, "continue de onde parou" + stats no rodapé.
  *
- * Comportamento do hero (independente do Tiagão — regra do fundador):
- *   - Hero input "Pesquisar" / Enter: busca INLINE via `/api/inline-search`.
- *     Resposta com fontes aparece em painel logo abaixo do hero. NÃO abre o
- *     Tiagão. O aluno encaminha explicitamente com botão "Levar pro Tiagão".
- *   - Botão paperclip: abre file-picker NATIVO; upload + análise INLINE via
- *     `/api/files/analyze` (PDF/DOCX/imagem etc). Texto extraído e resumo
- *     aparecem no mesmo painel inline, com botões separados "Salvar no
- *     Notebook" e "Pedir análise pro Tiagão".
- *   - Mic e botão flutuante: continuam abrindo o Tiagão (metáfora natural de
- *     voz). Veja eventos `studyai:open-voice` / `studyai:ask-tiagao` em
- *     VoiceProfessor.tsx.
+ * Design aprovado a partir de /app/preview-layout — agora 100% funcional:
+ *   - Hero input + mic + botão flutuante => abrem VoiceProfessor (Tiagão) via
+ *     eventos `studyai:open-voice` / `studyai:ask-tiagao` (ver VoiceProfessor.tsx).
  *   - Chips e cards do trilho disparam intents reais (criar_plano, navegação).
  *   - "Continue de onde parou" lê /api/history e reabre o plano via
  *     localStorage `studyai_restore_plan` (mesmo contrato do HomeLegacy).
@@ -22,7 +14,7 @@
  *   - Versão anterior do dashboard permanece disponível em /app/legacy.
  */
 
-import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -44,24 +36,10 @@ import {
   Headphones,
   History,
   PlayCircle,
-  Search,
-  FileText,
-  Loader2,
-  X,
-  AlertCircle,
-  Send,
-  Save,
 } from "lucide-react";
 import { TiagaoCharacter } from "@/components/TiagaoCharacter";
 import { UserMenu } from "@/components/UserMenu";
 import { MainMenuDrawer } from "@/components/MainMenuDrawer";
-import { Logo } from "@/components/Logo";
-import {
-  CitationListItem,
-  CitationDetail,
-  renderTextWithCitations,
-  type Citation,
-} from "@/components/CitationChip";
 import { useStudentProfile } from "@/hooks/useStudentProfile";
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 import { triggerProfessorAction } from "@/lib/professor-events";
@@ -101,11 +79,6 @@ function buildConteudoTextoFromPlan(plan: unknown): string {
 }
 
 // ─── Dispatch helpers ─────────────────────────────────────────────────────────
-// `openTiagao` e `askTiagao` continuam aqui — mas, no fluxo do hero do Home,
-// SÓ rodam por ação explícita do aluno ("Levar pro Tiagão", chip de dúvida,
-// mic, botão flutuante). Pesquisa de texto e upload de arquivo agora são
-// independentes — vão por `/api/inline-search` e `/api/files/analyze` e
-// renderizam neste mesmo Home.
 function openTiagao() {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent("studyai:open-voice"));
@@ -116,44 +89,6 @@ function askTiagao(text: string) {
   window.dispatchEvent(
     new CustomEvent("studyai:ask-tiagao", { detail: { text } }),
   );
-}
-
-// ─── Inline-search / file-analyze tipos ──────────────────────────────────────
-type RagProvider =
-  | "semantic-scholar" | "scielo" | "wikipedia"
-  | "wikidata" | "ibge" | "arxiv" | "crossref";
-
-// Citation com metadados extra do backend (ragProvider real). Compatível com
-// `Citation` do CitationChip porque `ragProvider` é opcional e ignorado lá.
-type InlineCitation = Citation & { ragProvider?: RagProvider };
-
-type SearchResult = {
-  query: string;
-  answer: string;
-  citations: InlineCitation[];
-  providers: RagProvider[];
-};
-
-type FileAnalysis = {
-  filename: string;
-  mimeType: string;
-  kind: string;
-  sizeKb: number;
-  chars: number;
-  extractedText: string;
-  summary: string;
-};
-
-const ACCEPTED_FILE_TYPES = [
-  ".pdf", ".doc", ".docx", ".pptx", ".xlsx", ".csv", ".txt", ".epub",
-  ".jpg", ".jpeg", ".png", ".webp",
-].join(",");
-
-const MAX_INLINE_FILE_MB = 25;
-
-function formatKb(kb: number): string {
-  if (kb < 1024) return `${kb} KB`;
-  return `${(kb / 1024).toFixed(1)} MB`;
 }
 
 // ─── Suggestion chips ─────────────────────────────────────────────────────────
@@ -312,30 +247,6 @@ export default function Home() {
   const [stats, setStats] = useState<Stats>({ streak: null, xp: null });
   const [tiagaoSize, setTiagaoSize] = useState<number>(160);
 
-  // Estado do painel INLINE (busca + upload). Os dois canais coexistem — se o
-  // aluno faz uma busca e depois sobe um arquivo, ambos ficam visíveis em
-  // seções distintas do painel. Cada um tem seu botão "Limpar".
-  const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
-
-  const [fileAnalysis, setFileAnalysis] = useState<FileAnalysis | null>(null);
-  const [fileLoading, setFileLoading] = useState(false);
-  const [fileError, setFileError] = useState<string | null>(null);
-  const [savingToNotebook, setSavingToNotebook] = useState(false);
-  const [savedDocId, setSavedDocId] = useState<number | null>(null);
-
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const inlineSectionRef = useRef<HTMLDivElement | null>(null);
-
-  // Aborta requisições em vôo quando uma nova começa ou o componente desmonta.
-  const searchAbortRef = useRef<AbortController | null>(null);
-  const fileAbortRef = useRef<AbortController | null>(null);
-  useEffect(() => () => {
-    searchAbortRef.current?.abort();
-    fileAbortRef.current?.abort();
-  }, []);
-
   // Mobile: avatar do Tiagão menor para não dominar a tela.
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -407,171 +318,20 @@ export default function Home() {
   const resumeTarget = recentPlans[0] ?? null;
 
   // ── Handlers ────────────────────────────────────────────────────────────────
-  // Send / Enter → BUSCA INLINE. Não abre Tiagão. O aluno pode encaminhar
-  // depois com botão "Levar pro Tiagão" no painel de resultado.
-  const submitDraft = useCallback(async () => {
+  // Send / Enter → abre o Tiagão com o texto digitado.
+  function submitDraft() {
     const text = draft.trim();
-    if (!text || searchLoading) return;
-
-    searchAbortRef.current?.abort();
-    const ctrl = new AbortController();
-    searchAbortRef.current = ctrl;
-
-    setSearchLoading(true);
-    setSearchError(null);
-    // Mantém o painel aberto com a query corrente — útil pro skeleton.
-    setSearchResult((prev) => prev ? { ...prev, query: text } : null);
-
-    try {
-      const r = await fetch("/api/inline-search", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: text }),
-        signal: ctrl.signal,
-      });
-      if (!r.ok) {
-        const errBody = await r.json().catch(() => ({}));
-        throw new Error(errBody?.erro || `Erro HTTP ${r.status}`);
-      }
-      const data = await r.json() as SearchResult;
-      if (ctrl.signal.aborted) return;
-      setSearchResult({
-        query: data.query ?? text,
-        answer: data.answer ?? "",
-        citations: Array.isArray(data.citations) ? data.citations : [],
-        providers: Array.isArray(data.providers) ? data.providers : [],
-      });
-      setDraft("");
-      // Rola até o painel inline pra dar feedback visual.
-      requestAnimationFrame(() => {
-        inlineSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    } catch (e) {
-      if (ctrl.signal.aborted) return;
-      const msg = e instanceof Error ? e.message : "Erro desconhecido";
-      setSearchError(msg);
-    } finally {
-      if (!ctrl.signal.aborted) setSearchLoading(false);
-    }
-  }, [draft, searchLoading]);
+    if (!text) return;
+    askTiagao(text);
+    setDraft("");
+  }
 
   const onHeroKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      void submitDraft();
+      submitDraft();
     }
   };
-
-  // ── File upload + análise INLINE ────────────────────────────────────────────
-  const openFilePicker = useCallback(() => {
-    if (fileLoading) return;
-    fileInputRef.current?.click();
-  }, [fileLoading]);
-
-  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    // Reseta o input pra permitir re-upload do mesmo arquivo.
-    e.target.value = "";
-    if (!f) return;
-
-    if (f.size > MAX_INLINE_FILE_MB * 1024 * 1024) {
-      setFileError(`Arquivo muito grande (máx ${MAX_INLINE_FILE_MB} MB).`);
-      return;
-    }
-
-    fileAbortRef.current?.abort();
-    const ctrl = new AbortController();
-    fileAbortRef.current = ctrl;
-
-    setFileLoading(true);
-    setFileError(null);
-    setFileAnalysis(null);
-    setSavedDocId(null);
-
-    const fd = new FormData();
-    fd.append("file", f);
-
-    try {
-      const r = await fetch("/api/files/analyze", {
-        method: "POST",
-        credentials: "include",
-        body: fd,
-        signal: ctrl.signal,
-      });
-      const data = await r.json().catch(() => null) as (FileAnalysis & { erro?: string }) | null;
-      if (!r.ok || !data) {
-        throw new Error(data?.erro || `Erro HTTP ${r.status}`);
-      }
-      if (ctrl.signal.aborted) return;
-      setFileAnalysis(data);
-      requestAnimationFrame(() => {
-        inlineSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    } catch (err) {
-      if (ctrl.signal.aborted) return;
-      const msg = err instanceof Error ? err.message : "Erro desconhecido";
-      setFileError(msg);
-    } finally {
-      if (!ctrl.signal.aborted) setFileLoading(false);
-    }
-  }, []);
-
-  const clearSearch = useCallback(() => {
-    searchAbortRef.current?.abort();
-    setSearchResult(null);
-    setSearchError(null);
-    setSearchLoading(false);
-  }, []);
-
-  const clearFile = useCallback(() => {
-    fileAbortRef.current?.abort();
-    setFileAnalysis(null);
-    setFileError(null);
-    setFileLoading(false);
-    setSavedDocId(null);
-  }, []);
-
-  // Encaminhamento EXPLÍCITO ao Tiagão (única forma do Home enviar pra lá).
-  const forwardSearchToTiagao = useCallback(() => {
-    if (!searchResult) return;
-    askTiagao(searchResult.query);
-  }, [searchResult]);
-
-  const forwardFileToTiagao = useCallback(() => {
-    if (!fileAnalysis) return;
-    const head = fileAnalysis.extractedText.slice(0, 4000);
-    askTiagao(
-      `Subi o arquivo "${fileAnalysis.filename}" aqui no Home. Pode analisar com mais profundidade pra mim?\n\n--- INÍCIO DO CONTEÚDO ---\n${head}\n--- FIM ---`,
-    );
-  }, [fileAnalysis]);
-
-  const saveFileToNotebook = useCallback(async () => {
-    if (!fileAnalysis || savingToNotebook) return;
-    // Re-anexa o arquivo do input… mas o input já foi resetado. Pra evitar
-    // pedir o arquivo de novo, salvamos via `upload-text` (que aceita o texto
-    // já extraído). É mais barato e usa o mesmo pipeline RAG do Notebook.
-    setSavingToNotebook(true);
-    try {
-      const r = await fetch("/api/notebook/upload-text", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: fileAnalysis.filename,
-          content: fileAnalysis.extractedText,
-        }),
-      });
-      const data = await r.json().catch(() => ({})) as { id?: number; erro?: string };
-      if (!r.ok) throw new Error(data?.erro || `Erro HTTP ${r.status}`);
-      setSavedDocId(data.id ?? -1);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Erro desconhecido";
-      setFileError(`Não foi possível salvar no Notebook: ${msg}`);
-    } finally {
-      setSavingToNotebook(false);
-    }
-  }, [fileAnalysis, savingToNotebook]);
 
   const handleResume = (plan: RecentPlan["plan"]) => {
     // Mesmo contrato usado pelo History.tsx → HomeLegacy.tsx restaura o plano
@@ -613,10 +373,11 @@ export default function Home() {
             <button
               type="button"
               onClick={() => navigate("/app")}
-              className="flex items-center group"
+              className="flex items-center gap-2 group"
               aria-label="Início"
             >
-              <Logo variant="horizontal" className="h-8 w-auto" alt="Study.IA" />
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-fuchsia-500 via-violet-600 to-purple-800 flex items-center justify-center text-white font-black text-xs shadow-md shadow-violet-300/40 ring-1 ring-white/25">S</div>
+              <span className="font-black text-slate-800 text-sm tracking-tight hidden sm:block">StudyAI</span>
             </button>
           </div>
 
@@ -666,53 +427,29 @@ export default function Home() {
                   </span>
                 </h1>
                 <p className="mx-auto max-w-xl text-sm text-slate-500 sm:text-base">
-                  Pesquise aqui ou suba um arquivo — a resposta aparece nesta
-                  tela. Quando quiser uma aula completa, fale com o Tiagão pelo
-                  microfone.
+                  Digite sua dúvida ou peça um plano — o Tiagão responde por
+                  voz e texto. Ou use os atalhos abaixo para ir direto a uma
+                  ferramenta.
                 </p>
               </div>
 
               {/* Input premium */}
               <div className="w-full max-w-3xl">
                 <form
-                  onSubmit={(e) => { e.preventDefault(); void submitDraft(); }}
+                  onSubmit={(e) => { e.preventDefault(); submitDraft(); }}
                   className="group relative rounded-3xl border-2 border-violet-200/70 bg-white shadow-2xl shadow-violet-300/40 transition focus-within:border-violet-400 focus-within:shadow-violet-400/40"
                 >
                   <textarea
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     onKeyDown={onHeroKeyDown}
-                    placeholder="Pesquise aqui… ex: 'o que é fotossíntese' ou 'lei de Ohm com exemplos'"
+                    placeholder="Pergunte ao Tiagão… ex: 'explica fotossíntese' ou 'cria um plano de Matemática'"
                     rows={2}
-                    aria-label="Pesquisar"
+                    aria-label="Perguntar ao Tiagão"
                     className="block w-full resize-none rounded-3xl bg-transparent px-5 pt-5 pb-2 text-[15px] leading-relaxed text-slate-800 placeholder:text-slate-400 focus:outline-none sm:text-base"
                   />
                   <div className="flex items-center justify-between gap-2 px-3 pb-3">
                     <div className="flex items-center gap-1">
-                      {/* Paperclip → file picker NATIVO. Upload e análise rolam
-                          inline neste mesmo Home (não abre o Tiagão). Veja
-                          handleFileChange / openFilePicker. */}
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept={ACCEPTED_FILE_TYPES}
-                        onChange={handleFileChange}
-                        className="hidden"
-                        aria-hidden
-                      />
-                      <button
-                        type="button"
-                        onClick={openFilePicker}
-                        disabled={fileLoading}
-                        title="Subir PDF, Word, planilha ou imagem para analisar aqui"
-                        className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-violet-50 hover:text-violet-600 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {fileLoading ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Paperclip className="h-4 w-4" />
-                        )}
-                      </button>
                       <button
                         type="button"
                         onClick={() => navigate("/historico")}
@@ -720,6 +457,14 @@ export default function Home() {
                         className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-violet-50 hover:text-violet-600"
                       >
                         <History className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openTiagao()}
+                        title="Subir arquivo para o Tiagão"
+                        className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-violet-50 hover:text-violet-600"
+                      >
+                        <Paperclip className="h-4 w-4" />
                       </button>
                     </div>
 
@@ -735,18 +480,12 @@ export default function Home() {
                       </button>
                       <button
                         type="submit"
-                        disabled={!draft.trim() || searchLoading}
-                        title="Pesquisar — resposta com fontes aparece logo abaixo"
+                        disabled={!draft.trim()}
+                        title="Enviar para o Tiagão"
                         className="flex h-11 items-center gap-2 rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 px-4 font-bold text-white shadow-lg shadow-violet-500/40 transition hover:scale-[1.02] hover:shadow-xl hover:shadow-violet-500/50 active:scale-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
                       >
-                        <span className="hidden text-sm sm:inline">
-                          {searchLoading ? "Buscando" : "Pesquisar"}
-                        </span>
-                        {searchLoading ? (
-                          <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.5} />
-                        ) : (
-                          <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
-                        )}
+                        <span className="hidden text-sm sm:inline">Enviar</span>
+                        <ArrowUp className="h-4 w-4" strokeWidth={2.5} />
                       </button>
                     </div>
                   </div>
@@ -772,24 +511,6 @@ export default function Home() {
             </div>
           </motion.div>
         </section>
-
-        {/* ── Inline results (busca + análise de arquivo) ───────────────── */}
-        <InlineResultsSection
-          ref={inlineSectionRef}
-          searchResult={searchResult}
-          searchLoading={searchLoading}
-          searchError={searchError}
-          onClearSearch={clearSearch}
-          onForwardSearch={forwardSearchToTiagao}
-          fileAnalysis={fileAnalysis}
-          fileLoading={fileLoading}
-          fileError={fileError}
-          onClearFile={clearFile}
-          onForwardFile={forwardFileToTiagao}
-          onSaveFile={saveFileToNotebook}
-          savingToNotebook={savingToNotebook}
-          savedDocId={savedDocId}
-        />
 
         {/* ── Secondary rail ────────────────────────────────────────────── */}
         <section>
@@ -994,343 +715,6 @@ function StatChip({
         <p className="truncate text-sm font-black text-slate-800">{value}</p>
       </div>
     </div>
-  );
-}
-
-// ─── Inline results (busca + análise de arquivo) ─────────────────────────────
-// Painel logo abaixo do hero. Aparece somente quando há resultado, loading ou
-// erro em algum dos dois canais (busca textual / arquivo). Os dois canais são
-// independentes — cada um com seu "Limpar" e seu "Levar pro Tiagão". Esse é
-// o módulo "pesquisa/análise inline" que a regra do fundador exige.
-type InlineResultsSectionProps = {
-  searchResult: SearchResult | null;
-  searchLoading: boolean;
-  searchError: string | null;
-  onClearSearch: () => void;
-  onForwardSearch: () => void;
-  fileAnalysis: FileAnalysis | null;
-  fileLoading: boolean;
-  fileError: string | null;
-  onClearFile: () => void;
-  onForwardFile: () => void;
-  onSaveFile: () => void;
-  savingToNotebook: boolean;
-  savedDocId: number | null;
-};
-
-const InlineResultsSection = forwardRef<HTMLDivElement, InlineResultsSectionProps>(
-  function InlineResultsSection(props, ref) {
-    const {
-      searchResult, searchLoading, searchError, onClearSearch, onForwardSearch,
-      fileAnalysis, fileLoading, fileError, onClearFile, onForwardFile,
-      onSaveFile, savingToNotebook, savedDocId,
-    } = props;
-
-    const hasSearch = searchLoading || !!searchResult || !!searchError;
-    const hasFile = fileLoading || !!fileAnalysis || !!fileError;
-    if (!hasSearch && !hasFile) return null;
-
-    return (
-      <section ref={ref} aria-label="Resultados inline" className="space-y-4">
-        <AnimatePresence initial={false}>
-          {hasSearch && (
-            <motion.div
-              key="search-card"
-              initial={{ opacity: 0, y: 8, height: 0 }}
-              animate={{ opacity: 1, y: 0, height: "auto" }}
-              exit={{ opacity: 0, y: 4, height: 0 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-              className="overflow-hidden"
-            >
-              <SearchResultCard
-                result={searchResult}
-                loading={searchLoading}
-                error={searchError}
-                onClear={onClearSearch}
-                onForward={onForwardSearch}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence initial={false}>
-          {hasFile && (
-            <motion.div
-              key="file-card"
-              initial={{ opacity: 0, y: 8, height: 0 }}
-              animate={{ opacity: 1, y: 0, height: "auto" }}
-              exit={{ opacity: 0, y: 4, height: 0 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-              className="overflow-hidden"
-            >
-              <FileAnalysisCard
-                analysis={fileAnalysis}
-                loading={fileLoading}
-                error={fileError}
-                onClear={onClearFile}
-                onForward={onForwardFile}
-                onSave={onSaveFile}
-                saving={savingToNotebook}
-                savedDocId={savedDocId}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </section>
-    );
-  },
-);
-
-function SearchResultCard({
-  result, loading, error, onClear, onForward,
-}: {
-  result: SearchResult | null;
-  loading: boolean;
-  error: string | null;
-  onClear: () => void;
-  onForward: () => void;
-}) {
-  const [openCitNumero, setOpenCitNumero] = useState<number | null>(null);
-
-  return (
-    <article className="rounded-2xl border border-violet-200/70 bg-white/80 p-5 shadow-md shadow-violet-200/40 backdrop-blur-xl sm:p-6">
-      <header className="mb-3 flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-sm">
-            <Search className="h-4 w-4" strokeWidth={2.5} />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-500">
-              Busca inline
-            </p>
-            <p className="truncate text-sm font-black text-slate-900">
-              {result?.query || "Pesquisando…"}
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={onClear}
-          title="Limpar busca"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-          aria-label="Limpar busca"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </header>
-
-      {loading && (
-        <div className="space-y-2">
-          <div className="h-3 w-5/6 animate-pulse rounded bg-violet-100" />
-          <div className="h-3 w-full animate-pulse rounded bg-violet-100" />
-          <div className="h-3 w-4/6 animate-pulse rounded bg-violet-100" />
-          <div className="h-3 w-3/6 animate-pulse rounded bg-violet-100" />
-          <p className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-semibold text-violet-500">
-            <Loader2 className="h-3 w-3 animate-spin" /> Buscando em fontes confiáveis…
-          </p>
-        </div>
-      )}
-
-      {!loading && error && (
-        <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50/60 px-3 py-2.5 text-[12px] text-rose-700">
-          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <div className="min-w-0 leading-snug">{error}</div>
-        </div>
-      )}
-
-      {!loading && !error && result && (
-        <>
-          <div className="max-w-none whitespace-pre-wrap text-[13.5px] leading-relaxed text-slate-800 sm:text-sm">
-            {renderTextWithCitations(result.answer || "Sem resposta.", result.citations, {
-              openNumero: openCitNumero,
-              onChipClick: (c) =>
-                setOpenCitNumero((n) => (n === c.numero ? null : c.numero)),
-            })}
-          </div>
-
-          {result.citations.length > 0 && (
-            <div className="mt-3 space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Fontes consultadas
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {result.citations.map((c) => (
-                  <CitationListItem
-                    key={c.numero}
-                    citation={c}
-                    isOpen={openCitNumero === c.numero}
-                    onClick={() =>
-                      setOpenCitNumero((n) => (n === c.numero ? null : c.numero))
-                    }
-                  />
-                ))}
-              </div>
-              <AnimatePresence>
-                {openCitNumero !== null && (() => {
-                  const c = result.citations.find((x) => x.numero === openCitNumero);
-                  if (!c) return null;
-                  return (
-                    <CitationDetail
-                      citation={c}
-                      onClose={() => setOpenCitNumero(null)}
-                    />
-                  );
-                })()}
-              </AnimatePresence>
-            </div>
-          )}
-
-          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
-            <button
-              type="button"
-              onClick={onForward}
-              className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50/70 px-3 py-1.5 text-[12px] font-bold text-violet-700 transition hover:bg-violet-100 hover:border-violet-300"
-              title="Encaminhar essa pergunta pro Tiagão"
-            >
-              <Send className="h-3.5 w-3.5" />
-              Levar pro Tiagão
-            </button>
-            <button
-              type="button"
-              onClick={onClear}
-              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-600 transition hover:bg-slate-50"
-            >
-              Limpar
-            </button>
-          </div>
-        </>
-      )}
-    </article>
-  );
-}
-
-function FileAnalysisCard({
-  analysis, loading, error, onClear, onForward, onSave, saving, savedDocId,
-}: {
-  analysis: FileAnalysis | null;
-  loading: boolean;
-  error: string | null;
-  onClear: () => void;
-  onForward: () => void;
-  onSave: () => void;
-  saving: boolean;
-  savedDocId: number | null;
-}) {
-  const [showFull, setShowFull] = useState(false);
-
-  return (
-    <article className="rounded-2xl border border-indigo-200/70 bg-white/80 p-5 shadow-md shadow-indigo-200/40 backdrop-blur-xl sm:p-6">
-      <header className="mb-3 flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-sm">
-            <FileText className="h-4 w-4" strokeWidth={2.5} />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-500">
-              Análise de arquivo
-            </p>
-            <p className="truncate text-sm font-black text-slate-900">
-              {analysis?.filename || "Processando arquivo…"}
-            </p>
-            {analysis && (
-              <p className="text-[11px] font-semibold text-slate-500">
-                {analysis.kind.toUpperCase()} · {formatKb(analysis.sizeKb)} · {analysis.chars.toLocaleString("pt-BR")} caracteres
-              </p>
-            )}
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={onClear}
-          title="Limpar análise"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-          aria-label="Limpar análise"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </header>
-
-      {loading && (
-        <div className="space-y-2">
-          <div className="h-3 w-4/6 animate-pulse rounded bg-indigo-100" />
-          <div className="h-3 w-full animate-pulse rounded bg-indigo-100" />
-          <div className="h-3 w-5/6 animate-pulse rounded bg-indigo-100" />
-          <p className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-semibold text-indigo-500">
-            <Loader2 className="h-3 w-3 animate-spin" /> Extraindo texto e gerando resumo…
-          </p>
-        </div>
-      )}
-
-      {!loading && error && (
-        <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50/60 px-3 py-2.5 text-[12px] text-rose-700">
-          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <div className="min-w-0 leading-snug">{error}</div>
-        </div>
-      )}
-
-      {!loading && !error && analysis && (
-        <>
-          {analysis.summary && (
-            <div className="mb-3">
-              <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Resumo
-              </p>
-              <div className="whitespace-pre-wrap rounded-xl border border-indigo-100 bg-indigo-50/40 px-3 py-2.5 text-[13px] leading-relaxed text-slate-800">
-                {analysis.summary}
-              </div>
-            </div>
-          )}
-
-          <div>
-            <button
-              type="button"
-              onClick={() => setShowFull((v) => !v)}
-              className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 hover:text-indigo-700"
-            >
-              {showFull ? "Ocultar" : "Ver"} texto extraído
-            </button>
-            {showFull && (
-              <pre className="mt-2 max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50/60 p-3 text-[12px] leading-snug text-slate-700">
-                {analysis.extractedText}
-              </pre>
-            )}
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
-            <button
-              type="button"
-              onClick={onSave}
-              disabled={saving || savedDocId !== null}
-              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50/70 px-3 py-1.5 text-[12px] font-bold text-emerald-700 transition hover:bg-emerald-100 hover:border-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
-              title="Salvar este conteúdo no Notebook RAG"
-            >
-              {saving ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Save className="h-3.5 w-3.5" />
-              )}
-              {savedDocId !== null ? "Salvo no Notebook" : "Salvar no Notebook"}
-            </button>
-            <button
-              type="button"
-              onClick={onForward}
-              className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50/70 px-3 py-1.5 text-[12px] font-bold text-violet-700 transition hover:bg-violet-100 hover:border-violet-300"
-              title="Pedir uma análise mais profunda do Tiagão"
-            >
-              <Send className="h-3.5 w-3.5" />
-              Pedir análise pro Tiagão
-            </button>
-            <button
-              type="button"
-              onClick={onClear}
-              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-600 transition hover:bg-slate-50"
-            >
-              Limpar
-            </button>
-          </div>
-        </>
-      )}
-    </article>
   );
 }
 

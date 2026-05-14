@@ -15,7 +15,8 @@
 import { useState, useRef, useCallback, useEffect, useMemo, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TiagaoCharacter, type CharacterState } from "@/components/TiagaoCharacter";
-import { MathRender, MathSteps } from "@/components/MathRender";
+import { MathRender, MathSteps, MathVisual, type MathVisualPayload } from "@/components/MathRender";
+import { VideoStrip, type VideoStripVideo } from "@/components/VideoStrip";
 import {
   Mic, MicOff, X, Square, VolumeX, Volume2, ThumbsUp, ThumbsDown,
   Timer, Maximize2, Minimize2, Send, Paperclip, Loader2, MessageSquare,
@@ -342,6 +343,8 @@ export interface MathResultPayload {
   steps: string[];
   latex?: string;
   problema?: string;
+  /** PR-8 — widget visual (GeoGebra 3D / 2D ou function-plot) sugerido. */
+  visual?: MathVisualPayload;
 }
 
 interface HistoryMsg {
@@ -350,6 +353,11 @@ interface HistoryMsg {
   ts: number;
   /** PR-7 — passos verificáveis vindos do tool `resolver_calculo`. */
   mathResult?: MathResultPayload;
+  /** PR-8 — widget matemático interativo (GeoGebra / function-plot) avulso. */
+  visual?: MathVisualPayload;
+  /** Vídeos educacionais YouTube embed-only (tool `buscar_video_educacional`). */
+  videos?: VideoStripVideo[];
+  videoTopico?: string;
 }
 
 /**
@@ -860,6 +868,11 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
           : [],
         latex: typeof action.latex === "string" ? action.latex : undefined,
         problema: typeof action.problema === "string" ? action.problema : undefined,
+        // PR-8 — widget visual opcional (geometria 3D / função plotável).
+        visual:
+          action.visual && typeof action.visual === "object"
+            ? (action.visual as MathVisualPayload)
+            : undefined,
       };
       setHistory((h) => {
         const copy = [...h];
@@ -871,6 +884,63 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
         }
         return copy;
       });
+    } else if (action.type === "geogebra_render") {
+      // PR-8 — tool visualizar_geometria_3d → anexa widget GeoGebra à última msg.
+      const tool: "3d" | "2d" = action.tool === "2d" ? "2d" : "3d";
+      const validKinds = ["solido", "vetor", "plano", "trigonometria", "circunferencia"] as const;
+      const kind =
+        typeof action.kind === "string" && (validKinds as readonly string[]).includes(action.kind)
+          ? (action.kind as typeof validKinds[number])
+          : "solido";
+      const visual: MathVisualPayload = {
+        kind: "geogebra",
+        geometry: { kind, suggestedTool: tool },
+        title: typeof action.title === "string" ? action.title : undefined,
+        commands: Array.isArray(action.commands)
+          ? action.commands.filter((c: unknown): c is string => typeof c === "string")
+          : undefined,
+      };
+      setHistory((h) => {
+        const copy = [...h];
+        for (let i = copy.length - 1; i >= 0; i--) {
+          if (copy[i].role === "assistant") {
+            copy[i] = { ...copy[i], visual };
+            break;
+          }
+        }
+        return copy;
+      });
+      setActionNotif({
+        text: tool === "3d" ? "🧊 Visualização 3D pronta" : "📐 Visualização 2D pronta",
+      });
+      setTimeout(() => setActionNotif(null), 5000);
+    } else if (action.type === "function_plot") {
+      // PR-8 — tool plotar_funcao → anexa gráfico 2D à última msg.
+      const expr = typeof action.expr === "string" ? action.expr : "";
+      if (expr) {
+        const visual: MathVisualPayload = {
+          kind: "function-plot",
+          plot: {
+            expr,
+            varName: typeof action.varName === "string" ? action.varName : "x",
+            xMin: typeof action.xMin === "number" ? action.xMin : -10,
+            xMax: typeof action.xMax === "number" ? action.xMax : 10,
+          },
+          title: typeof action.title === "string" ? action.title : undefined,
+        };
+        setHistory((h) => {
+          const copy = [...h];
+          for (let i = copy.length - 1; i >= 0; i--) {
+            if (copy[i].role === "assistant") {
+              copy[i] = { ...copy[i], visual };
+              break;
+            }
+          }
+          return copy;
+        });
+        setActionNotif({ text: "📈 Gráfico gerado" });
+        setTimeout(() => setActionNotif(null), 5000);
+      }
     } else if (action.type === "fontes_externas") {
       // PR-4 — apenas notifica; o texto da mensagem já vem com [Fonte N].
       const n = Array.isArray(action.sources) ? action.sources.length : 0;
@@ -878,6 +948,41 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
         setActionNotif({
           text: `📚 ${n} fonte${n > 1 ? "s" : ""} verificada${n > 1 ? "s" : ""}`,
           path: undefined,
+        });
+        setTimeout(() => setActionNotif(null), 5000);
+      }
+    } else if (action.type === "video_recomendado") {
+      // Vídeos educacionais YouTube (embed-only, youtube-nocookie). Anexa
+      // 1-3 vídeos à última msg do assistente; render é lazy via <VideoStrip />.
+      const incoming = Array.isArray(action.videos) ? action.videos : [];
+      const cleaned: VideoStripVideo[] = incoming
+        .filter((v: any) => v && typeof v.videoId === "string" && v.videoId.length > 0)
+        .map((v: any) => ({
+          videoId: String(v.videoId),
+          title: typeof v.title === "string" ? v.title : undefined,
+          channelId: typeof v.channelId === "string" ? v.channelId : undefined,
+          channelName: typeof v.channelName === "string" ? v.channelName : undefined,
+          thumbnailUrl: typeof v.thumbnailUrl === "string" ? v.thumbnailUrl : undefined,
+          publishedAt: typeof v.publishedAt === "string" ? v.publishedAt : undefined,
+          durationSeconds:
+            typeof v.durationSeconds === "number" ? v.durationSeconds : undefined,
+          embedUrl: typeof v.embedUrl === "string" ? v.embedUrl : undefined,
+          watchUrl: typeof v.watchUrl === "string" ? v.watchUrl : undefined,
+        }));
+      if (cleaned.length > 0) {
+        const topico = typeof action.topico === "string" ? action.topico : undefined;
+        setHistory((h) => {
+          const copy = [...h];
+          for (let i = copy.length - 1; i >= 0; i--) {
+            if (copy[i].role === "assistant") {
+              copy[i] = { ...copy[i], videos: cleaned, videoTopico: topico };
+              break;
+            }
+          }
+          return copy;
+        });
+        setActionNotif({
+          text: `📺 ${cleaned.length} vídeo${cleaned.length > 1 ? "s" : ""} recomendado${cleaned.length > 1 ? "s" : ""}${topico ? `: ${topico}` : ""}`,
         });
         setTimeout(() => setActionNotif(null), 5000);
       }
@@ -1734,6 +1839,30 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
                                       : <span>{msg.mathResult.result}</span>}
                                   </p>
                                 )}
+                                {/* PR-8 — widget visual sob a resolução textual. */}
+                                {msg.mathResult.visual && msg.mathResult.visual.kind && (
+                                  <MathVisual visual={msg.mathResult.visual} />
+                                )}
+                              </div>
+                            )}
+                            {/* PR-8 — widget visual avulso (tools de geometria/plot). */}
+                            {msg.role === "assistant" && msg.visual && msg.visual.kind && (
+                              <div className="mt-2 pt-2 border-t border-violet-200/60">
+                                <MathVisual visual={msg.visual} />
+                              </div>
+                            )}
+                            {/* Vídeos educacionais (embed-only youtube-nocookie, lazy thumbnail). */}
+                            {msg.role === "assistant" && msg.videos && msg.videos.length > 0 && (
+                              <div className="mt-2 pt-2 border-t border-violet-200/60">
+                                <VideoStrip
+                                  videos={msg.videos}
+                                  title={
+                                    msg.videoTopico
+                                      ? `Vídeos sobre ${msg.videoTopico}`
+                                      : "Vídeos recomendados"
+                                  }
+                                  showLabel
+                                />
                               </div>
                             )}
                             <p className={`text-[9px] mt-1 ${msg.role === "user" ? "text-violet-100/85" : "text-violet-400/70"}`}>

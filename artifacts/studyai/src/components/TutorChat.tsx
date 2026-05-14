@@ -35,7 +35,13 @@ import {
   CitationsSection,
   renderTextWithCitations,
 } from "@/components/CitationChip";
-import { MathRender, MathSteps } from "@/components/MathRender";
+import {
+  MathRender,
+  MathSteps,
+  MathVisual,
+  type MathVisualPayload,
+} from "@/components/MathRender";
+import { VideoStrip, type VideoStripVideo } from "@/components/VideoStrip";
 
 /**
  * PR-7 — LaTeX rendering.
@@ -109,6 +115,8 @@ export interface MathResultPayload {
   steps: string[];
   latex?: string;
   problema?: string;
+  /** PR-8 — widget visual (GeoGebra 3D / 2D ou function-plot) sugerido. */
+  visual?: MathVisualPayload;
 }
 
 interface Message {
@@ -120,6 +128,20 @@ interface Message {
   tiagao_meta?: TiagaoMeta;
   /** PR-7 — passos de resolução matemática vindos do tool `resolver_calculo`. */
   mathResult?: MathResultPayload;
+  /** PR-8 — widget visual avulso (tools de geometria/plot, sem solve completo). */
+  visual?: MathVisualPayload;
+  /** Imagem ilustrativa anexada via tool `gerar_imagem_educacional`. */
+  imagem?: {
+    url: string;
+    topico?: string;
+    source?: string;
+    license?: string;
+    author?: string;
+    title?: string;
+  };
+  /** Vídeos educacionais YouTube embed-only (tool `buscar_video_educacional`). */
+  videos?: VideoStripVideo[];
+  videoTopico?: string;
 }
 
 interface ActionNotif {
@@ -191,6 +213,42 @@ function TypingDots() {
 function MessageBubble({ message }: { message: Message }) {
   const [, navigate] = useLocation();
   const isUser = message.role === "user";
+
+  if (message.imagem) {
+    const img = message.imagem;
+    const attribution = [img.author, img.license].filter(Boolean).join(" · ");
+    const sourceLabel =
+      img.source === "wikimedia" ? "Wikimedia Commons" :
+      img.source === "flux-schnell" ? "FLUX schnell" :
+      img.source === "dalle-3" ? "DALL-E 3" : img.source;
+    return (
+      <motion.div initial={{ opacity: 0, y: 10, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="flex flex-row items-end gap-2">
+        <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mb-1 bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white">
+          <Bot className="w-4 h-4" />
+        </div>
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden max-w-sm">
+          <div className="bg-gradient-to-r from-sky-600 to-cyan-600 px-5 py-2.5 text-white">
+            <p className="text-[10px] font-bold tracking-widest uppercase opacity-80">🖼️ STUDYAI · IMAGEM</p>
+            {img.topico && <h3 className="text-sm font-bold mt-1 line-clamp-1">{img.topico}</h3>}
+          </div>
+          <img
+            src={img.url}
+            alt={img.topico ?? img.title ?? "ilustração"}
+            loading="lazy"
+            className="w-full aspect-[16/9] object-cover bg-gray-100"
+          />
+          <div className="px-4 py-2 flex items-center justify-between text-[11px] text-gray-500 gap-2">
+            <span className="truncate">
+              {attribution || (sourceLabel ? `Fonte: ${sourceLabel}` : "")}
+            </span>
+            <a href={img.url} target="_blank" rel="noopener noreferrer" className="text-sky-600 hover:underline font-medium flex-shrink-0">
+              Abrir ↗
+            </a>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
 
   if (message.video) {
     const v = message.video;
@@ -327,6 +385,30 @@ function MessageBubble({ message }: { message: Message }) {
                   : <span>{message.mathResult.result}</span>}
               </p>
             )}
+            {/* PR-8 — widget visual sob a resolução textual (GeoGebra / plot). */}
+            {message.mathResult.visual && message.mathResult.visual.kind && (
+              <MathVisual visual={message.mathResult.visual} />
+            )}
+          </div>
+        )}
+        {/* PR-8 — visual avulso (tools visualizar_geometria_3d / plotar_funcao). */}
+        {!isUser && message.visual && message.visual.kind && (
+          <div className="mt-3 pt-2 border-t border-gray-200/70">
+            <MathVisual visual={message.visual} />
+          </div>
+        )}
+        {/* Vídeos educacionais (embed-only, lazy thumbnail → iframe nocookie). */}
+        {!isUser && message.videos && message.videos.length > 0 && (
+          <div className="mt-3 pt-2 border-t border-gray-200/70">
+            <VideoStrip
+              videos={message.videos}
+              title={
+                message.videoTopico
+                  ? `Vídeos sobre ${message.videoTopico}`
+                  : "Vídeos recomendados"
+              }
+              showLabel
+            />
           </div>
         )}
       </div>
@@ -586,6 +668,30 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
         });
         break;
 
+      case "imagem_gerada": {
+        if (typeof action.url === "string" && action.url) {
+          const imgMsg: Message = {
+            role: "assistant",
+            content: "",
+            imagem: {
+              url: action.url,
+              topico: typeof action.topico === "string" ? action.topico : undefined,
+              source: typeof action.source === "string" ? action.source : undefined,
+              license: typeof action.license === "string" ? action.license : undefined,
+              author: typeof action.author === "string" ? action.author : undefined,
+              title: typeof action.title === "string" ? action.title : undefined,
+            },
+          };
+          setMessages((prev) => [...prev, imgMsg]);
+          showNotif({
+            icon: <Sparkles className="w-5 h-5 flex-shrink-0" />,
+            text: "🖼️ Imagem adicionada",
+            sub: action.topico ? `"${action.topico}"` : undefined,
+          });
+        }
+        break;
+      }
+
       // PR-7 — resultado do resolver_calculo: anexa passos verificáveis à última
       // mensagem do assistente para renderização via MathSteps no bubble.
       case "math_result": {
@@ -595,6 +701,12 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
           steps: Array.isArray(action.steps) ? action.steps.filter((s: unknown) => typeof s === "string") : [],
           latex: typeof action.latex === "string" ? action.latex : undefined,
           problema: typeof action.problema === "string" ? action.problema : undefined,
+          // PR-8 — widget visual opcional (vem do backend quando o enunciado
+          // contém geometria 3D ou função plotável).
+          visual:
+            action.visual && typeof action.visual === "object"
+              ? (action.visual as MathVisualPayload)
+              : undefined,
         };
         setMessages((prev) => {
           const copy = [...prev];
@@ -609,6 +721,72 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
         break;
       }
 
+      // PR-8 — tool visualizar_geometria_3d → renderiza um GeoGebra inline.
+      case "geogebra_render": {
+        const tool: "3d" | "2d" = action.tool === "2d" ? "2d" : "3d";
+        const validKinds = ["solido", "vetor", "plano", "trigonometria", "circunferencia"] as const;
+        const kind =
+          typeof action.kind === "string" && (validKinds as readonly string[]).includes(action.kind)
+            ? (action.kind as typeof validKinds[number])
+            : "solido";
+        const visual: MathVisualPayload = {
+          kind: "geogebra",
+          geometry: { kind, suggestedTool: tool },
+          title: typeof action.title === "string" ? action.title : undefined,
+          commands: Array.isArray(action.commands)
+            ? action.commands.filter((c: unknown): c is string => typeof c === "string")
+            : undefined,
+        };
+        setMessages((prev) => {
+          const copy = [...prev];
+          for (let i = copy.length - 1; i >= 0; i--) {
+            if (copy[i].role === "assistant") {
+              copy[i] = { ...copy[i], visual };
+              break;
+            }
+          }
+          return copy;
+        });
+        showNotif({
+          icon: <Sparkles className="w-5 h-5 flex-shrink-0" />,
+          text: tool === "3d" ? "🧊 Visualização 3D" : "📐 Visualização 2D",
+          sub: typeof action.title === "string" ? action.title : undefined,
+        });
+        break;
+      }
+
+      // PR-8 — tool plotar_funcao → renderiza um function-plot inline.
+      case "function_plot": {
+        const expr = typeof action.expr === "string" ? action.expr : "";
+        if (!expr) break;
+        const visual: MathVisualPayload = {
+          kind: "function-plot",
+          plot: {
+            expr,
+            varName: typeof action.varName === "string" ? action.varName : "x",
+            xMin: typeof action.xMin === "number" ? action.xMin : -10,
+            xMax: typeof action.xMax === "number" ? action.xMax : 10,
+          },
+          title: typeof action.title === "string" ? action.title : undefined,
+        };
+        setMessages((prev) => {
+          const copy = [...prev];
+          for (let i = copy.length - 1; i >= 0; i--) {
+            if (copy[i].role === "assistant") {
+              copy[i] = { ...copy[i], visual };
+              break;
+            }
+          }
+          return copy;
+        });
+        showNotif({
+          icon: <Sparkles className="w-5 h-5 flex-shrink-0" />,
+          text: "📈 Gráfico gerado",
+          sub: typeof action.title === "string" ? action.title : `f(x) = ${expr}`,
+        });
+        break;
+      }
+
       // PR-4 — fontes RAG multi-fonte (notif sutil; bubble fica com texto + [Fonte N]).
       case "fontes_externas": {
         const n = Array.isArray(action.sources) ? action.sources.length : 0;
@@ -619,6 +797,45 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
             sub: typeof action.query === "string" ? `"${action.query}"` : undefined,
           });
         }
+        break;
+      }
+
+      // Vídeos educacionais YouTube (embed-only, youtube-nocookie).
+      // Anexa 1-3 vídeos de canais brasileiros confiáveis à última msg
+      // do assistente — render é lazy via <VideoStrip />.
+      case "video_recomendado": {
+        const incoming = Array.isArray(action.videos) ? action.videos : [];
+        const cleaned: VideoStripVideo[] = incoming
+          .filter((v: any) => v && typeof v.videoId === "string" && v.videoId.length > 0)
+          .map((v: any) => ({
+            videoId: String(v.videoId),
+            title: typeof v.title === "string" ? v.title : undefined,
+            channelId: typeof v.channelId === "string" ? v.channelId : undefined,
+            channelName: typeof v.channelName === "string" ? v.channelName : undefined,
+            thumbnailUrl: typeof v.thumbnailUrl === "string" ? v.thumbnailUrl : undefined,
+            publishedAt: typeof v.publishedAt === "string" ? v.publishedAt : undefined,
+            durationSeconds:
+              typeof v.durationSeconds === "number" ? v.durationSeconds : undefined,
+            embedUrl: typeof v.embedUrl === "string" ? v.embedUrl : undefined,
+            watchUrl: typeof v.watchUrl === "string" ? v.watchUrl : undefined,
+          }));
+        if (cleaned.length === 0) break;
+        const topico = typeof action.topico === "string" ? action.topico : undefined;
+        setMessages((prev) => {
+          const copy = [...prev];
+          for (let i = copy.length - 1; i >= 0; i--) {
+            if (copy[i].role === "assistant") {
+              copy[i] = { ...copy[i], videos: cleaned, videoTopico: topico };
+              break;
+            }
+          }
+          return copy;
+        });
+        showNotif({
+          icon: <Sparkles className="w-5 h-5 flex-shrink-0" />,
+          text: `📺 ${cleaned.length} vídeo${cleaned.length > 1 ? "s" : ""} recomendado${cleaned.length > 1 ? "s" : ""}`,
+          sub: topico ? `"${topico}"` : undefined,
+        });
         break;
       }
 

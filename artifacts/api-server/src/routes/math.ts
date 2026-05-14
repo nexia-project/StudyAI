@@ -16,6 +16,56 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { solveMath, type MathResult } from "../lib/math-engine";
+import {
+  detectGeometryKind,
+  detectGraphableFunction,
+  type GeometryKind,
+} from "../lib/math-detection";
+
+// ─── Visual enrichment (PR-8) ────────────────────────────────────────────────
+
+/**
+ * Payload aditivo devolvido junto do `MathResult` quando a engine de detecção
+ * identifica geometria espacial / função plotável no enunciado original.
+ *
+ * Frontend (MathRender + GeoGebraEmbed + MathGraph) consome `visual.kind` para
+ * decidir qual widget montar abaixo da resolução textual.
+ */
+export type MathVisualPayload =
+  | {
+      kind: "geogebra";
+      geometry: { kind: Exclude<GeometryKind, null>; suggestedTool: "3d" | "2d" };
+    }
+  | {
+      kind: "function-plot";
+      plot: { expr: string; varName: string; xMin: number; xMax: number };
+    }
+  | { kind: null };
+
+/**
+ * Decide qual widget visual sugerir para um enunciado em PT-BR.
+ * Primeiro tenta geometria (mais específico); só cai para função quando não
+ * há sinal de geometria — assim "área de uma circunferência" vai pro GeoGebra,
+ * não para function-plot.
+ */
+export function computeMathVisual(question: string): MathVisualPayload {
+  const geoKind = detectGeometryKind(question);
+  if (geoKind) {
+    const is3d = geoKind === "solido" || geoKind === "vetor" || geoKind === "plano";
+    return {
+      kind: "geogebra",
+      geometry: { kind: geoKind, suggestedTool: is3d ? "3d" : "2d" },
+    };
+  }
+  const fn = detectGraphableFunction(question);
+  if (fn) {
+    return {
+      kind: "function-plot",
+      plot: { expr: fn.expr, varName: fn.varName, xMin: -10, xMax: 10 },
+    };
+  }
+  return { kind: null };
+}
 
 const router: IRouter = Router();
 
@@ -88,8 +138,13 @@ router.post("/api/math/solve", async (req, res) => {
   }
   const t0 = Date.now();
   const result: MathResult = await solveMath(parsed.data.query);
+  // PR-8 — anexa sugestão de widget visual (3D via GeoGebra / 2D via function-plot).
+  // É aditivo: consumidores antigos podem ignorar; o campo existe sempre, com
+  // `kind: null` quando nem geometria nem função foram detectadas.
+  const visual = computeMathVisual(parsed.data.query);
   res.json({
     ...result,
+    visual,
     ms: Date.now() - t0,
   });
 });

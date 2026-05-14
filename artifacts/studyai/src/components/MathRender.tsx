@@ -14,6 +14,8 @@
 import "katex/dist/katex.min.css";
 import katex from "katex";
 import { useMemo } from "react";
+import { GeoGebraEmbed } from "./GeoGebraEmbed";
+import { MathGraph } from "./MathGraph";
 
 export interface MathRenderProps {
   latex: string;
@@ -127,6 +129,97 @@ export function MathSteps({ steps, className }: MathStepsProps) {
       })}
     </ol>
   );
+}
+
+// ─── PR-8 — Widget visual (GeoGebra 3D / 2D ou function-plot) ────────────────
+
+/**
+ * Categoria de geometria devolvida pela engine de detecção (`math-detection.ts`).
+ * Mantém-se em sync com o tipo do backend; copiamos aqui pra evitar uma
+ * dependência cruzada entre os pacotes.
+ */
+export type MathVisualGeometryKind =
+  | "solido"
+  | "vetor"
+  | "plano"
+  | "trigonometria"
+  | "circunferencia";
+
+/**
+ * Payload do widget visual anexado a um resultado matemático. Espelha o
+ * formato devolvido por `/api/math/solve` (campo `visual`) e pelo executor das
+ * tools `visualizar_geometria_3d` / `plotar_funcao` do Tiagão.
+ */
+export type MathVisualPayload =
+  | {
+      kind: "geogebra";
+      geometry: { kind: MathVisualGeometryKind; suggestedTool: "3d" | "2d" };
+      title?: string;
+      commands?: string[];
+    }
+  | {
+      kind: "function-plot";
+      plot: { expr: string; varName: string; xMin: number; xMax: number };
+      title?: string;
+    }
+  | { kind: null };
+
+export interface MathVisualProps {
+  visual: MathVisualPayload | null | undefined;
+  className?: string;
+}
+
+/**
+ * Renderer único para o campo `visual` do resultado matemático. Suporta:
+ *
+ *   - `kind: "geogebra"`      → `<GeoGebraEmbed tool={"3d" | "geometry"} />`
+ *     A escolha entre 3D e Geometria 2D vem de `geometry.suggestedTool`.
+ *   - `kind: "function-plot"` → `<MathGraph expr=... xMin=... xMax=... />`
+ *   - `kind: null` (ou ausente) → renderiza `null` (sem ocupar espaço).
+ *
+ * Inclui legendas em PT-BR pra contextualizar o aluno ("Visualize em 3D",
+ * "Visualize no plano", "Gráfico da função").
+ */
+export function MathVisual({ visual, className }: MathVisualProps) {
+  if (!visual || visual.kind === null) return null;
+
+  if (visual.kind === "geogebra") {
+    const tool = visual.geometry.suggestedTool === "3d" ? "3d" : "geometry";
+    const caption =
+      visual.geometry.suggestedTool === "3d"
+        ? "Visualize em 3D"
+        : "Visualize no plano";
+    return (
+      <div className={"mt-3 " + (className ?? "")} data-testid="math-visual-geogebra">
+        <p className="text-xs font-semibold text-violet-700 mb-1.5 tracking-wide uppercase">
+          {visual.title ?? caption}
+        </p>
+        <GeoGebraEmbed
+          tool={tool}
+          commands={visual.commands}
+          title={visual.title ?? caption}
+        />
+      </div>
+    );
+  }
+
+  if (visual.kind === "function-plot") {
+    return (
+      <div className={"mt-3 " + (className ?? "")} data-testid="math-visual-plot">
+        <p className="text-xs font-semibold text-violet-700 mb-1.5 tracking-wide uppercase">
+          {visual.title ?? "Gráfico da função"}
+        </p>
+        <MathGraph
+          expr={visual.plot.expr}
+          varName={visual.plot.varName}
+          xMin={visual.plot.xMin}
+          xMax={visual.plot.xMax}
+        />
+      </div>
+    );
+  }
+
+  return null;
 }
 
 export default MathRender;

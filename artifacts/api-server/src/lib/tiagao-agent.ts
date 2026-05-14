@@ -17,6 +17,7 @@ import { MATERIAL_HTML_INSTRUCTIONS, MATERIAL_COMPONENT_GUIDE, wrapMaterialHTML 
 import { saveMemory, updateProfile, addImportantDate } from "./tiagao-memory";
 import { storeKnowledge, searchKnowledge } from "./knowledge-base";
 import { searchSemanticScholar } from "../routes/scholar";
+import { getEducationalVideos } from "./videos/get-videos";
 
 // Limpa output da IA (remove markdown fences ```html ... ```), extrai apenas o
 // conteúdo do <body> caso a IA tenha retornado um documento completo, e envolve
@@ -576,6 +577,52 @@ export const TIAGAO_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  // ── PR-8: visualizações interativas (GeoGebra 3D + function-plot 2D) ─────
+  {
+    type: "function",
+    function: {
+      name: "visualizar_geometria_3d",
+      description: "Renderiza visualização interativa 3D (GeoGebra) para problemas de geometria espacial, vetores ou planos. Use SEMPRE que o enunciado envolver cubos, esferas, cilindros, cones, pirâmides, prismas, vetores em R³, equação do plano, ou ângulos no espaço.",
+      parameters: {
+        type: "object",
+        properties: {
+          enunciado: {
+            type: "string",
+            description: "Enunciado original do aluno (curto) para o aluno saber o que está vendo. Ex.: 'Volume do cubo de aresta 5'.",
+          },
+          tipo: {
+            type: "string",
+            enum: ["solido", "vetor", "plano", "circunferencia"],
+            description: "Categoria da figura. Default: 'solido'. Use 'circunferencia' para visualizações 2D (círculos, arcos, ângulos).",
+          },
+        },
+        required: ["enunciado"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "plotar_funcao",
+      description: "Plota o gráfico 2D de uma função matemática (parábola, reta, exponencial, trigonométrica, logarítmica, etc.). Use quando o aluno pedir 'plote', 'esboce o gráfico', 'visualize a parábola', 'desenhe a função', ou quando ajudar a entender o comportamento da função.",
+      parameters: {
+        type: "object",
+        properties: {
+          funcao: {
+            type: "string",
+            description: "Expressão da função no formato function-plot/mathjs. Ex.: 'x^2 - 4', '2*x + 1', 'sin(x)', 'log(x)'.",
+          },
+          varName: {
+            type: "string",
+            description: "Variável independente. Default: 'x'.",
+          },
+          xMin: { type: "number", description: "Limite inferior do eixo X. Default: -10." },
+          xMax: { type: "number", description: "Limite superior do eixo X. Default: 10." },
+        },
+        required: ["funcao"],
+      },
+    },
+  },
   {
     type: "function",
     function: {
@@ -656,6 +703,42 @@ export const TIAGAO_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   //     parameters: { type: "object", properties: { topico: { type: "string" }, materia: { type: "string" }, formato: { type: "string", enum: ["horizontal", "shorts"] }, num_cenas: { type: "number" } }, required: ["topico", "formato"] },
   //   },
   // },
+
+  // ── Recomendação de vídeos educacionais (embed-only) ────────────────────
+  // Devolve 1-3 vídeos de canais brasileiros confiáveis (Khan Academy BR,
+  // Curso Enem Gratuito, Me Salva, Manual do Mundo, Nerdologia, Biologia
+  // Total, Matemática Rio, Professor Noslen, etc.). Caminho primário usa
+  // YouTube Data API v3 (`YOUTUBE_API_KEY`); sem chave, cai no banco curado
+  // hand-picked (~30 tópicos). Nunca scrapeamos / re-hospedamos — o frontend
+  // renderiza via `youtube-nocookie.com/embed/{id}` (privacy-enhanced).
+  {
+    type: "function",
+    function: {
+      name: "buscar_video_educacional",
+      description:
+        "Busca 1-3 vídeos educacionais de canais brasileiros confiáveis (Khan Academy BR, Curso Enem Gratuito, Me Salva, Stoodi, Manual do Mundo, Nerdologia, Biologia Total, Matemática Rio, Professor Noslen, etc.) para ilustrar um tópico de estudo. Use quando o aluno pedir explicação visual, vídeo aula, demonstração, ou quando o tópico for visualmente rico (geometria, biologia, física experimental, redação). Devolve embeds youtube-nocookie + atribuição de canal — nunca scrape ou re-hospeda.",
+      parameters: {
+        type: "object",
+        properties: {
+          topico: {
+            type: "string",
+            description: "Tema do vídeo (ex.: 'função quadrática', 'mitose', 'guerra fria').",
+          },
+          materia: {
+            type: "string",
+            description: "Opcional. Matéria/área para reforçar a busca (ex.: 'matemática', 'biologia', 'história').",
+          },
+          limite: {
+            type: "number",
+            description: "Opcional. Quantos vídeos retornar (1-3, padrão 3).",
+            minimum: 1,
+            maximum: 3,
+          },
+        },
+        required: ["topico"],
+      },
+    },
+  },
 ];
 
 // ─── Daily video limit ───────────────────────────────────────────────────────
@@ -1704,22 +1787,113 @@ Retorne APENAS este JSON:
     case "resolver_calculo": {
       try {
         const { solveMath } = await import("./math-engine");
+        const { computeMathVisual } = await import("../routes/math");
         const problema = String(args.problema ?? "").trim();
         if (!problema) {
           return { result: "Sem expressão matemática. Diga qual problema quer resolver." };
         }
         const r = await solveMath(problema);
-        const payload = { engine: r.engine, result: r.result, steps: r.steps, latex: r.latex };
+        // PR-8 — anexa visual sugerido (GeoGebra/function-plot) quando o
+        // enunciado contém pistas de geometria ou função plotável. Aditivo:
+        // o front simplesmente ignora se `visual.kind === null`.
+        const visual = computeMathVisual(problema);
+        const payload = { engine: r.engine, result: r.result, steps: r.steps, latex: r.latex, visual };
         const resumo = r.engine === "none"
           ? `Não consegui resolver "${problema}" automaticamente. Resolva manualmente passo a passo e explique ao aluno.`
           : `Resultado: ${r.result}${r.latex ? ` (LaTeX: ${r.latex})` : ""}. Passos: ${r.steps.join(" | ")}`;
         return {
           result: `${resumo}\n\n[mathResult JSON]: ${JSON.stringify(payload)}`,
-          action: { type: "math_result", engine: r.engine, result: r.result, steps: r.steps, latex: r.latex, problema },
+          action: {
+            type: "math_result",
+            engine: r.engine,
+            result: r.result,
+            steps: r.steps,
+            latex: r.latex,
+            problema,
+            visual,
+          },
         };
       } catch (err) {
         console.error("[tool:resolver_calculo]", err);
         return { result: "Erro ao resolver o problema matemático." };
+      }
+    }
+
+    // ── Visualizações interativas (PR-8) ──────────────────────────────────────
+    case "visualizar_geometria_3d": {
+      try {
+        const { detectGeometryKind } = await import("./math-detection");
+        const enunciado = String(args.enunciado ?? "").trim();
+        const hint = typeof args.tipo === "string" ? args.tipo : undefined;
+        // Confiamos primeiro na pista da própria IA; caso esteja vazia,
+        // re-detectamos a partir do enunciado original.
+        const validKinds = ["solido", "vetor", "plano", "circunferencia", "trigonometria"] as const;
+        let kind: typeof validKinds[number] =
+          hint && (validKinds as readonly string[]).includes(hint)
+            ? (hint as typeof validKinds[number])
+            : (detectGeometryKind(enunciado) ?? "solido");
+        // Casos puramente 2D: circunferência/trigonometria viram tool "2d".
+        const tool: "3d" | "2d" =
+          kind === "solido" || kind === "vetor" || kind === "plano" ? "3d" : "2d";
+        const title = enunciado || "Visualização geométrica";
+        return {
+          result: `Visualização ${tool === "3d" ? "3D" : "2D"} (${kind}) gerada para: ${title}.`,
+          action: {
+            type: "geogebra_render",
+            tool,
+            kind,
+            title,
+            commands: [],
+          },
+        };
+      } catch (err) {
+        console.error("[tool:visualizar_geometria_3d]", err);
+        return { result: "Erro ao gerar a visualização 3D." };
+      }
+    }
+
+    case "plotar_funcao": {
+      try {
+        const { detectGraphableFunction } = await import("./math-detection");
+        // mathjs garante que a expressão parseia antes de devolver à UI.
+        const { parse: mathjsParse } = await import("mathjs");
+        const rawFuncao = String(args.funcao ?? "").trim();
+        if (!rawFuncao) {
+          return { result: "Sem função para plotar. Forneça a expressão (ex.: 'x^2 - 4')." };
+        }
+        // Tenta parsear direto; se vier um enunciado em texto solto, cai no
+        // detector para extrair a RHS.
+        let expr = rawFuncao;
+        let varName = typeof args.varName === "string" && args.varName.length === 1 ? args.varName : "x";
+        try {
+          mathjsParse(expr);
+        } catch {
+          const detected = detectGraphableFunction(rawFuncao);
+          if (!detected) {
+            return { result: `Não consegui interpretar "${rawFuncao}" como função plotável. Mande no formato 'x^2 - 4' ou 'sin(x)'.` };
+          }
+          expr = detected.expr;
+          varName = detected.varName;
+        }
+        const xMin = typeof args.xMin === "number" && Number.isFinite(args.xMin) ? args.xMin : -10;
+        const xMax = typeof args.xMax === "number" && Number.isFinite(args.xMax) && args.xMax > xMin
+          ? args.xMax
+          : Math.max(xMin + 1, 10);
+        const title = `f(${varName}) = ${expr}`;
+        return {
+          result: `Gráfico plotado: ${title} no intervalo [${xMin}, ${xMax}].`,
+          action: {
+            type: "function_plot",
+            expr,
+            varName,
+            xMin,
+            xMax,
+            title,
+          },
+        };
+      } catch (err) {
+        console.error("[tool:plotar_funcao]", err);
+        return { result: "Erro ao plotar a função." };
       }
     }
 
@@ -1856,6 +2030,45 @@ Retorne APENAS este JSON:
       } catch (err) {
         console.error("[tool:buscar_questoes_concurso]", err);
         return { result: "Erro ao buscar questões de concurso." };
+      }
+    }
+
+    case "buscar_video_educacional": {
+      try {
+        const topico = typeof args.topico === "string" ? args.topico.trim() : "";
+        if (topico.length < 2) {
+          return { result: "Forneça um tópico com pelo menos 2 caracteres." };
+        }
+        const materia = typeof args.materia === "string" ? args.materia.trim() : undefined;
+        let limit = 3;
+        if (typeof args.limite === "number" && Number.isFinite(args.limite)) {
+          limit = Math.max(1, Math.min(3, Math.floor(args.limite)));
+        }
+        const videos = await getEducationalVideos({
+          query: topico,
+          subject: materia,
+          limit,
+        });
+        if (videos.length === 0) {
+          return {
+            result: `Não encontrei vídeos confiáveis sobre "${topico}". Posso explicar diretamente ou sugerir outro recurso.`,
+          };
+        }
+        const channels = Array.from(
+          new Set(videos.map((v) => v.channelName).filter((s): s is string => !!s)),
+        );
+        return {
+          result: `Recomendei ${videos.length} vídeo${videos.length > 1 ? "s" : ""} de canal${channels.length > 1 ? "is" : ""} confiável${channels.length > 1 ? "is" : ""} (${channels.join(", ")}) sobre "${topico}".`,
+          action: {
+            type: "video_recomendado",
+            videos,
+            topico,
+            materia,
+          },
+        };
+      } catch (err) {
+        console.error("[tool:buscar_video_educacional]", err);
+        return { result: "Erro ao buscar vídeos educacionais." };
       }
     }
 

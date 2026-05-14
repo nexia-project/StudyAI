@@ -267,11 +267,11 @@ export default function PricingPage() {
             <div className="mb-5">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Anual</p>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-black text-gray-900">R$179</span>
-                <span className="text-xl font-black text-gray-900">,00</span>
+                <span className="text-4xl font-black text-gray-900">R$359</span>
+                <span className="text-xl font-black text-gray-900">,40</span>
                 <span className="text-gray-400">/ano</span>
               </div>
-              <p className="text-sm text-violet-600 font-semibold mt-1">≈ R$14,92/mês · 6 meses de bônus</p>
+              <p className="text-sm text-violet-600 font-semibold mt-1">≈ R$29,95/mês · 6 meses de bônus</p>
             </div>
             <ul className="space-y-2.5 mb-6 flex-1">
               {[
@@ -297,7 +297,7 @@ export default function PricingPage() {
               ) : checkoutLoading ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /> Aguarde...</>
               ) : (
-                <><Zap className="w-4 h-4" /> Assinar Anual — R$179,00</>
+                <><Zap className="w-4 h-4" /> Assinar Anual — R$359,40</>
               )}
             </button>
             <p className="text-center text-xs text-gray-400 mt-2">Cobrança única anual</p>

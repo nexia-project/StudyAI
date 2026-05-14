@@ -80,6 +80,12 @@ router.post("/subscription/create-checkout", async (req: Request, res: Response)
     const baseUrl = `${proto}://${host}`;
 
     // Look up or create the premium price
+    // NOTE: hoje só temos um Price ID (mensal R$ 59,90 = 5990 BRL).
+    // O card "Anual" do Pricing reutiliza este mesmo checkout. Quando criarmos o
+    // plano anual no Stripe (R$ 359,40 = 35940 BRL/ano), adicione um env separado
+    // (ex.: STRIPE_PREMIUM_ANNUAL_PRICE_ID) e selecione aqui conforme o plano
+    // escolhido. Por ora, basta atualizar o Price ID atual no dashboard para
+    // refletir os valores documentados em seedStripe.ts.
     const priceId = process.env.STRIPE_PREMIUM_PRICE_ID;
     if (!priceId) {
       res.status(500).json({ error: "Produto premium não configurado" });

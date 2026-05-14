@@ -627,6 +627,23 @@ export const TIAGAO_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "buscar_questoes_concurso",
+      description: "Busca questões reais de CONCURSOS PÚBLICOS / exames de licenciamento (OAB, Revalida, Enare etc.) — distinto do ENEM/vestibular. Use quando o aluno se prepara para concurso público, OAB, residência médica, ou pediu prova de carreira pública. Retorna enunciado + alternativas + gabarito.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Tema livre (ex.: 'direito do trabalho', 'farmacologia', 'ética profissional')." },
+          banca: { type: "string", enum: ["CEBRASPE", "FGV", "VUNESP", "FCC", "OAB", "OUTRO"], description: "Banca examinadora." },
+          area: { type: "string", enum: ["DIREITO", "PORTUGUES", "MATEMATICA", "RACIOCINIO_LOGICO", "INFORMATICA", "ATUALIDADES", "LEGISLACAO", "OUTROS"], description: "Macro-área." },
+          ano: { type: "number", description: "Ano da prova." },
+          limit: { type: "number", minimum: 1, maximum: 10 },
+        },
+      },
+    },
+  },
 
   // ⚠️ DESATIVADO TEMPORARIAMENTE — plano MiniMax atual não suporta Hailuo-02 e
   // tem RPM muito baixo. Reativar após upgrade do plano OU migração pra outro
@@ -1809,6 +1826,36 @@ Retorne APENAS este JSON:
       } catch (err) {
         console.error("[tool:buscar_questoes_enem]", err);
         return { result: "Erro ao buscar questões ENEM." };
+      }
+    }
+
+    // ── Banco Concursos (OAB / Revalida / Enare etc.) ──────────────────────────
+    case "buscar_questoes_concurso": {
+      try {
+        const { searchConcursos } = await import("./concursos/bank");
+        const questoes = searchConcursos({
+          query: typeof args.query === "string" ? args.query : undefined,
+          banca: typeof args.banca === "string" ? (args.banca as any) : undefined,
+          area: typeof args.area === "string" ? (args.area as any) : undefined,
+          ano: typeof args.ano === "number" ? args.ano : undefined,
+          limit: typeof args.limit === "number" ? args.limit : 5,
+        });
+        if (questoes.length === 0) {
+          return { result: "Nenhuma questão de concurso encontrada com esses filtros. Tente outra banca, área, ano ou tema." };
+        }
+        const formatted = questoes
+          .map((q, i) => {
+            const head = [q.banca, q.area, q.ano].filter(Boolean).join(" · ");
+            return `${i + 1}. [${head}] ${q.cargo ?? ""}: ${q.enunciado.slice(0, 220)}${q.enunciado.length > 220 ? "…" : ""}`;
+          })
+          .join("\n");
+        return {
+          result: `Encontrei ${questoes.length} questão${questoes.length > 1 ? "ões" : ""} de concurso:\n${formatted}`,
+          action: { type: "concurso_questoes", questoes },
+        };
+      } catch (err) {
+        console.error("[tool:buscar_questoes_concurso]", err);
+        return { result: "Erro ao buscar questões de concurso." };
       }
     }
 

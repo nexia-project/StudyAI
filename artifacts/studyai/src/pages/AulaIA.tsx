@@ -35,6 +35,15 @@ interface Etapa {
   narracao: string;
   elementos: BoardElement[];
   duracao: number;
+  titulo?: string;
+  tipo?: string;
+  imagem?: {
+    url: string;
+    source?: string;
+    license?: string;
+    author?: string;
+    title?: string;
+  };
 }
 interface Aula {
   titulo: string;
@@ -146,6 +155,16 @@ export default function AulaIA() {
     if (isPlaying) { setCharState("speaking"); return; }
     setCharState("idle");
   }, [isPlaying, audioLoading]);
+
+  // ── auto-load section image from backend visuals pipeline ─────────────────
+  useEffect(() => {
+    if (etapa?.imagem?.url) {
+      setImagemGerada({
+        src: etapa.imagem.url,
+        topico: etapa.titulo ?? etapa.imagem.title ?? aula?.titulo ?? "Ilustração",
+      });
+    }
+  }, [etapa, aula?.titulo]);
 
   // ── generate lesson ───────────────────────────────────────────────────────
   const gerarAula = useCallback(async () => {
@@ -719,6 +738,11 @@ export default function AulaIA() {
                     className="max-h-full max-w-full object-contain rounded-xl shadow-sm"
                   />
                 </div>
+                {(etapa?.imagem?.author || etapa?.imagem?.license) && (
+                  <div className="px-3 py-1.5 border-t border-violet-100 bg-white text-[10px] text-slate-500 italic truncate">
+                    {[etapa?.imagem?.author, etapa?.imagem?.license].filter(Boolean).join(" · ")}
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

@@ -18,6 +18,8 @@ import { saveMemory, updateProfile, addImportantDate } from "./tiagao-memory";
 import { storeKnowledge, searchKnowledge } from "./knowledge-base";
 import { searchSemanticScholar } from "../routes/scholar";
 import { getEducationalVideos } from "./videos/get-videos";
+import { getVisual } from "./visuals/get-visual";
+import { injectHero, injectSectionImages } from "./visuals/html-injection";
 
 // Limpa output da IA (remove markdown fences ```html ... ```), extrai apenas o
 // conteúdo do <body> caso a IA tenha retornado um documento completo, e envolve
@@ -739,6 +741,31 @@ export const TIAGAO_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "gerar_imagem_educacional",
+      description:
+        "Gera ou busca uma imagem ilustrativa para um tópico educacional. Por padrão tenta buscar em fontes gratuitas (Wikimedia Commons CC-BY/CC0) antes de gerar com IA (FLUX schnell / DALL-E 3). Use quando o aluno pede uma imagem, foto, ilustração, ou ‘mostra uma imagem de X’.",
+      parameters: {
+        type: "object",
+        properties: {
+          topico: { type: "string", description: "Tema da imagem (ex.: 'mitose', 'pirâmide do Egito')." },
+          materia: { type: "string", description: "Disciplina/contexto (ex.: 'biologia', 'história')." },
+          contexto: {
+            type: "string",
+            enum: ["slide", "resumo", "aula", "avulso"],
+            description: "Onde a imagem será usada (afeta proporção e estilo).",
+          },
+          forcar_geracao: {
+            type: "boolean",
+            description: "Se true, pula a busca no banco curado e vai direto pra geração com IA.",
+          },
+        },
+        required: ["topico"],
+      },
+    },
+  },
 ];
 
 // ─── Daily video limit ───────────────────────────────────────────────────────
@@ -961,7 +988,31 @@ PADRÃO MÍNIMO POR SEÇÃO:
 
           rawContent = await generateHeavyMaterial(slidesPrompt, 16000, 0.65);
         }
-        const htmlContent = buildMaterialHTML(args.topico, rawContent);
+        let htmlContent = buildMaterialHTML(args.topico, rawContent);
+
+        // ── Visuals: ilustra seções com imagens curadas (Wikimedia) / IA ──────
+        try {
+          const sectionMatches = [...htmlContent.matchAll(/<section\b[^>]*>([\s\S]*?)<\/section>/gi)];
+          const topics: string[] = sectionMatches.map((m) => {
+            const inner = m[1] ?? "";
+            const h = inner.match(/<h[1-3][^>]*>([\s\S]*?)<\/h[1-3]>/i);
+            const title = (h?.[1] ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+            return title || args.topico;
+          });
+          const thin = sectionMatches.length > 12;
+          if (sectionMatches.length >= 3) {
+            const injected = await injectSectionImages(htmlContent, {
+              topics,
+              subject: args.materia,
+              context: "slide",
+              maxImages: 4,
+              thin,
+            });
+            htmlContent = injected.html;
+          }
+        } catch (e) {
+          console.warn("[criar_slides] visual injection skipped:", (e as Error)?.message);
+        }
 
         await db.execute(sql`
           INSERT INTO notebook_artifacts (user_id, doc_id, kind, title, payload)
@@ -1139,7 +1190,20 @@ Conteúdo nível vestibular. Profundidade real — sem superficialidade.
 - Comece direto por <div class="progress-bar" id="progressBar"></div> ou <nav class="sidebar">.`;
           rawContent = await generateHeavyMaterial(resumoPrompt, 8000, 0.5);
         }
-        const htmlContent = buildMaterialHTML("Resumo: " + args.topico, rawContent);
+        let htmlContent = buildMaterialHTML("Resumo: " + args.topico, rawContent);
+
+        // ── Visuals: 1 imagem hero no topo do resumo ─────────────────────────
+        try {
+          const heroResult = await injectHero(htmlContent, {
+            topic: args.topico,
+            subject: args.materia,
+            context: "resumo",
+          });
+          htmlContent = heroResult.html;
+        } catch (e) {
+          console.warn("[criar_resumo] hero injection skipped:", (e as Error)?.message);
+        }
+
         if (userId) {
           await db.execute(sql`
             INSERT INTO notebook_artifacts (user_id, doc_id, kind, title, payload)
@@ -1159,6 +1223,45 @@ Conteúdo nível vestibular. Profundidade real — sem superficialidade.
       } catch (err) {
         console.error("[tool:criar_resumo]", err);
         return { result: "Erro ao criar resumo." };
+      }
+    }
+
+    // ── Imagem educacional ───────────────────────────────────────────────────
+    case "gerar_imagem_educacional": {
+      try {
+        const topico = String(args.topico ?? "").trim();
+        if (!topico) return { result: "Preciso de um tópico pra buscar/gerar a imagem." };
+        const materia = args.materia ? String(args.materia) : undefined;
+        const ctx = (args.contexto ?? "avulso") as "slide" | "resumo" | "aula" | "avulso";
+        const visualCtx = ctx === "avulso" ? "slide" : ctx;
+        const visual = await getVisual({
+          topic: topico,
+          subject: materia,
+          context: visualCtx,
+          preferGenerated: Boolean(args.forcar_geracao),
+        });
+        if (!visual.url || visual.source === "placeholder") {
+          return { result: `Não consegui encontrar/gerar uma imagem boa pra "${topico}" agora.` };
+        }
+        const sourceLabel =
+          visual.source === "wikimedia" ? "Wikimedia Commons" :
+          visual.source === "flux-schnell" ? "FLUX schnell" :
+          visual.source === "dalle-3" ? "DALL-E 3" : visual.source;
+        return {
+          result: `Imagem encontrada (${sourceLabel}) para "${topico}".`,
+          action: {
+            type: "imagem_gerada",
+            url: visual.url,
+            topico,
+            source: visual.source,
+            license: visual.license,
+            author: visual.author,
+            title: visual.title,
+          },
+        };
+      } catch (err) {
+        console.error("[tool:gerar_imagem_educacional]", err);
+        return { result: "Erro ao buscar/gerar imagem." };
       }
     }
 

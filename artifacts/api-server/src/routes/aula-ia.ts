@@ -4,6 +4,7 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { logAiUsage } from "../lib/aiCostLogger";
 import { cacheGet, cacheSave } from "../lib/semanticCache";
 import { incrementTopicFrequency } from "../lib/generativeMemory";
+import { getVisual } from "../lib/visuals/get-visual";
 
 const router = Router();
 
@@ -255,6 +256,44 @@ router.post("/aula-ia/gerar", requireAuth, async (req: Request, res: Response) =
     // ── Valida estrutura mínima ───────────────────────────────────────────────
     if (!aula.titulo || !Array.isArray(aula.etapas) || aula.etapas.length === 0) {
       throw new Error("Estrutura de aula inválida — sem titulo ou etapas");
+    }
+
+    // ── Enriquecer etapas com imagens ilustrativas (máx 5/aula) ──────────────
+    try {
+      const eligibleIdx: number[] = [];
+      for (let i = 0; i < aula.etapas.length; i++) {
+        const et = aula.etapas[i] as any;
+        const tipo = String(et?.tipo ?? "").toLowerCase();
+        if (tipo.includes("quiz") || tipo.includes("perg") || tipo.includes("qa")) continue;
+        if (et?.imagem) continue;
+        eligibleIdx.push(i);
+        if (eligibleIdx.length >= 5) break;
+      }
+      if (eligibleIdx.length > 0) {
+        const subject = String(aula.materia ?? "").trim() || undefined;
+        const visuals = await Promise.allSettled(
+          eligibleIdx.map((idx) => {
+            const et = aula.etapas[idx] as any;
+            const topic = String(et?.titulo ?? et?.tema ?? topico).slice(0, 120);
+            return getVisual({ topic, subject, context: "aula" });
+          })
+        );
+        for (let k = 0; k < eligibleIdx.length; k++) {
+          const r = visuals[k];
+          if (r.status !== "fulfilled") continue;
+          const v = r.value;
+          if (!v.url || v.source === "placeholder") continue;
+          (aula.etapas[eligibleIdx[k]] as any).imagem = {
+            url: v.url,
+            source: v.source,
+            license: v.license,
+            author: v.author,
+            title: v.title,
+          };
+        }
+      }
+    } catch (e) {
+      console.warn("[aula-ia] visuals skipped:", (e as Error)?.message);
     }
 
     // ── Salvar no cache (usa JSON válido final) ───────────────────────────────

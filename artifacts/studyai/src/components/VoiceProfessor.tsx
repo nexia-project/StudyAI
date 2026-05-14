@@ -358,6 +358,15 @@ interface HistoryMsg {
   /** Vídeos educacionais YouTube embed-only (tool `buscar_video_educacional`). */
   videos?: VideoStripVideo[];
   videoTopico?: string;
+  /** Imagem ilustrativa anexada via tool `gerar_imagem_educacional`. */
+  imagem?: {
+    url: string;
+    topico?: string;
+    source?: string;
+    license?: string;
+    author?: string;
+    title?: string;
+  };
 }
 
 /**
@@ -733,6 +742,45 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
     } else if (action.type === "flashcards_criados") {
       setActionNotif({ text: `✅ ${action.quantidade} flashcards criados sobre "${action.topico}"`, path: "/app" });
       setTimeout(() => setActionNotif(null), 6000);
+    } else if (action.type === "imagem_gerada") {
+      if (typeof action.url === "string" && action.url) {
+        const topico = typeof action.topico === "string" ? action.topico : undefined;
+        setHistory((prev) => {
+          const copy = [...prev];
+          for (let i = copy.length - 1; i >= 0; i--) {
+            if (copy[i].role === "assistant") {
+              copy[i] = {
+                ...copy[i],
+                imagem: {
+                  url: action.url,
+                  topico,
+                  source: typeof action.source === "string" ? action.source : undefined,
+                  license: typeof action.license === "string" ? action.license : undefined,
+                  author: typeof action.author === "string" ? action.author : undefined,
+                  title: typeof action.title === "string" ? action.title : undefined,
+                },
+              };
+              return copy;
+            }
+          }
+          copy.push({
+            role: "assistant",
+            text: "",
+            ts: Date.now(),
+            imagem: {
+              url: action.url,
+              topico,
+              source: typeof action.source === "string" ? action.source : undefined,
+              license: typeof action.license === "string" ? action.license : undefined,
+              author: typeof action.author === "string" ? action.author : undefined,
+              title: typeof action.title === "string" ? action.title : undefined,
+            },
+          });
+          return copy;
+        });
+        setActionNotif({ text: `🖼️ Imagem adicionada${topico ? ` sobre "${topico}"` : ""}` });
+        setTimeout(() => setActionNotif(null), 5000);
+      }
     } else if (action.type === "criar_slides") {
       setActionNotif({ text: `📚 Material "${action.titulo}" criado! Abrindo Notebook...`, path: "/notebook" });
       setTimeout(() => setActionNotif(null), 8000);
@@ -1810,6 +1858,22 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
                               <div>{renderVoiceContentWithMath(msg.text)}</div>
                             ) : (
                               <p className="whitespace-pre-wrap">{msg.text}</p>
+                            )}
+                            {/* Imagem ilustrativa do tool gerar_imagem_educacional */}
+                            {msg.role === "assistant" && msg.imagem?.url && (
+                              <div className="mt-2 pt-2 border-t border-violet-200/60">
+                                <img
+                                  src={msg.imagem.url}
+                                  alt={msg.imagem.topico ?? msg.imagem.title ?? "ilustração"}
+                                  loading="lazy"
+                                  className="w-full max-w-xs aspect-[16/9] object-cover rounded-lg border border-violet-200/60 bg-violet-50"
+                                />
+                                {(msg.imagem.author || msg.imagem.license) && (
+                                  <p className="text-[9px] mt-1 text-violet-400/70 italic truncate">
+                                    {[msg.imagem.author, msg.imagem.license].filter(Boolean).join(" · ")}
+                                  </p>
+                                )}
+                              </div>
                             )}
                             {/* PR-7 — passos verificáveis do resolver_calculo */}
                             {msg.role === "assistant" && msg.mathResult && msg.mathResult.steps?.length > 0 && (

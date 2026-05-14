@@ -1,15 +1,24 @@
 /**
- * BNCC — Base Nacional Comum Curricular
- * Rotas para busca, navegação e integração pedagógica das habilidades BNCC.
+ * BNCC — Base Nacional Comum Curricular (legacy — PR-3 follow-up A1).
  *
- * GET  /bncc/areas                          — lista áreas do conhecimento
- * GET  /bncc/componentes?area=MAT           — lista componentes de uma área
- * GET  /bncc/buscar?q=query&area=MAT&comp=Física — busca habilidades
- * GET  /bncc/habilidade/:codigo             — detalhe de uma habilidade
- * POST /bncc/mapear                         — mapeia texto/pergunta para habilidades BNCC
+ * Rotas para busca, navegação e integração pedagógica das habilidades BNCC
+ * (dataset legado de 140 habilidades — `data/bncc-data`).
+ *
+ * Mount externo (via routes/index.ts): `/api/bncc/legacy`.
+ * Os paths declarados abaixo são RELATIVOS (sem o prefixo /bncc) — eles eram
+ * `/bncc/*` quando este router era montado na raiz; agora vivem sob
+ * `/api/bncc/legacy/*`. As rotas canônicas (PR-3 / `routes/bncc-curriculum.ts`)
+ * estão em `/api/bncc/*` e devem ser preferidas pelos consumidores novos.
+ *
+ * GET  /api/bncc/legacy/areas                          — lista áreas do conhecimento
+ * GET  /api/bncc/legacy/componentes?area=MAT           — lista componentes de uma área
+ * GET  /api/bncc/legacy/buscar?q=query&area=MAT&comp=Física — busca habilidades
+ * GET  /api/bncc/legacy/habilidade/:codigo             — detalhe de uma habilidade
+ * POST /api/bncc/legacy/mapear                         — mapeia texto/pergunta para habilidades BNCC
+ * GET  /api/bncc/legacy/componente/:nome               — todas as habilidades de uma disciplina
  */
 
-import { Router, type IRouter, type Request, type Response } from "express";
+import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import {
   BNCC_AREAS,
   BNCC_HABILIDADES,
@@ -20,14 +29,22 @@ import {
 
 const router: IRouter = Router();
 
-// ─── GET /bncc/areas ──────────────────────────────────────────────────────────
-router.get("/bncc/areas", (req: Request, res: Response) => {
+// ─── Deprecation signal (A1) ─────────────────────────────────────────────────
+// Sinaliza no console toda vez que um caller bate em alguma rota legada.
+// Quando o tráfego cair a zero, o router inteiro pode ser removido.
+router.use((req: Request, _res: Response, next: NextFunction) => {
+  console.warn("[bncc-legacy] hit on deprecated path:", req.path);
+  next();
+});
+
+// ─── GET /api/bncc/legacy/areas ──────────────────────────────────────────────
+router.get("/areas", (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
   res.json({ areas: BNCC_AREAS, total: BNCC_AREAS.length });
 });
 
-// ─── GET /bncc/componentes?area=MAT ──────────────────────────────────────────
-router.get("/bncc/componentes", (req: Request, res: Response) => {
+// ─── GET /api/bncc/legacy/componentes?area=MAT ───────────────────────────────
+router.get("/componentes", (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
   const area = String(req.query.area || "").trim();
   const filtered = area
@@ -37,8 +54,8 @@ router.get("/bncc/componentes", (req: Request, res: Response) => {
   res.json({ componentes, area: area || null });
 });
 
-// ─── GET /bncc/buscar ─────────────────────────────────────────────────────────
-router.get("/bncc/buscar", (req: Request, res: Response) => {
+// ─── GET /api/bncc/legacy/buscar ─────────────────────────────────────────────
+router.get("/buscar", (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
   const q = String(req.query.q || "").trim();
   const area = String(req.query.area || "").trim() || undefined;
@@ -66,8 +83,8 @@ router.get("/bncc/buscar", (req: Request, res: Response) => {
   res.json({ habilidades: results.slice(0, limit), total: results.length, query: q });
 });
 
-// ─── GET /bncc/habilidade/:codigo ─────────────────────────────────────────────
-router.get("/bncc/habilidade/:codigo", (req: Request, res: Response) => {
+// ─── GET /api/bncc/legacy/habilidade/:codigo ─────────────────────────────────
+router.get("/habilidade/:codigo", (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
   const codigo = String(req.params.codigo).toUpperCase();
   const habilidade = BNCC_HABILIDADES.find(h => h.codigo === codigo);
@@ -82,10 +99,10 @@ router.get("/bncc/habilidade/:codigo", (req: Request, res: Response) => {
   res.json({ habilidade, related });
 });
 
-// ─── POST /bncc/mapear ────────────────────────────────────────────────────────
+// ─── POST /api/bncc/legacy/mapear ────────────────────────────────────────────
 // Body: { texto: string, componente?: string }
 // Returns BNCC habilidades related to the question/topic
-router.post("/bncc/mapear", (req: Request, res: Response) => {
+router.post("/mapear", (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
   const { texto, componente } = req.body as { texto?: string; componente?: string };
   if (!texto) { res.status(400).json({ erro: "texto obrigatório" }); return; }
@@ -101,8 +118,8 @@ router.post("/bncc/mapear", (req: Request, res: Response) => {
   });
 });
 
-// ─── GET /bncc/componente/:nome — all habilidades of a subject ────────────────
-router.get("/bncc/componente/:nome", (req: Request, res: Response) => {
+// ─── GET /api/bncc/legacy/componente/:nome — all habilidades of a subject ────
+router.get("/componente/:nome", (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
   const nome = decodeURIComponent(String(req.params.nome));
   const habilidades = BNCC_HABILIDADES.filter(h =>

@@ -33,6 +33,7 @@ import {
 import { loadMethodState, saveMethodState } from "../lib/tiagao-method-state";
 import { isMathQuestion } from "../lib/math-detection";
 import { TIAGAO_LANDING_SYSTEM_PROMPT } from "../lib/tiagao-landing-prompt";
+import { humanizeMathForTTS } from "../lib/math-narration";
 
 /**
  * Qwen Math (PR-7) — modelo especializado em exatas via OpenRouter.
@@ -652,14 +653,14 @@ Roteamento típico:
 • texto de redação → corrigir_redacao | aula expositiva na lousa → abrir_aula_ia
 • fato duradouro sobre a pessoa → salvar_memoria_rica ou salvar_memoria
 • data de prova ou prazo → registrar_data_importante
-• fato verificável (definição científica, mecanismo, estatística, data histórica, autoria) ou pedido de "fontes/pesquisa" → pesquisar_artigos_cientificos
+• fato verificável (definição científica, mecanismo, estatística, data histórica, autoria) ou pedido de "fontes/pesquisa" → pesquisar_fontes_multi (Semantic Scholar + SciELO + Wikipedia PT + Wikidata + IBGE + arXiv + Crossref na mesma chamada)
 
 Combine de forma inteligente: busque em documentos ou histórico antes de criar algo novo quando o aluno estiver claramente ancorado num material próprio.
 
 ═══ REGRA ANTI-ALUCINAÇÃO (obrigatória) ═══
-- Quando o aluno perguntar sobre FATO VERIFICÁVEL (definição científica, mecanismo, estatística, data histórica, autoria, descoberta), CHAME a ferramenta \`pesquisar_artigos_cientificos\` ANTES de responder.
+- Quando o aluno perguntar sobre FATO VERIFICÁVEL (definição científica, mecanismo, estatística, data histórica, autoria, descoberta), CHAME a ferramenta \`pesquisar_fontes_multi\` ANTES de responder. Ela cobre Semantic Scholar + SciELO + Wikipedia PT + Wikidata + IBGE + arXiv + Crossref na mesma chamada.
 - Use APENAS as fontes devolvidas. Cite com [Fonte N] no corpo da resposta (mesmo padrão do Notebook).
-- Se a ferramenta não devolver resultados, diga literalmente: "Não encontrei fontes confiáveis sobre isso na minha base científica — quer que eu pesquise em outra base ou prefere uma explicação geral sem citação?"
+- Se a ferramenta não devolver resultados, diga literalmente: "Não encontrei fontes confiáveis sobre isso nas minhas bases — quer que eu reformule a busca ou prefere uma explicação geral sem citação?"
 - NUNCA invente autor, ano, DOI, periódico ou número de citações.
 - Para opinião, criatividade, dicas de estudo, motivação: NÃO precisa chamar a ferramenta.
 `;
@@ -808,7 +809,7 @@ INSTRUÇÕES DE AGENTE — LEIA ANTES DE QUALQUER RESPOSTA:
 - gerar_questao_personalizada: quando pede questão, exercício, desafio.
 - analisar_desempenho_completo: quando pergunta sobre desempenho, progresso.
 - buscar_nos_meus_documentos: quando menciona "no meu material", "no meu PDF".
-- pesquisar_artigos_cientificos: SEMPRE que for fato verificável (definição científica, mecanismo, estatística, data histórica, autoria) ou se o aluno pedir "fontes", "referências", "pesquisa científica". Cite com [Fonte N] na resposta. NUNCA invente autor/ano/DOI.
+- pesquisar_fontes_multi: SEMPRE que for fato verificável (definição científica, mecanismo, estatística, data histórica, autoria) ou se o aluno pedir "fontes", "referências", "pesquisa científica". Cobre Semantic Scholar + SciELO + Wikipedia PT + Wikidata + IBGE + arXiv + Crossref. Cite com [Fonte N] na resposta. NUNCA invente autor/ano/DOI.
 - enviar_email: quando pede para mandar email.
 - enviar_whatsapp: quando pede para mandar WhatsApp, zap, mensagem.
 - corrigir_redacao: quando envia texto para correção.
@@ -966,6 +967,23 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.
                             null;
       const notifications = frontendActions.filter(a => a.type === "flashcards_criados");
 
+      // ── Q6 follow-up — TTS narra o resultado de resolver_calculo ──────────
+      // Quando resolver_calculo roda, o frontend renderiza os passos completos
+      // (MathSteps) na bolha; a voz precisa pelo menos do RESULTADO, senão o
+      // aluno só ouve a frase curta do modelo e perde o número/expressão final.
+      // Pulamos quando engine === "none" (não foi possível resolver) ou quando
+      // o resultado é vazio, para não enganar o aluno com falsa confirmação.
+      const mathAction = frontendActions.find(a => a.type === "math_result");
+      const mathPrefix: string = (() => {
+        if (!mathAction) return "";
+        const engine = String(mathAction.engine ?? "");
+        const resultRaw = String(mathAction.result ?? "").trim();
+        if (!resultRaw || engine === "none") return "";
+        const spoken = humanizeMathForTTS(resultRaw);
+        if (!spoken) return "";
+        return `Resultado: ${spoken}. Aqui estão os passos na tela. `;
+      })();
+
       // ── Resposta instantânea pré-definida — sem 2ª chamada LLM ──────────────
       // Navegação, flashcards e ferramentas pesadas: resposta imediata (+1-2s ganhos).
       const VOICE_INSTANT_TYPES = new Set(["ir", "navegar", "abrir_aula_ia", "criar_slides",
@@ -996,7 +1014,7 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.
         // Sem texto do LLM neste path → meta fica com método auto e sentimento neutro
         const metaFallback = isStudent ? { method: finalMethod, sentiment: "neutro" as const } : undefined;
         if (metaFallback) persistMethodState(metaFallback);
-        res.json({ text: quickReply, action: primaryAction, notifications, tiagao_meta: metaFallback });
+        res.json({ text: mathPrefix + quickReply, action: primaryAction, notifications, tiagao_meta: metaFallback });
         return;
       }
 
@@ -1011,7 +1029,7 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.
       const builtFinal = buildTiagaoMeta(rawFinal);
       const cleanFinal = builtFinal?.cleanText ?? rawFinal;
       if (builtFinal) persistMethodState(builtFinal.meta);
-      res.json({ text: cleanFinal, action: primaryAction, notifications, tiagao_meta: builtFinal?.meta });
+      res.json({ text: mathPrefix + cleanFinal, action: primaryAction, notifications, tiagao_meta: builtFinal?.meta });
     } else {
       // Sem tool calls — resposta direta
       const raw = firstMsg.content?.trim() || "";

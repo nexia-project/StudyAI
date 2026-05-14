@@ -554,32 +554,12 @@ export const TIAGAO_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
-  // ── RAG Externo (Semantic Scholar) ───────────────────────────────────────
-  {
-    type: "function",
-    function: {
-      name: "pesquisar_artigos_cientificos",
-      description: "Pesquisa artigos científicos peer-reviewed sobre um tema na Semantic Scholar. USE SEMPRE que o aluno perguntar sobre um conceito, fato verificável, estatística, definição científica, mecanismo biológico/físico/químico, evento histórico datado ou pedir 'fontes', 'pesquisa científica', 'referências', 'o que diz a ciência'. NÃO use para opinião pessoal, criatividade, exercícios didáticos sem fato verificável.",
-      parameters: {
-        type: "object",
-        properties: {
-          consulta: {
-            type: "string",
-            description: "Termo de busca. Para mais cobertura, prefira termos em inglês (ex: 'calvin cycle photosynthesis' em vez de 'ciclo de calvin fotossíntese').",
-          },
-          ano_minimo: {
-            type: "number",
-            description: "Filtrar artigos a partir do ano (opcional, ex: 2015)",
-          },
-          max_resultados: {
-            type: "number",
-            description: "Número de resultados (1 a 5, padrão 3)",
-          },
-        },
-        required: ["consulta"],
-      },
-    },
-  },
+  // ── RAG Externo — DEPRECADO (Q5 follow-up) ───────────────────────────────
+  // A tool `pesquisar_artigos_cientificos` foi REMOVIDA da lista visível ao
+  // LLM em favor de `pesquisar_fontes_multi`, que cobre Semantic Scholar +
+  // SciELO + Wikipedia PT + Wikidata + IBGE + arXiv + Crossref. O case do
+  // executor abaixo (em `executeTiagaoTool`) é PRESERVADO de propósito para
+  // resolver chamadas serializadas/em cache de versões antigas do app.
 
   // ── RAG Multi-fonte + Exatas + BNCC + ENEM (consolidação PR-3/PR-4/PR-7) ─
   {

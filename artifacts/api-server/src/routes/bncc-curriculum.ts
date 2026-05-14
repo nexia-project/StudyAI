@@ -1,17 +1,22 @@
 /**
  * BNCC Curriculum API — PR-3 (data scaffolding).
  *
- * Endpoints novos que expõem a representação tipada das competências BNCC do
- * Ensino Médio criada em `lib/bncc/data.ts`. Mantém compatibilidade com o
- * router legado `routes/bncc.ts` (que sobrevive enquanto migramos consumidores).
+ * PR follow-up (A1): paths now canonical at /api/bncc/* (was /api/bncc/curriculum/*).
+ * Legacy router (routes/bncc.ts) is re-mounted at /api/bncc/legacy and will be
+ * removed in a future PR.
  *
- * Endpoints:
- *   GET  /api/bncc/curriculum/areas          → lista as 4 áreas + competências gerais
- *   GET  /api/bncc/curriculum/competencias   → busca competências específicas
- *                                              (query: area, q)
- *   POST /api/bncc/curriculum/align          → alinha um tópico/tema com as
- *                                              competências mais relevantes
- *                                              (body: { topic: string, area?: string, limit?: number })
+ * Endpoints novos que expõem a representação tipada das competências BNCC do
+ * Ensino Médio criada em `lib/bncc/data.ts`. Este router é montado em
+ * `routes/index.ts` no caminho `/bncc` (=> `/api/bncc` externamente), portanto
+ * os paths declarados abaixo são RELATIVOS (sem o prefixo /api/bncc).
+ *
+ * Endpoints (canônicos):
+ *   GET  /api/bncc/areas          → lista as 4 áreas + competências gerais
+ *   GET  /api/bncc/competencias   → busca competências específicas
+ *                                   (query: area, q)
+ *   POST /api/bncc/align          → alinha um tópico/tema com as
+ *                                   competências mais relevantes
+ *                                   (body: { topic: string, area?: string, limit?: number })
  *
  * Convenções: seguimos `routes/scholar.ts` — validação manual sem dependências
  * novas, sem aiCostLogger (não é chamada LLM), respostas JSON puras.
@@ -28,8 +33,8 @@ import { findBnccCompetencias, getAreaByName } from "../lib/bncc/search";
 
 const router: IRouter = Router();
 
-// ─── GET /api/bncc/curriculum/areas ──────────────────────────────────────────
-router.get("/api/bncc/curriculum/areas", (_req, res) => {
+// ─── GET /api/bncc/areas ─────────────────────────────────────────────────────
+router.get("/areas", (_req, res) => {
   res.json({
     areas: BNCC_AREAS,
     competenciasGerais: BNCC_COMPETENCIAS_GERAIS,
@@ -37,8 +42,8 @@ router.get("/api/bncc/curriculum/areas", (_req, res) => {
   });
 });
 
-// ─── GET /api/bncc/curriculum/competencias?area=&q= ─────────────────────────
-router.get("/api/bncc/curriculum/competencias", (req, res) => {
+// ─── GET /api/bncc/competencias?area=&q= ─────────────────────────────────────
+router.get("/competencias", (req, res) => {
   const q = typeof req.query.q === "string" ? req.query.q : "";
   const area = typeof req.query.area === "string" ? req.query.area : undefined;
 
@@ -65,7 +70,7 @@ router.get("/api/bncc/curriculum/competencias", (req, res) => {
   });
 });
 
-// ─── POST /api/bncc/curriculum/align ─────────────────────────────────────────
+// ─── POST /api/bncc/align ────────────────────────────────────────────────────
 interface AlignPayload {
   topic?: unknown;
   area?: unknown;
@@ -102,7 +107,7 @@ function validateAlignPayload(
   return { ok: true, topic, area, limit };
 }
 
-router.post("/api/bncc/curriculum/align", (req, res) => {
+router.post("/align", (req, res) => {
   const parsed = validateAlignPayload(req.body ?? {});
   if (!parsed.ok) {
     res.status(400).json({ error: "payload inválido", detail: parsed.detail });

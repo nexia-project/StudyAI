@@ -77,7 +77,11 @@ router.use(institutionRouter);
 router.use(governmentRouter);
 router.use(knowledgeRouter);
 router.use(wikipediaRouter);
-router.use(bnccRouter);
+// BNCC — A1 follow-up: paths canônicos vivem em `/api/bncc/*` (montagem do
+// `bnccCurriculumRouter` mais abaixo). O router legado fica preservado em
+// `/api/bncc/legacy/*` apenas para compat de consumidores antigos; emite
+// console.warn a cada hit.
+router.use("/bncc/legacy", bnccRouter);
 router.use(simuladoEnemRouter);
 router.use(ocrRouter);
 router.use(notifyRouter);
@@ -96,7 +100,8 @@ router.use(comunicacaoRouter);
 router.use(aiCacheChatRouter);
 router.use(fazedoresRouter);
 router.use(scholarRouter);
-router.use(bnccCurriculumRouter);
+// BNCC — A1 follow-up: rotas canônicas em /api/bncc/{areas,competencias,align}.
+router.use("/bncc", bnccCurriculumRouter);
 router.use(enemBankRouter);
 router.use(ragMultiRouter);
 router.use(mathRouter);

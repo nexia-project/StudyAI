@@ -14,6 +14,7 @@ import { extractJson } from "../lib/claudeAi";
 import pdfParse from "pdf-parse/lib/pdf-parse.js";
 import mammoth from "mammoth";
 import { checkFreeUsage } from "../lib/freeUsage";
+import { findBnccCompetencias } from "../lib/bncc/search";
 
 const router: IRouter = Router();
 // Use .any() to avoid "Unexpected field" errors with strict field-name matching;
@@ -303,6 +304,52 @@ REGRAS OBRIGATÓRIAS:
 - Desafio: questão de prova universitária ou caso prático de análise
 - DicasGerais: técnicas de estudo universitário (fichamento, revisão bibliográfica, Feynman)
 - Crie entre 3 a 7 dias baseado no tempo disponível`;
+
+/**
+ * A3 follow-up — Mapeia o nome livre da matéria para uma sigla de área BNCC
+ * (LGG/MAT/CNT/CHS) usada por `lib/bncc/search.findBnccCompetencias` como
+ * filtro opcional. Conservador: só devolve sigla quando há um match claro;
+ * caso contrário devolve undefined e a busca roda sobre as 4 áreas.
+ */
+function bnccAreaFromMateria(materia: unknown): "LGG" | "MAT" | "CNT" | "CHS" | undefined {
+  if (typeof materia !== "string") return undefined;
+  const m = materia.toLowerCase();
+  if (/(matem|álgebra|algebra|geometria|trigonometria|cálculo|calculo|estatísti|estatisti)/.test(m)) return "MAT";
+  if (/(portugu|redaç|redac|literat|gramát|gramat|interpret|linguagem|inglês|ingles|espanhol|língua|lingua|artes\b)/.test(m)) return "LGG";
+  if (/(físic|fisic|quím|quim|biolog|ciências da natureza|ciencia)/.test(m)) return "CNT";
+  if (/(históri|histori|geogra|filosof|sociolog|humanas)/.test(m)) return "CHS";
+  return undefined;
+}
+
+/**
+ * A3 follow-up — Enriquece cada `dias[].topicos[]` do plano com `bnccCodigos`
+ * (top 1-3 códigos oficiais EM13XXX###) via `findBnccCompetencias`. É
+ * intencionalmente in-memory (sem rede / sem LLM) e tolerante a payloads
+ * malformados — só toca topicos que sejam objetos com `nome` string. O dataset
+ * BNCC seed cobre só Ensino Médio; tópicos de Fundamental tipicamente caem em
+ * array vazio, e o frontend trata `bnccCodigos` como opcional.
+ */
+function enrichPlanWithBncc(plano: any): void {
+  if (!plano || typeof plano !== "object") return;
+  const dias = (plano as any).dias;
+  if (!Array.isArray(dias)) return;
+  const area = bnccAreaFromMateria((plano as any).materia);
+  for (const dia of dias) {
+    const topicos = (dia as any)?.topicos;
+    if (!Array.isArray(topicos)) continue;
+    for (const t of topicos) {
+      if (!t || typeof t !== "object") continue;
+      const nome = (t as any).nome;
+      if (typeof nome !== "string" || nome.trim().length < 2) continue;
+      try {
+        const hits = findBnccCompetencias(nome, area).slice(0, 3);
+        if (hits.length > 0) {
+          (t as any).bnccCodigos = hits.map((h) => h.codigo);
+        }
+      } catch { /* enrichment é best-effort — nunca derruba o plano */ }
+    }
+  }
+}
 
 function getSystemPrompt(profile: ProfileType): string {
   switch (profile) {
@@ -625,6 +672,11 @@ router.post("/analisar", checkFreeUsage, (req, res, next) => {
       }
       return;
     }
+
+    // A3 — anexa códigos BNCC (EM13XXX###) por tópico via findBnccCompetencias.
+    // Roda antes de qualquer serialização posterior para que tanto o SSE quanto
+    // a resposta JSON carreguem o campo `bnccCodigos` em cada tópico.
+    enrichPlanWithBncc(plano);
 
     // Build the richest possible raw text to pass to the simulado generator.
     // Priority: (1) actual file text (PDF/DOCX), (2) typed text, (3) plan content itself.

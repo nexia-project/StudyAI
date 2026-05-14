@@ -192,7 +192,7 @@ export default function PricingPage() {
                     <p className="text-xs font-semibold text-violet-200 uppercase tracking-widest">Pro</p>
                   </div>
                   <div className="flex items-baseline gap-0.5">
-                    <span className="text-4xl font-black">R$29</span>
+                    <span className="text-4xl font-black">R$59</span>
                     <span className="text-2xl font-black">,90</span>
                     <span className="text-violet-300 ml-1">/mês</span>
                   </div>
@@ -246,7 +246,7 @@ export default function PricingPage() {
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4" />
-                      Assinar — R$29,90/mês
+                      Assinar — R$59,90/mês
                     </>
                   )}
                 </button>

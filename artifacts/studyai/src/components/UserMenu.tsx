@@ -174,7 +174,7 @@ export function UserMenu({ openAccountMenuUpward = false }: UserMenuProps) {
                 >
                   <Crown className="w-4 h-4 text-violet-600" />
                   Assinar Premium
-                  <span className="ml-auto text-[10px] font-black bg-violet-600 text-white px-2 py-0.5 rounded-full">R$29,90/mês</span>
+                  <span className="ml-auto text-[10px] font-black bg-violet-600 text-white px-2 py-0.5 rounded-full">R$59,90/mês</span>
                 </button>
               )}
               <button

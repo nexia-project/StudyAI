@@ -26,6 +26,9 @@ const pricingHref = `${BASE}/pricing`.replace(/([^:]\/)\/+/g, "$1");
 const LANDING_IMG = {
   professorTiagao: `${BASE}/landing/professor-tiagao-feature.png`.replace(/([^:]\/)\/+/g, "$1"),
   notebookRag: `${BASE}/landing/notebook-rag-feature.png`.replace(/([^:]\/)\/+/g, "$1"),
+  // Banner de destaque do Simulado ENEM e ilustração colorida do módulo Cronograma.
+  enemFeatured: `${BASE}/landing/landing-enem-featured.png`.replace(/([^:]\/)\/+/g, "$1"),
+  cronogramaBanner: `${BASE}/landing/landing-cronograma-banner.png`.replace(/([^:]\/)\/+/g, "$1"),
   // Fotos educacionais (Unsplash, uso comercial liberado, sem necessidade de atribuição).
   comoFuncionaFoto: `${BASE}/landing/landing-como-funciona.jpg`.replace(/([^:]\/)\/+/g, "$1"),
   professorSalaFoto: `${BASE}/landing/landing-professor-sala.jpg`.replace(/([^:]\/)\/+/g, "$1"),
@@ -102,7 +105,7 @@ const APP_SHOWCASE = [
     desc: "Organize a semana com a IA e entre na sala para foco, Pomodoro e revisão no mesmo ecossistema.",
     path: "/cronograma",
     icon: Clock,
-    img: UNSPLASH.writing,
+    img: LANDING_IMG.cronogramaBanner,
     extraPath: "/sala-estudos",
     extraLabel: "Sala de Estudos",
   },
@@ -207,7 +210,7 @@ const PLANS = [
   },
   {
     name: "Pro",
-    price: "R$ 29,90",
+    price: "R$ 59,90",
     period: "/mês",
     desc: "Para estudantes sérios",
     highlight: true,
@@ -245,13 +248,13 @@ const PLANS = [
 ];
 
 const FAQS = [
-  { q: "O StudyAI é gratuito?", a: "Sim! O plano gratuito inclui plano de estudos, simulados, revisões com IA no app, redação e acesso ao Tiagão (5 mensagens/dia). O Pro (R$29,90/mês) libera tudo ilimitado." },
+  { q: "O StudyAI é gratuito?", a: "Sim! O plano gratuito inclui plano de estudos, simulados, revisões com IA no app, redação e acesso ao Tiagão (5 mensagens/dia). O Pro (R$59,90/mês) libera tudo ilimitado." },
   { q: "O que é a Professor Tiagão?", a: "Tiagão é o primeiro tutor por voz com IA do Brasil. Age de forma proativa — chama você quando percebe que está dias sem estudar, sabe seu plano e pontos fracos. É como ter um tutor particular 24h." },
   { q: "Como o plano de estudos é gerado?", a: "Você informa matéria, nível, tempo disponível e objetivo. Pode enviar PDF, DOCX ou foto do caderno. Nossa IA cria um cronograma personalizado dia a dia com tópicos, exercícios e revisão no app." },
   { q: "Funciona para ENEM, vestibular e concursos?", a: "Sim! O StudyAI foi criado para estudantes brasileiros. A IA adapta conteúdo para ENEM, FUVEST, UNICAMP, OAB, Receita Federal, PRF, concursos militares e qualquer outra prova." },
   { q: "Como funciona a correção de redação ENEM?", a: "Envie sua redação (texto ou foto). A IA avalia nas 5 competências oficiais: domínio da norma culta, compreensão do tema, argumentos, coesão e proposta de intervenção. Resultado em menos de 30 segundos." },
   { q: "O que é o Notebook RAG?", a: "É o diferencial competitivo do StudyAI. Você sobe qualquer material (PDF, vídeo, site) e nossa IA responde com base exatamente naquele conteúdo — gerando resumos, flashcards, questões e planos de aula diretamente do seu material." },
-  { q: "Vale mais do que um cursinho?", a: "Cursinhos tradicionais custam R$200–800/mês com conteúdo igual para todos. O StudyAI oferece plano 100% personalizado, simulados ilimitados e tutor IA 24h por R$29,90/mês — ou gratuitamente no plano básico." },
+  { q: "Vale mais do que um cursinho?", a: "Cursinhos tradicionais custam R$200–800/mês com conteúdo igual para todos. O StudyAI oferece plano 100% personalizado, simulados ilimitados e tutor IA 24h por R$59,90/mês — ou gratuitamente no plano básico." },
 ];
 
 // ─── Vídeos demonstrativos (MP4 estáveis + poster Unsplash) ───────────────
@@ -655,6 +658,52 @@ export default function Landing() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* ── ENEM FEATURED BANNER ── */}
+      <section id="enem-destaque" className="relative my-16 md:my-24 px-4 sm:px-6">
+        <motion.div
+          variants={fadeUp}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true }}
+          className="mx-auto max-w-6xl"
+        >
+          <div className="relative overflow-hidden rounded-3xl shadow-2xl shadow-violet-900/15 ring-1 ring-violet-200">
+            <img
+              src={LANDING_IMG.enemFeatured}
+              alt="Simulado ENEM no Study.IA — pratique, foque, acredite, conquiste"
+              width={1920}
+              height={900}
+              loading="lazy"
+              decoding="async"
+              className="w-full h-auto object-cover object-center aspect-[16/9] md:aspect-[21/9]"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-slate-950/55 via-slate-950/10 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-8 md:p-10 flex flex-col md:flex-row md:items-end md:justify-between gap-5">
+              <div className="text-white max-w-2xl">
+                <p className="text-[10px] sm:text-xs md:text-sm font-black uppercase tracking-[0.2em] text-amber-300 mb-2">
+                  Treine pro ENEM
+                </p>
+                <h2 className="text-2xl sm:text-3xl md:text-5xl font-black leading-[1.05] tracking-tight drop-shadow-sm">
+                  Simulado ENEM completo<br className="hidden md:block" />
+                  <span className="text-amber-300">+1.600 questões oficiais</span>
+                </h2>
+                <p className="mt-3 text-sm sm:text-base md:text-lg text-slate-100 leading-snug max-w-xl">
+                  Provas reais de 2009 a 2023, correção instantânea, mapa de calor por habilidade BNCC.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate("/sign-up")}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-amber-400 hover:bg-amber-300 px-6 md:px-7 py-3 md:py-3.5 text-sm md:text-base font-black text-slate-950 shadow-xl shadow-amber-900/20 transition-all hover:scale-[1.03] active:scale-[0.98]"
+              >
+                Começar simulado grátis
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </motion.div>
       </section>
 
       {/* ── RECURSOS NO APP (rotas reais) ── */}

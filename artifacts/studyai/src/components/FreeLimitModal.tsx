@@ -79,7 +79,7 @@ export function FreeLimitModal() {
               disabled={loading}
               className="w-full py-3 px-6 bg-gradient-to-r from-violet-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold rounded-xl transition-all disabled:opacity-60"
             >
-              {loading ? "Redirecionando..." : "Assinar por R$29,90/mês →"}
+              {loading ? "Redirecionando..." : "Assinar por R$59,90/mês →"}
             </button>
             <p className="text-gray-500 text-xs mt-3">
               Cancele quando quiser · Garantia de 7 dias

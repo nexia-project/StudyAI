@@ -199,7 +199,7 @@ export default function Mapa() {
             className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-black shadow-lg hover:opacity-90 transition-opacity disabled:opacity-60"
           >
             <Sparkles className="w-5 h-5" />
-            {checkoutLoading ? "Aguarde..." : "Assinar Premium — R$29,90/mês"}
+            {checkoutLoading ? "Aguarde..." : "Assinar Premium — R$59,90/mês"}
           </button>
         </div>
       </div>

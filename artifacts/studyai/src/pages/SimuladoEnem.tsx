@@ -205,7 +205,7 @@ export default function SimuladoEnemPage() {
                 {checkoutLoading ? (
                   <><Loader2 className="w-5 h-5 animate-spin" /> Aguarde...</>
                 ) : (
-                  <>Assinar Premium — R$29,90/mês</>
+                  <>Assinar Premium — R$59,90/mês</>
                 )}
               </button>
 

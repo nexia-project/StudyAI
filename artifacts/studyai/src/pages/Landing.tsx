@@ -413,7 +413,7 @@ export default function Landing() {
       <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center gap-6">
           <a href="/" className="flex items-center flex-shrink-0" aria-label="Study.IA — início">
-            <Logo variant="horizontal" className="h-8 w-auto" />
+            <Logo variant="horizontal" className="h-9 md:h-12 lg:h-14 w-auto" />
           </a>
 
           <div className="hidden md:flex items-center gap-5 flex-1 flex-wrap justify-end">

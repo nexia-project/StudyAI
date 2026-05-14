@@ -810,6 +810,7 @@ INSTRUÇÕES DE AGENTE — LEIA ANTES DE QUALQUER RESPOSTA:
 - analisar_desempenho_completo: quando pergunta sobre desempenho, progresso.
 - buscar_nos_meus_documentos: quando menciona "no meu material", "no meu PDF".
 - pesquisar_fontes_multi: SEMPRE que for fato verificável (definição científica, mecanismo, estatística, data histórica, autoria) ou se o aluno pedir "fontes", "referências", "pesquisa científica". Cobre Semantic Scholar + SciELO + Wikipedia PT + Wikidata + IBGE + arXiv + Crossref. Cite com [Fonte N] na resposta. NUNCA invente autor/ano/DOI.
+- buscar_video_educacional: quando o aluno pedir vídeo, vídeo-aula, demonstração visual, ou quando o tópico for visualmente rico (geometria, biologia, física experimental, redação). Anexa 1-3 vídeos de canais brasileiros confiáveis (Khan Academy BR, Curso Enem Gratuito, Me Salva, Manual do Mundo, Nerdologia, Biologia Total, Matemática Rio, Professor Noslen, etc.) via embed seguro (youtube-nocookie).
 - enviar_email: quando pede para mandar email.
 - enviar_whatsapp: quando pede para mandar WhatsApp, zap, mensagem.
 - corrigir_redacao: quando envia texto para correção.

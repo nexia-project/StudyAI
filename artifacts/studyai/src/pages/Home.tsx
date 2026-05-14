@@ -56,6 +56,7 @@ import { TiagaoCharacter } from "@/components/TiagaoCharacter";
 import { UserMenu } from "@/components/UserMenu";
 import { MainMenuDrawer } from "@/components/MainMenuDrawer";
 import { Logo } from "@/components/Logo";
+import { VideoStrip, type VideoStripVideo } from "@/components/VideoStrip";
 import {
   CitationListItem,
   CitationDetail,
@@ -154,6 +155,21 @@ const MAX_INLINE_FILE_MB = 25;
 function formatKb(kb: number): string {
   if (kb < 1024) return `${kb} KB`;
   return `${(kb / 1024).toFixed(1)} MB`;
+}
+
+// Heurística leve para decidir se vale a pena buscar vídeos para essa query.
+// Regras:
+//  • Mínimo 8 chars (queries curtas, ex. "olá", costumam ser conversacionais).
+//  • Não chama em perguntas yes/no (começo com "é/eh/tem/posso/pode/vai/vou…").
+//  • Não chama quando a query parece pessoal/conversacional ("eu", "minha").
+// É só um filtro de custo para não estourar a quota Google em buscas triviais
+// e para não jogar uma strip de vídeos numa pergunta tipo "como vai?".
+const VIDEO_QUERY_BLOCK_RE = /^(é|eh|tem|posso|pode|vai|vou|quero|consigo|sabe|sabia|conhece|conheces|me\s+|minha\s+|meu\s+|sou\s+|tô\s+|estou\s+)/i;
+function shouldFetchVideos(query: string): boolean {
+  const q = (query ?? "").trim();
+  if (q.length < 8) return false;
+  if (VIDEO_QUERY_BLOCK_RE.test(q)) return false;
+  return true;
 }
 
 // ─── Suggestion chips ─────────────────────────────────────────────────────────
@@ -318,6 +334,11 @@ export default function Home() {
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  // Vídeos educacionais (YouTube embed-only) buscados em paralelo. Fire-and-
+  // forget: a busca dispara junto com /api/inline-search mas não bloqueia o
+  // pipeline da resposta principal. Se chegar tarde, aparece quando aparecer.
+  const [searchVideos, setSearchVideos] = useState<VideoStripVideo[]>([]);
+  const [searchVideosQuery, setSearchVideosQuery] = useState<string>("");
 
   const [fileAnalysis, setFileAnalysis] = useState<FileAnalysis | null>(null);
   const [fileLoading, setFileLoading] = useState(false);
@@ -331,9 +352,11 @@ export default function Home() {
   // Aborta requisições em vôo quando uma nova começa ou o componente desmonta.
   const searchAbortRef = useRef<AbortController | null>(null);
   const fileAbortRef = useRef<AbortController | null>(null);
+  const videosAbortRef = useRef<AbortController | null>(null);
   useEffect(() => () => {
     searchAbortRef.current?.abort();
     fileAbortRef.current?.abort();
+    videosAbortRef.current?.abort();
   }, []);
 
   // Mobile: avatar do Tiagão menor para não dominar a tela.
@@ -421,6 +444,38 @@ export default function Home() {
     setSearchError(null);
     // Mantém o painel aberto com a query corrente — útil pro skeleton.
     setSearchResult((prev) => prev ? { ...prev, query: text } : null);
+
+    // Vídeos: limpa o estado anterior e dispara em paralelo (fire-and-forget)
+    // apenas quando a query "merece" um vídeo (ver `shouldFetchVideos`). Não
+    // bloqueia o `/api/inline-search`; resolve depois se chegar.
+    videosAbortRef.current?.abort();
+    setSearchVideos([]);
+    setSearchVideosQuery(text);
+    if (shouldFetchVideos(text)) {
+      const vctrl = new AbortController();
+      videosAbortRef.current = vctrl;
+      void (async () => {
+        try {
+          const vres = await fetch("/api/videos/search", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: text, limit: 3 }),
+            signal: vctrl.signal,
+          });
+          if (!vres.ok) return;
+          const vdata = (await vres.json().catch(() => null)) as
+            | { videos?: VideoStripVideo[] }
+            | null;
+          if (vctrl.signal.aborted) return;
+          const list = Array.isArray(vdata?.videos) ? vdata!.videos! : [];
+          setSearchVideos(list.filter((v) => v?.videoId));
+        } catch {
+          // Silencioso por design — vídeos são "nice-to-have"; uma falha
+          // aqui jamais derruba a busca principal.
+        }
+      })();
+    }
 
     try {
       const r = await fetch("/api/inline-search", {
@@ -519,9 +574,12 @@ export default function Home() {
 
   const clearSearch = useCallback(() => {
     searchAbortRef.current?.abort();
+    videosAbortRef.current?.abort();
     setSearchResult(null);
     setSearchError(null);
     setSearchLoading(false);
+    setSearchVideos([]);
+    setSearchVideosQuery("");
   }, []);
 
   const clearFile = useCallback(() => {
@@ -790,6 +848,22 @@ export default function Home() {
           savingToNotebook={savingToNotebook}
           savedDocId={savedDocId}
         />
+
+        {/* Vídeos educacionais (YouTube embed-only) — aparecem abaixo da
+            resposta inline quando o fire-and-forget /api/videos/search retorna
+            ao menos 1 vídeo. Não bloqueia a resposta principal. */}
+        {searchResult && !searchLoading && searchVideos.length > 0 && (
+          <section aria-label="Vídeos relacionados" className="-mt-1">
+            <VideoStrip
+              videos={searchVideos}
+              title={
+                searchVideosQuery
+                  ? `Vídeos sobre ${searchVideosQuery}`
+                  : "Vídeos recomendados"
+              }
+            />
+          </section>
+        )}
 
         {/* ── Secondary rail ────────────────────────────────────────────── */}
         <section>

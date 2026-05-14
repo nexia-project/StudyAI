@@ -181,6 +181,8 @@ Quando usar cada ferramenta:
 - Aula interativa sobre um tópico → abrir_aula_ia
 - Buscar nos documentos do aluno → buscar_nos_docs
 - Pesquisa científica peer-reviewed / "fontes" / fato verificável → pesquisar_fontes_multi (cobre Semantic Scholar + SciELO + Wikipedia PT + Wikidata + IBGE + arXiv + Crossref)
+- Vídeo educacional / explicação visual em vídeo → buscar_video_educacional
+  ⚡ Se o aluno pedir vídeo, vídeo-aula, demonstração visual, ou se o tópico for visualmente rico (geometria, biologia, física experimental, redação), considere chamar buscar_video_educacional para anexar 1-3 vídeos de canais brasileiros confiáveis (Khan Academy BR, Curso Enem Gratuito, Me Salva, Manual do Mundo, etc.).
 - IR FISICAMENTE para uma tela (verbos: "me leva", "abre", "vai para") → navegar
   ⚠️ NUNCA use navegar quando o aluno pergunta SOBRE algo — só quando quer IR para algum lugar
 

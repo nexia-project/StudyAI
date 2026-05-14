@@ -50,6 +50,7 @@ import concursosRouter from "./concursos";
 import ragMultiRouter from "./rag-multi";
 import mathRouter from "./math";
 import inlineSearchRouter from "./inline-search";
+import videosRouter from "./videos";
 
 const router: IRouter = Router();
 
@@ -109,5 +110,6 @@ router.use(concursosRouter);
 router.use(ragMultiRouter);
 router.use(mathRouter);
 router.use(inlineSearchRouter);
+router.use(videosRouter);
 
 export default router;

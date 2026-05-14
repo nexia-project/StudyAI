@@ -107,8 +107,9 @@ function numbersMatch(expected: number, given: number): boolean {
 }
 
 function equationAnswerMatches(equation: string, answer: string): boolean {
-  const eqIndex = equation.lastIndexOf("=");
+  const eqIndex = equation.indexOf("=");
   if (eqIndex < 0) return false;
+  if (equation.indexOf("=", eqIndex + 1) >= 0) return false;
 
   const rhs = equation.slice(eqIndex + 1);
   if (!rhs) return false;

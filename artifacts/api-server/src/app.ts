@@ -19,6 +19,7 @@ import { rateLimit } from "express-rate-limit";
 import { clerkMiddleware } from "@clerk/express";
 import router from "./routes";
 import subscriptionWebhookRouter from "./routes/subscriptionWebhook";
+import hermesCronRouter from "./routes/hermes-cron";
 import { logger } from "./lib/logger";
 import { optionalAuth } from "./middlewares/requireAuth";
 import { clerkProxyMiddleware, CLERK_PROXY_PATH } from "./middlewares/clerkProxyMiddleware";
@@ -206,6 +207,10 @@ app.use("/api/voice-tts", userRateLimit(30));         // 30 TTS/15min por user
 app.use("/api/aula-ia", userRateLimit(5));            // 5 aulas/15min por user
 app.use("/api/notebook/slides", userRateLimit(5));    // 5 gerações/15min por user
 app.use("/api/notebook/overview", userRateLimit(10)); // 10 overviews/15min por user
+
+// Hermes cron endpoints — montados FORA de /api pra escapar do clerkMiddleware.
+// Autenticação interna via header x-cron-secret (HERMES_CRON_SECRET).
+app.use(hermesCronRouter);
 
 app.use("/api", router);
 app.use("/api", subscriptionWebhookRouter);

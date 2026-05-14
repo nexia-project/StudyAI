@@ -51,6 +51,7 @@ import ragMultiRouter from "./rag-multi";
 import mathRouter from "./math";
 import inlineSearchRouter from "./inline-search";
 import videosRouter from "./videos";
+import agentsRouter from "./agents";
 
 const router: IRouter = Router();
 
@@ -111,5 +112,6 @@ router.use(ragMultiRouter);
 router.use(mathRouter);
 router.use(inlineSearchRouter);
 router.use(videosRouter);
+router.use(agentsRouter);
 
 export default router;

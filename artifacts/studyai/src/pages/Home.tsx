@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { TiagaoCharacter } from "@/components/TiagaoCharacter";
 import { UserMenu } from "@/components/UserMenu";
+import { MainMenuDrawer } from "@/components/MainMenuDrawer";
 import { useStudentProfile } from "@/hooks/useStudentProfile";
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 import { triggerProfessorAction } from "@/lib/professor-events";
@@ -366,19 +367,22 @@ export default function Home() {
       {/* ── Top bar slim ─────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-30 h-14 border-b border-violet-100/60 bg-white/70 backdrop-blur-xl">
         <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-4 sm:px-6">
-          <button
-            type="button"
-            onClick={() => navigate("/app")}
-            className="flex items-center gap-2.5 group"
-            aria-label="Início"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 shadow-md shadow-violet-500/30 transition group-hover:scale-105">
-              <span className="font-black text-white text-lg leading-none">S</span>
-            </div>
-            <span className="font-black text-slate-900 text-lg tracking-tight">
-              Study<span className="text-violet-600">.IA</span>
-            </span>
-          </button>
+          <div className="flex items-center gap-3">
+            <MainMenuDrawer />
+            <button
+              type="button"
+              onClick={() => navigate("/app")}
+              className="flex items-center gap-2.5 group"
+              aria-label="Início"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 shadow-md shadow-violet-500/30 transition group-hover:scale-105">
+                <span className="font-black text-white text-lg leading-none">S</span>
+              </div>
+              <span className="font-black text-slate-900 text-lg tracking-tight">
+                Study<span className="text-violet-600">.IA</span>
+              </span>
+            </button>
+          </div>
 
           <div className="flex items-center gap-3">
             {typeof stats.streak === "number" && stats.streak > 0 && (

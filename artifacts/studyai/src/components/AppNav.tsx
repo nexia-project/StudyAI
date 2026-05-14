@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Menu, X } from "lucide-react";
 import { UserMenu } from "@/components/UserMenu";
+import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { useMode, AppMode, MODE_CONFIG } from "@/context/ModeContext";
@@ -300,9 +301,8 @@ export function AppNav({ onHome }: AppNavProps) {
         </div>
         {/* z-30: dropdown Modo (Aluno/Professor) deve ficar acima do <nav> (z-[1]), senão cliques caem nos links */}
         <div className="relative z-30 border-b border-white/20 bg-black/10 p-3 backdrop-blur-xl flex-shrink-0">
-          <button type="button" onClick={() => handleNavigate("/app")} className="flex items-center gap-2.5 w-full rounded-xl p-1 hover:bg-white/12 transition-colors">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-fuchsia-500 via-violet-600 to-purple-800 flex items-center justify-center text-white font-black text-sm shadow-md shadow-violet-300/40 ring-1 ring-white/25">S</div>
-            <span className="font-black text-white text-base tracking-tight drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]">StudyAI</span>
+          <button type="button" onClick={() => handleNavigate("/app")} className="flex items-center w-full rounded-xl p-1 hover:bg-white/12 transition-colors">
+            <Logo variant="horizontal" tone="white" className="h-8 w-auto drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]" />
           </button>
           <div className="mt-3">
             <ModeSwitcher />
@@ -392,9 +392,9 @@ export function AppNav({ onHome }: AppNavProps) {
         <div className="max-w-screen-2xl mx-auto px-3 py-2 flex items-center gap-2">
 
           {/* Logo */}
-          <button type="button" onClick={() => handleNavigate("/app")} className="flex items-center gap-2 flex-shrink-0 mr-1">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-fuchsia-500 via-violet-600 to-purple-800 flex items-center justify-center text-white font-black text-xs shadow-sm shadow-violet-300/35">S</div>
-            <span className="font-black text-purple-950 text-sm hidden sm:block">StudyAI</span>
+          <button type="button" onClick={() => handleNavigate("/app")} className="flex items-center flex-shrink-0 mr-1">
+            <Logo variant="horizontal" className="h-7 w-auto hidden sm:block" />
+            <Logo variant="icon" className="h-7 w-7 sm:hidden" />
           </button>
 
           {/* Mobile hamburger */}
@@ -445,9 +445,8 @@ export function AppNav({ onHome }: AppNavProps) {
               onClick={e => e.stopPropagation()}>
 
               <div className="flex items-center justify-between border-b border-white/20 bg-black/10 p-4 backdrop-blur-xl">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-fuchsia-500 via-violet-600 to-purple-800 flex items-center justify-center text-white font-black text-sm shadow-md shadow-violet-300/35">S</div>
-                  <span className="font-black text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]">StudyAI</span>
+                <div className="flex items-center">
+                  <Logo variant="horizontal" tone="white" className="h-8 w-auto drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]" />
                 </div>
                 <button type="button" onClick={() => setMobileOpen(false)} className="p-2 rounded-xl text-violet-100 hover:bg-white/10">
                   <X className="w-5 h-5" />

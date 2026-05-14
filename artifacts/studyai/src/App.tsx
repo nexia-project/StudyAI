@@ -27,6 +27,7 @@ import InstituicaoPage, { InstituicaoLoginPage, InstituicaoConvitePage } from "@
 import GovernoPage from "@/pages/Governo";
 import GovernoLoginPage from "@/pages/GovernoLogin";
 import SimuladoEnemPage from "@/pages/SimuladoEnem";
+import ConcursosPage from "@/pages/Concursos";
 import CronogramaPage from "@/pages/Cronograma";
 import CadernoPage from "@/pages/Caderno";
 import SalaEstudosPage from "@/pages/SalaEstudos";
@@ -44,6 +45,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WhatsAppBanner } from "@/components/WhatsAppBanner";
 import { VoiceProfessor } from "@/components/VoiceProfessor";
 import { CookieConsent } from "@/components/CookieConsent";
+import { Logo } from "@/components/Logo";
 import { ModeProvider } from "@/context/ModeContext";
 import { clearStudyaiAccountLocalCaches, STUDYAI_ACCOUNT_CHANGED } from "@/lib/account-storage";
 
@@ -116,20 +118,10 @@ function ClerkQueryClientCacheInvalidator() {
 function StudyIALogo() {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "1rem" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-        <div style={{
-          width: 44, height: 44, borderRadius: 12,
-          background: "linear-gradient(135deg, #4F46E5 0%, #6366F1 100%)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: "0 4px 16px rgba(99,102,241,0.3)",
-        }}>
-          <span style={{ color: "white", fontWeight: 900, fontSize: 22, fontFamily: "Arial Black, sans-serif", letterSpacing: "-1px" }}>S</span>
-        </div>
-        <span style={{ fontWeight: 900, fontSize: 28, fontFamily: "Arial Black, sans-serif", color: "#1E1B4B", letterSpacing: "-1px" }}>
-          Study<span style={{ color: "#6366F1" }}>.IA</span>
-        </span>
-      </div>
-      <span style={{ fontSize: 12, color: "#64748B", marginTop: 4, letterSpacing: "0.5px" }}>Tutor inteligente para o ENEM</span>
+      <Logo variant="horizontal" style={{ height: 48, width: "auto" }} />
+      <span style={{ fontSize: 12, color: "#64748B", marginTop: 4, letterSpacing: "0.5px" }}>
+        Tutor inteligente para o ENEM
+      </span>
     </div>
   );
 }
@@ -298,6 +290,7 @@ function Router() {
         <Route path="/governo/login" component={GovernoLoginPage} />
         <Route path="/governo" component={GovernoPage} />
         <Route path="/simulado-enem" component={SimuladoEnemPage} />
+        <Route path="/concursos" component={ConcursosPage} />
         <Route path="/sala-estudos" component={SalaEstudosPage} />
         <Route path="/cronograma" component={CronogramaPage} />
         <Route path="/aula-ia" component={AulaIAPage} />

@@ -26,6 +26,10 @@ const pricingHref = `${BASE}/pricing`.replace(/([^:]\/)\/+/g, "$1");
 const LANDING_IMG = {
   professorTiagao: `${BASE}/landing/professor-tiagao-feature.png`.replace(/([^:]\/)\/+/g, "$1"),
   notebookRag: `${BASE}/landing/notebook-rag-feature.png`.replace(/([^:]\/)\/+/g, "$1"),
+  // Fotos educacionais (Unsplash, uso comercial liberado, sem necessidade de atribuição).
+  comoFuncionaFoto: `${BASE}/landing/landing-como-funciona.jpg`.replace(/([^:]\/)\/+/g, "$1"),
+  professorSalaFoto: `${BASE}/landing/landing-professor-sala.jpg`.replace(/([^:]\/)\/+/g, "$1"),
+  escolaColaboracaoFoto: `${BASE}/landing/landing-escola-colaboracao.jpg`.replace(/([^:]\/)\/+/g, "$1"),
 } as const;
 
 /** Mídia estável (CC0 / CDN público) + posters Unsplash com largura fixa. */
@@ -818,9 +822,33 @@ export default function Landing() {
       <section className="py-24 px-6">
         <div className="max-w-5xl mx-auto">
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
-            className="text-center mb-14">
+            className="text-center mb-10 md:mb-12">
             <p className="text-xs font-black text-violet-600 uppercase tracking-widest mb-3">Como funciona</p>
             <h2 className="text-4xl font-black tracking-tight text-gray-900">3 passos para transformar seus estudos</h2>
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={0.05}
+            className="relative mb-10 md:mb-12 overflow-hidden rounded-3xl ring-1 ring-gray-200 shadow-lg shadow-violet-500/5"
+          >
+            <img
+              src={LANDING_IMG.comoFuncionaFoto}
+              alt="Estudante concentrada estudando com caderno e notebook, organizando rotina de estudos"
+              width={1600}
+              height={900}
+              loading="lazy"
+              decoding="async"
+              className="w-full aspect-[4/3] md:aspect-[21/9] object-cover object-center"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-violet-950/35 via-transparent to-transparent" />
+            <div className="absolute bottom-4 left-4 right-4 md:bottom-6 md:left-8 md:right-auto md:max-w-md">
+              <p className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-violet-200 mb-1">
+                <Sparkles className="w-3 h-3" /> Rotina viva, não planilha
+              </p>
+              <p className="text-white font-black text-base md:text-xl leading-tight drop-shadow">
+                Do primeiro objetivo ao tutor 24h — em poucos minutos.
+              </p>
+            </div>
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-6">
@@ -1103,6 +1131,30 @@ export default function Landing() {
       {/* ── PROFESSOR SECTION ── */}
       <section id="para-professores" className="py-24 px-6 bg-gray-50">
         <div className="max-w-5xl mx-auto">
+          <motion.div
+            variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
+            className="relative mb-12 md:mb-14 overflow-hidden rounded-3xl ring-1 ring-gray-200 shadow-lg"
+          >
+            <img
+              src={LANDING_IMG.professorSalaFoto}
+              alt="Professora orientando aluna em sala de aula, exemplificando o uso do StudyAI no apoio ao ensino"
+              width={1600}
+              height={900}
+              loading="lazy"
+              decoding="async"
+              className="w-full aspect-[4/3] md:aspect-[16/9] object-cover object-center"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-violet-950/45 via-violet-900/10 to-transparent" />
+            <div className="absolute bottom-5 left-5 right-5 md:bottom-8 md:left-10 md:right-auto md:max-w-lg">
+              <p className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-violet-200 mb-1">
+                <BookOpen className="w-3 h-3" /> Para professores
+              </p>
+              <p className="text-white font-black text-lg md:text-2xl leading-tight drop-shadow">
+                Mais tempo com a turma, menos tempo em planilhas.
+              </p>
+            </div>
+          </motion.div>
+
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
               transition={{ duration: 0.6 }}>
@@ -1168,6 +1220,30 @@ export default function Landing() {
       {/* ── ESCOLA SECTION ── */}
       <section id="para-escolas" className="py-24 px-6">
         <div className="max-w-5xl mx-auto">
+          <motion.div
+            variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
+            className="relative mb-12 md:mb-14 overflow-hidden rounded-3xl ring-1 ring-gray-200 shadow-lg"
+          >
+            <img
+              src={LANDING_IMG.escolaColaboracaoFoto}
+              alt="Equipe diversa em reunião colaborativa, simbolizando a gestão escolar apoiada pelo StudyAI"
+              width={1600}
+              height={900}
+              loading="lazy"
+              decoding="async"
+              className="w-full aspect-[4/3] md:aspect-[16/9] object-cover object-center"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-emerald-950/45 via-emerald-900/10 to-transparent" />
+            <div className="absolute bottom-5 left-5 right-5 md:bottom-8 md:left-10 md:right-auto md:max-w-lg">
+              <p className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-200 mb-1">
+                <Building2 className="w-3 h-3" /> Para escolas
+              </p>
+              <p className="text-white font-black text-lg md:text-2xl leading-tight drop-shadow">
+                Gestão com IA: dados, alertas e ação — para zero aluno perdido.
+              </p>
+            </div>
+          </motion.div>
+
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}>
               <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-500 uppercase tracking-wide mb-4">
@@ -1556,6 +1632,9 @@ export default function Landing() {
               <a href="https://study.ia.br" className="text-xs text-gray-500 hover:text-white transition-colors">study.ia.br</a>
             </div>
           </div>
+          <p className="mt-4 text-center text-[10px] text-gray-600 leading-snug">
+            Fotos educacionais: Unsplash / Pexels (uso comercial liberado). Capturas de produto: StudyAI.
+          </p>
         </div>
       </footer>
     </div>

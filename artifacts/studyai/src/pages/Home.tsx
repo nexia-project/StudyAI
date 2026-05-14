@@ -55,6 +55,7 @@ import {
 import { TiagaoCharacter } from "@/components/TiagaoCharacter";
 import { UserMenu } from "@/components/UserMenu";
 import { MainMenuDrawer } from "@/components/MainMenuDrawer";
+import { Logo } from "@/components/Logo";
 import {
   CitationListItem,
   CitationDetail,
@@ -612,15 +613,10 @@ export default function Home() {
             <button
               type="button"
               onClick={() => navigate("/app")}
-              className="flex items-center gap-2.5 group"
+              className="flex items-center group"
               aria-label="Início"
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 shadow-md shadow-violet-500/30 transition group-hover:scale-105">
-                <span className="font-black text-white text-lg leading-none">S</span>
-              </div>
-              <span className="font-black text-slate-900 text-lg tracking-tight">
-                Study<span className="text-violet-600">.IA</span>
-              </span>
+              <Logo variant="horizontal" className="h-8 w-auto" alt="Study.IA" />
             </button>
           </div>
 

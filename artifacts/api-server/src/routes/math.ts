@@ -93,30 +93,51 @@ function normalizeForCompare(s: string): string {
     .trim();
 }
 
+const normalizedNumberPattern = /^[+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:e[+-]?\d+)?$/i;
+
+function parseNormalizedNumber(s: string): number | null {
+  if (!normalizedNumberPattern.test(s)) return null;
+  const value = Number(s);
+  return Number.isFinite(value) ? value : null;
+}
+
+function numbersMatch(expected: number, given: number): boolean {
+  const tolerance = Math.max(1e-6, Math.abs(expected) * 1e-6);
+  return Math.abs(expected - given) <= tolerance;
+}
+
+function equationAnswerMatches(equation: string, answer: string): boolean {
+  const eqIndex = equation.lastIndexOf("=");
+  if (eqIndex < 0) return false;
+
+  const rhs = equation.slice(eqIndex + 1);
+  if (!rhs) return false;
+  if (rhs === answer) return true;
+
+  const rhsNumber = parseNormalizedNumber(rhs);
+  const answerNumber = parseNormalizedNumber(answer);
+  return rhsNumber !== null && answerNumber !== null && numbersMatch(rhsNumber, answerNumber);
+}
+
 /**
  * Compara duas strings de resposta com tolerância numérica.
  * Se ambas parsearem como número, usa tolerância relativa de 1e-6.
  * Caso contrário, compara após normalização (lowercase + sem espaços).
  */
-function answersMatch(expected: string, given: string): boolean {
+export function answersMatch(expected: string, given: string): boolean {
   const a = normalizeForCompare(expected);
   const b = normalizeForCompare(given);
   if (!a || !b) return false;
   if (a === b) return true;
 
-  // Substring match para casos do tipo expected = "x = 2", given = "2".
-  if (a.includes(b) || b.includes(a)) {
-    // Mas só se a substring contiver dígito ou letra de variável
-    if (/[0-9a-z]/.test(b)) return true;
+  const nA = parseNormalizedNumber(a);
+  const nB = parseNormalizedNumber(b);
+  if (nA !== null && nB !== null) {
+    return numbersMatch(nA, nB);
   }
 
-  const nA = Number(a);
-  const nB = Number(b);
-  if (Number.isFinite(nA) && Number.isFinite(nB)) {
-    const tolerance = Math.max(1e-6, Math.abs(nA) * 1e-6);
-    return Math.abs(nA - nB) <= tolerance;
-  }
-  return false;
+  // Aceita "x = 2" vs "2" sem permitir que "10" case com "1".
+  return equationAnswerMatches(a, b) || equationAnswerMatches(b, a);
 }
 
 // ─── Routes ──────────────────────────────────────────────────────────────────

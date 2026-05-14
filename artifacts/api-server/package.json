@@ -8,6 +8,7 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:math-answers": "tsx scripts/test-math-answers.ts",
     "ingest:bncc": "tsx scripts/ingest-bncc.ts",
     "ingest:enem": "tsx scripts/ingest-enem.ts",
     "ingest:concursos": "tsx scripts/ingest-concursos.ts",

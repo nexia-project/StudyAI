@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, jsonb, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { usersTable } from "./auth";
 
 // ─── hermes_memoria_interacao ────────────────────────────────────────────────
@@ -51,3 +51,20 @@ export type InsertHermesDescobertaGlobal = typeof hermesDescobertasGlobaisTable.
 
 export type HermesAcaoProativa = typeof hermesAcoesProativasTable.$inferSelect;
 export type InsertHermesAcaoProativa = typeof hermesAcoesProativasTable.$inferInsert;
+
+// ─── hermes_admin_inbox ──────────────────────────────────────────────────────
+// Notificações para admins (listadas via agente inbox; outros agentes/crons INSERT).
+export const hermesAdminInboxTable = pgTable("hermes_admin_inbox", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id", { length: 100 }).notNull(),
+  tipo: varchar("tipo", { length: 50 }).notNull(),
+  titulo: varchar("titulo", { length: 255 }).notNull(),
+  corpo: text("corpo").notNull(),
+  payload: jsonb("payload"),
+  lida: boolean("lida").notNull().default(false),
+  dismissedAt: timestamp("dismissed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type HermesAdminInbox = typeof hermesAdminInboxTable.$inferSelect;
+export type InsertHermesAdminInbox = typeof hermesAdminInboxTable.$inferInsert;

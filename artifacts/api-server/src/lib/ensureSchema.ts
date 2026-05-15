@@ -634,6 +634,13 @@ await db.execute(sql`
 `);
 await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_knowdocs_uploaded_by ON knowledge_documents(uploaded_by)`).catch(() => {});
 await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_knowdocs_notebook ON knowledge_documents(notebook_id)`).catch(() => {});
+    await db.execute(sql`ALTER TABLE knowledge_documents ADD COLUMN IF NOT EXISTS subject VARCHAR(255)`).catch(() => {});
+    await db.execute(sql`ALTER TABLE knowledge_documents ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'`).catch(() => {});
+    await db.execute(sql`ALTER TABLE knowledge_documents ADD COLUMN IF NOT EXISTS tags TEXT[]`).catch(() => {});
+    await db.execute(sql`ALTER TABLE knowledge_documents ADD COLUMN IF NOT EXISTS parent_doc_id INTEGER`).catch(() => {});
+    await db.execute(sql`ALTER TABLE knowledge_documents ADD COLUMN IF NOT EXISTS is_chunk BOOLEAN DEFAULT false`).catch(() => {});
+    await db.execute(sql`ALTER TABLE knowledge_documents ADD COLUMN IF NOT EXISTS chunk_index INTEGER DEFAULT 0`).catch(() => {});
+    await db.execute(sql`ALTER TABLE knowledge_documents ADD COLUMN IF NOT EXISTS page_count INTEGER`).catch(() => {});
     // ── Lousa Imersiva — board lessons ───────────────────────────────────────
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS board_lessons (
@@ -691,6 +698,75 @@ await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_knowdocs_notebook ON knowled
     `);
     await db.execute(sql`
       CREATE INDEX IF NOT EXISTS idx_ai_usage_logs_model ON ai_usage_logs (model)
+    `);
+
+    // ── Hermes admin agents (Drizzle: lib/db/src/schema/hermes.ts) ────────────
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS hermes_memoria_interacao (
+        id          VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id     VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        agent_id    VARCHAR(100) NOT NULL,
+        contexto    TEXT NOT NULL,
+        resposta    TEXT NOT NULL,
+        metadata    JSONB,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_hermes_memoria_user_agent
+        ON hermes_memoria_interacao (user_id, agent_id, created_at DESC)
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS hermes_descobertas_globais (
+        id           VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+        agent_id     VARCHAR(100) NOT NULL,
+        descoberta   TEXT NOT NULL,
+        evidencia    JSONB,
+        importancia  INTEGER NOT NULL DEFAULT 1,
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_hermes_descobertas_agent
+        ON hermes_descobertas_globais (agent_id, created_at DESC)
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS hermes_acoes_proativas (
+        id           VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+        agent_id     VARCHAR(100) NOT NULL,
+        user_id      VARCHAR REFERENCES users(id) ON DELETE CASCADE,
+        tipo         VARCHAR(50) NOT NULL,
+        descricao    TEXT NOT NULL,
+        payload      JSONB,
+        status       VARCHAR(30) NOT NULL DEFAULT 'pending',
+        executado_em TIMESTAMPTZ,
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_hermes_acoes_status
+        ON hermes_acoes_proativas (status, created_at DESC)
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS hermes_admin_inbox (
+        id            VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+        agent_id      VARCHAR(100) NOT NULL,
+        tipo          VARCHAR(50) NOT NULL,
+        titulo        VARCHAR(255) NOT NULL,
+        corpo         TEXT NOT NULL,
+        payload       JSONB,
+        lida          BOOLEAN NOT NULL DEFAULT FALSE,
+        dismissed_at  TIMESTAMPTZ,
+        created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_hermes_inbox_active
+        ON hermes_admin_inbox (created_at DESC)
+        WHERE dismissed_at IS NULL
     `);
 
     // ── Admin promotion — promote ADMIN_EMAILS users to role='admin' at boot ──

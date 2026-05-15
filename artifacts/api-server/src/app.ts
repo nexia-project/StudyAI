@@ -90,6 +90,10 @@ app.use(
 // ── Clerk proxy (must be BEFORE body parsers) ─────────────────────────────────
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
+// Hermes cron endpoints — FORA de /api (escapam clerkMiddleware).
+// Autenticação interna via header x-cron-secret (HERMES_CRON_SECRET).
+app.use(hermesCronRouter);
+
 // ── Clerk middleware (only for /api — frontend uses Clerk client-side) ──────
 app.use("/api", clerkMiddleware());
 
@@ -207,10 +211,6 @@ app.use("/api/voice-tts", userRateLimit(30));         // 30 TTS/15min por user
 app.use("/api/aula-ia", userRateLimit(5));            // 5 aulas/15min por user
 app.use("/api/notebook/slides", userRateLimit(5));    // 5 gerações/15min por user
 app.use("/api/notebook/overview", userRateLimit(10)); // 10 overviews/15min por user
-
-// Hermes cron endpoints — montados FORA de /api pra escapar do clerkMiddleware.
-// Autenticação interna via header x-cron-secret (HERMES_CRON_SECRET).
-app.use(hermesCronRouter);
 
 app.use("/api", router);
 app.use("/api", subscriptionWebhookRouter);

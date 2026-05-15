@@ -4,6 +4,7 @@ import {
   hermesDescobertasGlobaisTable,
 } from "@workspace/db/schema";
 import { desc, eq } from "drizzle-orm";
+import { isContentGapDescoberta } from "./jobs/knowledge-index";
 
 export type HermesAudience = "aluno" | "professor" | "interno";
 

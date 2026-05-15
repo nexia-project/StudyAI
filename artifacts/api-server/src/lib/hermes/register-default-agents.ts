@@ -1,14 +1,11 @@
 import { agentRegistry } from "./agentRegistry";
+import { gestaoDailyLearn, gestaoProactive } from "./jobs/gestao";
+import { crescimentoDailyLearn, crescimentoProactive } from "./jobs/crescimento";
+import { marketingDailyLearn, marketingProactive } from "./jobs/marketing";
+import { inboxProactive } from "./jobs/inbox";
 
 let registered = false;
 
-/**
- * Registra os agentes Hermes padrões (idempotente).
- *
- * A lógica de domínio real fica nas rotas (`routes/agents/gestao.ts`,
- * `routes/agents/crescimento.ts`). Aqui só descrevemos o registry para
- * o módulo cron descobrir quais agentes existem e chamar seus hooks.
- */
 export function registerDefaultAgents(): void {
   if (registered) return;
 
@@ -20,12 +17,8 @@ export function registerDefaultAgents(): void {
       ok: true,
       message: "Use POST /api/agents/gestao/query para a lógica de domínio.",
     }),
-    dailyLearn: async () => {
-      console.log("[hermes/gestao] dailyLearn — placeholder (substituir por agregação de métricas)");
-    },
-    proactive: async () => {
-      console.log("[hermes/gestao] proactive — placeholder (substituir por detecção de anomalias)");
-    },
+    dailyLearn: gestaoDailyLearn,
+    proactive: gestaoProactive,
   });
 
   agentRegistry.register({
@@ -36,12 +29,32 @@ export function registerDefaultAgents(): void {
       ok: true,
       message: "Use POST /api/agents/crescimento/gerar-copy para a lógica de domínio.",
     }),
-    dailyLearn: async () => {
-      console.log("[hermes/crescimento] dailyLearn — placeholder (substituir por análise de conversão)");
-    },
-    proactive: async () => {
-      console.log("[hermes/crescimento] proactive — placeholder (substituir por sugestões de copy)");
-    },
+    dailyLearn: crescimentoDailyLearn,
+    proactive: crescimentoProactive,
+  });
+
+  agentRegistry.register({
+    id: "marketing",
+    description: "Agente de marketing — planejamento de campanhas e criativos",
+    role: "admin",
+    handler: async () => ({
+      ok: true,
+      message:
+        "Use POST /api/agents/marketing/planejar-campanha, /criativos ou /analisar-resultados.",
+    }),
+    dailyLearn: marketingDailyLearn,
+    proactive: marketingProactive,
+  });
+
+  agentRegistry.register({
+    id: "inbox",
+    description: "Inbox admin — notificações e alertas para o founder",
+    role: "admin",
+    handler: async () => ({
+      ok: true,
+      message: "Use GET /api/agents/inbox e POST /read ou /dismiss.",
+    }),
+    proactive: inboxProactive,
   });
 
   registered = true;

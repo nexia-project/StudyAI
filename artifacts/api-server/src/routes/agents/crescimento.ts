@@ -1,41 +1,15 @@
-import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import { db } from "@workspace/db";
-import { usersTable, hermesMemoriaInteracaoTable } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { hermesMemoriaInteracaoTable } from "@workspace/db/schema";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { openrouter, OR } from "../../lib/aiClient";
-
-// NOTE Hermes: helper duplicado vs gestao.ts intencionalmente. Quando houver um
-// terceiro agente admin movemos para `lib/hermes/requireAdmin.ts`.
-async function requireAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
-  if (!req.userId) {
-    res.status(401).json({ erro: "Não autenticado" });
-    return;
-  }
-  try {
-    const [row] = await db
-      .select({ role: usersTable.role })
-      .from(usersTable)
-      .where(eq(usersTable.id, req.userId))
-      .limit(1);
-    if (row?.role !== "admin") {
-      res.status(403).json({ erro: "Acesso restrito a administradores" });
-      return;
-    }
-    next();
-  } catch (err: any) {
-    console.error("[hermes/crescimento] requireAdmin error:", err);
-    res.status(500).json({ erro: "Erro ao verificar permissões", _debug: err?.message ?? String(err) });
-  }
-}
+import { requireAdmin } from "../../lib/hermes/requireAdmin";
 
 const router: IRouter = Router();
 
 /**
  * POST /api/agents/crescimento/gerar-copy
  * Body: { briefing: string, canal?: string, publico?: string, n?: number }
- * Gera N variações de copy + hipótese de teste A/B. Persiste a interação em
- * hermes_memoria_interacao.
  */
 router.post("/gerar-copy", requireAuth, requireAdmin, async (req: Request, res: Response) => {
   const userId = req.userId!;
@@ -84,7 +58,7 @@ router.post("/gerar-copy", requireAuth, requireAdmin, async (req: Request, res: 
     });
 
     const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
-    let parsed: any;
+    let parsed: Record<string, unknown>;
     try {
       parsed = JSON.parse(raw);
     } catch {

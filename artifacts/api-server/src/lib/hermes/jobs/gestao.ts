@@ -1,12 +1,22 @@
 import { openrouter, OR } from "../../aiClient";
 import { fetchPlatformMetrics } from "../metrics";
-import { countKnowledgeDocuments } from "./knowledge-index";
+import { analyzeContentDatabases, persistKnowledgeIndexDescoberta } from "./knowledge-index";
 import { insertAdminInbox, persistAcaoProativa, persistDescoberta } from "../persist";
 
 export async function gestaoDailyLearn(): Promise<void> {
-  const metricas = await fetchPlatformMetrics(7);
-  const knowledgeDocCount = await countKnowledgeDocuments();
-  console.info("[gestao/daily-learn] knowledge_documents:", knowledgeDocCount);
+  const [metricas, contentIndex] = await Promise.all([
+    fetchPlatformMetrics(7),
+    analyzeContentDatabases(),
+  ]);
+  console.info(
+    "[gestao/daily-learn] content index:",
+    contentIndex.knowledgeDocuments.postulados,
+    "postulados,",
+    contentIndex.contentGaps.length,
+    "lacunas",
+  );
+
+  await persistKnowledgeIndexDescoberta("gestao", contentIndex, { metricas });
 
   const completion = await openrouter.chat.completions.create({
     model: OR.claudeFast,
@@ -14,9 +24,9 @@ export async function gestaoDailyLearn(): Promise<void> {
       {
         role: "system",
         content:
-          "Você é o agente de gestão do StudyAI. Sintetize UMA descoberta acionável sobre a operação da plataforma com base nos dados. Responda JSON: { descoberta: string, importancia: 1-5 }",
+          "Você é o agente de gestão do StudyAI. Sintetize UMA descoberta acionável sobre operação e cobertura de conteúdo (métricas + índice de bases). Priorize lacunas de matéria se houver. Responda JSON: { descoberta: string, importancia: 1-5 }",
       },
-      { role: "user", content: JSON.stringify(metricas) },
+      { role: "user", content: JSON.stringify({ metricas, contentIndex }) },
     ],
     max_tokens: 400,
     temperature: 0.2,
@@ -38,7 +48,7 @@ export async function gestaoDailyLearn(): Promise<void> {
   await persistDescoberta(
     "gestao",
     descoberta,
-    { metricas, knowledgeDocCount },
+    { metricas, contentIndex },
     parsed.importancia ?? 2,
   );
 }

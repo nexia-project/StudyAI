@@ -1,16 +1,23 @@
 import { openrouter, OR } from "../../aiClient";
 import { fetchPlatformMetrics } from "../metrics";
+import { analyzeContentDatabases } from "./knowledge-index";
 import { insertAdminInbox, persistAcaoProativa, persistDescoberta } from "../persist";
 
 export async function marketingDailyLearn(): Promise<void> {
-  const metricas = await fetchPlatformMetrics(7);
+  const [metricas, contentIndex] = await Promise.all([
+    fetchPlatformMetrics(7),
+    analyzeContentDatabases(),
+  ]);
   const evidencia = {
     metricas,
+    contentIndex,
     funil: {
       waitlist: metricas.waitlistPeriodo,
       cadastros: metricas.novosUsuariosPeriodo,
       assinantes: metricas.assinantesAtivos,
     },
+    materiasEmAlta: contentIndex.keywordStats.topMaterias.slice(0, 5),
+    lacunasConteudo: contentIndex.contentGaps,
   };
 
   const completion = await openrouter.chat.completions.create({
@@ -19,7 +26,7 @@ export async function marketingDailyLearn(): Promise<void> {
       {
         role: "system",
         content:
-          "Agente de marketing StudyAI. Identifique insight de campanha/canal com base no funil. JSON: { descoberta: string, importancia: 1-5 }",
+          "Agente de marketing StudyAI. Identifique insight de campanha/canal com base no funil e nas matérias em alta ou lacunas de conteúdo. JSON: { descoberta: string, importancia: 1-5 }",
       },
       { role: "user", content: JSON.stringify(evidencia) },
     ],

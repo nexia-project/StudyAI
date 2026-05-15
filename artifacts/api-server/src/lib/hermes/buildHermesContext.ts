@@ -34,6 +34,7 @@ const DEFAULT_MAX_CHARS = 2000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 const KIND_KEYWORDS: Record<string, string[]> = {
+  landing: ["landing", "cta", "headline", "conversão", "copy", "hero", "microcopy", "layout"],
   chat: ["conversa", "tutor", "aluno", "pedagog", "conteúdo", "aula", "estudo", "engaj"],
   aula: ["aula", "lousa", "conteúdo", "pedagog", "didát", "material", "estudo"],
   lousa: ["aula", "lousa", "conteúdo", "pedagog", "didát", "narracao"],

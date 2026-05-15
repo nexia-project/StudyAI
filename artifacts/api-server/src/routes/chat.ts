@@ -400,7 +400,7 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
         })
       : { prompt: baseSystemPrompt, method: pickedMethod, sentimentTone: "" };
     const systemPrompt = await appendHermesToSystemPrompt(composed.prompt, {
-      kind: "chat",
+      kind: isLanding ? "landing" : "chat",
       audience: isLanding ? "aluno" : roleToHermesAudience(userProfile.role),
     });
     const finalMethod = composed.method;

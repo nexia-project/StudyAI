@@ -3,6 +3,7 @@ import { gestaoDailyLearn, gestaoProactive } from "./jobs/gestao";
 import { crescimentoDailyLearn, crescimentoProactive } from "./jobs/crescimento";
 import { marketingDailyLearn, marketingProactive } from "./jobs/marketing";
 import { inboxProactive } from "./jobs/inbox";
+import { uxLayoutDailyLearn, uxLayoutProactive } from "./jobs/ux-layout";
 
 let registered = false;
 
@@ -55,6 +56,18 @@ export function registerDefaultAgents(): void {
       message: "Use GET /api/agents/inbox e POST /read ou /dismiss.",
     }),
     proactive: inboxProactive,
+  });
+
+  agentRegistry.register({
+    id: "ux_layout",
+    description: "Agente UX — hierarquia, CTA e microcopy da landing",
+    role: "admin",
+    handler: async () => ({
+      ok: true,
+      message: "Use POST /api/agents/ux_layout/revisar-tela para revisão estruturada.",
+    }),
+    dailyLearn: uxLayoutDailyLearn,
+    proactive: uxLayoutProactive,
   });
 
   registered = true;

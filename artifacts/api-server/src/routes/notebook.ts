@@ -42,10 +42,11 @@ async function enrichNotebookChatParams<T extends { messages?: unknown[] }>(para
   const sysIdx = messages.findIndex((m) => (m as { role?: string }).role === "system");
   if (sysIdx < 0) return params;
   const sys = messages[sysIdx] as { role: string; content: unknown };
-  if (typeof sys.content !== "string") return params;
-  if (HERMES_SKIP_SNIPPETS.some((s) => sys.content.includes(s))) return params;
-  const enriched = await injectHermes(sys.content, hermesTopicFromMessages(messages));
-  if (enriched === sys.content) return params;
+  const sysContent = sys.content;
+  if (typeof sysContent !== "string") return params;
+  if (HERMES_SKIP_SNIPPETS.some((s) => sysContent.includes(s))) return params;
+  const enriched = await injectHermes(sysContent, hermesTopicFromMessages(messages));
+  if (enriched === sysContent) return params;
   const nextMessages = messages.map((m, i) =>
     i === sysIdx ? { ...(m as object), content: enriched } : m,
   );

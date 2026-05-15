@@ -17,15 +17,19 @@
  *   4. Throttle gentil de ~5 req/s (200 ms entre requisições, sem deps novas).
  *   5. Tolerância a erro: log + continue. Nenhum 4xx/5xx aborta o job.
  *   6. Gravar resultado em `seed-questions.json` (formatado, indentado),
- *      adjacente a `seed.ts` em `src/lib/enem/`.
+ *      adjacente a `seed.ts` em `src/lib/enem/`. Com `--merge`, mescla com o JSON
+ *      existente (mesmo `id` é sobrescrito pela versão recém-importada).
  *
- * Uso:
+ * Uso (não rode ingest completo em CI — pode levar dezenas de minutos):
  *   pnpm --filter @workspace/api-server run ingest:enem
- *   pnpm --filter @workspace/api-server run ingest:enem -- --years=2022,2023 --limit-per-year=50
- *   pnpm --filter @workspace/api-server run ingest:enem -- --verbose
+ *   pnpm --filter @workspace/api-server run ingest:enem -- --years=2017,2018,2019,2020,2021,2022,2023 --limit-per-year=180
+ *   pnpm --filter @workspace/api-server run ingest:enem -- --years=2023 --limit-per-year=50 --merge --verbose
+ *
+ * Após o ingest, o banco em runtime lê `src/lib/enem/seed-questions.json` via
+ * `lib/enem/bank.ts` (import estático). Reinicie o api-server após atualizar o JSON.
  */
 
-import { writeFile, mkdir } from "node:fs/promises";
+import { writeFile, mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -106,6 +110,7 @@ interface CliArgs {
   limitPerYear: number;
   output: string;
   verbose: boolean;
+  merge: boolean;
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -123,22 +128,43 @@ function parseArgs(argv: string[]): CliArgs {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const defaultOutput = path.resolve(here, "..", "src", "lib", "enem", "seed-questions.json");
 
-  const yearsRaw = typeof args.years === "string" ? args.years : "2019,2020,2021,2022,2023";
+  const yearsRaw =
+    typeof args.years === "string"
+      ? args.years
+      : "2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023";
   const years = yearsRaw
     .split(",")
     .map((y) => parseInt(y.trim(), 10))
     .filter((y) => Number.isFinite(y) && y >= 2009 && y <= 2099);
 
-  // Default 200 (não 100) para garantir cobertura das 4 áreas: ENEM tem 180
-  // questões/ano (LC 1-45, CH 46-90, CN 91-135, MT 136-180). Com limite 100 a
-  // gente nunca chega em MT.
-  const limitPerYearRaw = typeof args["limit-per-year"] === "string" ? args["limit-per-year"] : "200";
-  const limitPerYear = Math.max(1, parseInt(limitPerYearRaw, 10) || 200);
+  // Default 180 = prova completa (LC 1-45, CH 46-90, CN 91-135, MT 136-180).
+  const limitPerYearRaw = typeof args["limit-per-year"] === "string" ? args["limit-per-year"] : "180";
+  const limitPerYear = Math.max(1, parseInt(limitPerYearRaw, 10) || 180);
 
   const output = typeof args.output === "string" ? args.output : defaultOutput;
   const verbose = args.verbose === true;
+  const merge = args.merge === true;
 
-  return { years, limitPerYear, output, verbose };
+  return { years, limitPerYear, output, verbose, merge };
+}
+
+/** Mescla questões novas no mapa existente (id estável = chave). */
+function mergeQuestoes(existing: EnemQuestao[], incoming: EnemQuestao[]): EnemQuestao[] {
+  const byId = new Map<string, EnemQuestao>();
+  for (const q of existing) byId.set(q.id, q);
+  for (const q of incoming) byId.set(q.id, q);
+  return [...byId.values()].sort((a, b) => a.ano - b.ano || a.numero - b.numero);
+}
+
+async function loadExistingSeed(outputPath: string): Promise<EnemQuestao[]> {
+  try {
+    const raw = await readFile(outputPath, "utf8");
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed as EnemQuestao[];
+  } catch {
+    return [];
+  }
 }
 
 // ─── Throttle simples ────────────────────────────────────────────────────────
@@ -429,7 +455,13 @@ async function main(): Promise<void> {
   console.log(`[ingest-enem] anos: ${args.years.join(", ")}`);
   console.log(`[ingest-enem] limite/ano: ${args.limitPerYear}`);
   console.log(`[ingest-enem] saída: ${args.output}`);
+  console.log(`[ingest-enem] merge: ${args.merge}`);
   console.log("");
+
+  const existingSeed = args.merge ? await loadExistingSeed(args.output) : [];
+  if (args.merge && existingSeed.length > 0) {
+    console.log(`[ingest-enem] seed existente: ${existingSeed.length} questões (serão mescladas por id)`);
+  }
 
   const allQuestoes: EnemQuestao[] = [];
   const allStats: YearStats[] = [];
@@ -455,9 +487,14 @@ async function main(): Promise<void> {
       console.log(`    skipped breakdown: ${reasons}`);
     }
     // Flush parcial após cada ano — protege contra crashes/429 nos próximos anos.
-    if (allQuestoes.length > 0) {
-      await writeFile(args.output, JSON.stringify(allQuestoes, null, 2), "utf8");
-      if (args.verbose) console.log(`  → flushed parcial: ${allQuestoes.length} questões`);
+    const partial = args.merge ? mergeQuestoes(existingSeed, allQuestoes) : allQuestoes;
+    if (partial.length > 0) {
+      await writeFile(args.output, JSON.stringify(partial, null, 2), "utf8");
+      if (args.verbose) {
+        console.log(
+          `  → flushed parcial: ${partial.length} questões (${args.merge ? "merge" : "replace"})`,
+        );
+      }
     }
     // Cooldown antes do próximo ano para deixar o rate-limit "respirar".
     if (i < args.years.length - 1) {
@@ -465,23 +502,30 @@ async function main(): Promise<void> {
     }
   }
 
-  if (allQuestoes.length === 0) {
-    console.error("\n[ingest-enem] NENHUMA questão importada — abortando sem escrever arquivo.");
+  const finalQuestoes = args.merge ? mergeQuestoes(existingSeed, allQuestoes) : allQuestoes;
+
+  if (finalQuestoes.length === 0) {
+    console.error("\n[ingest-enem] NENHUMA questão no arquivo final — abortando.");
     process.exitCode = 1;
     return;
   }
 
+  await writeFile(args.output, JSON.stringify(finalQuestoes, null, 2), "utf8");
+
   // ── Summary ───────────────────────────────────────────────────────────────
   const totalFetched = allStats.reduce((s, x) => s + x.fetched, 0);
   const totalKept = allStats.reduce((s, x) => s + x.kept, 0);
+  const importedThisRun = allQuestoes.length;
   const totalSkipped = allStats.reduce((s, x) => s + x.skipped, 0);
   const totalErrors = allStats.reduce((s, x) => s + x.errors, 0);
 
   const porArea: Record<EnemArea, number> = { LC: 0, MT: 0, CN: 0, CH: 0, R: 0 };
-  for (const q of allQuestoes) porArea[q.area] += 1;
+  for (const q of finalQuestoes) porArea[q.area] += 1;
 
   console.log("\n[ingest-enem] ── summary ─────────────────────────────");
   console.log(`  arquivo:        ${args.output}`);
+  console.log(`  importadas (run): ${importedThisRun}`);
+  console.log(`  total no JSON:  ${finalQuestoes.length}${args.merge ? " (após merge)" : ""}`);
   console.log(`  total fetched:  ${totalFetched}`);
   console.log(`  total kept:     ${totalKept}`);
   console.log(`  total skipped:  ${totalSkipped}`);
@@ -493,7 +537,7 @@ async function main(): Promise<void> {
   }
 
   console.log("\n[ingest-enem] sample (primeiras 2 questões):");
-  for (const q of allQuestoes.slice(0, 2)) {
+  for (const q of finalQuestoes.slice(0, 2)) {
     console.log(JSON.stringify(q, null, 2));
   }
 }

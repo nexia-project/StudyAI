@@ -4,8 +4,9 @@
  * Composição da fonte de dados (in-memory por enquanto; Postgres em PR futura):
  *   1. `ENEM_SEED` (lib/enem/seed.ts) — placeholders curados manualmente, mantidos
  *      apenas as entradas marcadas como `__REAL__` (Redação 2023 hoje).
- *   2. `seed-questions.json` — banco oficial de ~500+ questões importado via
- *      `scripts/ingest-enem.ts` (espelho api.enem.dev).
+ *   2. `seed-questions.json` — banco oficial importado via `scripts/ingest-enem.ts`
+ *      (espelho api.enem.dev). Atualize com `pnpm … ingest:enem` e use `--merge`
+ *      para acrescentar anos sem apagar o JSON existente.
  *
  * Os placeholders `__SEED_PLACEHOLDER__` do seed antigo NÃO entram mais no banco
  * agora que temos dados oficiais — eram um fallback temporário.

@@ -73,6 +73,10 @@ function audienceLabel(audience: HermesAudience): string {
   return "aluno";
 }
 
+export function shouldInjectProactiveActions(audience: HermesAudience): boolean {
+  return audience === "interno";
+}
+
 function scoreDescoberta(
   row: typeof hermesDescobertasGlobaisTable.$inferSelect,
   kind?: string,
@@ -105,7 +109,8 @@ function truncateBlock(text: string, maxChars: number): string {
 }
 
 /**
- * Monta bloco de contexto Hermes (descobertas + ações pendentes + CQO) para injetar no system prompt.
+ * Monta bloco de contexto Hermes (descobertas + CQO) para injetar no system prompt.
+ * Ações pendentes são operacionais/admin e só entram no contexto interno.
  * Uma leitura de DB por cache key; TTL 5 min em memória.
  */
 export async function buildHermesContext(opts: BuildHermesContextOpts = {}): Promise<string> {
@@ -145,21 +150,23 @@ export async function buildHermesContext(opts: BuildHermesContextOpts = {}): Pro
       }
     }
 
-    const acoes = await db
-      .select({
-        tipo: hermesAcoesProativasTable.tipo,
-        descricao: hermesAcoesProativasTable.descricao,
-      })
-      .from(hermesAcoesProativasTable)
-      .where(eq(hermesAcoesProativasTable.status, "pending"))
-      .orderBy(desc(hermesAcoesProativasTable.createdAt))
-      .limit(3);
+    if (shouldInjectProactiveActions(audience)) {
+      const acoes = await db
+        .select({
+          tipo: hermesAcoesProativasTable.tipo,
+          descricao: hermesAcoesProativasTable.descricao,
+        })
+        .from(hermesAcoesProativasTable)
+        .where(eq(hermesAcoesProativasTable.status, "pending"))
+        .orderBy(desc(hermesAcoesProativasTable.createdAt))
+        .limit(3);
 
-    if (acoes.length > 0) {
-      parts.push("", "Sinais proativos (referência interna — não exponha como tarefa ao aluno):");
-      for (const a of acoes) {
-        const brief = a.descricao.trim().slice(0, 100);
-        parts.push(`• ${a.tipo}: ${brief}${a.descricao.length > 100 ? "…" : ""}`);
+      if (acoes.length > 0) {
+        parts.push("", "Sinais proativos (referência interna):");
+        for (const a of acoes) {
+          const brief = a.descricao.trim().slice(0, 100);
+          parts.push(`• ${a.tipo}: ${brief}${a.descricao.length > 100 ? "…" : ""}`);
+        }
       }
     }
   } catch (err) {

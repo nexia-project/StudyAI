@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
+import { appendHermesToSystemPrompt } from "../lib/hermes/buildHermesContext";
 
 const router = Router();
 
@@ -92,11 +93,16 @@ async function generateScript(
   const { topic, subject, difficulty, style = "ENEM", type = "normal" } = params;
   const isProblemSolving = type === "problem_solving";
 
-  const systemPrompt = isProblemSolving
+  const baseSystemPrompt = isProblemSolving
     ? `Você é o Professor Tiagão, especialista em resolução de problemas do ENEM/vestibular.
 Resolva o problema dado NA LOUSA passo a passo, como um professor real faria.`
     : `Você é o Professor Tiagão, professor carismático especialista em ${subject} para o ENEM.
 Crie uma aula completa na lousa sobre "${topic}" com nível ${difficulty}, estilo "${style}".`;
+
+  const systemPrompt = await appendHermesToSystemPrompt(baseSystemPrompt, {
+    kind: "lousa",
+    audience: "aluno",
+  });
 
   const userPrompt = `Crie uma aula completa na lousa sobre "${topic}" (${subject}, nível ${difficulty}).
 

@@ -89,9 +89,18 @@ export async function generateWithGemini(
   userPrompt: string,
   maxOutputTokens = 8000,
   sourceContext?: string,
+  skipHermes = false,
 ): Promise<string> {
+  let enrichedSystem = systemPrompt;
+  if (!skipHermes) {
+    const { injectHermes } = await import("./hermes/buildHermesContext");
+    enrichedSystem = await injectHermes(
+      systemPrompt,
+      sourceContext?.slice(0, 150) ?? userPrompt.slice(0, 150),
+    );
+  }
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-    { role: "system", content: systemPrompt },
+    { role: "system", content: enrichedSystem },
   ];
 
   if (sourceContext) {

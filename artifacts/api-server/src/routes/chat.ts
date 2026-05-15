@@ -30,6 +30,10 @@ import {
 import { loadMethodState, saveMethodState } from "../lib/tiagao-method-state";
 import { isMathQuestion } from "../lib/math-detection";
 import { TIAGAO_LANDING_SYSTEM_PROMPT } from "../lib/tiagao-landing-prompt";
+import {
+  appendHermesToSystemPrompt,
+  roleToHermesAudience,
+} from "../lib/hermes/buildHermesContext";
 
 /**
  * Qwen Math (PR-7) — modelo especializado em exatas via OpenRouter.
@@ -395,7 +399,10 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
               : null,
         })
       : { prompt: baseSystemPrompt, method: pickedMethod, sentimentTone: "" };
-    const systemPrompt = composed.prompt;
+    const systemPrompt = await appendHermesToSystemPrompt(composed.prompt, {
+      kind: "chat",
+      audience: isLanding ? "aluno" : roleToHermesAudience(userProfile.role),
+    });
     const finalMethod = composed.method;
 
     // ── PR-7 — roteamento Qwen Math quando a pergunta for de exatas ──────────

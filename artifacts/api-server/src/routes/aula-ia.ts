@@ -5,6 +5,7 @@ import { logAiUsage } from "../lib/aiCostLogger";
 import { cacheGet, cacheSave } from "../lib/semanticCache";
 import { incrementTopicFrequency } from "../lib/generativeMemory";
 import { getVisual } from "../lib/visuals/get-visual";
+import { appendHermesToSystemPrompt } from "../lib/hermes/buildHermesContext";
 
 const router = Router();
 
@@ -141,11 +142,16 @@ RETORNE SOMENTE JSON VÁLIDO, sem texto extra, sem markdown, sem blocos de códi
   ]
 }`;
 
+  const systemWithHermes = await appendHermesToSystemPrompt(systemPrompt, {
+    kind: "aula",
+    audience: "aluno",
+  });
+
   const completion = await openrouter.chat.completions.create({
     model: OR.claude,
     max_tokens: 2000,
     messages: [
-      { role: "system", content: systemPrompt },
+      { role: "system", content: systemWithHermes },
       { role: "user", content: `Crie uma aula sobre: ${topico.trim()}` },
     ],
   });
@@ -183,10 +189,15 @@ Crie uma aula DETALHADA e DIDÁTICA em JSON. Retorne APENAS o JSON, sem texto ex
 }
 Nível: ${nivel}. Máx 6 etapas, mín 4. Exemplos do contexto ${estilo}. RESPEITE rigorosamente o nível "${prof.nivelLabel}".`;
 
+  const systemWithHermes = await appendHermesToSystemPrompt(systemPrompt, {
+    kind: "aula",
+    audience: "aluno",
+  });
+
   const completion = await openai.chat.completions.create({
     model: OR.fast,
     messages: [
-      { role: "system", content: systemPrompt },
+      { role: "system", content: systemWithHermes },
       { role: "user", content: `Crie uma aula sobre: ${topico.trim()}` },
     ],
     temperature: 0.7,
@@ -327,12 +338,17 @@ router.post("/aula-ia/pergunta", requireAuth, async (req: Request, res: Response
       return;
     }
 
-    const systemContent = `Você é o Professor Tiagão, tutor brasileiro animado e didático.
+    const baseSystemContent = `Você é o Professor Tiagão, tutor brasileiro animado e didático.
 O aluno está assistindo uma aula sobre "${topico}".
 ${contexto ? `Contexto da aula atual: ${contexto}` : ""}
 Responda a pergunta de forma CURTA e direta (máximo 4 frases).
 Use linguagem coloquial PT-BR, seja animado e motivador.
 Não use markdown nem listas. Termine com uma frase de encorajamento.`;
+
+    const systemContent = await appendHermesToSystemPrompt(baseSystemContent, {
+      kind: "aula",
+      audience: "aluno",
+    });
 
     let resposta = "";
 

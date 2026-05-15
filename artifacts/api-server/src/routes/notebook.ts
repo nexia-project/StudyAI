@@ -17,14 +17,45 @@ import { validateFileUpload } from "../middlewares/security";
 import { generateImageBuffer } from "@workspace/integrations-openai-ai-server/image";
 import { logAiUsage } from "../lib/aiCostLogger";
 import { trackEvent } from "../lib/trackEvent";
+import { injectHermes } from "../lib/hermes/buildHermesContext";
 
 const _require = createRequire(import.meta.url);
 const router: IRouter = Router();
 
+/** Prompts utilitários (OCR etc.) — não injetar Hermes. */
+const HERMES_SKIP_SNIPPETS = ["Você extrai TODO o texto visível na imagem"];
+
+function hermesTopicFromMessages(messages: unknown[]): string | undefined {
+  const user = (messages as { role?: string; content?: unknown }[]).find((m) => m?.role === "user");
+  const c = user?.content;
+  if (typeof c === "string") return c.slice(0, 200);
+  if (Array.isArray(c)) {
+    const text = (c as { type?: string; text?: string }[]).find((p) => p?.type === "text")?.text;
+    if (typeof text === "string") return text.slice(0, 200);
+  }
+  return undefined;
+}
+
+async function enrichNotebookChatParams<T extends { messages?: unknown[] }>(params: T): Promise<T> {
+  const messages = params.messages;
+  if (!Array.isArray(messages) || messages.length === 0) return params;
+  const sysIdx = messages.findIndex((m) => (m as { role?: string }).role === "system");
+  if (sysIdx < 0) return params;
+  const sys = messages[sysIdx] as { role: string; content: unknown };
+  if (typeof sys.content !== "string") return params;
+  if (HERMES_SKIP_SNIPPETS.some((s) => sys.content.includes(s))) return params;
+  const enriched = await injectHermes(sys.content, hermesTopicFromMessages(messages));
+  if (enriched === sys.content) return params;
+  const nextMessages = messages.map((m, i) =>
+    i === sysIdx ? { ...(m as object), content: enriched } : m,
+  );
+  return { ...params, messages: nextMessages };
+}
+
 // ─── AI client via OpenRouter (cheaper models, same interface) ─────────────
 const _rawGpt = openrouter;
 
-// Proxy that auto-logs token usage for every chat completion
+// Proxy: Hermes + CQO no system prompt + log de tokens (sem LLM extra)
 const gpt = new Proxy(_rawGpt, {
   get(target, prop) {
     if (prop === "chat") {
@@ -35,9 +66,15 @@ const gpt = new Proxy(_rawGpt, {
               get(compTarget, compProp) {
                 if (compProp === "create") {
                   return async (params: Parameters<typeof compTarget.create>[0], opts?: Parameters<typeof compTarget.create>[1]) => {
-                    const result = await (compTarget.create as Function)(params, opts);
+                    const enriched = await enrichNotebookChatParams(params as { messages?: unknown[] });
+                    const result = await (compTarget.create as Function)(enriched, opts);
                     if (result && typeof result === "object" && "usage" in result && result.usage) {
-                      logAiUsage({ feature: "notebook", model: (params as any).model ?? "gpt-4o-mini", tokensIn: (result as any).usage.prompt_tokens ?? 0, tokensOut: (result as any).usage.completion_tokens ?? 0 });
+                      logAiUsage({
+                        feature: "notebook",
+                        model: (enriched as { model?: string }).model ?? "gpt-4o-mini",
+                        tokensIn: (result as { usage?: { prompt_tokens?: number } }).usage?.prompt_tokens ?? 0,
+                        tokensOut: (result as { usage?: { completion_tokens?: number } }).usage?.completion_tokens ?? 0,
+                      });
                     }
                     return result;
                   };
@@ -912,10 +949,7 @@ router.post("/notebook/chat", async (req: Request, res: Response) => {
       messages: [
         {
           role: "system",
-          content: `${modePrompt}${personaBlock}
-
-FONTES DISPONÍVEIS:
-${context}`,
+          content: `${modePrompt}${personaBlock}\n\nFONTES DISPONÍVEIS:\n${context}`,
         },
         { role: "user", content: pergunta },
       ],

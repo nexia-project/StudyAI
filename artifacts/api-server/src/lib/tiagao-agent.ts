@@ -20,6 +20,10 @@ import { searchSemanticScholar } from "../routes/scholar";
 import { getEducationalVideos } from "./videos/get-videos";
 import { getVisual } from "./visuals/get-visual";
 import { injectHero, injectSectionImages } from "./visuals/html-injection";
+import {
+  appendHermesToSystemPrompt,
+  type HermesAudience,
+} from "./hermes/buildHermesContext";
 
 // Limpa output da IA (remove markdown fences ```html ... ```), extrai apenas o
 // conteúdo do <body> caso a IA tenha retornado um documento completo, e envolve
@@ -52,13 +56,24 @@ async function generateHeavyMaterial(
   maxTokens: number,
   temperature: number,
   sourceContext?: string,
+  hermes?: { kind?: string; audience?: HermesAudience },
 ): Promise<string> {
+  const enrichedPrompt = await appendHermesToSystemPrompt(systemPrompt, {
+    kind: hermes?.kind,
+    audience: hermes?.audience ?? "aluno",
+  });
   const t0 = Date.now();
   const userPrompt = "Gere o conteúdo completo agora, seguindo todas as instruções acima. Seja extremamente detalhado e denso.";
 
   // ── 1º: Claude Sonnet via OpenRouter ─────────────────────────────────────
   try {
-    const content = await generateWithGemini(systemPrompt, userPrompt, maxTokens, sourceContext);
+    const content = await generateWithGemini(
+      enrichedPrompt,
+      userPrompt,
+      maxTokens,
+      sourceContext,
+      true,
+    );
     if (content && content.length > 500) {
       console.log(`[material] Claude Sonnet gerou ${content.length} chars em ${Date.now() - t0}ms`);
       return content;
@@ -72,7 +87,7 @@ async function generateHeavyMaterial(
   const gen = await getGpt().chat.completions.create({
     model: CONTENT_MODEL,
     messages: [
-      { role: "system", content: systemPrompt },
+      { role: "system", content: enrichedPrompt },
       { role: "user", content: userPrompt },
     ],
     max_tokens: maxTokens,
@@ -986,7 +1001,9 @@ PADRÃO MÍNIMO POR SEÇÃO:
 - NUNCA use cores inline — sempre var(--accent), var(--verde), var(--azul) etc.
 - IDs de quiz únicos por questão: q1, q2, q3... | IDs de solução: sol1, sol2...`;
 
-          rawContent = await generateHeavyMaterial(slidesPrompt, 16000, 0.65);
+          rawContent = await generateHeavyMaterial(slidesPrompt, 16000, 0.65, undefined, {
+            kind: "slides",
+          });
         }
         let htmlContent = buildMaterialHTML(args.topico, rawContent);
 
@@ -1132,7 +1149,9 @@ USE CORES VIBRANTES e contrastantes. Cada seção deve ter uma cor dominante dif
 - NÃO use cercas markdown \`\`\`html ... \`\`\`.
 - O CSS premium é injetado automaticamente.
 - Comece direto pela primeira tag visível.`;
-          rawContent = await generateHeavyMaterial(infoPrompt, 4000, 0.6);
+          rawContent = await generateHeavyMaterial(infoPrompt, 4000, 0.6, undefined, {
+            kind: "infografico",
+          });
         }
         const htmlContent = buildMaterialHTML(args.topico, rawContent);
         await db.execute(sql`
@@ -1188,7 +1207,9 @@ Conteúdo nível vestibular. Profundidade real — sem superficialidade.
 - NÃO use cercas markdown \`\`\`html ... \`\`\`.
 - O CSS premium e scripts (responder/toggleSol/progress) são injetados automaticamente.
 - Comece direto por <div class="progress-bar" id="progressBar"></div> ou <nav class="sidebar">.`;
-          rawContent = await generateHeavyMaterial(resumoPrompt, 8000, 0.5);
+          rawContent = await generateHeavyMaterial(resumoPrompt, 8000, 0.5, undefined, {
+            kind: "resumo",
+          });
         }
         let htmlContent = buildMaterialHTML("Resumo: " + args.topico, rawContent);
 
@@ -1371,7 +1392,9 @@ USE UMA COR DOMINANTE DIFERENTE por semana. Progressão: fundamentos → interme
 - NÃO use cercas markdown \`\`\`html ... \`\`\`.
 - O CSS premium e scripts são injetados automaticamente.
 - Comece direto pela primeira tag visível.`;
-        const rawContent = await generateHeavyMaterial(planoPrompt, 5000, 0.6);
+        const rawContent = await generateHeavyMaterial(planoPrompt, 5000, 0.6, undefined, {
+          kind: "plano",
+        });
         const htmlContent = buildMaterialHTML(titulo, rawContent);
         await db.execute(sql`
           INSERT INTO notebook_artifacts (user_id, doc_id, kind, title, payload)

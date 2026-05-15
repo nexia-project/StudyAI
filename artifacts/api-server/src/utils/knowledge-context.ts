@@ -19,6 +19,7 @@ import { searchWikipedia, fetchWikiSummary } from "../routes/wikipedia";
 import { cacheGet, cacheSave } from "../lib/semanticCache";
 import { logFreeSource } from "../lib/aiCostLogger";
 import { searchExatas, formatExatasBlock, type MateriaExatas } from "../data/exatas-data";
+import { buildHermesContext } from "../lib/hermes/buildHermesContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface KnowledgeContextOptions {
@@ -235,13 +236,25 @@ export async function getKnowledgeContext(
     }
   }
 
+  let hermesBlock = "";
+  try {
+    hermesBlock = await buildHermesContext({ topic: query, audience: "aluno", kind: "plano" });
+  } catch {
+    // Hermes opcional
+  }
+
   if (!parts.length) {
-    return { contextBlock: "", bnccHabilidades: bnccCodes, hasKnowledge: false, summary: "no sources returned content" };
+    return {
+      contextBlock: hermesBlock ? `\n\n${hermesBlock}` : "",
+      bnccHabilidades: bnccCodes,
+      hasKnowledge: Boolean(hermesBlock),
+      summary: hermesBlock ? "hermes only" : "no sources returned content",
+    };
   }
 
   // ── Final context block ────────────────────────────────────────────────────
   const header = buildHeader({ query, materia, serie, objetivo });
-  const contextBlock = `
+  let contextBlock = `
 
 ╔═══════════════════════════════════════════════════════════════╗
 ║         CONTEXTO DE CONHECIMENTO — CONSULTA AUTOMÁTICA       ║
@@ -259,6 +272,8 @@ INSTRUÇÕES OBRIGATÓRIAS:
 - NUNCA invente fórmulas, datas ou fatos — use apenas o que está documentado acima.
 - Para Matemática/Física/Química: use APENAS as fórmulas do "BANCO DE FÓRMULAS ENEM" acima. Não altere coeficientes, expoentes ou variáveis.
 `;
+
+  if (hermesBlock.trim()) contextBlock += `\n\n${hermesBlock}`;
 
   return {
     contextBlock,

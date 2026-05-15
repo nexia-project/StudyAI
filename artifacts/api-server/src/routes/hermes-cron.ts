@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { initHermes } from "../lib/hermes/bootstrap";
 import { agentRegistry } from "../lib/hermes/agentRegistry";
+import { setHermesCronHint } from "../lib/hermes/cronState";
 
 initHermes();
 
@@ -41,6 +42,14 @@ router.post("/internal/hermes/daily-learn", requireCronSecret, async (_req: Requ
     }
   }
 
+  setHermesCronHint({
+    job: "daily-learn",
+    finishedAt: new Date().toISOString(),
+    ran,
+    ok: errors.length === 0,
+    errorCount: errors.length,
+  });
+
   res.json({ ok: errors.length === 0, ran, errors });
 });
 
@@ -58,6 +67,14 @@ router.post("/internal/hermes/hourly-proactive", requireCronSecret, async (_req:
       errors.push({ agent: agent.id, message: err?.message ?? String(err) });
     }
   }
+
+  setHermesCronHint({
+    job: "hourly-proactive",
+    finishedAt: new Date().toISOString(),
+    ran,
+    ok: errors.length === 0,
+    errorCount: errors.length,
+  });
 
   res.json({ ok: errors.length === 0, ran, errors });
 });

@@ -9,7 +9,7 @@ import {
   Database, Upload, Loader2, Search, Bell, Clock, TrendingUp,
   BarChart3, Activity, Zap, AlertTriangle, UserPlus, Home,
   Wallet, Bot, Settings, Link, Bug, ChevronDown, ChevronRight,
-  Mail, Key, UserCog, Server, Cpu, LayoutDashboard, Lock, ArrowLeft,
+  Mail, Key, UserCog, Server, Cpu, LayoutDashboard, Lock, ArrowLeft, Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -105,9 +105,35 @@ type FonteConsumo = {
 
 type Section =
   | "visao" | "alunos" | "professores" | "instituicoes"
-  | "financeiro" | "ia-custos" | "conteudos" | "banco-dados"
+  | "financeiro" | "ia-custos" | "hermes" | "conteudos" | "banco-dados"
   | "integracoes" | "logs-seguranca" | "bugs-sistema" | "configuracoes"
   | "solicitacoes" | "roles";
+
+type HermesDescoberta = {
+  id: string; agentId: string; descoberta: string;
+  evidencia: Record<string, unknown> | null; importancia: number; createdAt: string;
+};
+type HermesInboxItem = {
+  id: string; agentId: string; tipo: string; titulo: string; corpo: string;
+  lida: boolean; createdAt: string;
+};
+type HermesStatus = {
+  ok: boolean;
+  descobertas: HermesDescoberta[];
+  inbox: { items: HermesInboxItem[]; unreadCount: number };
+  pendingAcoesCount: number;
+  lastCronHint: {
+    job: string; finishedAt: string; ran: string[]; ok: boolean; errorCount: number;
+  } | null;
+  contentIndex: {
+    scannedAt: string;
+    knowledgeDocuments: { totalParents: number; postulados: number; contentGaps: string[] };
+    knowledgeBase: { total: number; distinctUsers: number };
+    boardLessons: { total: number; ready: number };
+    generatedContent: { totalActive: number };
+    keywordStats: { postuladoCoverageRatio: number };
+  } | null;
+};
 
 /* ─── Sidebar nav config ─────────────────────────────────────── */
 const NAV = [
@@ -121,6 +147,7 @@ const NAV = [
   },
   { section: "financeiro" as Section, label: "Financeiro", icon: Wallet },
   { section: "ia-custos" as Section, label: "IA & Custos", icon: Bot },
+  { section: "hermes" as Section, label: "Hermes", icon: Sparkles },
   { section: "conteudos" as Section, label: "Conteúdos", icon: FileText },
   { section: "banco-dados" as Section, label: "Base de Conhecimento", icon: Database },
   { section: "integracoes" as Section, label: "Integrações", icon: Link },
@@ -191,6 +218,9 @@ export default function AdminPage() {
   const [debugInfo, setDebugInfo] = useState<Record<string, any> | null>(null);
   const [fonteConsumo, setFonteConsumo] = useState<FonteConsumo | null>(null);
   const [fonteLoading, setFonteLoading] = useState(false);
+  const [hermesStatus, setHermesStatus] = useState<HermesStatus | null>(null);
+  const [hermesLoading, setHermesLoading] = useState(false);
+  const [hermesInboxBusy, setHermesInboxBusy] = useState<string | null>(null);
 
   // ── Date range filter — read initial value from URL ──────────────────────────
   const searchStr = useSearch();
@@ -421,6 +451,48 @@ export default function AdminPage() {
   useEffect(() => { if (activeSection === "conteudos") fetchTeacherContent(); }, [activeSection]);
   useEffect(() => { if (activeSection === "banco-dados") fetchKbDocs(); }, [activeSection]);
   useEffect(() => { if (activeSection === "ia-custos" && !fonteConsumo) fetchFonteConsumo(); }, [activeSection]);
+  useEffect(() => { if (activeSection === "hermes") fetchHermesStatus(); }, [activeSection]);
+
+  async function fetchHermesStatus() {
+    setHermesLoading(true);
+    try {
+      const res = await adminFetch("/api/agents/hermes/status");
+      if (res.ok) setHermesStatus(await res.json());
+      else setHermesStatus(null);
+    } catch {
+      setHermesStatus(null);
+    } finally {
+      setHermesLoading(false);
+    }
+  }
+
+  async function hermesInboxRead(id: string) {
+    setHermesInboxBusy(id);
+    try {
+      const res = await adminFetch("/api/agents/inbox/read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (res.ok) await fetchHermesStatus();
+    } finally {
+      setHermesInboxBusy(null);
+    }
+  }
+
+  async function hermesInboxDismiss(id: string) {
+    setHermesInboxBusy(id);
+    try {
+      const res = await adminFetch("/api/agents/inbox/dismiss", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (res.ok) await fetchHermesStatus();
+    } finally {
+      setHermesInboxBusy(null);
+    }
+  }
 
   /* ── Error / Access denied ── */
   if (error) {
@@ -1849,6 +1921,191 @@ export default function AdminPage() {
             </div>
             );
           })()}
+
+          {/* ══ HERMES (monitoramento) ══ */}
+          {activeSection === "hermes" && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
+              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+                <h2 className="text-lg font-black flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-cyan-400" /> Hermes — Monitoramento
+                </h2>
+                <button
+                  onClick={fetchHermesStatus}
+                  className="flex items-center gap-1.5 text-white/40 hover:text-white text-sm"
+                >
+                  <RefreshCw className={`w-4 h-4 ${hermesLoading ? "animate-spin" : ""}`} /> Atualizar
+                </button>
+              </motion.div>
+
+              {hermesLoading && !hermesStatus ? (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center py-16">
+                  <RefreshCw className="w-8 h-8 text-cyan-400 animate-spin" />
+                </motion.div>
+              ) : !hermesStatus ? (
+                <div className="bg-[#12121a] rounded-2xl p-10 border border-white/[0.07] text-center">
+                  <Sparkles className="w-10 h-10 text-white/20 mx-auto mb-3" />
+                  <p className="text-white/40 text-sm">Não foi possível carregar o status Hermes.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[
+                      { label: "Inbox não lidas", value: hermesStatus.inbox.unreadCount, color: "text-amber-400" },
+                      { label: "Ações pendentes", value: hermesStatus.pendingAcoesCount, color: "text-violet-400" },
+                      { label: "Descobertas (lista)", value: hermesStatus.descobertas.length, color: "text-cyan-400" },
+                      {
+                        label: "Último cron",
+                        value: hermesStatus.lastCronHint
+                          ? (hermesStatus.lastCronHint.ok ? "OK" : "Erros")
+                          : "—",
+                        color: hermesStatus.lastCronHint?.ok === false ? "text-red-400" : "text-emerald-400",
+                      },
+                    ].map((k) => (
+                      <div key={k.label} className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-4">
+                        <p className={`text-2xl font-black ${k.color}`}>{k.value}</p>
+                        <p className="text-xs text-white/40 mt-0.5">{k.label}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {hermesStatus.lastCronHint && (
+                    <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-2xl p-4 text-sm text-white/60">
+                      <span className="text-cyan-300 font-semibold">{hermesStatus.lastCronHint.job}</span>
+                      {" · "}
+                      {new Date(hermesStatus.lastCronHint.finishedAt).toLocaleString("pt-BR")}
+                      {hermesStatus.lastCronHint.ran.length > 0 && (
+                        <span className="text-white/30"> · agentes: {hermesStatus.lastCronHint.ran.join(", ")}</span>
+                      )}
+                    </div>
+                  )}
+
+                  {hermesStatus.contentIndex && (
+                    <Card title="Índice de conteúdo" icon={Database} iconColor="text-cyan-400">
+                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                        <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}>
+                          <p className="text-white/30 text-xs">Postulados</p>
+                          <p className="font-bold text-white">{hermesStatus.contentIndex.knowledgeDocuments.postulados}</p>
+                        </motion.div>
+                        <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }}>
+                          <p className="text-white/30 text-xs">Docs globais</p>
+                          <p className="font-bold text-white">{hermesStatus.contentIndex.knowledgeDocuments.totalParents}</p>
+                        </motion.div>
+                        <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
+                          <p className="text-white/30 text-xs">KB usuários</p>
+                          <p className="font-bold text-white">{hermesStatus.contentIndex.knowledgeBase.total}</p>
+                        </motion.div>
+                        <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.09 }}>
+                          <p className="text-white/30 text-xs">Cobertura postulado</p>
+                          <p className="font-bold text-white">
+                            {(hermesStatus.contentIndex.keywordStats.postuladoCoverageRatio * 100).toFixed(0)}%
+                          </p>
+                        </motion.div>
+                        {hermesStatus.contentIndex.knowledgeDocuments.contentGaps.length > 0 && (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="col-span-2 sm:col-span-4 text-xs text-amber-300/90"
+                          >
+                            Lacunas: {hermesStatus.contentIndex.knowledgeDocuments.contentGaps.slice(0, 8).join(", ")}
+                            {hermesStatus.contentIndex.knowledgeDocuments.contentGaps.length > 8 ? "…" : ""}
+                          </motion.div>
+                        )}
+                      </motion.div>
+                    </Card>
+                  )}
+
+                  <div className="grid lg:grid-cols-2 gap-5">
+                    <Card title="Descobertas recentes" icon={Sparkles} iconColor="text-cyan-400">
+                      {hermesStatus.descobertas.length === 0 ? (
+                        <p className="text-white/40 text-sm">Nenhuma descoberta registrada.</p>
+                      ) : (
+                        <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+                          {hermesStatus.descobertas.map((d) => (
+                            <div
+                              key={d.id}
+                              className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3"
+                            >
+                              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2 mb-1 flex-wrap">
+                                <span className="text-[10px] uppercase tracking-wide text-cyan-400/80 font-bold">
+                                  {d.agentId}
+                                </span>
+                                <span className="text-[10px] bg-white/10 text-white/50 px-1.5 py-0.5 rounded">
+                                  imp. {d.importancia}
+                                </span>
+                                <span className="text-[10px] text-white/30 ml-auto">
+                                  {new Date(d.createdAt).toLocaleString("pt-BR")}
+                                </span>
+                              </motion.div>
+                              <p className="text-sm text-white/80 leading-snug">{d.descoberta}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </Card>
+
+                    <Card
+                      title="Inbox admin"
+                      icon={Bell}
+                      iconColor="text-amber-400"
+                      action={
+                        hermesStatus.inbox.unreadCount > 0 ? (
+                          <span className="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30">
+                            {hermesStatus.inbox.unreadCount} não lidas
+                          </span>
+                        ) : undefined
+                      }
+                    >
+                      {hermesStatus.inbox.items.length === 0 ? (
+                        <p className="text-white/40 text-sm">Inbox vazia (não lidas).</p>
+                      ) : (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+                          {hermesStatus.inbox.items.map((item) => {
+                            const busy = hermesInboxBusy === item.id;
+                            return (
+                              <div
+                                key={item.id}
+                                className="bg-white/[0.03] border border-amber-500/20 rounded-xl p-3"
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                                      <span className="text-xs font-bold text-white">{item.titulo}</span>
+                                      <span className="text-[10px] text-white/40">{item.agentId} · {item.tipo}</span>
+                                    </div>
+                                    <p className="text-xs text-white/60 line-clamp-3">{item.corpo}</p>
+                                  </motion.div>
+                                  <div className="flex flex-col gap-1 flex-shrink-0">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={busy || item.lida}
+                                      onClick={() => hermesInboxRead(item.id)}
+                                      className="h-7 text-[10px] border-white/10"
+                                    >
+                                      {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : "Lida"}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={busy}
+                                      onClick={() => hermesInboxDismiss(item.id)}
+                                      className="h-7 text-[10px] border-white/10 text-white/50"
+                                    >
+                                      Dispensar
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </motion.div>
+                      )}
+                    </Card>
+                  </div>
+                </>
+              )}
+            </motion.div>
+          )}
 
           {/* ══ BUGS & SISTEMA ══ */}
           {activeSection === "bugs-sistema" && (

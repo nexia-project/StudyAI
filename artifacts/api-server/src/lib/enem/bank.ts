@@ -1,124 +1,216 @@
-/**
- * ENEM bank — operações de leitura sobre o banco de questões.
- *
- * Composição da fonte de dados (in-memory por enquanto; Postgres em PR futura):
- *   1. `ENEM_SEED` (lib/enem/seed.ts) — placeholders curados manualmente, mantidos
- *      apenas as entradas marcadas como `__REAL__` (Redação 2023 hoje).
- *   2. `seed-questions.json` — banco oficial importado via `scripts/ingest-enem.ts`
- *      (espelho api.enem.dev). Atualize com `pnpm … ingest:enem` e use `--merge`
- *      para acrescentar anos sem apagar o JSON existente.
- *
- * Os placeholders `__SEED_PLACEHOLDER__` do seed antigo NÃO entram mais no banco
- * agora que temos dados oficiais — eram um fallback temporário.
- */
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { db } from "@workspace/db";
+import { enemQuestionsTable } from "@workspace/db/schema";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import type { EnemArea, EnemLetra, EnemQuestao } from "./types";
+import bundledSeed from "./seed-questions.json";
 
-import { ENEM_SEED } from "./seed";
-import seedFromJson from "./seed-questions.json";
-import type { EnemArea, EnemAno, EnemQuestao } from "./types";
-
-const OFFICIAL_QUESTOES = seedFromJson as unknown as EnemQuestao[];
-
-/**
- * Banco efetivo: questões oficiais importadas + entradas reais curadas do seed
- * (como o tema oficial da Redação 2023).
- */
-export const ENEM_BANK: readonly EnemQuestao[] = Object.freeze([
-  ...ENEM_SEED.filter((q) => q.flag === "__REAL__"),
-  ...OFFICIAL_QUESTOES,
-]);
-
-// ─── Utilidades internas ─────────────────────────────────────────────────────
-
-function normalize(text: string): string {
-  return String(text ?? "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
+/** `json` (padrão): lê arquivo JSON embutido ou `ENEM_BANK_JSON_PATH`. `db`: Postgres (`enem_questions`). */
+export function getEnemBankSource(): "json" | "db" {
+  const v = (process.env.ENEM_BANK_SOURCE ?? "json").toLowerCase().trim();
+  return v === "db" ? "db" : "json";
 }
 
-function tokenize(query: string): string[] {
-  return normalize(query)
-    .split(/[^a-z0-9]+/)
-    .filter((t) => t.length >= 3);
+function resolveJsonPathFromEnv(): string {
+  const fromEnv = process.env.ENEM_BANK_JSON_PATH?.trim();
+  if (!fromEnv) throw new Error("ENEM_BANK_JSON_PATH não definido");
+  return path.isAbsolute(fromEnv) ? fromEnv : path.resolve(process.cwd(), fromEnv);
 }
 
-function matchesQuery(q: EnemQuestao, tokens: string[]): boolean {
-  if (tokens.length === 0) return true;
-  const haystack = normalize(
-    [q.tema, q.disciplina, q.enunciado, q.comando, q.bnccCodigos?.join(" ") ?? ""].join(" "),
-  );
-  return tokens.every((t) => haystack.includes(t));
-}
+let jsonCache: EnemQuestao[] | null = null;
 
-// ─── API pública ─────────────────────────────────────────────────────────────
-
-export interface SearchEnemOpts {
-  query?: string;
-  area?: EnemArea;
-  ano?: EnemAno;
-  limit?: number;
-}
-
-/**
- * Busca questões do seed com filtros opcionais.
- * Tokens da query precisam TODOS aparecer (AND, não OR).
- * `limit` é clampado a [1, 50]; default 20.
- */
-export function searchEnem(opts: SearchEnemOpts = {}): EnemQuestao[] {
-  const tokens = opts.query ? tokenize(opts.query) : [];
-  const limit = Math.min(Math.max(opts.limit ?? 20, 1), 50);
-
-  const filtered: EnemQuestao[] = [];
-  for (const q of ENEM_BANK) {
-    if (opts.area && q.area !== opts.area) continue;
-    if (opts.ano && q.ano !== opts.ano) continue;
-    if (!matchesQuery(q, tokens)) continue;
-    filtered.push(q);
-    if (filtered.length >= limit) break;
+async function loadQuestionsFromJson(): Promise<EnemQuestao[]> {
+  if (jsonCache) return jsonCache;
+  const fromEnv = process.env.ENEM_BANK_JSON_PATH?.trim();
+  if (!fromEnv) {
+    jsonCache = (bundledSeed as unknown as EnemQuestao[]) ?? [];
+    return jsonCache;
   }
-  return filtered;
+  const p = resolveJsonPathFromEnv();
+  const raw = await readFile(p, "utf8");
+  const arr = JSON.parse(raw) as unknown;
+  if (!Array.isArray(arr)) {
+    jsonCache = [];
+    return jsonCache;
+  }
+  jsonCache = arr.filter((x) => x && typeof x === "object") as EnemQuestao[];
+  return jsonCache;
 }
 
-/** Lookup direto por id (estável). Retorna null quando não encontra. */
-export function getQuestao(id: string): EnemQuestao | null {
-  if (!id) return null;
-  const hit = ENEM_BANK.find((q) => q.id === id);
-  return hit ?? null;
+async function countDbQuestions(): Promise<number> {
+  const r = await db
+    .select({ c: sql<number>`count(*)::int` })
+    .from(enemQuestionsTable);
+  return Number(r[0]?.c ?? 0);
+}
+
+function shuffleInPlace<T>(arr: T[]): void {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j]!, arr[i]!];
+  }
+}
+
+/** Mapeia dia do simulado ENEM (1–4) para área oficial. */
+export function enemDiaToArea(dia: number): EnemArea | null {
+  if (dia === 1) return "LC";
+  if (dia === 2) return "CH";
+  if (dia === 3) return "CN";
+  if (dia === 4) return "MT";
+  return null;
+}
+
+function isMcQuestion(q: EnemQuestao): boolean {
+  return q.area !== "R" && Array.isArray(q.alternativas) && q.alternativas.length >= 2;
 }
 
 /**
- * Retorna uma questão aleatória respeitando filtros opcionais.
- * Útil para o card "questão do dia".
+ * Carrega questões MC do banco configurado (JSON ou Postgres).
  */
-export function getRandomQuestao(
-  opts: { area?: EnemArea; ano?: EnemAno } = {},
-): EnemQuestao | null {
-  const pool = ENEM_BANK.filter((q) => {
-    if (opts.area && q.area !== opts.area) return false;
-    if (opts.ano && q.ano !== opts.ano) return false;
-    return true;
-  });
-  if (pool.length === 0) return null;
-  const idx = Math.floor(Math.random() * pool.length);
-  return pool[idx] ?? null;
+export async function loadMcQuestionsForArea(
+  area: EnemArea,
+  anos?: number[],
+): Promise<EnemQuestao[]> {
+  const source = getEnemBankSource();
+
+  if (source === "db") {
+    const n = await countDbQuestions();
+    if (n < 1) return [];
+    const conds = [eq(enemQuestionsTable.area, area)];
+    if (anos && anos.length > 0) {
+      conds.push(inArray(enemQuestionsTable.ano, anos));
+    }
+    const rows = await db
+      .select({ questao: enemQuestionsTable.questao })
+      .from(enemQuestionsTable)
+      .where(and(...conds));
+    return rows
+      .map((r) => r.questao as EnemQuestao)
+      .filter((q) => q && isMcQuestion(q));
+  }
+
+  const all = await loadQuestionsFromJson();
+  return all.filter(
+    (q) =>
+      q.area === area &&
+      isMcQuestion(q) &&
+      (!anos?.length || anos.includes(q.ano)),
+  );
 }
 
-/** Total de questões disponíveis no banco (debug / health). */
+/**
+ * Amostra aleatória de até `count` questões MC para o simulado.
+ */
+export async function pickRandomMcQuestions(args: {
+  area: EnemArea;
+  count: number;
+  anos?: number[];
+}): Promise<EnemQuestao[]> {
+  const pool = await loadMcQuestionsForArea(args.area, args.anos);
+  if (pool.length === 0) return [];
+  shuffleInPlace(pool);
+  const n = Math.min(args.count, pool.length);
+  return pool.slice(0, n);
+}
+
+/** Formato esperado pelo app (legado do gerador LLM). */
+export interface SimuladoEnemQuestaoApi {
+  numero: number;
+  materia: string;
+  enunciado: string;
+  pergunta: string;
+  alternativas: Record<EnemLetra, string>;
+  gabarito: EnemLetra;
+  explicacao: string;
+  dificuldade: "facil" | "medio" | "dificil";
+  idOficial?: string;
+  ano?: number;
+}
+
+function toAlternativasRecord(q: EnemQuestao): Record<EnemLetra, string> {
+  const out = {} as Record<EnemLetra, string>;
+  for (const a of q.alternativas) {
+    out[a.letra] = a.texto;
+  }
+  const letters: EnemLetra[] = ["A", "B", "C", "D", "E"];
+  for (const L of letters) {
+    if (!out[L]) out[L] = "";
+  }
+  return out;
+}
+
+export function enemQuestaoToSimuladoApi(q: EnemQuestao, numero: number): SimuladoEnemQuestaoApi {
+  const gab = (q.gabarito ?? "A") as EnemLetra;
+  return {
+    numero,
+    materia: q.disciplina || q.area,
+    enunciado: q.enunciado || "",
+    pergunta: q.comando || "",
+    alternativas: toAlternativasRecord(q),
+    gabarito: gab,
+    explicacao: q.resolucao || "",
+    dificuldade: "medio",
+    idOficial: q.id,
+    ano: q.ano,
+  };
+}
+
+// ─── API síncrona `/api/enem/*` (PR-3) — usa apenas o JSON embutido `seed-questions.json` ───
+
+function questoesParaApiEnem(): EnemQuestao[] {
+  return (bundledSeed as unknown as EnemQuestao[]) ?? [];
+}
+
 export function getEnemSeedStats(): {
   total: number;
   porArea: Record<EnemArea, number>;
-  anos: EnemAno[];
+  anos: number[];
 } {
+  const all = questoesParaApiEnem();
   const porArea: Record<EnemArea, number> = { LC: 0, MT: 0, CN: 0, CH: 0, R: 0 };
-  const anosSet = new Set<EnemAno>();
-  for (const q of ENEM_BANK) {
-    porArea[q.area] += 1;
+  const anosSet = new Set<number>();
+  for (const q of all) {
+    if (q.area in porArea) porArea[q.area]++;
     anosSet.add(q.ano);
   }
-  return {
-    total: ENEM_BANK.length,
-    porArea,
-    anos: [...anosSet].sort((a, b) => a - b),
-  };
+  return { total: all.length, porArea, anos: [...anosSet].sort((a, b) => b - a) };
+}
+
+export function getQuestao(id: string): EnemQuestao | undefined {
+  return questoesParaApiEnem().find((q) => q.id === id);
+}
+
+export interface SearchEnemArgs {
+  query?: string;
+  area?: EnemArea;
+  ano?: number;
+  limit?: number;
+}
+
+export function searchEnem(args: SearchEnemArgs): EnemQuestao[] {
+  const limit = Math.min(50, Math.max(1, args.limit ?? 20));
+  const q = (args.query ?? "").toLowerCase().trim();
+  let list = questoesParaApiEnem().filter((x) => {
+    if (args.area && x.area !== args.area) return false;
+    if (args.ano != null && x.ano !== args.ano) return false;
+    return true;
+  });
+  if (q) {
+    list = list.filter((x) => {
+      const blob = `${x.enunciado} ${x.comando} ${x.disciplina} ${x.tema}`.toLowerCase();
+      return blob.includes(q);
+    });
+  }
+  return list.slice(0, limit);
+}
+
+export function getRandomQuestao(filters: { area?: EnemArea; ano?: number }): EnemQuestao | null {
+  const pool = questoesParaApiEnem().filter((x) => {
+    if (filters.area && x.area !== filters.area) return false;
+    if (filters.ano != null && x.ano !== filters.ano) return false;
+    return true;
+  });
+  if (pool.length === 0) return null;
+  return pool[Math.floor(Math.random() * pool.length)]!;
 }

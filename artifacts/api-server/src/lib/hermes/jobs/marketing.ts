@@ -95,4 +95,12 @@ export async function marketingProactive(): Promise<void> {
   const descricao = parsed.descricao?.trim() || "Ação de campanha sugerida.";
   await persistAcaoProativa("marketing", parsed.tipo ?? "campanha", descricao, parsed.payload);
   await insertAdminInbox("marketing", "campanha", "Campanha sugerida", descricao, parsed.payload);
+
+  const { enqueueTask } = await import("../tasks/queue");
+  await enqueueTask("marketing", "copy", {
+    source: "hourly_proactive",
+    descricao,
+    tipoAcao: parsed.tipo ?? "campanha",
+    payload: parsed.payload ?? null,
+  }).catch((e) => console.warn("[hermes/marketing] enqueueTask:", e));
 }

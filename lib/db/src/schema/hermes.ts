@@ -68,3 +68,22 @@ export const hermesAdminInboxTable = pgTable("hermes_admin_inbox", {
 
 export type HermesAdminInbox = typeof hermesAdminInboxTable.$inferSelect;
 export type InsertHermesAdminInbox = typeof hermesAdminInboxTable.$inferInsert;
+
+// ─── hermes_tarefas ───────────────────────────────────────────────────────────
+// Async Hermes jobs (copy, mensagens, etc.) enfileiradas pelos crons ou rotas;
+// processadas por POST /internal/hermes/process-tasks (worker em lotes).
+export const hermesTarefasTable = pgTable("hermes_tarefas", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id", { length: 100 }).notNull(),
+  tipo: varchar("tipo", { length: 50 }).notNull(),
+  payload: jsonb("payload"),
+  status: varchar("status", { length: 30 }).notNull().default("pending"),
+  resultado: jsonb("resultado"),
+  erro: text("erro"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+});
+
+export type HermesTarefa = typeof hermesTarefasTable.$inferSelect;
+export type InsertHermesTarefa = typeof hermesTarefasTable.$inferInsert;

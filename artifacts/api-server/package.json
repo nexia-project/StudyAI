@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "ingest:bncc": "tsx scripts/ingest-bncc.ts",
     "ingest:enem": "tsx scripts/ingest-enem.ts",
+    "ingest:enem-db": "tsx scripts/ingest-enem-to-db.ts",
     "ingest:postulados": "tsx scripts/ingest-postulados.ts",
     "ingest:concursos": "tsx scripts/ingest-concursos.ts",
     "reclassify:concursos": "tsx scripts/reclassify-concursos-areas.ts"

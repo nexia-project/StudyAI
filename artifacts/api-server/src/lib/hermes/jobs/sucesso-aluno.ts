@@ -71,6 +71,13 @@ export async function sucessoAlunoProactive(): Promise<void> {
     ],
   });
 
+  const { enqueueTask } = await import("../tasks/queue");
+  await enqueueTask("sucesso_aluno", "mensagem", {
+    source: "hourly_proactive",
+    descricao,
+    patterns,
+  }).catch((e) => console.warn("[hermes/sucesso_aluno] enqueueTask:", e));
+
   await insertAdminInbox(
     "sucesso_aluno",
     "risco_churn",

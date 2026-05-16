@@ -1,8 +1,13 @@
 import { Router, type IRouter } from "express";
 import { openai, OR } from "../lib/aiClient";
 import { requireAuth } from "../middlewares/requireAuth";
-import { getKnowledgeContext } from "../utils/knowledge-context";
 import { cacheGet, cacheSave } from "../lib/semanticCache";
+import {
+  enemDiaToArea,
+  enemQuestaoToSimuladoApi,
+  getEnemBankSource,
+  pickRandomMcQuestions,
+} from "../lib/enem/bank";
 
 const router: IRouter = Router();
 
@@ -31,7 +36,17 @@ const ENEM_DIAS: Record<number, { nome: string; materias: string[]; descricao: s
 
 router.post("/simulado-enem/gerar", requireAuth, async (req, res) => {
   try {
-    const { dia, quantidade = 20 } = req.body as { dia: number; quantidade?: number };
+    const {
+      dia,
+      quantidade = 20,
+      anos,
+      incluirRedacao,
+    } = req.body as {
+      dia: number;
+      quantidade?: number;
+      anos?: number[];
+      incluirRedacao?: boolean;
+    };
 
     if (!dia || !ENEM_DIAS[dia]) {
       res.status(400).json({ erro: "Dia deve ser entre 1 e 4" });
@@ -40,101 +55,86 @@ router.post("/simulado-enem/gerar", requireAuth, async (req, res) => {
 
     const diaInfo = ENEM_DIAS[dia];
     const qtd = Math.min(Math.max(Number(quantidade), 5), 45);
+    const area = enemDiaToArea(dia);
+    if (!area) {
+      res.status(400).json({ erro: "Área inválida" });
+      return;
+    }
 
-    const ckEnem = `simulado-enem|${dia}|${qtd}`;
+    const anosKey = Array.isArray(anos) && anos.length ? [...new Set(anos)].sort().join("-") : "all";
+    const src = getEnemBankSource();
+    const ckEnem = `simulado-enem|${dia}|${qtd}|${src}|${anosKey}`;
     const cachedEnem = await cacheGet("simulado-enem", ckEnem);
     if (cachedEnem.hit) {
       try {
         const cached = JSON.parse(cachedEnem.response);
         res.json({ ...cached, diaInfo, totalTempo: "5 horas e 30 minutos", totalQuestoes: qtd });
         return;
-      } catch { /* gera novo */ }
+      } catch {
+        /* gera novo */
+      }
     }
 
-    // ── Consulta automática BNCC + Wikipedia para cada área do ENEM ───────────
-    const materiasPrincipais = diaInfo.materias;
-    const bnccContextBlocks = await Promise.allSettled(
-      materiasPrincipais.slice(0, 2).map(m =>
-        getKnowledgeContext({
-          query: `${diaInfo.nome} ENEM`,
-          materia: m,
-          objetivo: "ENEM",
-          userId: req.userId,
-          maxCharsPerSource: 600,
-          includeLocal: false, // No user docs for ENEM standard questions
-        })
-      )
-    );
-
-    const bnccBlocks = bnccContextBlocks
-      .filter(r => r.status === "fulfilled" && (r as PromiseFulfilledResult<any>).value.hasKnowledge)
-      .map(r => (r as PromiseFulfilledResult<any>).value.contextBlock)
-      .join("\n\n");
-
-    const bnccSystemAddendum = bnccBlocks
-      ? `\n\n${bnccBlocks}\n\nUse as habilidades BNCC acima para garantir que as questões sejam tecnicamente corretas e alinhadas com o currículo oficial.`
-      : "";
-
-    const prompt = `Gere exatamente ${qtd} questões no estilo oficial do ENEM para o Dia ${dia}: ${diaInfo.nome}.
-
-Matérias cobradas: ${diaInfo.materias.join(", ")}.
-
-REGRAS OBRIGATÓRIAS:
-1. Cada questão deve ter exatamente 5 alternativas (A, B, C, D, E)
-2. Use contextos reais: textos, gráficos descritos, situações-problema, dados estatísticos
-3. Simule o nível de dificuldade do ENEM real (varie entre fácil, médio e difícil)
-4. Distribua proporcionalmente entre as matérias: ${diaInfo.materias.join(", ")}
-5. Inclua contexto/enunciado antes de cada questão
-6. Inclua a explicação da resposta correta
-
-Responda SOMENTE com JSON válido:
-{
-  "dia": ${dia},
-  "areaNome": "${diaInfo.nome}",
-  "questoes": [
-    {
-      "numero": 1,
-      "materia": "Língua Portuguesa",
-      "enunciado": "Texto/contexto introdutório da questão...",
-      "pergunta": "A questão propriamente dita...",
-      "alternativas": {
-        "A": "...",
-        "B": "...",
-        "C": "...",
-        "D": "...",
-        "E": "..."
-      },
-      "gabarito": "C",
-      "explicacao": "A alternativa C está correta porque...",
-      "dificuldade": "medio"
-    }
-  ]
-}`;
-
-    const enemSystemPrompt = `Você é um especialista em elaboração de questões do ENEM. Gere questões realistas, contextualizadas e no padrão oficial do ENEM. Responda sempre em JSON puro sem markdown.
-
-RIGOR TÉCNICO: Toda questão deve ser tecnicamente irrefutável — fórmulas, datas, nomes, conceitos e definições devem ser exatos. Nenhuma margem para imprecisão acadêmica.${bnccSystemAddendum}`;
-
-    const completion = await openai.chat.completions.create({
-      model: OR.fast,
-      messages: [
-        { role: "system", content: enemSystemPrompt },
-        { role: "user", content: prompt },
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.8,
-      max_tokens: 4000,
+    const picked = await pickRandomMcQuestions({
+      area,
+      count: qtd,
+      anos: Array.isArray(anos) && anos.length ? anos : undefined,
     });
 
-    const raw = completion.choices[0]?.message?.content ?? "{}";
-    const data = JSON.parse(raw);
+    if (picked.length < Math.min(5, qtd)) {
+      res.status(503).json({
+        erro:
+          "Banco de questões ENEM insuficiente para este filtro. Rode `pnpm --filter @workspace/api-server run ingest:enem` (JSON) e/ou `ingest:enem-db` com `ENEM_BANK_SOURCE=db`.",
+        area,
+        fonte: src,
+        disponiveis: picked.length,
+      });
+      return;
+    }
+
+    const questoes = picked.map((q, i) => enemQuestaoToSimuladoApi(q, i + 1));
+
+    let redacao: Record<string, unknown> | null = null;
+    if (incluirRedacao) {
+      const temaPrompt = `Proponha UM tema de redação estilo ENEM (dissertativo-argumentativo), PT-BR, com texto motivador curto (2–3 parágrafos) e comando explícito.
+Responda só JSON: { "temaTitulo": string, "textoMotivador": string, "comando": string }`;
+
+      const completion = await openai.chat.completions.create({
+        model: OR.fast,
+        messages: [
+          {
+            role: "system",
+            content:
+              "Você elabora temas de redação ENEM. Responda apenas JSON válido, sem markdown.",
+          },
+          { role: "user", content: temaPrompt },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+        max_tokens: 900,
+      });
+      const rawR = completion.choices[0]?.message?.content ?? "{}";
+      try {
+        redacao = JSON.parse(rawR) as Record<string, unknown>;
+      } catch {
+        redacao = { textoBruto: rawR };
+      }
+    }
+
+    const data = {
+      dia,
+      areaNome: diaInfo.nome,
+      questoes,
+      ...(redacao ? { redacao } : {}),
+    };
+
     cacheSave("simulado-enem", ckEnem, JSON.stringify(data), OR.fast).catch(() => {});
 
     res.json({
       ...data,
       diaInfo,
       totalTempo: "5 horas e 30 minutos",
-      totalQuestoes: qtd,
+      totalQuestoes: questoes.length,
     });
   } catch (err) {
     console.error("simulado-enem:", err);

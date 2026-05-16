@@ -769,6 +769,44 @@ await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_knowdocs_notebook ON knowled
         WHERE dismissed_at IS NULL
     `);
 
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS hermes_tarefas (
+        id             VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+        agent_id       VARCHAR(100) NOT NULL,
+        tipo           VARCHAR(50) NOT NULL,
+        payload        JSONB,
+        status         VARCHAR(30) NOT NULL DEFAULT 'pending',
+        resultado      JSONB,
+        erro           TEXT,
+        created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        started_at     TIMESTAMPTZ,
+        completed_at   TIMESTAMPTZ
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_hermes_tarefas_status_created
+        ON hermes_tarefas (status, created_at ASC)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_hermes_tarefas_agent
+        ON hermes_tarefas (agent_id, created_at DESC)
+    `);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS enem_questions (
+        id           VARCHAR(80) PRIMARY KEY,
+        ano          INTEGER NOT NULL,
+        area         VARCHAR(2) NOT NULL,
+        disciplina   VARCHAR(120),
+        questao      JSONB NOT NULL,
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_enem_questions_area_ano
+        ON enem_questions (area, ano)
+    `);
+
     // ── Admin promotion — promote ADMIN_EMAILS users to role='admin' at boot ──
     const adminEmailsRaw = process.env.ADMIN_EMAILS || "nexusatacado@gmail.com";
     const adminEmailsList = adminEmailsRaw.split(",").map(e => e.trim().toLowerCase()).filter(Boolean);

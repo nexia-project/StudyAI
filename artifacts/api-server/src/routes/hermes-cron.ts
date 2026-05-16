@@ -68,6 +68,18 @@ router.post("/internal/hermes/hourly-proactive", requireCronSecret, async (_req:
     }
   }
 
+  // Drena fila Hermes (tarefas assíncronas). Opcional no Railway: agende também
+  // POST /internal/hermes/process-tasks a cada 5–15 min (mesmo x-cron-secret) para
+  // processar mais rápido sem depender só deste hourly.
+  let processTasks = { claimed: 0, completed: 0, failed: 0, errors: [] as string[] };
+  try {
+    const { processNextTasks } = await import("../lib/hermes/tasks/queue");
+    processTasks = await processNextTasks(5);
+  } catch (err: any) {
+    console.error("[hermes/cron] processNextTasks (inline hourly) falhou:", err);
+    processTasks.errors.push(err?.message ?? String(err));
+  }
+
   setHermesCronHint({
     job: "hourly-proactive",
     finishedAt: new Date().toISOString(),
@@ -76,7 +88,27 @@ router.post("/internal/hermes/hourly-proactive", requireCronSecret, async (_req:
     errorCount: errors.length,
   });
 
-  res.json({ ok: errors.length === 0, ran, errors });
+  res.json({
+    ok: errors.length === 0,
+    ran,
+    errors,
+    processTasks,
+  });
+});
+
+router.post("/internal/hermes/process-tasks", requireCronSecret, async (req: Request, res: Response) => {
+  const raw =
+    (req.body as { limit?: unknown } | undefined)?.limit ??
+    (typeof req.query.limit === "string" ? req.query.limit : undefined);
+  const n = Math.min(50, Math.max(1, Number(raw) || 5));
+  try {
+    const { processNextTasks } = await import("../lib/hermes/tasks/queue");
+    const out = await processNextTasks(n);
+    res.json({ ok: out.failed === 0, ...out });
+  } catch (err: any) {
+    console.error("[hermes/cron] process-tasks:", err);
+    res.status(500).json({ ok: false, erro: err?.message ?? String(err) });
+  }
 });
 
 export default router;

@@ -7,6 +7,29 @@ import Stripe from "stripe";
 
 const router: IRouter = Router();
 
+type StripeId = string | { id: string } | null | undefined;
+
+type CheckoutSessionWebhookPayload = {
+  client_reference_id?: string | null;
+  metadata?: { userId?: string } | null;
+  customer?: StripeId;
+  subscription?: StripeId;
+};
+
+type SubscriptionWebhookPayload = {
+  id: string;
+  customer?: StripeId;
+  status: string;
+};
+
+function getStripeId(value: StripeId): string | undefined {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return value?.id;
+}
+
 router.post("/subscription/webhook", async (req: Request, res: Response) => {
   const sig = req.headers["stripe-signature"] as string;
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -34,10 +57,10 @@ router.post("/subscription/webhook", async (req: Request, res: Response) => {
   try {
     switch (event.type) {
       case "checkout.session.completed": {
-        const session = event.data.object as Stripe.Checkout.Session;
+        const session = event.data.object as CheckoutSessionWebhookPayload;
         const userId = session.client_reference_id || (session.metadata?.userId as string);
-        const customerId = session.customer as string;
-        const subscriptionId = session.subscription as string;
+        const customerId = getStripeId(session.customer);
+        const subscriptionId = getStripeId(session.subscription);
 
         if (userId) {
           await db
@@ -55,9 +78,14 @@ router.post("/subscription/webhook", async (req: Request, res: Response) => {
       }
 
       case "customer.subscription.updated": {
-        const subscription = event.data.object as Stripe.Subscription;
-        const customerId = subscription.customer as string;
+        const subscription = event.data.object as SubscriptionWebhookPayload;
+        const customerId = getStripeId(subscription.customer);
         const status = subscription.status;
+
+        if (!customerId) {
+          req.log.warn({ subscriptionId: subscription.id }, "Subscription update without customer ID");
+          break;
+        }
 
         await db
           .update(usersTable)
@@ -73,8 +101,13 @@ router.post("/subscription/webhook", async (req: Request, res: Response) => {
       }
 
       case "customer.subscription.deleted": {
-        const subscription = event.data.object as Stripe.Subscription;
-        const customerId = subscription.customer as string;
+        const subscription = event.data.object as SubscriptionWebhookPayload;
+        const customerId = getStripeId(subscription.customer);
+
+        if (!customerId) {
+          req.log.warn({ subscriptionId: subscription.id }, "Subscription deletion without customer ID");
+          break;
+        }
 
         await db
           .update(usersTable)

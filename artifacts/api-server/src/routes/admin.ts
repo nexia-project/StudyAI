@@ -36,6 +36,24 @@ type ProviderDiagnostic = {
   notes?: string;
 };
 
+type ProviderBillingStatus = "connected" | "missing_config" | "unsupported" | "error" | "not_implemented";
+
+type ProviderBilling = {
+  provider: string;
+  status: ProviderBillingStatus;
+  billingIntegrated: boolean;
+  lastCheckedAt: string;
+  period?: { from: string; to: string };
+  balanceUsd?: number | null;
+  totalCreditsUsd?: number | null;
+  usedCreditsUsd?: number | null;
+  costUsd?: number | null;
+  currency?: string;
+  usage?: Record<string, unknown>;
+  error?: string;
+  action: string;
+};
+
 function dateInAdminTimeZone(date = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: ADMIN_TIME_ZONE,
@@ -94,6 +112,325 @@ function isConfigured(...names: string[]): boolean {
   });
 }
 
+function getConfiguredEnv(...names: string[]): { name: string; value: string } | null {
+  for (const name of names) {
+    const value = process.env[name];
+    if (value && value !== "dummy" && value.length > 0) return { name, value };
+  }
+  return null;
+}
+
+function numberOrNull(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function unixSeconds(dateOnly: string): number {
+  return Math.floor(Date.parse(`${dateOnly}T00:00:00.000Z`) / 1000);
+}
+
+function isoDateStart(dateOnly: string): string {
+  return `${dateOnly}T00:00:00Z`;
+}
+
+function providerBillingBase(provider: string, status: ProviderBillingStatus, action: string, extra: Partial<ProviderBilling> = {}): ProviderBilling {
+  return {
+    provider,
+    status,
+    billingIntegrated: status === "connected",
+    lastCheckedAt: new Date().toISOString(),
+    action,
+    ...extra,
+  };
+}
+
+async function fetchJsonWithTimeout(url: string, init: RequestInit, timeoutMs = 4500): Promise<{ status: number; ok: boolean; body: any; text: string }> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...init, signal: controller.signal });
+    const text = await response.text();
+    let body: any = null;
+    if (text) {
+      try {
+        body = JSON.parse(text);
+      } catch {
+        body = null;
+      }
+    }
+    return { status: response.status, ok: response.ok, body, text };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function providerErrorMessage(provider: string, status: number, body: any, fallbackText: string): string {
+  const message =
+    body?.error?.message ??
+    body?.error ??
+    body?.message ??
+    fallbackText.slice(0, 200) ??
+    `HTTP ${status}`;
+  return `${provider}: HTTP ${status} - ${String(message).slice(0, 240)}`;
+}
+
+async function getOpenRouterBilling(): Promise<ProviderBilling> {
+  const key = getConfiguredEnv("OPENROUTER_MANAGEMENT_API_KEY", "AI_INTEGRATIONS_OPENROUTER_API_KEY", "OPENROUTER_API_KEY");
+  if (!key) {
+    return providerBillingBase(
+      "openrouter",
+      "missing_config",
+      "Configure OPENROUTER_MANAGEMENT_API_KEY (preferencial) ou uma chave OpenRouter com permissão de credits.",
+    );
+  }
+
+  try {
+    const result = await fetchJsonWithTimeout("https://openrouter.ai/api/v1/credits", {
+      headers: {
+        Authorization: `Bearer ${key.value}`,
+        Accept: "application/json",
+      },
+    });
+    if (!result.ok) {
+      const needsManagementKey = result.status === 401 || result.status === 403;
+      return providerBillingBase(
+        "openrouter",
+        "error",
+        needsManagementKey
+          ? "A API de credits do OpenRouter exige management key/permissão de créditos. Configure OPENROUTER_MANAGEMENT_API_KEY."
+          : "Verifique a chave OpenRouter e tente novamente.",
+        { error: providerErrorMessage("OpenRouter credits", result.status, result.body, result.text) },
+      );
+    }
+
+    const data = result.body?.data ?? {};
+    const totalCreditsUsd = numberOrNull(data.total_credits);
+    const usedCreditsUsd = numberOrNull(data.total_usage);
+    const balanceUsd = totalCreditsUsd != null && usedCreditsUsd != null ? roundMoney(totalCreditsUsd - usedCreditsUsd) : null;
+    return providerBillingBase(
+      "openrouter",
+      "connected",
+      `Saldo lido de /api/v1/credits usando ${key.name}.`,
+      {
+        totalCreditsUsd,
+        usedCreditsUsd,
+        balanceUsd,
+        currency: "USD",
+      },
+    );
+  } catch (err) {
+    return providerBillingBase("openrouter", "error", "Falha ao consultar OpenRouter credits; verifique rede/chave.", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+async function getOpenAiBilling(rangeFrom: string, rangeTo: string): Promise<ProviderBilling> {
+  const key = getConfiguredEnv("OPENAI_ADMIN_API_KEY", "OPENAI_API_KEY");
+  if (!key) {
+    return providerBillingBase(
+      "openai",
+      "missing_config",
+      "Configure OPENAI_ADMIN_API_KEY (org owner/admin com permissão de Usage/Costs). OPENAI_API_KEY comum pode não ter acesso a custos.",
+      { period: { from: rangeFrom, to: rangeTo } },
+    );
+  }
+
+  const params = new URLSearchParams({
+    start_time: String(unixSeconds(rangeFrom)),
+    end_time: String(unixSeconds(addDays(rangeTo, 1))),
+    bucket_width: "1d",
+    limit: "180",
+  });
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${key.value}`,
+    Accept: "application/json",
+  };
+  if (process.env.OPENAI_ORG_ID) headers["OpenAI-Organization"] = process.env.OPENAI_ORG_ID;
+  if (process.env.OPENAI_PROJECT_ID) headers["OpenAI-Project"] = process.env.OPENAI_PROJECT_ID;
+
+  try {
+    const result = await fetchJsonWithTimeout(`https://api.openai.com/v1/organization/costs?${params}`, { headers });
+    if (!result.ok) {
+      return providerBillingBase(
+        "openai",
+        "error",
+        "A Costs API da OpenAI exige chave com permissão de Usage/Costs da organização/projeto. Configure OPENAI_ADMIN_API_KEY e, se necessário, OPENAI_ORG_ID/OPENAI_PROJECT_ID.",
+        {
+          period: { from: rangeFrom, to: rangeTo },
+          error: providerErrorMessage("OpenAI Costs API", result.status, result.body, result.text),
+        },
+      );
+    }
+
+    const buckets = Array.isArray(result.body?.data) ? result.body.data : [];
+    const costUsd = roundMoney(buckets.reduce((sum: number, bucket: any) => {
+      const results = Array.isArray(bucket?.results) ? bucket.results : [];
+      return sum + results.reduce((inner: number, item: any) => inner + Number(item?.amount?.value ?? 0), 0);
+    }, 0));
+    const currency = buckets
+      .flatMap((bucket: any) => Array.isArray(bucket?.results) ? bucket.results : [])
+      .map((item: any) => item?.amount?.currency)
+      .find(Boolean) ?? "usd";
+
+    return providerBillingBase(
+      "openai",
+      "connected",
+      `Custo real lido de /v1/organization/costs usando ${key.name}.`,
+      {
+        period: { from: rangeFrom, to: rangeTo },
+        costUsd,
+        currency: String(currency).toUpperCase(),
+      },
+    );
+  } catch (err) {
+    return providerBillingBase("openai", "error", "Falha ao consultar OpenAI Costs API; verifique rede/chave/permissões.", {
+      period: { from: rangeFrom, to: rangeTo },
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+async function getAnthropicBilling(rangeFrom: string, rangeTo: string): Promise<ProviderBilling> {
+  const key = getConfiguredEnv("ANTHROPIC_ADMIN_API_KEY", "ANTHROPIC_ADMIN_KEY");
+  if (!key) {
+    const hasMessageKey = isConfigured("ANTHROPIC_API_KEY");
+    return providerBillingBase(
+      "anthropic",
+      "missing_config",
+      hasMessageKey
+        ? "ANTHROPIC_API_KEY é chave de mensagens; para custos reais configure ANTHROPIC_ADMIN_API_KEY (sk-ant-admin...) com acesso Admin API."
+        : "Configure ANTHROPIC_ADMIN_API_KEY (sk-ant-admin...) para consultar o Cost Report da Anthropic.",
+      { period: { from: rangeFrom, to: rangeTo } },
+    );
+  }
+
+  const params = new URLSearchParams({
+    starting_at: isoDateStart(rangeFrom),
+    ending_at: isoDateStart(addDays(rangeTo, 1)),
+    bucket_width: "1d",
+  });
+
+  try {
+    const result = await fetchJsonWithTimeout(`https://api.anthropic.com/v1/organizations/cost_report?${params}`, {
+      headers: {
+        "x-api-key": key.value,
+        "anthropic-version": "2023-06-01",
+        Accept: "application/json",
+      },
+    });
+    if (!result.ok) {
+      return providerBillingBase(
+        "anthropic",
+        "error",
+        "O Cost Report da Anthropic exige Admin API key (sk-ant-admin...) e organização com API Admin habilitada.",
+        {
+          period: { from: rangeFrom, to: rangeTo },
+          error: providerErrorMessage("Anthropic Cost Report", result.status, result.body, result.text),
+        },
+      );
+    }
+
+    const buckets = Array.isArray(result.body?.data) ? result.body.data : [];
+    const costUsd = roundMoney(buckets.reduce((sum: number, bucket: any) => {
+      const results = Array.isArray(bucket?.results) ? bucket.results : [];
+      const bucketTotal = numberOrNull(bucket?.cost_usd ?? bucket?.total_cost_usd);
+      if (bucketTotal != null) return sum + bucketTotal;
+      return sum + results.reduce((inner: number, item: any) => {
+        const amount = item?.amount ?? item?.cost ?? item?.cost_usd ?? item?.total_cost_usd;
+        if (typeof amount === "object" && amount !== null) return inner + Number(amount.value ?? 0);
+        return inner + Number(amount ?? 0);
+      }, 0);
+    }, 0));
+
+    return providerBillingBase(
+      "anthropic",
+      "connected",
+      `Custo real lido do Cost Report Admin API usando ${key.name}.`,
+      {
+        period: { from: rangeFrom, to: rangeTo },
+        costUsd,
+        currency: "USD",
+      },
+    );
+  } catch (err) {
+    return providerBillingBase("anthropic", "error", "Falha ao consultar Anthropic Cost Report; verifique rede/chave/permissões.", {
+      period: { from: rangeFrom, to: rangeTo },
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+async function getElevenLabsBilling(): Promise<ProviderBilling> {
+  const key = getConfiguredEnv("ELEVENLABS_API_KEY");
+  if (!key) {
+    return providerBillingBase("elevenlabs", "missing_config", "Configure ELEVENLABS_API_KEY para consultar assinatura/uso de caracteres.");
+  }
+
+  try {
+    const result = await fetchJsonWithTimeout("https://api.elevenlabs.io/v1/user/subscription", {
+      headers: {
+        "xi-api-key": key.value,
+        Accept: "application/json",
+      },
+    });
+    if (!result.ok) {
+      return providerBillingBase("elevenlabs", "error", "Verifique ELEVENLABS_API_KEY para consultar /v1/user/subscription.", {
+        error: providerErrorMessage("ElevenLabs subscription", result.status, result.body, result.text),
+      });
+    }
+
+    const characterCount = numberOrNull(result.body?.character_count);
+    const characterLimit = numberOrNull(result.body?.character_limit);
+    const nextResetUnix = numberOrNull(result.body?.next_character_count_reset_unix);
+    return providerBillingBase(
+      "elevenlabs",
+      "connected",
+      "Uso real de caracteres lido de /v1/user/subscription. A API não retorna valor de fatura em USD neste endpoint.",
+      {
+        usage: {
+          characterCount,
+          characterLimit,
+          nextResetAt: nextResetUnix ? new Date(nextResetUnix * 1000).toISOString() : null,
+          tier: result.body?.tier ?? null,
+        },
+      },
+    );
+  } catch (err) {
+    return providerBillingBase("elevenlabs", "error", "Falha ao consultar ElevenLabs subscription; verifique rede/chave.", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+async function buildProviderBilling(rangeFrom: string, rangeTo: string): Promise<ProviderBilling[]> {
+  const [openrouter, openai, anthropic, elevenlabs] = await Promise.all([
+    getOpenRouterBilling(),
+    getOpenAiBilling(rangeFrom, rangeTo),
+    getAnthropicBilling(rangeFrom, rangeTo),
+    getElevenLabsBilling(),
+  ]);
+
+  return [
+    openrouter,
+    openai,
+    anthropic,
+    providerBillingBase(
+      "gemini",
+      "unsupported",
+      "Gemini/Google não tem endpoint simples de fatura via GEMINI_API_KEY; custos reais exigem Google Cloud Billing Export/API no projeto.",
+      { period: { from: rangeFrom, to: rangeTo } },
+    ),
+    providerBillingBase(
+      "deepseek",
+      "not_implemented",
+      "DeepSeek está sendo usado via OpenRouter neste deploy; reconcilie pelo saldo/uso do OpenRouter ou configure integração direta dedicada.",
+      { period: { from: rangeFrom, to: rangeTo } },
+    ),
+    elevenlabs,
+  ];
+}
+
 async function tableExists(tableName: string): Promise<boolean> {
   const row = await safeQueryOne<{ exists: boolean }>(`tableExists:${tableName}`, () => db.execute(sql`
     SELECT EXISTS (
@@ -112,22 +449,31 @@ function buildProviderDiagnostics(aiCostByModel: any[]): ProviderDiagnostic[] {
     {
       id: "openrouter",
       ok: isConfigured("AI_INTEGRATIONS_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"),
-      billingIntegrated: false,
+      billingIntegrated: isConfigured("OPENROUTER_MANAGEMENT_API_KEY"),
       loggedVia: ["openrouterFallback", "hermes_qa_sintetico"],
-      notes: "Sem API de fatura/saldo integrada; custos são estimativas registradas por chamada.",
+      notes: isConfigured("OPENROUTER_MANAGEMENT_API_KEY")
+        ? "Saldo real consultável via OpenRouter credits."
+        : "Para saldo real, configure OPENROUTER_MANAGEMENT_API_KEY; chaves normais podem retornar 403.",
     },
     {
       id: "openai",
       ok: isConfigured("AI_INTEGRATIONS_OPENAI_API_KEY", "OPENAI_API_KEY"),
-      billingIntegrated: false,
+      billingIntegrated: isConfigured("OPENAI_ADMIN_API_KEY", "OPENAI_API_KEY"),
       loggedVia: ["openai-direct fallback", "semantic_cache_embedding"],
-      notes: hasLoggedProvider("openai") || hasLoggedProvider("openai-direct") ? undefined : "Pode haver TTS/STT/imagem sem logger específico neste deploy.",
+      notes: isConfigured("OPENAI_ADMIN_API_KEY")
+        ? "Costs API será consultada com chave admin."
+        : hasLoggedProvider("openai") || hasLoggedProvider("openai-direct")
+          ? "Para custo real, use OPENAI_ADMIN_API_KEY com permissão de Usage/Costs."
+          : "Pode haver TTS/STT/imagem sem logger específico; custo real exige OPENAI_ADMIN_API_KEY.",
     },
     {
       id: "anthropic",
-      ok: isConfigured("ANTHROPIC_API_KEY") || hasLoggedProvider("anthropic"),
-      billingIntegrated: false,
+      ok: isConfigured("ANTHROPIC_API_KEY", "ANTHROPIC_ADMIN_API_KEY", "ANTHROPIC_ADMIN_KEY") || hasLoggedProvider("anthropic"),
+      billingIntegrated: isConfigured("ANTHROPIC_ADMIN_API_KEY", "ANTHROPIC_ADMIN_KEY"),
       loggedVia: ["via OpenRouter quando o modelo é anthropic/*"],
+      notes: isConfigured("ANTHROPIC_ADMIN_API_KEY", "ANTHROPIC_ADMIN_KEY")
+        ? "Cost Report da Anthropic será consultado com Admin API key."
+        : "Anthropic direto requer ANTHROPIC_ADMIN_API_KEY para custos reais; ANTHROPIC_API_KEY só envia mensagens.",
     },
     {
       id: "deepseek",
@@ -529,7 +875,8 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
   const aiCostConsistent = [aiFeatureCostUsd, aiModelCostUsd, aiDailyCostUsd]
     .every(total => Math.abs(total - aiTotalCostUsd) < 0.000001);
   const aiProvidersDiagnostics = buildProviderDiagnostics(aiCostByModel);
-  const billingIntegratedProviders = aiProvidersDiagnostics.filter(provider => provider.billingIntegrated).map(provider => provider.id);
+  const providerBilling = await buildProviderBilling(rangeFrom, rangeTo);
+  const billingIntegratedProviders = providerBilling.filter(provider => provider.billingIntegrated).map(provider => provider.provider);
   const missingProviderConfigs = aiProvidersDiagnostics.filter(provider => !provider.ok).map(provider => provider.id);
   const loggedFeatures = aiCostByFeature.map((row: any) => String(row.feature));
   const loggedModels = aiCostByModel.map((row: any) => {
@@ -538,12 +885,25 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
     return provider && provider !== "Não informado" ? `${provider}/${model}` : model;
   });
   const costBasis: CostBasis = billingIntegratedProviders.length > 0 ? "mixed" : "logged_usage";
+  const providerConfigActions: Record<string, string> = {
+    openrouter: "Configuração ausente: OpenRouter precisa de AI_INTEGRATIONS_OPENROUTER_API_KEY/OPENROUTER_API_KEY para uso e OPENROUTER_MANAGEMENT_API_KEY para saldo real.",
+    openai: "Configuração ausente: OpenAI direto precisa de OPENAI_API_KEY; custo real deve usar OPENAI_ADMIN_API_KEY com permissão de Usage/Costs.",
+    anthropic: "Configuração ausente: Anthropic direto precisa de ANTHROPIC_API_KEY para mensagens ou ANTHROPIC_ADMIN_API_KEY para Cost Report; modelos anthropic/* via OpenRouter dependem do OpenRouter.",
+    deepseek: "Configuração ausente: DeepSeek direto precisa de DEEPSEEK_API_KEY; neste deploy normalmente é medido via OpenRouter.",
+    gemini: "Configuração ausente: Gemini precisa de GEMINI_API_KEY ou GOOGLE_GENERATIVE_AI_API_KEY; fatura real exige Google Cloud Billing Export/API.",
+    elevenlabs: "Configuração ausente: ElevenLabs precisa de ELEVENLABS_API_KEY para uso real de caracteres.",
+  };
   const missingSources = [
-    "provider_invoice_api: OpenRouter/OpenAI/Anthropic/Gemini/ElevenLabs sem billing real integrado",
+    billingIntegratedProviders.length === 0
+      ? "Nenhuma API real de billing/saldo conectada; os totais abaixo continuam vindo somente de ai_cost_log."
+      : null,
+    ...providerBilling
+      .filter(provider => provider.status !== "connected")
+      .map(provider => `${provider.provider}: ${provider.action}`),
     !loggedFeatures.includes("semantic_cache_embedding") ? "embeddings/cache semântico sem eventos no período" : null,
     !loggedFeatures.includes("hermes_qa_sintetico") ? "Hermes QA sintético sem eventos no período" : null,
     "transcrição/OCR/TTS/imagem: exigem logger específico quando houver chamadas diretas fora do cliente central",
-    ...missingProviderConfigs.map(provider => `config:${provider}`),
+    ...missingProviderConfigs.map(provider => providerConfigActions[provider] ?? `Configuração ausente para ${provider}.`),
   ].filter((value): value is string => Boolean(value));
 
   // ── Helper: compute % change ─────────────────────────────────────────────────
@@ -607,6 +967,7 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
       { feature: "Flashcards",    uses: (flashRevRange as any)?.count ?? 0, users: 0, last7d: (flashRevRange as any)?.count ?? 0 },
     ],
     aiProviders: aiProvidersDiagnostics,
+    providerBilling,
     dataQuality: {
       costBasis,
       lastEventAt: (aiLastEvent as any)?.last_event_at ?? null,
@@ -617,7 +978,9 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
         models: loggedModels,
         providers: aiProvidersDiagnostics.filter(provider => provider.loggedVia.length > 0).map(provider => provider.id),
       },
-      warning: "IA & Custos mostra uso/custo registrado no sistema, não gasto real de fatura dos provedores. Integre billing APIs/env credentials para reconciliar com invoice.",
+      warning: billingIntegratedProviders.length > 0
+        ? "IA & Custos separa gasto real dos provedores do uso registrado internamente. Não some os dois sem reconciliação."
+        : "IA & Custos mostra uso/custo registrado no sistema, não gasto real de fatura dos provedores. Configure billing/saldo para reconciliar com invoice.",
     },
     trilhaBySubject: trilhaRows.map((r: any) => ({ subject: r.subject, students: r.cnt, avgLevel: r.avg_level, maxLevel: r.max_level })),
     diagnosticsCompleted30d: 0,
@@ -641,7 +1004,7 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
         missingSources,
         trackedFeatures: loggedFeatures,
         trackedModels: loggedModels,
-        warning: "Totais calculados somente a partir de ai_cost_log. Não representam invoice/provider billing.",
+        warning: "Totais desta seção são calculados somente a partir de ai_cost_log. O gasto real dos provedores está em providerBilling.",
       },
       period: {
         ...normalizedRange,

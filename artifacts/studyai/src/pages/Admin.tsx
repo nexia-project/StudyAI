@@ -40,6 +40,22 @@ type RoleRequest = {
   cpf: string | null; message: string | null; createdAt: string;
   email: string | null; firstName: string | null; lastName: string | null;
 };
+type ProviderBillingStatus = "connected" | "missing_config" | "unsupported" | "error" | "not_implemented";
+type ProviderBilling = {
+  provider: string;
+  status: ProviderBillingStatus;
+  billingIntegrated: boolean;
+  lastCheckedAt: string;
+  period?: { from: string; to: string };
+  balanceUsd?: number | null;
+  totalCreditsUsd?: number | null;
+  usedCreditsUsd?: number | null;
+  costUsd?: number | null;
+  currency?: string;
+  usage?: Record<string, unknown>;
+  error?: string;
+  action: string;
+};
 type AdminStats = {
   totalUsers: number; todayNewUsers: number; premiumUsers: number;
   teacherCount: number; govCount: number; todayActive: number; studyingNow: number; pendingRequests: number;
@@ -60,6 +76,7 @@ type AdminStats = {
   activityHeatmap: { study_date: string; active_users: number }[];
   aiFeatures: { feature: string; uses: number; users: number; last7d: number }[];
   aiProviders: { id: string; ok: boolean; billingIntegrated?: boolean; loggedVia?: string[]; notes?: string }[];
+  providerBilling?: ProviderBilling[];
   dataQuality?: {
     costBasis?: "logged_usage" | "provider_invoice" | "mixed" | string;
     lastEventAt?: string | null;
@@ -217,6 +234,7 @@ function normalizeAdminStatsPayload(payload: unknown): AdminStats {
     activityHeatmap: asArray(data.activityHeatmap),
     aiFeatures: asArray(data.aiFeatures),
     aiProviders: asArray(data.aiProviders),
+    providerBilling: asArray<ProviderBilling>(data.providerBilling),
     trilhaBySubject: asArray(data.trilhaBySubject),
     contentBreakdown: asArray(data.contentBreakdown),
     subscriptionDist: asArray(data.subscriptionDist),
@@ -785,7 +803,9 @@ export default function AdminPage() {
 
   // Status dos provedores de IA (lido do backend; cai pra heurística se ausente)
   const providersFromApi = stats?.aiProviders ?? [];
+  const billingFromApi = stats?.providerBilling ?? [];
   const providerStatus = (id: string) => providersFromApi.find(p => p.id === id);
+  const providerBillingStatus = (id: string) => billingFromApi.find(p => p.provider === id);
   const aiProviders = [
     { id: "deepseek",  name: "DeepSeek",       emoji: "🧠", bg: "bg-violet-500/15",   usage: "via OpenRouter quando modelo deepseek/*" },
     { id: "anthropic", name: "Anthropic Claude", emoji: "🟠", bg: "bg-amber-500/15", usage: "via OpenRouter quando modelo anthropic/*" },
@@ -795,10 +815,13 @@ export default function AdminPage() {
     { id: "elevenlabs", name: "ElevenLabs TTS", emoji: "🔊", bg: "bg-cyan-500/15",   usage: "voz/podcast se configurado" },
   ].map(provider => {
     const diagnostic = providerStatus(provider.id);
+    const billing = providerBillingStatus(provider.id);
     return {
       ...provider,
       ok: diagnostic?.ok ?? false,
-      billingIntegrated: diagnostic?.billingIntegrated ?? false,
+      billingIntegrated: billing?.status === "connected",
+      billingStatus: billing?.status,
+      billingAction: billing?.action,
       loggedVia: diagnostic?.loggedVia ?? [],
       notes: diagnostic?.notes,
     };
@@ -1591,6 +1614,33 @@ export default function AdminPage() {
             const lastEventAt = ac?.lastEventAt ?? stats?.dataQuality?.lastEventAt ?? null;
             const costBasis = ac?.costBasis ?? stats?.dataQuality?.costBasis ?? "logged_usage";
             const costBasisLabel = costBasis === "provider_invoice" ? "Fatura do provedor" : costBasis === "mixed" ? "Misto: fatura + logs" : "Uso registrado no sistema";
+            const providerBilling = stats?.providerBilling ?? [];
+            const providerNames: Record<string, string> = {
+              openrouter: "OpenRouter",
+              openai: "OpenAI",
+              anthropic: "Anthropic",
+              gemini: "Gemini/Google",
+              deepseek: "DeepSeek",
+              elevenlabs: "ElevenLabs",
+            };
+            const billingStatusLabel: Record<ProviderBillingStatus, string> = {
+              connected: "Conectado",
+              missing_config: "Config ausente",
+              unsupported: "Sem API direta",
+              error: "Erro",
+              not_implemented: "Não implementado",
+            };
+            const connectedProviderBilling = providerBilling.filter(p => p.status === "connected");
+            const formatUsd = (value?: number | null) => value == null ? null : `US$ ${value.toFixed(4)}`;
+            const formatBillingUsage = (usage?: Record<string, unknown>) => {
+              if (!usage) return null;
+              const characterCount = asNumber(usage.characterCount, NaN);
+              const characterLimit = asNumber(usage.characterLimit, NaN);
+              if (Number.isFinite(characterCount) && Number.isFinite(characterLimit)) {
+                return `${characterCount.toLocaleString("pt-BR")} / ${characterLimit.toLocaleString("pt-BR")} caracteres`;
+              }
+              return null;
+            };
             return (
             <div className="space-y-5">
               <h2 className="text-lg font-black flex items-center gap-2"><Bot className="w-5 h-5 text-violet-400" /> IA & Custos Registrados</h2>
@@ -1605,9 +1655,64 @@ export default function AdminPage() {
                   <div>
                     <p className="text-sm font-black text-amber-200">Base de custo: {costBasisLabel}</p>
                     <p className="text-xs text-amber-100/70 mt-1">
-                      Estes valores vêm de <span className="font-bold">ai_cost_log</span>. Não são fatura real dos provedores enquanto APIs de billing/saldo não estiverem integradas.
+                      A seção de uso registrado vem de <span className="font-bold">ai_cost_log</span>. O gasto real dos provedores aparece separado abaixo e só é exibido quando uma API oficial responde.
                     </p>
                   </div>
+                </div>
+              </div>
+
+              <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <p className="text-sm font-bold text-white/70">Gasto real dos provedores</p>
+                    <p className="text-[10px] text-white/40 mt-0.5">Consultas diretas a billing/saldo; não mistura com estimativas do ai_cost_log</p>
+                  </div>
+                  <span className={`text-[10px] font-black px-2 py-1 rounded ${connectedProviderBilling.length ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"}`}>
+                    {connectedProviderBilling.length ? `${connectedProviderBilling.length} conectado(s)` : "nenhum billing conectado"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {providerBilling.map(provider => {
+                    const mainValue =
+                      formatUsd(provider.costUsd) ??
+                      (provider.balanceUsd != null ? `${formatUsd(provider.balanceUsd)} saldo` : null) ??
+                      formatBillingUsage(provider.usage) ??
+                      "sem valor real";
+                    const connected = provider.status === "connected";
+                    const statusClass = connected
+                      ? "bg-emerald-500/15 text-emerald-300"
+                      : provider.status === "error"
+                        ? "bg-red-500/15 text-red-300"
+                        : "bg-amber-500/15 text-amber-300";
+                    return (
+                      <div key={provider.provider} className="rounded-xl border border-white/[0.05] bg-white/[0.02] p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-bold text-white">{providerNames[provider.provider] ?? provider.provider}</p>
+                            <p className="text-[10px] text-white/35 mt-0.5">
+                              {provider.lastCheckedAt ? `checado ${new Date(provider.lastCheckedAt).toLocaleString("pt-BR")}` : "não checado"}
+                            </p>
+                          </div>
+                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${statusClass}`}>
+                            {billingStatusLabel[provider.status] ?? provider.status}
+                          </span>
+                        </div>
+                        <p className={`text-base font-black mt-2 ${connected ? "text-emerald-300" : "text-white/35"}`}>{mainValue}</p>
+                        {provider.totalCreditsUsd != null && provider.usedCreditsUsd != null && (
+                          <p className="text-[10px] text-white/40 mt-0.5">
+                            créditos {formatUsd(provider.totalCreditsUsd)} · usado {formatUsd(provider.usedCreditsUsd)}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-white/45 mt-2 leading-relaxed">{provider.action}</p>
+                        {provider.error && <p className="text-[9px] text-red-300/80 mt-1 truncate">{provider.error}</p>}
+                      </div>
+                    );
+                  })}
+                  {providerBilling.length === 0 && (
+                    <div className="col-span-2 text-xs text-white/30 py-4 text-center">
+                      Backend ainda não retornou providerBilling. Atualize a página após o deploy.
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1896,10 +2001,11 @@ export default function AdminPage() {
                             {p.ok ? "CONFIG" : "PENDENTE"}
                           </span>
                           <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${p.billingIntegrated ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"}`}>
-                            {p.billingIntegrated ? "BILLING" : "SEM BILLING"}
+                            {p.billingIntegrated ? "BILLING REAL" : (p.billingStatus === "error" ? "BILLING ERRO" : "SEM BILLING")}
                           </span>
                         </div>
                         <p className="text-[10px] text-white/40 truncate">{p.loggedVia.length ? `log: ${p.loggedVia.join(", ")}` : p.usage}</p>
+                        {p.billingAction && <p className="text-[9px] text-white/35 truncate">{p.billingAction}</p>}
                         {p.notes && <p className="text-[9px] text-amber-200/70 truncate">{p.notes}</p>}
                       </div>
                     </div>

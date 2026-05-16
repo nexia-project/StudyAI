@@ -14,6 +14,28 @@ pnpm --filter @workspace/api-server run ingest:postulados -- "<CAMINHO_DA_PASTA>
 - `--dry-run` — só lista arquivos e tamanho do texto extraído.
 - `--skip-existing` — evita duplicar por `source_file` + `uploaded_by`.
 
+### Payload CQO — lacunas críticas de 2026-05-16
+
+Foram adicionados payloads Markdown curados em `docs/postulados-cqo/` para cobrir as lacunas apontadas pelo CQO:
+
+- `Artigo, Pronome e Numeral`
+- `Português - Texto Científico e Fotossíntese`
+- `Subtração com Recursos e Compensação`
+
+Cada arquivo segue o padrão premium (`objective`, público/série, habilidade, pré-requisitos, explicações em níveis, erros comuns, exemplos, exercícios e observações de fonte/status) no próprio corpo do material. Para o Hermes/CQO reconhecer a cobertura, ingira a pasta sem sobrescrever a matéria por flag; o nome dos arquivos usa o formato `Materia_Autor_Titulo.md`, e o script preserva hífens dentro da matéria quando há separação por `_`.
+
+O script também copia frontmatter simples de Markdown para `metadata` (por exemplo `topic`, `material_standard_version`, `quality_status` e `human_reviewed`), mantendo `source: postulado`, `materia`, `autor` e `path` controlados pela ingestão.
+
+```bash
+pnpm --filter @workspace/api-server run ingest:postulados -- "./docs/postulados-cqo" --uploaded-by=<UUID_ADMIN> --skip-existing
+```
+
+Validação esperada após ingestão e próxima auditoria Hermes/CQO:
+
+- `knowledge_documents.postulados` aumenta em 3.
+- `postuladosByMateria` passa a ter exatamente as matérias acima.
+- As lacunas `Artigo, Pronome e Numeral`, `Português - Texto Científico e Fotossíntese` e `Subtração com Recursos e Compensação` deixam de aparecer como `0 postulados`.
+
 ## ENEM → JSON (`api.enem.dev`)
 
 Gera/atualiza `artifacts/api-server/src/lib/enem/seed-questions.json` (ou caminho `--output=`).

@@ -101,9 +101,36 @@ function sanitizeText(text: string): string {
     .trim();
 }
 
+function parseSimpleFrontmatter(text: string): Record<string, string | boolean> {
+  const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!match) return {};
+
+  const metadata: Record<string, string | boolean> = {};
+  for (const line of match[1].split(/\r?\n/)) {
+    const parsed = line.match(/^([A-Za-z0-9_-]+):\s*(.+)$/);
+    if (!parsed) continue;
+
+    const key = parsed[1];
+    const rawValue = parsed[2].trim().replace(/^["']|["']$/g, "");
+    if (rawValue === "true") metadata[key] = true;
+    else if (rawValue === "false") metadata[key] = false;
+    else metadata[key] = rawValue;
+  }
+  return metadata;
+}
+
 function parseMetaFromFilename(filePath: string, defaults: { materia: string | null; autor: string | null }): ParsedMeta {
   const base = path.basename(filePath, path.extname(filePath));
   const title = base.replace(/_/g, " ").replace(/-/g, " ").trim();
+  const underscoreParts = base.split(/_+/).map((p) => p.trim()).filter(Boolean);
+  if (underscoreParts.length >= 3) {
+    return {
+      materia: underscoreParts[0] ?? defaults.materia,
+      autor: underscoreParts[1] ?? defaults.autor,
+      title: underscoreParts.slice(2).join(" "),
+    };
+  }
+
   const parts = base.split(/[_-]+/).map((p) => p.trim()).filter(Boolean);
 
   let materia = defaults.materia;
@@ -322,6 +349,7 @@ async function main(): Promise<void> {
       }
 
       const metadata = {
+        ...parseSimpleFrontmatter(text),
         source: "postulado",
         materia: meta.materia,
         autor: meta.autor,

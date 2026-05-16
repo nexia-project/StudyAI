@@ -4,9 +4,12 @@ import { useLocation } from "wouter";
 import {
   ArrowLeft, Clock, CheckCircle2, XCircle, ChevronRight, ChevronLeft,
   Trophy, BookOpen, AlertCircle, Loader2, RefreshCw, Share2, Lock,
+  Target, Brain, CalendarCheck, BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSubscription, startCheckout } from "@/hooks/useSubscription";
+
+const SIMULADO_ERROR_REVIEW_DRAFT_KEY = "studyai:simulado-enem:error-review-draft:v1";
 
 const DIAS_INFO = [
   { dia: 1, nome: "Linguagens", cor: "from-violet-500 to-violet-600", bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-200", emoji: "📝", materias: "Língua Portuguesa, Literatura, Inglês, Arte, Educação Física" },
@@ -27,6 +30,152 @@ interface Questao {
 }
 
 type Fase = "selecionar" | "gerando" | "respondendo" | "resultado";
+
+interface SubjectAnalysis {
+  materia: string;
+  total: number;
+  acertos: number;
+  erros: number;
+  pct: number;
+  habilidade: string;
+  foco: string;
+}
+
+const HABILIDADES_POR_MATERIA: Record<string, string> = {
+  "Língua Portuguesa": "Interpretação, coesão e efeito de sentido",
+  Literatura: "Repertório cultural e leitura de textos literários",
+  Inglês: "Leitura instrumental e inferência de vocabulário",
+  Arte: "Linguagens artísticas e contexto cultural",
+  "Educação Física": "Práticas corporais e cidadania",
+  História: "Processos históricos e relações de poder",
+  Geografia: "Espaço geográfico, mapas e sociedade",
+  Filosofia: "Argumentação, ética e pensamento crítico",
+  Sociologia: "Cultura, trabalho, cidadania e instituições",
+  Física: "Modelagem de fenômenos e leitura de grandezas",
+  Química: "Transformações, matéria e análise de evidências",
+  Biologia: "Sistemas vivos, ecologia e saúde",
+  Matemática: "Resolução de problemas e leitura de funções",
+};
+
+function difficultyLabel(value: string) {
+  if (value === "facil") return "fácil";
+  if (value === "dificil") return "difícil";
+  return "média";
+}
+
+function buildSubjectAnalysis(questoes: Questao[], respostas: Record<number, string>): SubjectAnalysis[] {
+  const grouped = new Map<string, { total: number; acertos: number; erros: number }>();
+
+  for (const q of questoes) {
+    const current = grouped.get(q.materia) ?? { total: 0, acertos: 0, erros: 0 };
+    current.total += 1;
+    if (respostas[q.numero] === q.gabarito) current.acertos += 1;
+    else current.erros += 1;
+    grouped.set(q.materia, current);
+  }
+
+  return Array.from(grouped.entries())
+    .map(([materia, stats]) => {
+      const pct = stats.total ? Math.round((stats.acertos / stats.total) * 100) : 0;
+      return {
+        materia,
+        ...stats,
+        pct,
+        habilidade: HABILIDADES_POR_MATERIA[materia] ?? "Habilidade ENEM associada ao tema da questão",
+        foco: pct >= 80 ? "Manter com revisão espaçada" : pct >= 60 ? "Reforçar pontos de atenção" : "Prioridade de reparo nesta semana",
+      };
+    })
+    .sort((a, b) => b.erros - a.erros || a.pct - b.pct || b.total - a.total);
+}
+
+function estimatePedagogicalTri(pct: number, questoes: Questao[], erros: Questao[]) {
+  const total = Math.max(questoes.length, 1);
+  const hardHits = questoes.filter(q => q.dificuldade === "dificil" && !erros.some(e => e.numero === q.numero)).length;
+  const easyMisses = erros.filter(q => q.dificuldade === "facil").length;
+  const consistency = Math.round((hardHits / total) * 45) - Math.round((easyMisses / total) * 60);
+  const score = Math.max(280, Math.min(820, Math.round(330 + pct * 4.2 + consistency)));
+  const label = pct >= 80 ? "desempenho forte" : pct >= 60 ? "base boa com lacunas" : pct >= 40 ? "base instável" : "reconstrução guiada";
+  return { score, label, consistency };
+}
+
+function buildActionPlan(erros: Questao[], subjects: SubjectAnalysis[]) {
+  const weakest = subjects.find(s => s.erros > 0);
+  const firstError = erros[0];
+  const primarySkill = weakest?.habilidade ?? "revisão espaçada dos conteúdos do simulado";
+  const cause = !firstError
+    ? "sem erro registrado nesta tentativa"
+    : firstError.dificuldade === "facil"
+      ? "possível distração, leitura apressada ou conceito básico instável"
+      : firstError.dificuldade === "dificil"
+        ? "questão de alta complexidade; exige repertório e encadeamento"
+        : "lacuna de conceito ou interpretação do comando";
+
+  return {
+    primarySkill,
+    cause,
+    nextBestAction: firstError
+      ? `Revisar ${weakest?.materia ?? firstError.materia} por 25 minutos e refazer ${Math.min(erros.length, 5)} erro${Math.min(erros.length, 5) !== 1 ? "s" : ""} comentado${Math.min(erros.length, 5) !== 1 ? "s" : ""}.`
+      : "Fazer um simulado maior ou avançar para questões mais difíceis mantendo revisão espaçada.",
+    steps: firstError
+      ? [
+          "Ler o comando e grifar o que a questão realmente pede.",
+          "Reescrever a explicação correta com suas palavras.",
+          "Resolver uma questão parecida antes de iniciar novo simulado.",
+        ]
+      : [
+          "Registrar os acertos fortes no caderno.",
+          "Aumentar a quantidade de questões no próximo treino.",
+          "Manter revisão curta em 48 horas.",
+        ],
+  };
+}
+
+function buildErrorReviewDraft(args: {
+  diaNome: string;
+  pct: number;
+  acertos: number;
+  total: number;
+  erros: Questao[];
+  respostas: Record<number, string>;
+  subjects: SubjectAnalysis[];
+  nextBestAction: string;
+}) {
+  const linhasErro = args.erros.slice(0, 8).map((q) => {
+    const minha = args.respostas[q.numero] || "sem resposta";
+    return [
+      `Q${q.numero} - ${q.materia} (${difficultyLabel(q.dificuldade)})`,
+      `Minha resposta: ${minha}. Correta: ${q.gabarito}.`,
+      `Causa provável: ${q.dificuldade === "facil" ? "atenção/conceito base" : q.dificuldade === "dificil" ? "encadeamento avançado" : "interpretação ou lacuna conceitual"}.`,
+      `Correção: ${q.explicacao}`,
+    ].join("\n");
+  });
+
+  const focos = args.subjects
+    .filter(s => s.erros > 0)
+    .slice(0, 3)
+    .map(s => `- ${s.materia}: ${s.erros} erro(s), foco em ${s.habilidade}.`);
+
+  return {
+    title: `Caderno de erros - ENEM ${args.diaNome}`,
+    materia: args.subjects[0]?.materia ?? "Outro",
+    content: [
+      `Resultado: ${args.acertos}/${args.total} (${args.pct}%).`,
+      `Próxima melhor ação: ${args.nextBestAction}`,
+      "",
+      "Focos por habilidade:",
+      ...(focos.length ? focos : ["- Sem erros nesta tentativa. Manter revisão espaçada."]),
+      "",
+      "Erros comentados:",
+      ...(linhasErro.length ? linhasErro : ["Nenhum erro registrado. Use este espaço para consolidar os acertos difíceis."]),
+    ].join("\n"),
+    createdAt: new Date().toISOString(),
+    source: "simulado-enem",
+  };
+}
+
+function emitHermesLearningSignal(detail: Record<string, unknown>) {
+  window.dispatchEvent(new CustomEvent("studyai:hermes-learning-signal", { detail }));
+}
 
 function formatTime(seconds: number) {
   const h = Math.floor(seconds / 3600);
@@ -88,8 +237,20 @@ export default function SimuladoEnemPage() {
 
   const finalizarSimulado = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
+    const total = questoes.length;
+    const erros = questoes.filter(q => respostas[q.numero] !== q.gabarito);
+    emitHermesLearningSignal({
+      surface: "simulado_enem",
+      event: "simulado_finalizado",
+      dia: diaSelecionado,
+      total,
+      answered: Object.keys(respostas).length,
+      errors: erros.length,
+      accuracy: total ? Math.round(((total - erros.length) / total) * 100) : 0,
+      primarySubject: erros[0]?.materia ?? null,
+    });
     setFase("resultado");
-  }, []);
+  }, [diaSelecionado, questoes, respostas]);
 
   function responder(alt: string) {
     setRespostas(r => ({ ...r, [questoes[atual].numero]: alt }));
@@ -480,6 +641,9 @@ export default function SimuladoEnemPage() {
   if (fase === "resultado") {
     const { acertos, erros, pct, total } = calcularResultado();
     const diaInfo = DIAS_INFO.find(d => d.dia === diaSelecionado)!;
+    const subjects = buildSubjectAnalysis(questoes, respostas);
+    const tri = estimatePedagogicalTri(pct, questoes, erros);
+    const actionPlan = buildActionPlan(erros, subjects);
     const nivel = pct >= 80 ? { label: "Excelente! 🏆", cor: "text-emerald-700", bg: "bg-emerald-50" }
       : pct >= 60 ? { label: "Bom! 📈", cor: "text-violet-700", bg: "bg-violet-50" }
       : pct >= 40 ? { label: "Regular ✏️", cor: "text-amber-700", bg: "bg-amber-50" }
@@ -507,6 +671,99 @@ export default function SimuladoEnemPage() {
 
           <div className={cn("rounded-2xl p-4 mb-6 text-center border", nivel.bg)}>
             <span className={cn("font-black text-lg", nivel.cor)}>{nivel.label}</span>
+          </div>
+
+          {/* Premium analysis */}
+          <div className="grid md:grid-cols-3 gap-3 mb-6">
+            <div className="bg-white rounded-2xl border border-violet-100 p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-violet-700 font-black text-sm mb-2">
+                <BarChart3 className="w-4 h-4" />
+                TRI pedagógico
+              </div>
+              <div className="text-3xl font-black text-slate-800">{tri.score}</div>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Estimativa interna: {tri.label}. Não substitui a TRI oficial do ENEM.
+              </p>
+            </div>
+            <div className="bg-white rounded-2xl border border-amber-100 p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-amber-700 font-black text-sm mb-2">
+                <Brain className="w-4 h-4" />
+                Causa provável
+              </div>
+              <p className="text-sm text-slate-700 leading-relaxed">{actionPlan.cause}</p>
+            </div>
+            <div className="bg-white rounded-2xl border border-emerald-100 p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-emerald-700 font-black text-sm mb-2">
+                <Target className="w-4 h-4" />
+                Próxima ação
+              </div>
+              <p className="text-sm text-slate-700 leading-relaxed">{actionPlan.nextBestAction}</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mb-6 overflow-hidden">
+            <div className="p-4 border-b border-slate-100">
+              <h2 className="font-black text-slate-800 flex items-center gap-2">
+                <CalendarCheck className="w-4 h-4 text-violet-500" />
+                Plano de reparo premium
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Tiagão priorizou habilidades, erros e revisão para transformar o simulado em estudo guiado.
+              </p>
+            </div>
+            <div className="p-4 grid md:grid-cols-[1.1fr_0.9fr] gap-4">
+              <div className="space-y-2">
+                {subjects.slice(0, 4).map(subject => (
+                  <div key={subject.materia} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                    <div className="flex items-center justify-between gap-3 mb-1">
+                      <span className="font-bold text-sm text-slate-800">{subject.materia}</span>
+                      <span className={cn(
+                        "text-xs font-black px-2 py-1 rounded-lg",
+                        subject.pct >= 80 ? "bg-emerald-100 text-emerald-700" :
+                          subject.pct >= 60 ? "bg-violet-100 text-violet-700" :
+                          "bg-rose-100 text-rose-700"
+                      )}>
+                        {subject.pct}%
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 leading-relaxed">{subject.habilidade}</p>
+                    <p className="text-xs font-semibold text-slate-600 mt-1">
+                      {subject.acertos}/{subject.total} acertos · {subject.foco}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="rounded-xl bg-violet-50 border border-violet-100 p-4">
+                <p className="text-xs font-black uppercase tracking-wide text-violet-700 mb-2">Loop de caderno de erros</p>
+                <ul className="space-y-2 mb-4">
+                  {actionPlan.steps.map(step => (
+                    <li key={step} className="flex gap-2 text-sm text-slate-700 leading-relaxed">
+                      <CheckCircle2 className="w-4 h-4 text-violet-500 flex-shrink-0 mt-0.5" />
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  onClick={() => {
+                    const draft = buildErrorReviewDraft({
+                      diaNome: diaInfo.nome,
+                      pct,
+                      acertos,
+                      total,
+                      erros,
+                      respostas,
+                      subjects,
+                      nextBestAction: actionPlan.nextBestAction,
+                    });
+                    localStorage.setItem(SIMULADO_ERROR_REVIEW_DRAFT_KEY, JSON.stringify(draft));
+                    navigate("/caderno");
+                  }}
+                  className="w-full py-3 rounded-xl bg-violet-600 text-white font-black text-sm hover:bg-violet-700 transition-all"
+                >
+                  Enviar erros para o caderno
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Gabarito */}

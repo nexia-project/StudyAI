@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
+const SIMULADO_ERROR_REVIEW_DRAFT_KEY = "studyai:simulado-enem:error-review-draft:v1";
 
 const MATERIAS = [
   "Matemática", "Português", "Redação", "História", "Geografia",
@@ -42,6 +43,12 @@ interface Note {
   };
   createdAt: string;
   updatedAt: string;
+}
+
+interface ErrorReviewDraft {
+  title?: string;
+  content?: string;
+  materia?: string;
 }
 
 function formatDate(dateStr: string) {
@@ -99,6 +106,25 @@ export default function Caderno() {
   }, []);
 
   useEffect(() => { loadNotes(); }, [loadNotes]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SIMULADO_ERROR_REVIEW_DRAFT_KEY);
+      if (!raw) return;
+      localStorage.removeItem(SIMULADO_ERROR_REVIEW_DRAFT_KEY);
+      const draft = JSON.parse(raw) as ErrorReviewDraft;
+      if (!draft?.title || !draft?.content) return;
+      setSelectedId(null);
+      setEditTitle(draft.title);
+      setEditContent(draft.content);
+      setEditMateria(draft.materia ?? "");
+      setIsCreating(true);
+      setDirty(false);
+      setShowEditor(true);
+    } catch {
+      localStorage.removeItem(SIMULADO_ERROR_REVIEW_DRAFT_KEY);
+    }
+  }, []);
 
   // Select note
   const selectNote = useCallback((note: Note) => {

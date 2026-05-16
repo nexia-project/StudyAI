@@ -1,6 +1,6 @@
 # Plano Mestre de Execucao StudyAI
 
-**Status:** controle operacional da Fase 1  
+**Status:** controle operacional da evolucao premium
 **Fonte:** `docs/plano-mestre-evolucao-studyai.md`  
 **Escopo deste tracker:** coordenar execucao, aceite, validacao, rollout, commits e deploy.  
 **Fora de escopo:** editar landing, app, backend ou qualquer arquivo de implementacao.
@@ -9,9 +9,20 @@
 
 A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar complexidade. Toda entrega precisa preservar o Tiagao como ponto de confianca, melhorar o proximo passo do aluno e manter a experiencia mobile-first.
 
+## Historico recente de execucao
+
+- **Landing premium:** primeira dobra e narrativa premium ja receberam evolucoes iniciais.
+- **Home como centro de comando:** fluxo de proxima acao e continuidade do aluno ja recebeu primeira reorganizacao.
+- **Fundacao pedagogica:** padrao premium e QA sintetico Hermes foram documentados.
+- **Admin/Hermes:** diagnosticos de custo, billing e cobertura de provedores foram ampliados.
+- **Notebook/RAG multimodal:** primeira passada de UX, exportacao e telemetria de qualidade Hermes foi concluida no commit `01857b24`; deploy de producao ainda precisa de confirmacao externa quando nao houver acesso autenticado ao provedor.
+- **Simulado ENEM premium:** em andamento com analise pos-simulado, TRI pedagogico estimado, plano de reparo por habilidade e envio de erros para o caderno.
+
 ## Tickets em execucao
 
 ### F1-01 Landing premium
+
+**Status:** primeira entrega concluida; manter em observacao de conversao e clareza.
 
 **Objetivo:** refinar a landing para comunicar promessa, primeira dobra, CTA, prova, modulos e instituicoes com hierarquia premium.
 
@@ -36,6 +47,8 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 
 ### F1-02 App do aluno como centro de comando
 
+**Status:** primeira entrega concluida; proximas iteracoes devem conectar a proxima acao aos erros, simulados e revisoes reais.
+
 **Objetivo:** reorganizar a home do aluno em torno de proxima acao, Tiagao e continuidade.
 
 **Superficies previstas:** `artifacts/studyai/src/pages/Home.tsx`, `artifacts/studyai/src/components/MainMenuDrawer.tsx` e rotas relacionadas somente quando necessario pelos workers de implementacao.
@@ -58,6 +71,8 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - O menu separa essencial, avancado e legado sem esconder fluxos criticos.
 
 ### F1-03 Fundacao de material pedagogico
+
+**Status:** primeira entrega concluida em documentacao e criterios; ainda falta transformar o padrao em validacao sistematica de materiais.
 
 **Objetivo:** estabelecer padrao minimo para materiais premium, preparando a Fase 2 sem exigir mudancas profundas de motor neste ciclo.
 
@@ -151,8 +166,9 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 
 ## Proximos passos operacionais
 
-- [ ] Cada worker informa qual ticket assumiu: F1-01, F1-02 ou F1-03.
-- [ ] Confirmar dono de aceite para produto/design e para pedagogia.
-- [ ] Definir comandos de validacao por pacote antes dos commits.
-- [ ] Coletar evidencias de UI: desktop e mobile para landing e home.
-- [ ] Atualizar este arquivo com status de execucao, bloqueios e links de commit quando existirem.
+- [x] Registrar entregas recentes de landing, home, pedagogia, Admin/Hermes e Notebook/RAG.
+- [x] Assumir proximo corte de maior valor: Simulado ENEM premium conectado ao caderno de erros.
+- [ ] Confirmar deploy de producao do commit `01857b24` ou release mais novo pelo provedor autenticado.
+- [ ] Validar em UI real o fluxo: finalizar simulado, revisar analise premium, enviar erros para o caderno e salvar rascunho.
+- [ ] Proximo lote recomendado: consumir o rascunho do caderno de erros na home como "proxima melhor acao" e no Tiagao como modo "revisar erro".
+- [ ] Depois do lote de erros: evoluir modos pedagogicos do Tiagao com taxonomia oficial e metricas por modo.

@@ -8,6 +8,7 @@ import {
   SYNTHETIC_QA_PERSONAS,
   runSyntheticQaAudit,
 } from "../../lib/hermes/jobs/qa-sintetico";
+import { PREMIUM_MATERIAL_STANDARD_SUMMARY } from "../../lib/pedagogy/premium-material-standard";
 
 const router: IRouter = Router();
 
@@ -21,6 +22,7 @@ router.get("/catalogo", requireAuth, requireAdmin, async (_req: Request, res: Re
     agent: "qa_sintetico",
     personas: SYNTHETIC_QA_PERSONAS,
     journeys: SYNTHETIC_QA_JOURNEYS,
+    pedagogicalMaterialStandard: PREMIUM_MATERIAL_STANDARD_SUMMARY,
     guardrails: [
       "Não altera dados ou conteúdo de produção automaticamente.",
       "Não executa automação de navegador nesta versão.",
@@ -89,6 +91,7 @@ router.post("/executar-auditoria", requireAuth, requireAdmin, async (req: Reques
         generatedAt: result.snapshot.generatedAt,
         platformMetrics: result.snapshot.platformMetrics,
         contentGaps: result.snapshot.contentIndex.contentGaps,
+        pedagogicalMaterialStandard: result.snapshot.pedagogicalMaterialStandard,
         tableSignals: result.snapshot.tableSignals,
       },
     });

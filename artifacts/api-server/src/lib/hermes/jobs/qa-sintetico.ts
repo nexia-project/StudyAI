@@ -10,6 +10,7 @@ import {
   withRecommendationPayload,
   type HermesRecommendation,
 } from "../recommendationStandard";
+import { PREMIUM_MATERIAL_STANDARD_SUMMARY } from "../../pedagogy/premium-material-standard";
 import { analyzeContentDatabases } from "./knowledge-index";
 
 export type SyntheticQaPersonaId =
@@ -70,6 +71,7 @@ interface SyntheticQaSnapshot {
     routes: string[];
     personaHints: SyntheticQaPersonaId[];
   }>;
+  pedagogicalMaterialStandard: typeof PREMIUM_MATERIAL_STANDARD_SUMMARY;
   safetyRules: string[];
 }
 
@@ -152,6 +154,7 @@ export const SYNTHETIC_QA_JOURNEYS: SyntheticQaJourney[] = [
     superficies: ["/api/simulado", "/api/simulado-enem", "/api/enem-bank"],
     checklist: [
       "Questões têm enunciado, alternativas e gabarito consistentes",
+      "Questões carregam objetivo, habilidade, pré-requisitos, erro comum e fonte quando possível",
       "Feedback explica por que a alternativa correta vence",
       "Resultado vira recomendação de estudo",
       "Falhas de banco não bloqueiam toda a jornada",
@@ -179,6 +182,7 @@ export const SYNTHETIC_QA_JOURNEYS: SyntheticQaJourney[] = [
     checklist: [
       "Recuperação cita ou descreve fonte de forma confiável",
       "Conteúdo gerado mantém estrutura didática",
+      "Material gerado segue o padrão premium de metadados pedagógicos",
       "Lousa/material não fica preso em estado de geração",
       "Fallback é claro quando não há fonte suficiente",
     ],
@@ -340,6 +344,7 @@ export async function buildSyntheticQaSnapshot(periodoDias = 7): Promise<Synthet
     contentIndex,
     tableSignals,
     routeInventory: ROUTE_INVENTORY,
+    pedagogicalMaterialStandard: PREMIUM_MATERIAL_STANDARD_SUMMARY,
     safetyRules: SAFETY_RULES,
   };
 }
@@ -375,6 +380,7 @@ function fallbackRecommendationFor(
       personaId,
       platformMetrics: snapshot.platformMetrics,
       contentGaps: snapshot.contentIndex.contentGaps.slice(0, 5),
+      pedagogicalMaterialStandard: snapshot.pedagogicalMaterialStandard,
     }),
     problemOpportunity:
       "A jornada precisa de validação contínua por persona para detectar regressões de qualidade, usabilidade e conteúdo.",
@@ -532,6 +538,7 @@ async function persistSyntheticQaFinding(
         generatedAt: snapshot.generatedAt,
         platformMetrics: snapshot.platformMetrics,
         contentGaps: snapshot.contentIndex.contentGaps.slice(0, 8),
+        pedagogicalMaterialStandard: snapshot.pedagogicalMaterialStandard,
       },
     },
     finding.recommendation,
@@ -592,6 +599,7 @@ export async function runSyntheticQaAudit(opts: {
             "Você é o agente qa_sintetico do StudyAI.",
             "Simule especialistas e usuários reais a partir de personas, jornadas, métricas e snapshots estruturados.",
             "Avalie qualidade de produto, performance percebida, usabilidade, bugs prováveis e qualidade pedagógica/conteúdo.",
+            "Use o padrão premium de material pedagógico do snapshot como rubrica para conteúdo gerado, importado ou curado.",
             "Não use navegador. Não invente métricas. Não proponha mutação destrutiva de dados/conteúdo de produção.",
             "Retorne JSON estrito: { resumo: string, findings: [{ journeyId, personaId, severity: 'baixa'|'media'|'alta', summary, shouldCreateTask?: boolean, taskDescription?: string, recommendation }] }.",
             "Gere no máximo 4 findings e prefira recomendações específicas com critério de aceite.",

@@ -8,6 +8,7 @@
 - Detectar bugs prováveis, lacunas de observabilidade, fricção de UX e riscos de qualidade pedagógica.
 - Gerar recomendações acionáveis com evidência, impacto, métrica de sucesso e critérios de aceite.
 - Criar ações/inbox para triagem quando o achado for crítico ou pedir follow-up.
+- Usar o padrão de material pedagógico premium como rubrica para conteúdo gerado, importado ou curado.
 
 ## Personas
 
@@ -34,6 +35,8 @@
 - Rotas admin:
   - `GET /api/agents/qa_sintetico/catalogo`
   - `POST /api/agents/qa_sintetico/executar-auditoria`
+
+O catálogo também expõe `pedagogicalMaterialStandard`, definido em `artifacts/api-server/src/lib/pedagogy/premium-material-standard.ts`, para que auditorias e futuras telas admin usem a mesma rubrica de qualidade.
 
 Body recomendado para auditoria manual:
 

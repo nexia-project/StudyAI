@@ -123,6 +123,7 @@ export async function generateWithGemini(
     max_tokens: Math.min(maxOutputTokens, 8000),
     hasVision: false,
     temperature: 0.65,
+    feature: "generate_with_gemini",
   });
 
   return response.choices[0]?.message?.content ?? "";

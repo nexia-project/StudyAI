@@ -59,7 +59,15 @@ type AdminStats = {
   topMaterias: { materia: string; count: number; avg_score: number }[];
   activityHeatmap: { study_date: string; active_users: number }[];
   aiFeatures: { feature: string; uses: number; users: number; last7d: number }[];
-  aiProviders: { id: string; ok: boolean }[];
+  aiProviders: { id: string; ok: boolean; billingIntegrated?: boolean; loggedVia?: string[]; notes?: string }[];
+  dataQuality?: {
+    costBasis?: "logged_usage" | "provider_invoice" | "mixed" | string;
+    lastEventAt?: string | null;
+    missingTables?: string[];
+    missingSources?: string[];
+    trackedSources?: { features?: string[]; models?: string[]; providers?: string[] };
+    warning?: string;
+  };
   trilhaBySubject: { subject: string; students: number; avgLevel: number; maxLevel: number }[];
   diagnosticsCompleted30d: number;
   notebookDocsTotal: number; notebookStorageMb: number; notebookOverviewsTotal: number;
@@ -69,6 +77,16 @@ type AdminStats = {
   recentEvents: { event_type: string; created_at: string; metadata: any; email: string | null; first_name: string | null; last_name: string | null }[];
   eventsByType30d: { event_type: string; count: number; users: number }[];
   aiCost: {
+    costBasis?: "logged_usage" | "provider_invoice" | "mixed" | string;
+    label?: string;
+    lastEventAt?: string | null;
+    dataQuality?: {
+      missingTables?: string[];
+      missingSources?: string[];
+      trackedFeatures?: string[];
+      trackedModels?: string[];
+      warning?: string;
+    };
     period?: {
       from: string; to: string; prevFrom: string; prevTo: string; days: number;
       timeZone?: string; boundary?: string;
@@ -110,6 +128,8 @@ type FonteConsumo = {
   totalSavedUsd: number; totalSavedBrl: number;
   totalIaCostUsd: number; totalIaCostBrl: number;
   taxaEconomia: number;
+  costBasis?: string;
+  dataQuality?: { missingTables?: string[]; warning?: string };
 };
 
 type Section =
@@ -767,13 +787,22 @@ export default function AdminPage() {
   const providersFromApi = stats?.aiProviders ?? [];
   const providerStatus = (id: string) => providersFromApi.find(p => p.id === id);
   const aiProviders = [
-    { id: "deepseek",  name: "DeepSeek",       emoji: "🧠", bg: "bg-violet-500/15",   ok: providerStatus("deepseek")?.ok  ?? true,  usage: "Tutor Tiagão · Simulado adaptativo · Notebook" },
-    { id: "anthropic", name: "Anthropic Claude", emoji: "🟠", bg: "bg-amber-500/15", ok: providerStatus("anthropic")?.ok ?? true,  usage: "Aula com lousa · Explicações longas" },
-    { id: "openai",    name: "OpenAI GPT",     emoji: "🟢", bg: "bg-emerald-500/15", ok: providerStatus("openai")?.ok    ?? true,  usage: "Imagens (slides, infográficos) · TTS Tiagão" },
-    { id: "gemini",    name: "Google Gemini",  emoji: "✨", bg: "bg-violet-500/15",  ok: providerStatus("gemini")?.ok    ?? true,  usage: "Resolução de problema por foto · OCR" },
-    { id: "openrouter", name: "OpenRouter",    emoji: "🔀", bg: "bg-pink-500/15",    ok: providerStatus("openrouter")?.ok ?? false, usage: "Fallback · Modelos extras (opcional)" },
-    { id: "elevenlabs", name: "ElevenLabs TTS", emoji: "🔊", bg: "bg-cyan-500/15",   ok: providerStatus("elevenlabs")?.ok ?? false, usage: "Voz do podcast (opcional)" },
-  ];
+    { id: "deepseek",  name: "DeepSeek",       emoji: "🧠", bg: "bg-violet-500/15",   usage: "via OpenRouter quando modelo deepseek/*" },
+    { id: "anthropic", name: "Anthropic Claude", emoji: "🟠", bg: "bg-amber-500/15", usage: "via OpenRouter quando modelo anthropic/*" },
+    { id: "openai",    name: "OpenAI GPT",     emoji: "🟢", bg: "bg-emerald-500/15", usage: "fallback direto · embeddings · eventuais TTS/STT" },
+    { id: "gemini",    name: "Google Gemini",  emoji: "✨", bg: "bg-violet-500/15",  usage: "OCR/visão se configurado" },
+    { id: "openrouter", name: "OpenRouter",    emoji: "🔀", bg: "bg-pink-500/15",    usage: "cliente central de chat/completions" },
+    { id: "elevenlabs", name: "ElevenLabs TTS", emoji: "🔊", bg: "bg-cyan-500/15",   usage: "voz/podcast se configurado" },
+  ].map(provider => {
+    const diagnostic = providerStatus(provider.id);
+    return {
+      ...provider,
+      ok: diagnostic?.ok ?? false,
+      billingIntegrated: diagnostic?.billingIntegrated ?? false,
+      loggedVia: diagnostic?.loggedVia ?? [],
+      notes: diagnostic?.notes,
+    };
+  });
 
   // Receita: MRR atual = premiumUsers * ticket. Série temporal usa loginsByDay como proxy de engajamento.
   const mockRevData = stats?.loginsByDay?.map((d) => ({
@@ -1554,24 +1583,44 @@ export default function AdminPage() {
             const costPct = ac?.costPct;
             const rangeBrl = ac?.rangeBrl ?? 0;
             const reconciles = ac?.reconciliation?.consistent !== false;
+            const dataQuality = ac?.dataQuality ?? stats?.dataQuality;
+            const missingTables = dataQuality?.missingTables ?? [];
+            const missingSources = dataQuality?.missingSources ?? [];
+            const trackedFeatures = ac?.dataQuality?.trackedFeatures ?? stats?.dataQuality?.trackedSources?.features ?? [];
+            const trackedModels = ac?.dataQuality?.trackedModels ?? stats?.dataQuality?.trackedSources?.models ?? [];
+            const lastEventAt = ac?.lastEventAt ?? stats?.dataQuality?.lastEventAt ?? null;
+            const costBasis = ac?.costBasis ?? stats?.dataQuality?.costBasis ?? "logged_usage";
+            const costBasisLabel = costBasis === "provider_invoice" ? "Fatura do provedor" : costBasis === "mixed" ? "Misto: fatura + logs" : "Uso registrado no sistema";
             return (
             <div className="space-y-5">
-              <h2 className="text-lg font-black flex items-center gap-2"><Bot className="w-5 h-5 text-violet-400" /> IA & Custos Reais</h2>
+              <h2 className="text-lg font-black flex items-center gap-2"><Bot className="w-5 h-5 text-violet-400" /> IA & Custos Registrados</h2>
 
               <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-4">
                 <DateRangeFilter value={dateRange} onChange={r => setDateRange(r)} loading={statsLoading} />
+              </div>
+
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-4 h-4 text-amber-300 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-black text-amber-200">Base de custo: {costBasisLabel}</p>
+                    <p className="text-xs text-amber-100/70 mt-1">
+                      Estes valores vêm de <span className="font-bold">ai_cost_log</span>. Não são fatura real dos provedores enquanto APIs de billing/saldo não estiverem integradas.
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {/* KPI cards */}
               <div className="grid grid-cols-4 gap-3">
                 {[
                   {
-                    label: "Custo no Período", val: fmtBrlShort(ac?.rangeBrl ?? 0),
+                    label: "Custo Registrado no Período", val: fmtBrlShort(ac?.rangeBrl ?? 0),
                     sub: `US$ ${(ac?.rangeUsd ?? 0).toFixed(4)} · ${periodLabel}`,
                     pct: costPct != null ? { v: costPct, invert: true } : null,
                     color: "text-violet-400"
                   },
-                  { label: "Custo Hoje", val: fmtBrlShort(ac?.todayBrl ?? 0), sub: `Fora do filtro · US$ ${(ac?.todayUsd ?? 0).toFixed(4)}`, color: "text-violet-400", pct: null },
+                  { label: "Registrado Hoje", val: fmtBrlShort(ac?.todayBrl ?? 0), sub: `Fora do filtro · US$ ${(ac?.todayUsd ?? 0).toFixed(4)}`, color: "text-violet-400", pct: null },
                   { label: "Chamadas no Período", val: callsRange.toLocaleString("pt-BR"), sub: "registradas", color: "text-amber-400", pct: null },
                   { label: "Tokens no Período", val: tokensRange >= 1000 ? `${(tokensRange/1000).toFixed(1)}k` : String(tokensRange), sub: "in + out", color: "text-emerald-400", pct: null },
                 ].map(k => (
@@ -1588,12 +1637,59 @@ export default function AdminPage() {
                 ))}
               </div>
 
+              <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <p className="text-sm font-bold text-white/70">Cobertura dos Dados</p>
+                    <p className="text-[10px] text-white/40 mt-0.5">Diagnóstico compacto da coleta que alimenta IA & Custos</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] text-white/35 uppercase font-bold">Último log de custo</p>
+                    <p className="text-xs font-mono text-white/70">{lastEventAt ? new Date(lastEventAt).toLocaleString("pt-BR") : "sem registro"}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-white/[0.03] rounded-xl p-3 border border-white/[0.05]">
+                    <p className="text-[10px] text-white/40 font-bold uppercase mb-2">Features rastreadas</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {trackedFeatures.slice(0, 8).map(feature => (
+                        <span key={feature} className="text-[9px] px-2 py-1 rounded bg-emerald-500/10 text-emerald-200">{feature}</span>
+                      ))}
+                      {trackedFeatures.length === 0 && <span className="text-xs text-white/25">Nenhuma no período</span>}
+                    </div>
+                  </div>
+                  <div className="bg-white/[0.03] rounded-xl p-3 border border-white/[0.05]">
+                    <p className="text-[10px] text-white/40 font-bold uppercase mb-2">Modelos rastreados</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {trackedModels.slice(0, 8).map(model => (
+                        <span key={model} className="text-[9px] px-2 py-1 rounded bg-violet-500/10 text-violet-200">{model}</span>
+                      ))}
+                      {trackedModels.length === 0 && <span className="text-xs text-white/25">Nenhum no período</span>}
+                    </div>
+                  </div>
+                  <div className="bg-white/[0.03] rounded-xl p-3 border border-white/[0.05]">
+                    <p className="text-[10px] text-white/40 font-bold uppercase mb-2">Lacunas / alertas</p>
+                    <div className="space-y-1">
+                      {missingTables.map(table => (
+                        <p key={table} className="text-[10px] text-red-300">Tabela ausente: {table}</p>
+                      ))}
+                      {missingSources.slice(0, 5).map(source => (
+                        <p key={source} className="text-[10px] text-amber-200">{source}</p>
+                      ))}
+                      {missingTables.length === 0 && missingSources.length === 0 && (
+                        <p className="text-xs text-emerald-300">Sem lacunas detectadas pelo backend</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Custo por dia */}
               <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div>
-                    <p className="text-sm font-bold text-white/70 mb-1">Custo diário — período selecionado</p>
-                    <p className="text-[10px] text-white/40">Custo em R$ por dia de uso · {periodLabel}</p>
+                    <p className="text-sm font-bold text-white/70 mb-1">Custo registrado diário — período selecionado</p>
+                    <p className="text-[10px] text-white/40">Soma registrada em R$ por dia de uso · {periodLabel}</p>
                   </div>
                   <span className="text-[10px] text-white/30 font-mono">{ac?.currency?.display ?? "BRL"} @ {(ac?.currency?.usdToBrl ?? 5.85).toFixed(2)}</span>
                 </div>
@@ -1627,8 +1723,8 @@ export default function AdminPage() {
               <div className="grid grid-cols-2 gap-4">
                 {/* Custo por feature */}
                 <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
-                  <p className="text-sm font-bold text-white/70 mb-1">Custo por Feature</p>
-                  <p className="text-[10px] text-white/40 mb-3">Soma deve bater com Custo no Período</p>
+                  <p className="text-sm font-bold text-white/70 mb-1">Custo Registrado por Feature</p>
+                  <p className="text-[10px] text-white/40 mb-3">Soma deve bater com o custo registrado no período</p>
                   {noData ? (
                     <p className="text-xs text-white/30 py-4 text-center">Sem dados ainda</p>
                   ) : (
@@ -1653,7 +1749,7 @@ export default function AdminPage() {
 
                 {/* Custo por modelo */}
                 <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
-                  <p className="text-sm font-bold text-white/70 mb-1">Custo por Modelo</p>
+                  <p className="text-sm font-bold text-white/70 mb-1">Custo Registrado por Modelo</p>
                   <p className="text-[10px] text-white/40 mb-3">Agrupado por provedor/modelo no mesmo período</p>
                   {(ac?.byModel?.length ?? 0) === 0 ? (
                     <p className="text-xs text-white/30 py-4 text-center">Sem dados ainda</p>
@@ -1705,7 +1801,7 @@ export default function AdminPage() {
 
                   // KPI cards
                   const kpis = [
-                    { label: "Custo IA Real",       val: fmtBrl(fc.totalIaCostBrl), sub: `US$ ${fc.totalIaCostUsd.toFixed(4)}`, color: "text-violet-400" },
+                    { label: "Custo IA Registrado", val: fmtBrl(fc.totalIaCostBrl), sub: `US$ ${fc.totalIaCostUsd.toFixed(4)}`, color: "text-violet-400" },
                     { label: "Economia Total",       val: fmtBrl(fc.totalSavedBrl),  sub: `US$ ${fc.totalSavedUsd.toFixed(4)}`, color: "text-emerald-400" },
                     { label: "Taxa de Economia",     val: `${fc.taxaEconomia}%`,      sub: "do total potencial",                  color: "text-violet-400" },
                     { label: "Chamadas Gratuitas",   val: (fc.cache.totalHits + (fc.fontes.find(f => f.id === "wikipedia")?.calls ?? 0) + (fc.fontes.find(f => f.id === "bncc")?.calls ?? 0) + (fc.fontes.find(f => f.id === "fts-kb")?.calls ?? 0)).toLocaleString("pt-BR"), sub: "cache + APIs gratuitas", color: "text-amber-400" },
@@ -1788,7 +1884,7 @@ export default function AdminPage() {
               {/* Status dos provedores de IA */}
               <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
                 <p className="text-sm font-bold text-white/70 mb-1">Provedores de IA</p>
-                <p className="text-[10px] text-white/40 mb-4">Status das integrações que alimentam o Tutor, Aulas, Simulado e Notebook</p>
+                <p className="text-[10px] text-white/40 mb-4">Status de configuração e coleta local; billing real continua separado</p>
                 <div className="grid grid-cols-2 gap-3">
                   {aiProviders.map(p => (
                     <div key={p.name} className="flex items-center gap-3 p-3 rounded-xl border border-white/[0.05] bg-white/[0.02]">
@@ -1797,10 +1893,14 @@ export default function AdminPage() {
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-bold text-white truncate">{p.name}</p>
                           <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${p.ok ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"}`}>
-                            {p.ok ? "ATIVO" : "PENDENTE"}
+                            {p.ok ? "CONFIG" : "PENDENTE"}
+                          </span>
+                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${p.billingIntegrated ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"}`}>
+                            {p.billingIntegrated ? "BILLING" : "SEM BILLING"}
                           </span>
                         </div>
-                        <p className="text-[10px] text-white/40 truncate">{p.usage}</p>
+                        <p className="text-[10px] text-white/40 truncate">{p.loggedVia.length ? `log: ${p.loggedVia.join(", ")}` : p.usage}</p>
+                        {p.notes && <p className="text-[9px] text-amber-200/70 truncate">{p.notes}</p>}
                       </div>
                     </div>
                   ))}

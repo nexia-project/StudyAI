@@ -2,6 +2,16 @@
  * OpenRouter — fallback entre modelos + último recurso OpenAI direto (API oficial).
  */
 import { openrouter, whisperClient, hasDirectOpenAiKey, OR } from "./aiClient";
+import { estimateTokensFromMessages, estimateTokensFromText, logAiUsage } from "./aiUsageTelemetry";
+
+type CompletionResponse = {
+  choices: Array<{ message?: { content?: string | null } }>;
+  usage?: {
+    prompt_tokens?: number | null;
+    completion_tokens?: number | null;
+    total_tokens?: number | null;
+  } | null;
+};
 
 /** Extrai texto pesquisável de qualquer erro do SDK / OpenRouter */
 export function stringifyOpenRouterError(err: unknown): string {
@@ -127,7 +137,8 @@ async function chatCompletionDirectOpenAi(params: {
   messages: unknown;
   max_tokens: number;
   temperature?: number;
-}): Promise<{ response: { choices: Array<{ message?: { content?: string | null } }> }; modelUsed: string } | null> {
+  feature?: string;
+}): Promise<{ response: CompletionResponse; modelUsed: string } | null> {
   if (!hasDirectOpenAiKey()) return null;
   let lastErr: unknown;
   for (const model of DIRECT_OPENAI_MODELS) {
@@ -138,7 +149,13 @@ async function chatCompletionDirectOpenAi(params: {
         max_tokens: params.max_tokens,
         ...(params.temperature !== undefined ? { temperature: params.temperature } : {}),
       });
-      return { response, modelUsed: `openai-direct:${model}` };
+      const modelUsed = `openai-direct:${model}`;
+      logAiUsage({
+        feature: params.feature ?? "chat_completion_direct",
+        model: modelUsed,
+        usage: response.usage,
+      });
+      return { response, modelUsed };
     } catch (err) {
       lastErr = err;
       if (shouldTryNextOpenRouterModel(err) || isMissingModelError(err)) continue;
@@ -155,6 +172,7 @@ async function chatCompletionStreamDirectOpenAiAccumulate(params: {
   max_tokens: number;
   signal?: AbortSignal;
   onChunk?: (totalChars: number) => void;
+  feature?: string;
 }): Promise<{ text: string; modelUsed: string } | null> {
   if (!hasDirectOpenAiKey()) return null;
   let lastErr: unknown;
@@ -179,7 +197,14 @@ async function chatCompletionStreamDirectOpenAiAccumulate(params: {
         }
       }
       if (accumulated.trim().length > 0) {
-        return { text: accumulated, modelUsed: `openai-direct:${model}` };
+        const modelUsed = `openai-direct:${model}`;
+        logAiUsage({
+          feature: params.feature ?? "chat_completion_stream_direct",
+          model: modelUsed,
+          tokensIn: estimateTokensFromMessages(params.messages),
+          tokensOut: estimateTokensFromText(accumulated),
+        });
+        return { text: accumulated, modelUsed };
       }
       lastErr = new Error(`Resposta vazia (OpenAI direto ${model})`);
     } catch (err) {
@@ -199,7 +224,9 @@ export async function chatCompletionCreateWithFallback(params: {
   max_tokens: number;
   hasVision: boolean;
   temperature?: number;
-}): Promise<{ response: { choices: Array<{ message?: { content?: string | null } }> }; modelUsed: string }> {
+  feature?: string;
+  userId?: string | null;
+}): Promise<{ response: CompletionResponse; modelUsed: string }> {
   const chain = completionFallbackChain(params.model, params.hasVision);
   let lastErr: unknown;
   for (const model of chain) {
@@ -209,6 +236,12 @@ export async function chatCompletionCreateWithFallback(params: {
         messages: params.messages as never,
         max_tokens: params.max_tokens,
         ...(params.temperature !== undefined ? { temperature: params.temperature } : {}),
+      });
+      logAiUsage({
+        userId: params.userId,
+        feature: params.feature ?? "chat_completion",
+        model,
+        usage: response.usage,
       });
       return { response, modelUsed: model };
     } catch (err) {
@@ -223,6 +256,7 @@ export async function chatCompletionCreateWithFallback(params: {
     messages: params.messages,
     max_tokens: params.max_tokens,
     temperature: params.temperature,
+    feature: params.feature,
   });
   if (direct) return direct;
 
@@ -235,6 +269,8 @@ export async function chatCompletionStreamCreateWithFallback(params: {
   max_tokens: number;
   hasVision: boolean;
   signal?: AbortSignal;
+  feature?: string;
+  userId?: string | null;
 }): Promise<{ stream: AsyncIterable<unknown>; modelUsed: string }> {
   const chain = completionFallbackChain(params.model, params.hasVision);
   let lastErr: unknown;
@@ -249,6 +285,13 @@ export async function chatCompletionStreamCreateWithFallback(params: {
         },
         { signal: params.signal },
       );
+      logAiUsage({
+        userId: params.userId,
+        feature: params.feature ?? "chat_completion_stream_started",
+        model,
+        tokensIn: estimateTokensFromMessages(params.messages),
+        tokensOut: 0,
+      });
       return { stream: stream as AsyncIterable<unknown>, modelUsed: model };
     } catch (err) {
       lastErr = err;
@@ -270,6 +313,8 @@ export async function chatCompletionStreamAccumulateWithFallback(params: {
   hasVision: boolean;
   signal?: AbortSignal;
   onChunk?: (totalChars: number) => void;
+  feature?: string;
+  userId?: string | null;
 }): Promise<{ text: string; modelUsed: string }> {
   const chain = completionFallbackChain(params.model, params.hasVision);
   let lastErr: unknown;
@@ -297,6 +342,13 @@ export async function chatCompletionStreamAccumulateWithFallback(params: {
       }
 
       if (accumulated.trim().length > 0) {
+        logAiUsage({
+          userId: params.userId,
+          feature: params.feature ?? "chat_completion_stream",
+          model,
+          tokensIn: estimateTokensFromMessages(params.messages),
+          tokensOut: estimateTokensFromText(accumulated),
+        });
         return { text: accumulated, modelUsed: model };
       }
 
@@ -315,6 +367,7 @@ export async function chatCompletionStreamAccumulateWithFallback(params: {
     max_tokens: params.max_tokens,
     signal: params.signal,
     onChunk: params.onChunk,
+    feature: params.feature,
   });
   if (direct) return direct;
 

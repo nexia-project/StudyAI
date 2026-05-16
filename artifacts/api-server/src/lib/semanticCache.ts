@@ -14,6 +14,7 @@
 import crypto from "crypto";
 import OpenAI from "openai";
 import { pool } from "@workspace/db";
+import { estimateTokensFromText, logAiUsage } from "./aiUsageTelemetry";
 
 // ─── Thresholds de similaridade cosseno ───────────────────────────────────────
 const THRESHOLD_SEMANTICO  = 0.92;   // Nível 2: resposta direta
@@ -62,6 +63,13 @@ async function getEmbedding(text: string): Promise<number[]> {
   const res = await embedder.embeddings.create({
     model: "text-embedding-3-small",
     input: text.slice(0, 2000), // max input length guard
+  });
+  logAiUsage({
+    feature: "semantic_cache_embedding",
+    model: "text-embedding-3-small",
+    usage: res.usage,
+    tokensIn: estimateTokensFromText(text.slice(0, 2000)),
+    tokensOut: 0,
   });
   return res.data[0].embedding;
 }

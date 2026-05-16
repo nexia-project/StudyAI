@@ -1,6 +1,7 @@
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { openrouter, OR } from "../../aiClient";
+import { logAiUsage } from "../../aiUsageTelemetry";
 import { fetchPlatformMetrics } from "../metrics";
 import { insertAdminInbox, persistAcaoProativa, persistDescoberta } from "../persist";
 import {
@@ -624,6 +625,12 @@ export async function runSyntheticQaAudit(opts: {
     max_tokens: 1800,
     temperature: 0.25,
     response_format: { type: "json_object" },
+  });
+  logAiUsage({
+    userId: opts.requestedBy,
+    feature: "hermes_qa_sintetico",
+    model: OR.claudeFast,
+    usage: completion.usage,
   });
 
   const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";

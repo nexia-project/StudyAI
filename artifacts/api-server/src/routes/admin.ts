@@ -26,6 +26,16 @@ const ADMIN_TIME_ZONE = "America/Sao_Paulo";
 const USD_TO_BRL = 5.85;
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+type CostBasis = "logged_usage" | "provider_invoice" | "mixed";
+
+type ProviderDiagnostic = {
+  id: string;
+  ok: boolean;
+  billingIntegrated: boolean;
+  loggedVia: string[];
+  notes?: string;
+};
+
 function dateInAdminTimeZone(date = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: ADMIN_TIME_ZONE,
@@ -75,6 +85,71 @@ function roundMoney(value: number): number {
 
 function sumUsd(rows: any[]): number {
   return roundMoney(rows.reduce((sum, row) => sum + Number(row.cost_usd ?? row.costUsd ?? 0), 0));
+}
+
+function isConfigured(...names: string[]): boolean {
+  return names.some(name => {
+    const value = process.env[name];
+    return Boolean(value && value !== "dummy" && value.length > 0);
+  });
+}
+
+async function tableExists(tableName: string): Promise<boolean> {
+  const row = await safeQueryOne<{ exists: boolean }>(`tableExists:${tableName}`, () => db.execute(sql`
+    SELECT EXISTS (
+      SELECT 1
+      FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = ${tableName}
+    ) AS exists
+  `));
+  return Boolean((row as any)?.exists);
+}
+
+function buildProviderDiagnostics(aiCostByModel: any[]): ProviderDiagnostic[] {
+  const loggedModels = aiCostByModel.map((row: any) => String(row.provider ?? "").toLowerCase());
+  const hasLoggedProvider = (provider: string) => loggedModels.includes(provider);
+  return [
+    {
+      id: "openrouter",
+      ok: isConfigured("AI_INTEGRATIONS_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"),
+      billingIntegrated: false,
+      loggedVia: ["openrouterFallback", "hermes_qa_sintetico"],
+      notes: "Sem API de fatura/saldo integrada; custos são estimativas registradas por chamada.",
+    },
+    {
+      id: "openai",
+      ok: isConfigured("AI_INTEGRATIONS_OPENAI_API_KEY", "OPENAI_API_KEY"),
+      billingIntegrated: false,
+      loggedVia: ["openai-direct fallback", "semantic_cache_embedding"],
+      notes: hasLoggedProvider("openai") || hasLoggedProvider("openai-direct") ? undefined : "Pode haver TTS/STT/imagem sem logger específico neste deploy.",
+    },
+    {
+      id: "anthropic",
+      ok: isConfigured("ANTHROPIC_API_KEY") || hasLoggedProvider("anthropic"),
+      billingIntegrated: false,
+      loggedVia: ["via OpenRouter quando o modelo é anthropic/*"],
+    },
+    {
+      id: "deepseek",
+      ok: isConfigured("DEEPSEEK_API_KEY") || hasLoggedProvider("deepseek"),
+      billingIntegrated: false,
+      loggedVia: ["via OpenRouter quando o modelo é deepseek/*"],
+    },
+    {
+      id: "gemini",
+      ok: isConfigured("GEMINI_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY"),
+      billingIntegrated: false,
+      loggedVia: [],
+      notes: "Nenhum logger local específico de Gemini foi encontrado nesta base.",
+    },
+    {
+      id: "elevenlabs",
+      ok: isConfigured("ELEVENLABS_API_KEY"),
+      billingIntegrated: false,
+      loggedVia: [],
+      notes: "Nenhum logger local específico de ElevenLabs/TTS foi encontrado nesta base.",
+    },
+  ];
 }
 
 const router = Router();
@@ -236,6 +311,17 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
   `));
   await safeQuery("ensure-last-seen", () => db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ`));
 
+  const [hasAiCostLog, hasActivityEvents, hasAiResponseCache] = await Promise.all([
+    tableExists("ai_cost_log"),
+    tableExists("activity_events"),
+    tableExists("ai_response_cache"),
+  ]);
+  const missingTables = [
+    !hasAiCostLog ? "ai_cost_log" : null,
+    !hasActivityEvents ? "activity_events" : null,
+    !hasAiResponseCache ? "ai_response_cache" : null,
+  ].filter((value): value is string => Boolean(value));
+
   // ── User counts ─────────────────────────────────────────────────────────────
   const [
     totalUsersRow, todayNewRow, premiumRow, teacherRow, govRow, todayActiveRow,
@@ -286,25 +372,27 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
   ]);
 
   // ── Activity events ────────────────────────────────────────────────────────
-  const [recentEvents, eventsByType30d, activeUsersFromEvents] = await Promise.all([
-    safeQuery("recentEvents", () => db.execute(sql`
-      SELECT ae.event_type, ae.created_at, ae.metadata, u.email, u.first_name, u.last_name
-      FROM activity_events ae
-      LEFT JOIN users u ON u.id = ae.user_id OR u.clerk_id = ae.user_id
-      WHERE ae.created_at::date BETWEEN ${rangeFrom}::date AND ${rangeTo}::date
-      ORDER BY ae.created_at DESC LIMIT 50
-    `)),
-    safeQuery("eventsByTypeRange", () => db.execute(sql`
-      SELECT event_type, COUNT(*)::int AS count, COUNT(DISTINCT user_id)::int AS users
-      FROM activity_events
-      WHERE created_at::date BETWEEN ${rangeFrom}::date AND ${rangeTo}::date
-      GROUP BY event_type ORDER BY count DESC
-    `)),
-    safeQueryOne("activeUsersEvents", () => db.execute(sql`
-      SELECT COUNT(DISTINCT user_id)::int AS count FROM activity_events
-      WHERE created_at >= NOW() - INTERVAL '30 minutes'
-    `)),
-  ]);
+  const [recentEvents, eventsByType30d, activeUsersFromEvents] = hasActivityEvents
+    ? await Promise.all([
+      safeQuery("recentEvents", () => db.execute(sql`
+        SELECT ae.event_type, ae.created_at, ae.metadata, u.email, u.first_name, u.last_name
+        FROM activity_events ae
+        LEFT JOIN users u ON u.id = ae.user_id OR u.clerk_id = ae.user_id
+        WHERE ae.created_at::date BETWEEN ${rangeFrom}::date AND ${rangeTo}::date
+        ORDER BY ae.created_at DESC LIMIT 50
+      `)),
+      safeQuery("eventsByTypeRange", () => db.execute(sql`
+        SELECT event_type, COUNT(*)::int AS count, COUNT(DISTINCT user_id)::int AS users
+        FROM activity_events
+        WHERE created_at::date BETWEEN ${rangeFrom}::date AND ${rangeTo}::date
+        GROUP BY event_type ORDER BY count DESC
+      `)),
+      safeQueryOne("activeUsersEvents", () => db.execute(sql`
+        SELECT COUNT(DISTINCT user_id)::int AS count FROM activity_events
+        WHERE created_at >= NOW() - INTERVAL '30 minutes'
+      `)),
+    ])
+    : [[], [], null];
 
   // ── Per-day charts ───────────────────────────────────────────────────────────
   const [plansPerDay, simuladosPerDay, newUsersPerDay, activityHeatmap] = await Promise.all([
@@ -321,80 +409,91 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
   ]);
 
   // ── AI cost metrics ───────────────────────────────────────────────────────────
-  const [aiCostRange, aiCostPrev, aiCostByFeature, aiCostByModel, aiCostPerDay, aiCallsTotal, aiCostToday, aiCostMonth] = await Promise.all([
-    safeQueryOne("aiCostRange",  () => db.execute(sql`
-      SELECT
-        COALESCE(SUM(cost_usd::numeric), 0)::float AS total,
-        COUNT(*)::int AS calls,
-        COALESCE(SUM(COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0)), 0)::int AS tokens
-      FROM ai_cost_log
-      WHERE (created_at AT TIME ZONE ${ADMIN_TIME_ZONE})::date BETWEEN ${rangeFrom}::date AND ${rangeTo}::date
-    `)),
-    safeQueryOne("aiCostPrev",   () => db.execute(sql`
-      SELECT
-        COALESCE(SUM(cost_usd::numeric), 0)::float AS total
-      FROM ai_cost_log
-      WHERE (created_at AT TIME ZONE ${ADMIN_TIME_ZONE})::date BETWEEN ${prevFrom}::date AND ${prevTo}::date
-    `)),
-    safeQuery("aiByFeature",     () => db.execute(sql`
-      SELECT
-        COALESCE(NULLIF(BTRIM(feature), ''), 'Não classificado') AS feature,
-        COUNT(*)::int AS calls,
-        COALESCE(SUM(cost_usd::numeric), 0)::float AS cost_usd,
-        COALESCE(SUM(COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0)), 0)::int AS tokens
-      FROM ai_cost_log
-      WHERE (created_at AT TIME ZONE ${ADMIN_TIME_ZONE})::date BETWEEN ${rangeFrom}::date AND ${rangeTo}::date
-      GROUP BY 1
-      ORDER BY cost_usd DESC
-    `)),
-    safeQuery("aiByModel",       () => db.execute(sql`
-      WITH normalized AS (
+  const [aiCostRange, aiCostPrev, aiCostByFeature, aiCostByModel, aiCostPerDay, aiCallsTotal, aiCostToday, aiCostMonth, aiLastEvent] = hasAiCostLog
+    ? await Promise.all([
+      safeQueryOne("aiCostRange",  () => db.execute(sql`
         SELECT
-          COALESCE(NULLIF(BTRIM(model), ''), 'Não classificado') AS raw_model,
-          cost_usd,
-          COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0) AS tokens
+          COALESCE(SUM(cost_usd::numeric), 0)::float AS total,
+          COUNT(*)::int AS calls,
+          COALESCE(SUM(COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0)), 0)::int AS tokens
         FROM ai_cost_log
         WHERE (created_at AT TIME ZONE ${ADMIN_TIME_ZONE})::date BETWEEN ${rangeFrom}::date AND ${rangeTo}::date
-      )
-      SELECT
-        CASE WHEN POSITION('/' IN raw_model) > 0 THEN SPLIT_PART(raw_model, '/', 1) ELSE 'Não informado' END AS provider,
-        CASE WHEN POSITION('/' IN raw_model) > 0 THEN SUBSTRING(raw_model FROM POSITION('/' IN raw_model) + 1) ELSE raw_model END AS model,
-        COUNT(*)::int AS calls,
-        COALESCE(SUM(cost_usd::numeric), 0)::float AS cost_usd,
-        COALESCE(SUM(tokens), 0)::int AS tokens
-      FROM normalized
-      GROUP BY 1, 2
-      ORDER BY cost_usd DESC
-    `)),
-    // One row per calendar day in the normalized admin timezone, so charts reconcile with the selected range.
-    safeQuery("aiPerDay",        () => db.execute(sql`
-      WITH days AS (
-        SELECT generate_series(${rangeFrom}::date, ${rangeTo}::date, interval '1 day')::date AS d
-      )
-      SELECT
-        days.d::text AS day,
-        COALESCE(SUM(l.cost_usd::numeric), 0)::float AS cost_usd,
-        COUNT(l.id)::int AS calls
-      FROM days
-      LEFT JOIN ai_cost_log l ON (l.created_at AT TIME ZONE ${ADMIN_TIME_ZONE})::date = days.d
-      GROUP BY days.d
-      ORDER BY days.d
-    `)),
-    safeQueryOne("aiCallsTotal", () => db.execute(sql`SELECT COUNT(*)::int AS calls, COALESCE(SUM(COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0)), 0)::int AS tokens FROM ai_cost_log`)),
-    safeQueryOne("aiCostToday",  () => db.execute(sql`
-      SELECT
-        COALESCE(SUM(cost_usd::numeric), 0)::float AS total,
-        COUNT(*)::int AS calls,
-        COALESCE(SUM(COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0)), 0)::int AS tokens
-      FROM ai_cost_log
-      WHERE (created_at AT TIME ZONE ${ADMIN_TIME_ZONE})::date = ${today}::date
-    `)),
-    safeQueryOne("aiCostMonth",  () => db.execute(sql`
-      SELECT COALESCE(SUM(cost_usd::numeric), 0)::float AS total
-      FROM ai_cost_log
-      WHERE DATE_TRUNC('month', created_at AT TIME ZONE ${ADMIN_TIME_ZONE}) = DATE_TRUNC('month', NOW() AT TIME ZONE ${ADMIN_TIME_ZONE})
-    `)),
-  ]);
+      `)),
+      safeQueryOne("aiCostPrev",   () => db.execute(sql`
+        SELECT
+          COALESCE(SUM(cost_usd::numeric), 0)::float AS total
+        FROM ai_cost_log
+        WHERE (created_at AT TIME ZONE ${ADMIN_TIME_ZONE})::date BETWEEN ${prevFrom}::date AND ${prevTo}::date
+      `)),
+      safeQuery("aiByFeature",     () => db.execute(sql`
+        SELECT
+          COALESCE(NULLIF(BTRIM(feature), ''), 'Não classificado') AS feature,
+          COUNT(*)::int AS calls,
+          COALESCE(SUM(cost_usd::numeric), 0)::float AS cost_usd,
+          COALESCE(SUM(COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0)), 0)::int AS tokens
+        FROM ai_cost_log
+        WHERE (created_at AT TIME ZONE ${ADMIN_TIME_ZONE})::date BETWEEN ${rangeFrom}::date AND ${rangeTo}::date
+        GROUP BY 1
+        ORDER BY cost_usd DESC
+      `)),
+      safeQuery("aiByModel",       () => db.execute(sql`
+        WITH normalized AS (
+          SELECT
+            COALESCE(NULLIF(BTRIM(model), ''), 'Não classificado') AS raw_model,
+            cost_usd,
+            COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0) AS tokens
+          FROM ai_cost_log
+          WHERE (created_at AT TIME ZONE ${ADMIN_TIME_ZONE})::date BETWEEN ${rangeFrom}::date AND ${rangeTo}::date
+        )
+        SELECT
+          CASE
+            WHEN POSITION('/' IN raw_model) > 0 THEN SPLIT_PART(raw_model, '/', 1)
+            WHEN POSITION(':' IN raw_model) > 0 THEN SPLIT_PART(raw_model, ':', 1)
+            ELSE 'Não informado'
+          END AS provider,
+          CASE
+            WHEN POSITION('/' IN raw_model) > 0 THEN SUBSTRING(raw_model FROM POSITION('/' IN raw_model) + 1)
+            WHEN POSITION(':' IN raw_model) > 0 THEN SUBSTRING(raw_model FROM POSITION(':' IN raw_model) + 1)
+            ELSE raw_model
+          END AS model,
+          COUNT(*)::int AS calls,
+          COALESCE(SUM(cost_usd::numeric), 0)::float AS cost_usd,
+          COALESCE(SUM(tokens), 0)::int AS tokens
+        FROM normalized
+        GROUP BY 1, 2
+        ORDER BY cost_usd DESC
+      `)),
+      // One row per calendar day in the normalized admin timezone, so charts reconcile with the selected range.
+      safeQuery("aiPerDay",        () => db.execute(sql`
+        WITH days AS (
+          SELECT generate_series(${rangeFrom}::date, ${rangeTo}::date, interval '1 day')::date AS d
+        )
+        SELECT
+          days.d::text AS day,
+          COALESCE(SUM(l.cost_usd::numeric), 0)::float AS cost_usd,
+          COUNT(l.id)::int AS calls
+        FROM days
+        LEFT JOIN ai_cost_log l ON (l.created_at AT TIME ZONE ${ADMIN_TIME_ZONE})::date = days.d
+        GROUP BY days.d
+        ORDER BY days.d
+      `)),
+      safeQueryOne("aiCallsTotal", () => db.execute(sql`SELECT COUNT(*)::int AS calls, COALESCE(SUM(COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0)), 0)::int AS tokens FROM ai_cost_log`)),
+      safeQueryOne("aiCostToday",  () => db.execute(sql`
+        SELECT
+          COALESCE(SUM(cost_usd::numeric), 0)::float AS total,
+          COUNT(*)::int AS calls,
+          COALESCE(SUM(COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0)), 0)::int AS tokens
+        FROM ai_cost_log
+        WHERE (created_at AT TIME ZONE ${ADMIN_TIME_ZONE})::date = ${today}::date
+      `)),
+      safeQueryOne("aiCostMonth",  () => db.execute(sql`
+        SELECT COALESCE(SUM(cost_usd::numeric), 0)::float AS total
+        FROM ai_cost_log
+        WHERE DATE_TRUNC('month', created_at AT TIME ZONE ${ADMIN_TIME_ZONE}) = DATE_TRUNC('month', NOW() AT TIME ZONE ${ADMIN_TIME_ZONE})
+      `)),
+      safeQueryOne("aiLastEvent", () => db.execute(sql`SELECT MAX(created_at)::text AS last_event_at FROM ai_cost_log`)),
+    ])
+    : [null, null, [], [], [], null, null, null, null];
 
   // ── AI feature metrics (date-filtered) ────────────────────────────────────────
   const [
@@ -429,6 +528,23 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
   const aiTotalCostUsd = roundMoney(costRangeUsd);
   const aiCostConsistent = [aiFeatureCostUsd, aiModelCostUsd, aiDailyCostUsd]
     .every(total => Math.abs(total - aiTotalCostUsd) < 0.000001);
+  const aiProvidersDiagnostics = buildProviderDiagnostics(aiCostByModel);
+  const billingIntegratedProviders = aiProvidersDiagnostics.filter(provider => provider.billingIntegrated).map(provider => provider.id);
+  const missingProviderConfigs = aiProvidersDiagnostics.filter(provider => !provider.ok).map(provider => provider.id);
+  const loggedFeatures = aiCostByFeature.map((row: any) => String(row.feature));
+  const loggedModels = aiCostByModel.map((row: any) => {
+    const provider = String(row.provider ?? "");
+    const model = String(row.model ?? "");
+    return provider && provider !== "Não informado" ? `${provider}/${model}` : model;
+  });
+  const costBasis: CostBasis = billingIntegratedProviders.length > 0 ? "mixed" : "logged_usage";
+  const missingSources = [
+    "provider_invoice_api: OpenRouter/OpenAI/Anthropic/Gemini/ElevenLabs sem billing real integrado",
+    !loggedFeatures.includes("semantic_cache_embedding") ? "embeddings/cache semântico sem eventos no período" : null,
+    !loggedFeatures.includes("hermes_qa_sintetico") ? "Hermes QA sintético sem eventos no período" : null,
+    "transcrição/OCR/TTS/imagem: exigem logger específico quando houver chamadas diretas fora do cliente central",
+    ...missingProviderConfigs.map(provider => `config:${provider}`),
+  ].filter((value): value is string => Boolean(value));
 
   // ── Helper: compute % change ─────────────────────────────────────────────────
   const pct = (cur: number, prev: number) => prev === 0 ? null : Math.round(((cur - prev) / prev) * 100);
@@ -490,20 +606,19 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
       { feature: "Redação",       uses: (redacoesRange as any)?.count ?? 0, users: (redacoesAll as any)?.users ?? 0, last7d: (redacoesRange as any)?.count ?? 0 },
       { feature: "Flashcards",    uses: (flashRevRange as any)?.count ?? 0, users: 0, last7d: (flashRevRange as any)?.count ?? 0 },
     ],
-    // _DUMMY_API_KEY_ = Replit proxy integration IS connected (proxy handles auth transparently)
-    // Only truly missing (NOT SET) = PENDENTE
-    aiProviders: (() => {
-      const hasIntegration = (integrationVar: string, directVar?: string) => {
-        const iv = process.env[integrationVar];
-        if (iv && iv.length > 0) return true;          // set (even dummy = proxy is active)
-        if (directVar) return !!process.env[directVar]; // fallback to direct API key
-        return false;
-      };
-      return [
-        { id: "openai",     ok: hasIntegration("AI_INTEGRATIONS_OPENAI_API_KEY",     "OPENAI_API_KEY") },
-        { id: "openrouter", ok: hasIntegration("AI_INTEGRATIONS_OPENROUTER_API_KEY", "OPENROUTER_API_KEY") },
-      ];
-    })(),
+    aiProviders: aiProvidersDiagnostics,
+    dataQuality: {
+      costBasis,
+      lastEventAt: (aiLastEvent as any)?.last_event_at ?? null,
+      missingTables,
+      missingSources,
+      trackedSources: {
+        features: loggedFeatures,
+        models: loggedModels,
+        providers: aiProvidersDiagnostics.filter(provider => provider.loggedVia.length > 0).map(provider => provider.id),
+      },
+      warning: "IA & Custos mostra uso/custo registrado no sistema, não gasto real de fatura dos provedores. Integre billing APIs/env credentials para reconciliar com invoice.",
+    },
     trilhaBySubject: trilhaRows.map((r: any) => ({ subject: r.subject, students: r.cnt, avgLevel: r.avg_level, maxLevel: r.max_level })),
     diagnosticsCompleted30d: 0,
     notebookDocsTotal: (notebookDocs as any)?.count ?? 0,
@@ -518,6 +633,16 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
       { label: "Redações", value: (redacoesAll as any)?.count ?? 0, color: "#ef4444" },
     ],
     aiCost: {
+      costBasis,
+      label: "Custo registrado no sistema",
+      lastEventAt: (aiLastEvent as any)?.last_event_at ?? null,
+      dataQuality: {
+        missingTables,
+        missingSources,
+        trackedFeatures: loggedFeatures,
+        trackedModels: loggedModels,
+        warning: "Totais calculados somente a partir de ai_cost_log. Não representam invoice/provider billing.",
+      },
       period: {
         ...normalizedRange,
         boundary: "created_at convertido para America/Sao_Paulo, com from/to inclusivos",
@@ -582,9 +707,13 @@ router.get("/admin/fonte-consumo", async (req: Request, res: Response) => {
 
   try {
     const { pool } = await import("@workspace/db");
+    const [hasAiCostLogSource, hasAiResponseCacheSource] = await Promise.all([
+      tableExists("ai_cost_log"),
+      tableExists("ai_response_cache"),
+    ]);
 
     // ── IA Paga: custo e chamadas reais ──────────────────────────────────────
-    const iaRes = await pool.query(`
+    const iaRes = hasAiCostLogSource ? await pool.query(`
       SELECT
         model,
         COUNT(*)::int                            AS calls,
@@ -594,19 +723,19 @@ router.get("/admin/fonte-consumo", async (req: Request, res: Response) => {
       WHERE model NOT IN (${FREE_MODELS.map((_, i) => `$${i + 1}`).join(",")})
       GROUP BY model
       ORDER BY cost_usd DESC
-    `, FREE_MODELS);
+    `, FREE_MODELS) : { rows: [] };
 
-    const iaTotals = await pool.query(`
+    const iaTotals = hasAiCostLogSource ? await pool.query(`
       SELECT
         COUNT(*)::int                            AS total_calls,
         COALESCE(SUM(cost_usd::numeric), 0)::float AS total_cost,
         COALESCE(SUM(tokens_in + tokens_out), 0)::bigint AS total_tokens
       FROM ai_cost_log
       WHERE model NOT IN (${FREE_MODELS.map((_, i) => `$${i + 1}`).join(",")})
-    `, FREE_MODELS);
+    `, FREE_MODELS) : { rows: [{ total_calls: 0, total_cost: 0, total_tokens: 0 }] };
 
     // ── Fontes Gratuitas: chamadas por modelo ────────────────────────────────
-    const freeRes = await pool.query(`
+    const freeRes = hasAiCostLogSource ? await pool.query(`
       SELECT
         model,
         COUNT(*)::int                            AS calls,
@@ -614,10 +743,10 @@ router.get("/admin/fonte-consumo", async (req: Request, res: Response) => {
       FROM ai_cost_log
       WHERE model IN (${FREE_MODELS.map((_, i) => `$${i + 1}`).join(",")})
       GROUP BY model
-    `, FREE_MODELS);
+    `, FREE_MODELS) : { rows: [] };
 
     // ── Cache Semântico ──────────────────────────────────────────────────────
-    const cacheRes = await pool.query(`
+    const cacheRes = hasAiResponseCacheSource ? await pool.query(`
       SELECT
         feature,
         COUNT(*)::int                             AS entries,
@@ -625,14 +754,14 @@ router.get("/admin/fonte-consumo", async (req: Request, res: Response) => {
       FROM ai_response_cache
       GROUP BY feature
       ORDER BY hits DESC
-    `);
+    `) : { rows: [] };
 
-    const cacheTotals = await pool.query(`
+    const cacheTotals = hasAiResponseCacheSource ? await pool.query(`
       SELECT
         COUNT(*)::int                             AS total_entries,
         COALESCE(SUM(uso_count), 0)::int          AS total_hits
       FROM ai_response_cache
-    `);
+    `) : { rows: [{ total_entries: 0, total_hits: 0 }] };
 
     // ── Calcula economias ────────────────────────────────────────────────────
     const ia = iaTotals.rows[0] as any;
@@ -738,6 +867,14 @@ router.get("/admin/fonte-consumo", async (req: Request, res: Response) => {
       totalIaCostUsd: totalIaCost,
       totalIaCostBrl: totalIaCost * USD_TO_BRL,
       taxaEconomia,
+      costBasis: "logged_usage",
+      dataQuality: {
+        missingTables: [
+          !hasAiCostLogSource ? "ai_cost_log" : null,
+          !hasAiResponseCacheSource ? "ai_response_cache" : null,
+        ].filter(Boolean),
+        warning: "Medidor usa registros internos e cache local; não consulta faturas dos provedores.",
+      },
     });
   } catch (err) {
     console.error("[admin/fonte-consumo]", err);
@@ -763,6 +900,10 @@ router.delete("/admin/cache/clear", async (req: Request, res: Response) => {
   const { feature } = req.body as { feature?: string };
   try {
     const { pool } = await import("@workspace/db");
+    if (!await tableExists("ai_response_cache")) {
+      res.json({ ok: false, mensagem: "Tabela ai_response_cache ausente; nada para limpar.", missingTable: "ai_response_cache" });
+      return;
+    }
     if (feature) {
       await pool.query(`DELETE FROM ai_response_cache WHERE feature = $1`, [feature]);
       res.json({ ok: true, mensagem: `Cache '${feature}' limpo.` });

@@ -251,6 +251,47 @@ interface StudyGuide {
   questoes?: Array<{ tipo: string; pergunta: string; resposta: string; dicaEnem: string }>;
   cronogramaSugerido: string[];
 }
+
+type MaterialPreferences = {
+  publico: "aluno" | "professor";
+  profundidade: "rapido" | "equilibrado" | "aprofundado";
+  visual: "sem-imagens" | "web" | "ia" | "diagramas";
+  tom: "didatico" | "enem" | "aula" | "infantil" | "tecnico";
+  formato: "resumo" | "aula" | "guia" | "apresentacao" | "mapa" | "exercicios" | "relatorio";
+  estiloVisual: string;
+  instrucoes: string;
+};
+
+type VisualSlot = {
+  id: string;
+  kind: "image_web" | "image_ai" | "diagram" | "math_visual" | "timeline" | "source_excerpt";
+  title: string;
+  query?: string;
+  prompt?: string;
+  caption: string;
+  reason: string;
+  source: string;
+  alt: string;
+  credit?: string;
+  url?: string;
+  status: "resolved" | "placeholder" | "disabled" | "unavailable";
+};
+
+type VisualEnrichment = {
+  status: string;
+  message: string;
+  slots: VisualSlot[];
+};
+
+const DEFAULT_MATERIAL_PREFERENCES: MaterialPreferences = {
+  publico: "aluno",
+  profundidade: "equilibrado",
+  visual: "web",
+  tom: "didatico",
+  formato: "guia",
+  estiloVisual: "editorial moderno, limpo, colorido e didático",
+  instrucoes: "",
+};
 interface PodcastRoteiro {
   titulo: string;
   subtitulo: string;
@@ -363,6 +404,14 @@ const PREMIUM_PRINT_CSS = `
   img{max-width:100%;height:auto;border-radius:18px;box-shadow:0 16px 38px rgba(15,23,42,.12);break-inside:avoid}
   figure{margin:18px 0;break-inside:avoid}
   figcaption{font-size:12px;color:#64748b;margin-top:8px;text-align:center}
+  .studyai-visual-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin:18px 0}
+  .studyai-visual-card{break-inside:avoid;border:1px solid #dbe3ef;border-radius:20px;background:#fff;overflow:hidden;box-shadow:0 12px 30px rgba(15,23,42,.07)}
+  .studyai-visual-card img{width:100%;height:170px;object-fit:cover;border-radius:0;box-shadow:none}
+  .studyai-visual-body{padding:14px}
+  .studyai-visual-kind{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:#7c3aed}
+  .studyai-visual-title{font-size:15px;font-weight:900;color:#1e1b4b;margin:4px 0 6px}
+  .studyai-visual-caption{font-size:12px;color:#475569;margin:0 0 8px}
+  .studyai-visual-credit{font-size:10px;color:#94a3b8;margin:0}
   code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#f1f5f9;border-radius:8px}
   code{padding:.15rem .35rem}
   pre{padding:14px;overflow:auto;white-space:pre-wrap}
@@ -469,6 +518,19 @@ function renderPrimitiveList(items: unknown[]): string {
   return `<ul>${items.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
 }
 
+function renderVisualEnrichmentHtml(enrichment: unknown): string {
+  const data = enrichment as VisualEnrichment | undefined;
+  const slots = Array.isArray(data?.slots) ? data!.slots : [];
+  if (!slots.length) return "";
+  const cards = slots.map((slot) => {
+    const media = slot.url
+      ? `<img src="${escapeHtml(slot.url)}" alt="${escapeHtml(slot.alt || slot.title)}">`
+      : `<div style="height:170px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#eef2ff,#fdf2f8);color:#6d28d9;font-weight:900;text-align:center;padding:16px">${escapeHtml(slot.kind === "math_visual" ? "Diagrama / fórmula" : slot.kind === "source_excerpt" ? "Trecho validado" : "Visual planejado")}</div>`;
+    return `<article class="studyai-visual-card">${media}<div class="studyai-visual-body"><div class="studyai-visual-kind">${escapeHtml(slot.source)} · ${escapeHtml(slot.status)}</div><h3 class="studyai-visual-title">${escapeHtml(slot.title)}</h3><p class="studyai-visual-caption">${escapeHtml(slot.caption)}</p>${slot.reason ? `<p class="studyai-visual-caption"><strong>Por quê:</strong> ${escapeHtml(slot.reason)}</p>` : ""}${slot.credit ? `<p class="studyai-visual-credit">Crédito: ${escapeHtml(slot.credit)}</p>` : ""}${slot.prompt && !slot.url ? `<p class="studyai-visual-credit">Prompt: ${escapeHtml(slot.prompt)}</p>` : ""}</div></article>`;
+  }).join("");
+  return `<section class="studyai-section"><h2>Plano visual e fontes</h2>${data?.message ? `<div class="studyai-callout">${escapeHtml(data.message)}</div>` : ""}<div class="studyai-visual-grid">${cards}</div></section>`;
+}
+
 function renderArtifactValue(value: unknown, key = "conteudo", depth = 0): string {
   if (value === null || value === undefined || value === "") return "";
   if (depth > 7) return `<p>${escapeHtml(value)}</p>`;
@@ -489,6 +551,7 @@ function renderArtifactValue(value: unknown, key = "conteudo", depth = 0): strin
   if (typeof value === "object") {
     const obj = value as Record<string, unknown>;
     if (typeof obj.html === "string") return obj.html;
+    if (key === "visualEnrichment") return renderVisualEnrichmentHtml(obj);
     if (typeof obj.b64_json === "string") {
       const mime = typeof obj.mimeType === "string" ? obj.mimeType : "image/png";
       const caption = typeof obj.titulo === "string" ? obj.titulo : humanizeArtifactKey(key);
@@ -498,6 +561,7 @@ function renderArtifactValue(value: unknown, key = "conteudo", depth = 0): strin
       v !== null &&
       v !== undefined &&
       !["id", "created_at", "createdAt", "kind", "mimeType", "formato"].includes(k) &&
+      k !== "materialPreferences" &&
       !(k === "titulo" && typeof v === "string") &&
       !(k === "title" && typeof v === "string")
     );
@@ -565,11 +629,11 @@ function buildPremiumPrintableHtml(payload: unknown, title: string, kind?: strin
   if (payloadObj && typeof payloadObj.html === "string") return injectPremiumCssIntoHtml(payloadObj.html, title);
   if (payloadObj?.apresentacao && typeof payloadObj.apresentacao === "object") {
     const deck = payloadObj.apresentacao as Slides;
-    const slidesHtml = renderSlidesForPrint(deck);
+    const slidesHtml = `${renderVisualEnrichmentHtml(payloadObj.visualEnrichment)}${renderSlidesForPrint(deck)}`;
     return injectPremiumCssIntoHtml(slidesHtml, deck.titulo ?? title);
   }
   if ((kind === "mapa-mental" || kind === "mapa_mental" || payloadObj?.categories) && payloadObj?.subject) {
-    const mapHtml = renderMindMapForPrint(payloadObj as unknown as MindMap);
+    const mapHtml = `${renderVisualEnrichmentHtml(payloadObj.visualEnrichment)}${renderMindMapForPrint(payloadObj as unknown as MindMap)}`;
     return injectPremiumCssIntoHtml(mapHtml, String(payloadObj.subject ?? title));
   }
   const displayTitle =
@@ -587,6 +651,61 @@ function openPremiumPrintWindow(payload: unknown, title: string, kind?: string) 
   win.document.close();
   win.focus();
   setTimeout(() => win.print(), 500);
+}
+
+function VisualEnrichmentPanel({ payload }: { payload: unknown }) {
+  const enrichment = (payload as any)?.visualEnrichment as VisualEnrichment | undefined;
+  const validation = (payload as any)?.sourceValidation as { status?: string; warning?: string; snippets?: Array<{ numero: number; titulo: string; trecho: string }> } | undefined;
+  const slots = Array.isArray(enrichment?.slots) ? enrichment!.slots : [];
+  if (!slots.length && !validation?.warning) return null;
+  return (
+    <div className="m-3 rounded-2xl border border-violet-100 bg-white shadow-sm overflow-hidden">
+      <div className="px-3 py-2.5 bg-gradient-to-r from-violet-50 to-fuchsia-50 border-b border-violet-100">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[10px] font-black text-violet-700 uppercase tracking-wider flex items-center gap-1.5">
+              <ImageIcon className="w-3.5 h-3.5" /> Enriquecimento visual
+            </p>
+            <p className="text-[10px] text-violet-500 mt-0.5">{enrichment?.message ?? "Material validado com fontes."}</p>
+          </div>
+          <span className="px-2 py-0.5 rounded-full bg-white border border-violet-100 text-[9px] font-black text-violet-600">
+            {slots.filter(s => s.url).length} imagem(ns)
+          </span>
+        </div>
+      </div>
+      {validation?.warning && (
+        <div className="mx-3 mt-3 p-2 rounded-xl bg-amber-50 border border-amber-200 text-[10px] text-amber-800">
+          {validation.warning}
+        </div>
+      )}
+      {slots.length > 0 && (
+        <div className="p-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5">
+          {slots.slice(0, 6).map((slot) => (
+            <div key={slot.id} className="rounded-xl border border-slate-200 bg-slate-50 overflow-hidden">
+              {slot.url ? (
+                <img src={slot.url} alt={slot.alt || slot.title} className="w-full h-28 object-cover bg-white" />
+              ) : (
+                <div className="h-28 bg-gradient-to-br from-violet-100 via-fuchsia-50 to-amber-50 flex items-center justify-center px-3 text-center">
+                  <p className="text-[10px] font-black text-violet-700">
+                    {slot.kind === "math_visual" ? "Diagrama / fórmula" : slot.kind === "source_excerpt" ? "Trecho validado" : "Visual planejado"}
+                  </p>
+                </div>
+              )}
+              <div className="p-2">
+                <div className="flex items-center gap-1 mb-1">
+                  <span className="text-[8px] font-black uppercase tracking-wider text-violet-500">{slot.source}</span>
+                  <span className={`text-[8px] font-black px-1 rounded ${slot.status === "resolved" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{slot.status}</span>
+                </div>
+                <p className="text-[10px] font-black text-slate-800 leading-tight">{slot.title}</p>
+                <p className="text-[9px] text-slate-600 mt-1 leading-snug">{slot.caption}</p>
+                {slot.credit && <p className="text-[8px] text-slate-400 mt-1">Crédito: {slot.credit}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 const COLOR_MAP: Record<string, string> = {
@@ -1875,6 +1994,8 @@ export default function Notebook() {
   const epubRef = useRef<HTMLInputElement>(null);
 
   const [relatorioTemplate, setRelatorioTemplate] = useState<"academico" | "blog" | "executivo" | "aula">("academico");
+  const [materialPreferences, setMaterialPreferences] = useState<MaterialPreferences>(DEFAULT_MATERIAL_PREFERENCES);
+  const [showMaterialPrefs, setShowMaterialPrefs] = useState(true);
 
   // Personas educacionais (/personas/*.py)
   const [selectedPersona, setSelectedPersona] = useState<string>("planejador");
@@ -2549,6 +2670,22 @@ export default function Notebook() {
     setSelectedDocIds(ids => ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id]);
   }, []);
 
+  const trackNotebookTelemetry = useCallback((action: "export" | "generation_failed" | "retry" | "feedback", extra: Record<string, unknown> = {}) => {
+    fetch(`${BASE_URL}/api/notebook/telemetry`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        action,
+        kind: activeTool,
+        docId: selectedDocIds[0],
+        cadernoId: activeCaderno?.id,
+        preferences: materialPreferences,
+        ...extra,
+      }),
+    }).catch(() => {});
+  }, [activeTool, selectedDocIds, activeCaderno?.id, materialPreferences]);
+
   const sendMessage = useCallback(async () => {
     if (!inputMsg.trim() || chatLoading) return;
     const q = inputMsg.trim();
@@ -2563,6 +2700,7 @@ export default function Notebook() {
           docIds: restrictToSelected && selectedDocIds.length ? selectedDocIds : null,
           cadernoId: activeCaderno?.id,
           modo: chatMode,
+          materialPreferences,
         }),
       });
       if (!r.ok || !r.body) {
@@ -2612,7 +2750,7 @@ export default function Notebook() {
     } catch {
       setMessages(m => { const c = [...m]; c[c.length - 1] = { role: "assistant", text: "Erro de conexão. Tente novamente." }; return c; });
     } finally { setChatLoading(false); }
-  }, [inputMsg, chatLoading, selectedDocIds, restrictToSelected, activeCaderno]);
+  }, [inputMsg, chatLoading, selectedDocIds, restrictToSelected, activeCaderno, chatMode, materialPreferences]);
 
   const runTool = useCallback(async (tool: Tool, docId?: number) => {
     const targetDocId = docId ?? selectedDocIds[0];
@@ -2678,7 +2816,7 @@ export default function Notebook() {
     }
 
     try {
-      const body: any = { docId: targetDocId, docIds: selectedDocIds.length ? selectedDocIds : [targetDocId] };
+      const body: any = { docId: targetDocId, docIds: selectedDocIds.length ? selectedDocIds : [targetDocId], materialPreferences };
       if (tool === "infografico") {
         body.estilo = (window as any).__infograficoEstilo ?? "profissional";
         body.orientacao = (window as any).__infograficoOrientacao ?? "quadrado";
@@ -2699,12 +2837,18 @@ export default function Notebook() {
       try { data = rawText ? JSON.parse(rawText) : {}; }
       catch { data = { erro: rawText.slice(0, 240) || "Resposta inválida do servidor" }; }
       if (r.ok) { setToolResult(data); }
-      else { setToolError(data.erro ?? `Erro ${r.status} ao gerar conteúdo`); }
+      else {
+        const errorMessage = data.erro ?? `Erro ${r.status} ao gerar conteúdo`;
+        setToolError(errorMessage);
+        trackNotebookTelemetry("generation_failed", { metadata: { status: r.status, error: errorMessage, tool } });
+      }
     } catch (e: any) {
-      setToolError(e?.message ? `Erro de conexão: ${e.message}` : "Erro de conexão. Tente novamente.");
+      const errorMessage = e?.message ? `Erro de conexão: ${e.message}` : "Erro de conexão. Tente novamente.";
+      setToolError(errorMessage);
+      trackNotebookTelemetry("generation_failed", { metadata: { error: errorMessage, tool } });
     }
     finally { setToolLoading(false); }
-  }, [selectedDocIds, navigate, relatorioTemplate, selectedPersona, aulaVivaFormato]);
+  }, [selectedDocIds, navigate, relatorioTemplate, selectedPersona, aulaVivaFormato, materialPreferences, trackNotebookTelemetry]);
 
   const selectedDocs = docs.filter(d => selectedDocIds.includes(d.id));
 
@@ -3369,13 +3513,16 @@ export default function Notebook() {
                       <Maximize2 className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      onClick={() => { /* feedback positivo — no-op por ora */ }}
+                      onClick={() => trackNotebookTelemetry("feedback", { kind: "chat", feedback: { rating: "up", scope: "chat_response" }, metadata: { messageChars: msg.text.length, fontes: msg.fontes?.length ?? 0 } })}
                       title="Boa resposta"
                       className="p-1 rounded-lg text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 transition-colors text-xs">
                       👍
                     </button>
                     <button
-                      onClick={() => { /* feedback negativo — no-op por ora */ }}
+                      onClick={() => {
+                        const comment = window.prompt("O que ficou ruim? (opcional: genérico, sem imagem, erro de fonte, PDF ruim...)") ?? "";
+                        trackNotebookTelemetry("feedback", { kind: "chat", feedback: { rating: "down", comment, scope: "chat_response" }, metadata: { messageChars: msg.text.length, fontes: msg.fontes?.length ?? 0 } });
+                      }}
                       title="Resposta ruim"
                       className="p-1 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors text-xs">
                       👎
@@ -3548,6 +3695,78 @@ export default function Notebook() {
           </div>
         )}
       </div>
+
+      {!toolResult && (
+        <div className="px-4 pt-3 flex-shrink-0">
+          <div className="rounded-2xl border border-violet-100 bg-white shadow-sm overflow-hidden">
+            <button
+              onClick={() => setShowMaterialPrefs(v => !v)}
+              className="w-full px-3 py-2 flex items-center gap-2 text-left bg-gradient-to-r from-violet-50 to-fuchsia-50"
+            >
+              <ImageIcon className="w-3.5 h-3.5 text-violet-600" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-black text-violet-800 uppercase tracking-wider">Preferências do material</p>
+                <p className="text-[9px] text-violet-500 truncate">
+                  {materialPreferences.publico} · {materialPreferences.profundidade} · {materialPreferences.visual} · {materialPreferences.tom}
+                </p>
+              </div>
+              <ChevronDown className={`w-3.5 h-3.5 text-violet-400 transition-transform ${showMaterialPrefs ? "rotate-180" : ""}`} />
+            </button>
+            {showMaterialPrefs && (
+              <div className="p-3 space-y-2.5">
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    ["publico", "Público", [["aluno", "Aluno"], ["professor", "Professor"]]],
+                    ["profundidade", "Profundidade", [["rapido", "Rápido"], ["equilibrado", "Equilibrado"], ["aprofundado", "Aprofundado"]]],
+                    ["visual", "Visual", [["sem-imagens", "Sem imagens"], ["web", "Web/banco"], ["ia", "Imagem IA"], ["diagramas", "Diagramas/3D"]]],
+                    ["tom", "Tom", [["didatico", "Didático"], ["enem", "ENEM"], ["aula", "Aula"], ["infantil", "Fundamental"], ["tecnico", "Técnico"]]],
+                    ["formato", "Formato", [["resumo", "Resumo"], ["aula", "Aula"], ["guia", "Guia"], ["apresentacao", "Apresentação"], ["mapa", "Mapa"], ["exercicios", "Exercícios"], ["relatorio", "Relatório"]]],
+                  ].map(([key, label, options]) => (
+                    <label key={key as string} className={(key as string) === "formato" ? "col-span-2" : ""}>
+                      <span className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">{label as string}</span>
+                      <select
+                        value={(materialPreferences as any)[key as string]}
+                        onChange={e => setMaterialPreferences(p => ({ ...p, [key as string]: e.target.value }))}
+                        className="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-white text-[11px] font-bold text-slate-700 focus:outline-none focus:border-violet-400"
+                      >
+                        {(options as string[][]).map(([value, optionLabel]) => <option key={value} value={value}>{optionLabel}</option>)}
+                      </select>
+                    </label>
+                  ))}
+                </div>
+                <label className="block">
+                  <span className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Cor / estilo visual</span>
+                  <input
+                    value={materialPreferences.estiloVisual}
+                    onChange={e => setMaterialPreferences(p => ({ ...p, estiloVisual: e.target.value }))}
+                    placeholder="Ex: científico azul, infantil colorido, minimalista..."
+                    className="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-[11px] text-slate-700 focus:outline-none focus:border-violet-400"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Instruções livres</span>
+                  <textarea
+                    value={materialPreferences.instrucoes}
+                    onChange={e => setMaterialPreferences(p => ({ ...p, instrucoes: e.target.value }))}
+                    placeholder="Ex: simplifique para 9º ano, use fotos reais, faça mais exercícios, foque em professor..."
+                    rows={2}
+                    className="w-full px-2 py-1.5 rounded-lg border border-slate-200 text-[11px] text-slate-700 focus:outline-none focus:border-violet-400 resize-none"
+                  />
+                </label>
+                <div className="flex items-center justify-between">
+                  <p className="text-[9px] text-slate-400">Estas preferências entram no chat e em todos os geradores.</p>
+                  <button
+                    onClick={() => setMaterialPreferences(DEFAULT_MATERIAL_PREFERENCES)}
+                    className="text-[9px] font-black text-violet-600 hover:text-violet-800"
+                  >
+                    Restaurar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Tools list: hidden when result is showing, scrollable otherwise ── */}
       <div className={`overflow-y-auto p-4 transition-all ${toolResult && activeTool ? "hidden" : "flex-1"}`}>
@@ -3783,6 +4002,7 @@ export default function Notebook() {
                activeTool === "avaliacao-voz" ? "Montando podcast, entrevista e debate estruturado..." :
                activeTool === "making-of" ? "Revelando os bastidores pedagógicos da aula..." :
                activeTool === "simulador-aula" ? "Simulando a turma virtual com 5 alunos-tipo..." :
+               materialPreferences.visual !== "sem-imagens" ? "Enriquecendo com imagens, captions e fontes..." :
                "Gerando..."}
             </p>
           </div>
@@ -3797,7 +4017,7 @@ export default function Notebook() {
                 <p className="text-xs text-red-700 mt-0.5">{toolError}</p>
                 {activeTool && selectedDocIds[0] && (
                   <button
-                    onClick={() => runTool(activeTool, selectedDocIds[0])}
+                    onClick={() => { trackNotebookTelemetry("retry", { metadata: { tool: activeTool, from: "error_state" } }); runTool(activeTool, selectedDocIds[0]); }}
                     className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-red-200 text-[10px] font-black text-red-700 hover:bg-red-100"
                   >
                     <RefreshCw className="w-3 h-3" />
@@ -3825,7 +4045,7 @@ export default function Notebook() {
                 </p>
               </div>
               <button
-                onClick={() => selectedDocIds[0] && runTool(activeTool, selectedDocIds[0])}
+                onClick={() => { trackNotebookTelemetry("retry", { metadata: { tool: activeTool } }); selectedDocIds[0] && runTool(activeTool, selectedDocIds[0]); }}
                 disabled={toolLoading || !selectedDocIds[0]}
                 className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors text-[10px] font-black disabled:opacity-50"
                 title="Gerar novamente usando a fonte selecionada"
@@ -3835,7 +4055,7 @@ export default function Notebook() {
               </button>
               {/* Download buttons */}
               <button
-                onClick={() => openPremiumPrintWindow(toolResult, TOOL_CONFIG[activeTool].label, activeTool)}
+                onClick={() => { trackNotebookTelemetry("export", { metadata: { format: "pdf_print", tool: activeTool } }); openPremiumPrintWindow(toolResult, TOOL_CONFIG[activeTool].label, activeTool); }}
                 className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors text-[10px] font-black"
                 title="Imprimir / salvar como PDF premium"
               >
@@ -3844,6 +4064,7 @@ export default function Notebook() {
               </button>
               <button
                 onClick={async () => {
+                  trackNotebookTelemetry("export", { metadata: { format: "pptx", tool: activeTool } });
                   const _title = TOOL_CONFIG[activeTool].label;
                   const _payload = toolResult;
                   const pptxgen = (await import("pptxgenjs")).default;
@@ -3863,6 +4084,23 @@ export default function Notebook() {
               >
                 <Presentation className="w-3.5 h-3.5" />
               </button>
+              <button
+                onClick={() => trackNotebookTelemetry("feedback", { feedback: { rating: "up", scope: "material" }, metadata: { tool: activeTool } })}
+                className="p-1.5 rounded-lg border border-emerald-200 text-[11px] hover:bg-emerald-50 transition-colors"
+                title="Material bom"
+              >
+                👍
+              </button>
+              <button
+                onClick={() => {
+                  const comment = window.prompt("O que precisa melhorar neste material? (visual, fonte, detalhamento, PDF...)") ?? "";
+                  trackNotebookTelemetry("feedback", { feedback: { rating: "down", comment, scope: "material" }, metadata: { tool: activeTool } });
+                }}
+                className="p-1.5 rounded-lg border border-rose-200 text-[11px] hover:bg-rose-50 transition-colors"
+                title="Material ruim"
+              >
+                👎
+              </button>
               <button onClick={() => { setActiveTool(null); setToolResult(null); setToolError(null); }}
                 className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors"
                 title="Fechar resultado"
@@ -3871,6 +4109,7 @@ export default function Notebook() {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto">
+            <VisualEnrichmentPanel payload={toolResult} />
 
             {activeTool === "overview" && (() => {
               const r = toolResult as Overview;
@@ -4220,7 +4459,7 @@ export default function Notebook() {
                       </div>
                       <div className="flex items-center gap-1.5 flex-shrink-0">
                         <button
-                          onClick={() => openPremiumPrintWindow(r, r.titulo ?? "Material StudyAI", "material_html")}
+                          onClick={() => { trackNotebookTelemetry("export", { metadata: { format: "pdf_print", tool: "material_html" } }); openPremiumPrintWindow(r, r.titulo ?? "Material StudyAI", "material_html"); }}
                           className="inline-flex items-center gap-1 text-[10px] font-black bg-rose-50 border border-rose-200 text-rose-600 px-2.5 py-1.5 rounded-lg hover:bg-rose-100 transition-colors"
                           title="Imprimir ou salvar como PDF com template premium"
                         >
@@ -4234,7 +4473,7 @@ export default function Notebook() {
                           <Maximize2 className="w-3 h-3" /> Nova aba
                         </button>
                         <button
-                          onClick={downloadHTML}
+                          onClick={() => { trackNotebookTelemetry("export", { metadata: { format: "html", tool: "material_html" } }); downloadHTML(); }}
                           className="inline-flex items-center gap-1 text-[10px] font-semibold bg-slate-900 text-white px-2.5 py-1.5 rounded-lg hover:bg-slate-700 transition-colors"
                           title="Baixar como arquivo .html"
                         >
@@ -4297,7 +4536,7 @@ export default function Notebook() {
             })()}
 
             {activeTool === "tabela" && (() => {
-              const r = toolResult as { titulo?: string; descricao?: string; colunas?: string[]; linhas?: Record<string, string>[]; markdown?: string };
+              const r = toolResult as { titulo?: string; descricao?: string; colunas?: string[]; linhas?: Array<Record<string, string> | string[]>; markdown?: string };
               if (r.markdown) {
                 return (
                   <div className="p-3">
@@ -4314,6 +4553,11 @@ export default function Notebook() {
                 );
               }
               if (r.colunas && r.linhas) {
+                const rows = r.linhas.map(row =>
+                  Array.isArray(row)
+                    ? Object.fromEntries(r.colunas!.map((col, i) => [col, row[i] ?? ""]))
+                    : row
+                );
                 return (
                   <div className="p-3">
                     <p className="text-xs font-bold text-slate-700 mb-2">{r.titulo}</p>
@@ -4328,7 +4572,7 @@ export default function Notebook() {
                           </tr>
                         </thead>
                         <tbody>
-                          {r.linhas.map((row, ri) => (
+                          {rows.map((row, ri) => (
                             <tr key={ri} className={ri % 2 === 0 ? "bg-white" : "bg-slate-50"}>
                               {r.colunas!.map((col, ci) => (
                                 <td key={ci} className="px-2 py-1.5 text-slate-700 border-b border-slate-100 align-top">{row[col] ?? "—"}</td>
@@ -6083,7 +6327,8 @@ export default function Notebook() {
             })()}
 
             {activeTool === "relatorio" && (() => {
-              const r = toolResult as { titulo?: string; template?: string; markdown?: string; secoes?: Array<{ titulo: string; conteudo: string }> };
+              const r = toolResult as { titulo?: string; template?: string; markdown?: string; conteudo?: string; secoes?: Array<{ titulo: string; conteudo: string }> };
+              const reportText = r.markdown ?? r.conteudo ?? "";
               return (
                 <div className="p-3 space-y-3">
                   {/* Template selector */}
@@ -6102,9 +6347,9 @@ export default function Notebook() {
                     </button>
                   </div>
                   {r.titulo && <h3 className="text-sm font-black text-slate-800">{r.titulo}</h3>}
-                  {r.markdown ? (
+                  {reportText ? (
                     <div className="prose prose-sm max-w-none text-slate-700">
-                      <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed">{r.markdown}</pre>
+                      <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed">{reportText}</pre>
                     </div>
                   ) : r.secoes ? (
                     <div className="space-y-3">
@@ -6116,8 +6361,8 @@ export default function Notebook() {
                       ))}
                     </div>
                   ) : null}
-                  {(r.markdown ?? "") && (
-                    <button onClick={() => navigator.clipboard.writeText(r.markdown!)}
+                  {reportText && (
+                    <button onClick={() => navigator.clipboard.writeText(reportText)}
                       className="flex items-center gap-1.5 text-[10px] font-bold text-violet-600 hover:underline">
                       <ClipboardList className="w-3 h-3" /> Copiar relatório
                     </button>

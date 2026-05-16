@@ -24,6 +24,8 @@ export const CQO_RULES_PT = `REGRAS CQO (aplique em toda geração; não revele 
 • Validação: verifique coerência, unidades, fórmulas e afirmações antes de concluir.
 • Multimídia: quando couber, sugira ou descreva imagem ilustrativa, visual 3D (GeoGebra) ou trecho de vídeo — sem inventar URLs.
 • Notebook RAG/material: quando gerar material longo, inclua objetivos, pré-requisitos, exemplos, exercícios/checkpoints, gabarito/autoavaliação quando aplicável e estrutura que sobreviva bem a impressão/PDF.
+• Notebook RAG multimodal: audite se o material respeita preferências do usuário (público, profundidade, visual, tom, prompt livre), usa fonte selecionada, evita texto genérico, tem slots visuais/imagens/diagramas/captions/créditos e mostra fallback claro quando API de imagem ou fonte falhar.
+• Aprendizado Hermes Notebook: use sinais notebook_material_generated, notebook_generation_failed, notebook_export e notebook_feedback para melhorar recomendações; nunca prometa aprendizado automático invisível, gere recomendações acionáveis e mensuráveis.
 • Tom: didático, encorajador, PT-BR; evite repetir frases de abertura genéricas.`;
 
 /** Lente ux_layout — landing e fluxos internos. */
@@ -46,6 +48,8 @@ const KIND_KEYWORDS: Record<string, string[]> = {
   plano: ["plano", "estudo", "cronograma", "aluno", "meta"],
   infografico: ["visual", "infográf", "material", "conteúdo"],
   mapa: ["mapa", "conceito", "organiz", "estudo"],
+  notebook: ["notebook", "rag", "material", "fonte", "visual", "pdf", "export", "fallback"],
+  notebook_rag: ["notebook", "rag", "material", "fonte", "visual", "pdf", "export", "fallback", "imagem"],
 };
 
 interface CacheEntry {
@@ -226,7 +230,7 @@ export async function injectHermes(
   topicHint?: string,
 ): Promise<string> {
   return appendHermesToSystemPrompt(systemPrompt, {
-    kind: "chat",
+    kind: /notebook|rag|fonte|material/i.test(systemPrompt) ? "notebook_rag" : "chat",
     topic: topicHint,
     audience: "aluno",
   });

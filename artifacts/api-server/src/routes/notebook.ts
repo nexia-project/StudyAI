@@ -19,6 +19,8 @@ import { logAiUsage } from "../lib/aiCostLogger";
 import { estimateTokensFromMessages, estimateTokensFromText, logTextUsage } from "../lib/aiUsageTelemetry";
 import { trackEvent } from "../lib/trackEvent";
 import { injectHermes } from "../lib/hermes/buildHermesContext";
+import { persistDescoberta } from "../lib/hermes/persist";
+import { formatHermesRecommendation, type HermesRecommendation } from "../lib/hermes/recommendationStandard";
 
 const _require = createRequire(import.meta.url);
 const router: IRouter = Router();
@@ -285,6 +287,351 @@ function compactText(value: unknown, max = 160): string {
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, max);
+}
+
+type MaterialAudience = "aluno" | "professor";
+type MaterialDepth = "rapido" | "equilibrado" | "aprofundado";
+type MaterialVisualMode = "sem-imagens" | "web" | "ia" | "diagramas";
+type MaterialTone = "didatico" | "enem" | "aula" | "infantil" | "tecnico";
+type MaterialFormat = "resumo" | "aula" | "guia" | "apresentacao" | "mapa" | "exercicios" | "relatorio";
+
+type MaterialPreferences = {
+  publico: MaterialAudience;
+  profundidade: MaterialDepth;
+  visual: MaterialVisualMode;
+  tom: MaterialTone;
+  formato: MaterialFormat;
+  estiloVisual: string;
+  instrucoes: string;
+};
+
+type VisualSlot = {
+  id: string;
+  kind: "image_web" | "image_ai" | "diagram" | "math_visual" | "timeline" | "source_excerpt";
+  title: string;
+  query?: string;
+  prompt?: string;
+  caption: string;
+  reason: string;
+  source: "wikimedia" | "ai-placeholder" | "diagram-placeholder" | "source" | "fallback";
+  alt: string;
+  credit?: string;
+  url?: string;
+  status: "resolved" | "placeholder" | "disabled" | "unavailable";
+};
+
+type VisualEnrichment = {
+  status: string;
+  message: string;
+  slots: VisualSlot[];
+};
+
+const MATERIAL_DEFAULTS: MaterialPreferences = {
+  publico: "aluno",
+  profundidade: "equilibrado",
+  visual: "web",
+  tom: "didatico",
+  formato: "guia",
+  estiloVisual: "editorial moderno, limpo, colorido e didático",
+  instrucoes: "",
+};
+
+function normalizeMaterialPreferences(raw: any): MaterialPreferences {
+  const pick = <T extends string>(value: unknown, allowed: readonly T[], fallback: T): T =>
+    allowed.includes(value as T) ? value as T : fallback;
+  return {
+    publico: pick(raw?.publico, ["aluno", "professor"] as const, MATERIAL_DEFAULTS.publico),
+    profundidade: pick(raw?.profundidade, ["rapido", "equilibrado", "aprofundado"] as const, MATERIAL_DEFAULTS.profundidade),
+    visual: pick(raw?.visual, ["sem-imagens", "web", "ia", "diagramas"] as const, MATERIAL_DEFAULTS.visual),
+    tom: pick(raw?.tom, ["didatico", "enem", "aula", "infantil", "tecnico"] as const, MATERIAL_DEFAULTS.tom),
+    formato: pick(raw?.formato, ["resumo", "aula", "guia", "apresentacao", "mapa", "exercicios", "relatorio"] as const, MATERIAL_DEFAULTS.formato),
+    estiloVisual: compactText(raw?.estiloVisual || MATERIAL_DEFAULTS.estiloVisual, 220),
+    instrucoes: compactText(raw?.instrucoes || "", 900),
+  };
+}
+
+function buildMaterialInstruction(prefs: MaterialPreferences): string {
+  const depthRules: Record<MaterialDepth, string> = {
+    rapido: "seja direto, com menos seções e foco nos pontos que mais destravam o estudo",
+    equilibrado: "equilibre clareza, exemplos e aprofundamento sem virar texto pesado",
+    aprofundado: "aprofundar com nuances, exceções, exemplos resolvidos e conexões entre conceitos",
+  };
+  const toneRules: Record<MaterialTone, string> = {
+    didatico: "tom didático, acolhedor e preciso",
+    enem: "tom ENEM/vestibular, com pegadinhas, competências e como isso cai em prova",
+    aula: "tom de professor preparando aula, com condução, perguntas e intervenções",
+    infantil: "tom simples para fundamental, com analogias concretas e vocabulário acessível",
+    tecnico: "tom técnico, com rigor conceitual e terminologia explicada",
+  };
+  const visualRules: Record<MaterialVisualMode, string> = {
+    "sem-imagens": "não dependa de imagens; ainda assim sugira tabelas, quadros e organização visual textual",
+    web: "planeje imagens/fotos/figuras reais de banco ou Wikimedia quando forem úteis",
+    ia: "planeje imagens geradas por IA com prompts específicos quando a imagem real não for ideal",
+    diagramas: "priorize diagramas, linhas do tempo, fórmulas, plots ou visualizações 3D quando fizer sentido",
+  };
+  return `\n\nPREFERÊNCIAS DO MATERIAL:
+- Público: ${prefs.publico}; profundidade: ${prefs.profundidade}; tom: ${prefs.tom}; formato desejado: ${prefs.formato}.
+- Regra de profundidade: ${depthRules[prefs.profundidade]}.
+- Regra de tom: ${toneRules[prefs.tom]}.
+- Visual: ${visualRules[prefs.visual]}; estilo/cor: ${prefs.estiloVisual}.
+- Instruções livres do usuário: ${prefs.instrucoes || "(nenhuma)"}.
+
+PADRÃO NOTEBOOK RAG PREMIUM:
+- Grounding obrigatório: use somente fatos presentes nas fontes e cite [Fonte N] quando houver fonte numerada.
+- Estruture pedagogicamente: objetivo, pré-requisitos, conceitos-chave, exemplos, erros comuns, checkpoints/exercícios, síntese e referências/fontes.
+- Evite texto genérico. Adapte exemplos, vocabulário, densidade e visual ao assunto e ao público.
+- Quando a fonte for fraca ou ambígua, avise no próprio material e use um scaffold determinístico em vez de inventar.`;
+}
+
+function sourceSnippetsFromContent(title: string, content: string, limit = 4) {
+  const sentences = splitStudySentences(content).slice(0, limit);
+  return sentences.map((text, index) => ({
+    numero: index + 1,
+    titulo: title,
+    trecho: text.slice(0, 260),
+  }));
+}
+
+function isScienceOrMathTopic(title: string, content: string): boolean {
+  return /\b(matem[aá]tica|f[ií]sica|qu[ií]mica|biologia|fun[cç][aã]o|equação|gr[aá]fico|mol[eé]cula|c[eé]lula|energia|for[cç]a|geometria|estat[ií]stica|c[aá]lculo|3d|vetor)\b/i.test(`${title} ${content.slice(0, 2500)}`);
+}
+
+async function resolveWikimediaImage(query: string): Promise<Pick<VisualSlot, "url" | "credit" | "status"> | null> {
+  try {
+    const url = new URL("https://commons.wikimedia.org/w/api.php");
+    url.searchParams.set("action", "query");
+    url.searchParams.set("format", "json");
+    url.searchParams.set("origin", "*");
+    url.searchParams.set("generator", "search");
+    url.searchParams.set("gsrnamespace", "6");
+    url.searchParams.set("gsrlimit", "6");
+    url.searchParams.set("gsrsearch", query);
+    url.searchParams.set("prop", "imageinfo");
+    url.searchParams.set("iiprop", "url|extmetadata");
+    url.searchParams.set("iiurlwidth", "1100");
+    const response = await fetch(url, { signal: AbortSignal.timeout(4500) });
+    if (!response.ok) return null;
+    const data = await response.json() as any;
+    const pages = Object.values(data?.query?.pages ?? {}) as any[];
+    const image = pages
+      .map((p) => p?.imageinfo?.[0])
+      .find((info) => info?.thumburl || info?.url);
+    if (!image) return null;
+    const credit = compactText(
+      image?.extmetadata?.Artist?.value?.replace(/<[^>]+>/g, "") ||
+      image?.extmetadata?.Credit?.value?.replace(/<[^>]+>/g, "") ||
+      "Wikimedia Commons",
+      160,
+    );
+    return { url: image.thumburl || image.url, credit, status: "resolved" };
+  } catch {
+    return null;
+  }
+}
+
+async function buildVisualEnrichment(kind: string, title: string, content: string, prefs: MaterialPreferences): Promise<{ status: string; message: string; slots: VisualSlot[] }> {
+  const terms = extractKeyTerms(title, content, 8);
+  const subject = compactText([title, ...terms.slice(0, 3)].filter(Boolean).join(" "), 120) || "tema educacional";
+  const science = isScienceOrMathTopic(title, content);
+  const disabled = prefs.visual === "sem-imagens";
+  const slots: VisualSlot[] = [];
+
+  if (!disabled) {
+    const base: VisualSlot = {
+      id: `${kind}-hero`,
+      kind: prefs.visual === "ia" ? "image_ai" : "image_web",
+      title: "Imagem de abertura",
+      query: subject,
+      prompt: `Imagem educacional sobre ${subject}; estilo ${prefs.estiloVisual}; sem texto legível; visual rico e fiel ao tema.`,
+      caption: `Visual de abertura para contextualizar ${compactText(title, 80)}.`,
+      reason: "Criar contexto visual imediato e reduzir sensação de PDF apenas textual.",
+      source: prefs.visual === "ia" ? "ai-placeholder" : "wikimedia",
+      alt: `Imagem educacional sobre ${compactText(title, 80)}`,
+      status: prefs.visual === "ia" ? "placeholder" : "unavailable",
+      credit: prefs.visual === "ia" ? "Prompt pronto para geração por IA" : undefined,
+    };
+    if (prefs.visual === "web" || prefs.visual === "diagramas") {
+      const resolved = await resolveWikimediaImage(subject);
+      slots.push(resolved ? { ...base, ...resolved, source: "wikimedia" } : base);
+    } else {
+      slots.push(base);
+    }
+  }
+
+  slots.push({
+    id: `${kind}-${science ? "diagram" : "concept-map"}`,
+    kind: science ? "math_visual" : "diagram",
+    title: science ? "Diagrama/plot recomendado" : "Mapa visual recomendado",
+    query: science ? `${subject} diagram formula plot` : `${subject} concept map timeline`,
+    prompt: science
+      ? `Crie um diagrama, fórmula anotada, plot ou visual 3D para explicar ${subject}, com legenda em PT-BR.`
+      : `Crie um mapa conceitual, linha do tempo ou quadro comparativo para explicar ${subject}, com legenda em PT-BR.`,
+    caption: science
+      ? "Use este slot para fórmula, gráfico, modelo 3D ou esquema causal quando aplicável."
+      : "Use este slot para linha do tempo, comparação, mapa conceitual ou excerto visual.",
+    reason: science
+      ? "Tópico com sinais de matemática/ciências se beneficia de visualização espacial, fórmula ou gráfico."
+      : "Tópico de humanas/linguagens se beneficia de organização visual, comparação e evidências da fonte.",
+    source: "diagram-placeholder",
+    alt: science ? `Diagrama sobre ${compactText(title, 80)}` : `Mapa conceitual sobre ${compactText(title, 80)}`,
+    status: "placeholder",
+    credit: "Slot estruturado; renderização dedicada pode usar utilitários de diagrama/3D/math.",
+  });
+
+  const snippets = sourceSnippetsFromContent(title, content, 2);
+  for (const snippet of snippets) {
+    slots.push({
+      id: `${kind}-source-${snippet.numero}`,
+      kind: "source_excerpt",
+      title: `Evidência da fonte ${snippet.numero}`,
+      caption: snippet.trecho,
+      reason: "Manter o material validado e auditável pelo aluno/professor.",
+      source: "source",
+      alt: `Trecho da fonte ${snippet.titulo}`,
+      status: "resolved",
+      credit: snippet.titulo,
+    });
+  }
+
+  const resolvedCount = slots.filter((slot) => slot.status === "resolved" && slot.url).length;
+  const unavailableWeb = !disabled && (prefs.visual === "web" || prefs.visual === "diagramas") && resolvedCount === 0;
+  return {
+    status: disabled ? "disabled" : resolvedCount > 0 ? "active" : "planned",
+    message: disabled
+      ? "Preferência sem imagens: material mantém estrutura visual textual."
+      : unavailableWeb
+      ? "Nenhuma imagem Wikimedia confiável encontrada rapidamente; mantive slots visuais com captions e prompts."
+      : "Material enriquecido com plano visual, captions, créditos e fallbacks.",
+    slots: disabled ? slots.filter((slot) => slot.kind !== "image_web" && slot.kind !== "image_ai") : slots,
+  };
+}
+
+async function enrichMaterialPayload(kind: string, title: string, content: string, payload: any, prefs: MaterialPreferences) {
+  const visualEnrichment = await buildVisualEnrichment(kind, title, content, prefs);
+  const sourceSnippets = sourceSnippetsFromContent(title, content, 4);
+  const fallbackUsed = Boolean(payload?.generatedByFallback || payload?.apresentacao?.generatedByFallback);
+  const weakSource = content.trim().length < 800;
+  const visualWeak = prefs.visual !== "sem-imagens" && visualEnrichment.status !== "active";
+  const hermesRecommendation = buildNotebookHermesRecommendation({
+    kind,
+    title,
+    prefs,
+    fallbackUsed,
+    weakSource,
+    visualWeak,
+    visualStatus: visualEnrichment.status,
+  });
+  const base = payload && typeof payload === "object" && !Array.isArray(payload) ? payload : { conteudo: payload };
+  return {
+    ...base,
+    materialPreferences: prefs,
+    visualEnrichment,
+    sourceValidation: {
+      status: content.trim().length < 800 ? "weak-source" : "grounded",
+      warning: content.trim().length < 800
+        ? "Fonte curta ou pouco densa; revise e adicione mais material para melhorar a precisão."
+        : undefined,
+      snippets: sourceSnippets,
+    },
+    hermesQuality: {
+      fallbackUsed,
+      weakSource,
+      visualWeak,
+      recommendation: hermesRecommendation,
+    },
+  };
+}
+
+function buildNotebookHermesRecommendation(input: {
+  kind: string;
+  title: string;
+  prefs: MaterialPreferences;
+  fallbackUsed: boolean;
+  weakSource: boolean;
+  visualWeak: boolean;
+  visualStatus: string;
+}): HermesRecommendation | undefined {
+  const issues = [
+    input.fallbackUsed ? "fallback estruturado usado" : "",
+    input.weakSource ? "fonte curta/fraca" : "",
+    input.visualWeak ? `visual não resolvido (${input.visualStatus})` : "",
+  ].filter(Boolean);
+  if (!issues.length) return undefined;
+  return {
+    agentId: "hermes_notebook_rag",
+    area: "notebook_rag_quality",
+    targetSurface: `/api/notebook/${input.kind}`,
+    observedState: `${input.kind} gerado com ${issues.join(", ")}.`,
+    evidence: `Tema="${compactText(input.title, 90)}"; preferencias=${JSON.stringify(input.prefs)}.`,
+    problemOpportunity: "Saídas fracas ou pouco visuais reduzem confiança, valor percebido e qualidade de PDF/exportação.",
+    recommendedChange: "Priorizar fonte mais densa, exigir seções pedagógicas, resolver pelo menos uma imagem/diagrama ou mostrar fallback visual claro com captions.",
+    expectedImpact: "Materiais menos genéricos, mais auditáveis, ricos visualmente e próximos do padrão NotebookLM esperado.",
+    confidence: "media",
+    successMetric: "Aumentar taxa de materiais com visual ativo e reduzir feedback negativo/fallback em notebook_material_generated.",
+    implementationNotes: "Usar eventos notebook_material_generated/notebook_feedback e visualEnrichment.status para auditorias futuras.",
+    acceptanceCriteria: [
+      "Material mostra objetivo, pré-requisitos, exemplos, erros comuns, checkpoints e fontes.",
+      "PDF/preview preserva imagens ou placeholders visuais com caption/crédito.",
+      "Quando fonte for fraca, o usuário vê aviso e recomendação de adicionar fonte melhor.",
+    ],
+  };
+}
+
+function trackNotebookMaterialEvent(input: {
+  userId: string;
+  docId?: number;
+  notebookId?: number;
+  kind: string;
+  title: string;
+  prefs: MaterialPreferences;
+  payload?: any;
+  source?: { content?: string; source_file?: string | null; file_size_kb?: number | null };
+}) {
+  const payload = input.payload ?? {};
+  const visual = payload.visualEnrichment as VisualEnrichment | undefined;
+  const quality = payload.hermesQuality as { fallbackUsed?: boolean; weakSource?: boolean; visualWeak?: boolean; recommendation?: HermesRecommendation } | undefined;
+  trackEvent({
+    userId: input.userId,
+    eventType: "notebook_material_generated",
+    entityType: "notebook_material",
+    entityId: input.docId ? String(input.docId) : undefined,
+    notebookId: input.notebookId,
+    metadata: {
+      kind: input.kind,
+      title: compactText(input.title, 120),
+      preferences: input.prefs,
+      source: {
+        docId: input.docId,
+        chars: input.source?.content?.length ?? null,
+        fileSizeKb: input.source?.file_size_kb ?? null,
+        sourceFile: input.source?.source_file ?? null,
+      },
+      visualStatus: visual?.status,
+      visualSlots: visual?.slots?.length ?? 0,
+      resolvedVisualSlots: visual?.slots?.filter((slot) => slot.status === "resolved" && slot.url).length ?? 0,
+      fallbackUsed: quality?.fallbackUsed ?? false,
+      weakSource: quality?.weakSource ?? false,
+      visualWeak: quality?.visualWeak ?? false,
+      recommendation: quality?.recommendation,
+    },
+  });
+  if (quality?.recommendation) {
+    persistDescoberta(
+      "hermes_notebook_rag",
+      formatHermesRecommendation(quality.recommendation),
+      {
+        kind: input.kind,
+        docId: input.docId,
+        preferences: input.prefs,
+        visualStatus: visual?.status,
+        fallbackUsed: quality.fallbackUsed,
+        weakSource: quality.weakSource,
+        visualWeak: quality.visualWeak,
+        recommendation: quality.recommendation,
+      },
+      quality.weakSource || quality.fallbackUsed ? 4 : 3,
+    ).catch((err) => console.warn("[hermes notebook] persistDescoberta failed:", err));
+  }
 }
 
 function splitStudySentences(content: string): string[] {
@@ -931,6 +1278,7 @@ router.post("/notebook/upload-file", upload.single("file"), validateFileUpload, 
       req.userId, title, text, srcType,
       req.file.originalname, Math.round(req.file.size / 1024), nbId,
     );
+    trackEvent({ userId: req.userId, eventType: "notebook_source_added", notebookId: nbId, entityType: "knowledge_document", entityId: String(docId), metadata: { sourceType: srcType, title: title.slice(0, 120), chars: text.length, chunks: chunks.length, fileSizeKb: Math.round(req.file.size / 1024) } });
     res.json({ id: docId, title, chars: text.length, chunks: chunks.length, message: `✅ "${title}" adicionado — ${chunks.length} trechos indexados` });
   } catch (e) {
     console.error("notebook upload-file:", e);
@@ -948,6 +1296,7 @@ router.post("/notebook/upload-text", async (req: Request, res: Response) => {
     const chunks = chunkText(content);
     const nbId = await resolveNotebookId(req.userId, cadernoId);
     const docId = await saveDocWithChunks(req.userId, title, content, "text", undefined, undefined, nbId);
+    trackEvent({ userId: req.userId, eventType: "notebook_source_added", notebookId: nbId, entityType: "knowledge_document", entityId: String(docId), metadata: { sourceType: "text", title: title.slice(0, 120), chars: content.length, chunks: chunks.length } });
     res.json({ id: docId, title, chars: content.length, chunks: chunks.length, message: `✅ "${title}" adicionado` });
   } catch (e) {
     console.error("notebook upload-text:", e);
@@ -992,6 +1341,7 @@ router.post("/notebook/upload-url", async (req: Request, res: Response) => {
     const chunks = chunkText(text);
     const nbId = await resolveNotebookId(req.userId, cadernoId);
     const docId = await saveDocWithChunks(req.userId, docTitle, text, "url", url, undefined, nbId);
+    trackEvent({ userId: req.userId, eventType: "notebook_source_added", notebookId: nbId, entityType: "knowledge_document", entityId: String(docId), metadata: { sourceType: "url", title: docTitle.slice(0, 120), url: url.slice(0, 240), chars: text.length, chunks: chunks.length } });
     res.json({ id: docId, title: docTitle, chars: text.length, chunks: chunks.length, message: `✅ "${docTitle}" importado` });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Erro";
@@ -1224,7 +1574,8 @@ Use EXCLUSIVAMENTE as fontes abaixo. Cite com [Fonte N].`,
 
 router.post("/notebook/chat", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
-  const { pergunta, docIds, cadernoId, modo = "padrao" } = req.body as { pergunta: string; docIds?: number[]; cadernoId?: number; modo?: string };
+  const { pergunta, docIds, cadernoId, modo = "padrao" } = req.body as { pergunta: string; docIds?: number[]; cadernoId?: number; modo?: string; materialPreferences?: any };
+  const materialPreferences = normalizeMaterialPreferences((req.body as any)?.materialPreferences);
   if (!pergunta?.trim()) { res.status(400).json({ erro: "Pergunta obrigatória" }); return; }
 
   try {
@@ -1251,7 +1602,7 @@ router.post("/notebook/chat", async (req: Request, res: Response) => {
       .map((c, i) => `[Fonte ${i + 1} — "${c.title}"]\n${c.text}`)
       .join("\n\n---\n\n");
 
-    const modePrompt = CHAT_MODE_PROMPTS[modo] ?? CHAT_MODE_PROMPTS.padrao;
+    const modePrompt = `${CHAT_MODE_PROMPTS[modo] ?? CHAT_MODE_PROMPTS.padrao}${buildMaterialInstruction(materialPreferences)}`;
 
     const completion = await gpt.chat.completions.create({
       model: OR.fast,
@@ -1306,7 +1657,8 @@ router.post("/notebook/chat", async (req: Request, res: Response) => {
 // ─── POST /api/notebook/chat-stream (SSE streaming) ──────────────────────────
 router.post("/notebook/chat-stream", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
-  const { pergunta, docIds, cadernoId, modo = "padrao" } = req.body as { pergunta: string; docIds?: number[]; cadernoId?: number; modo?: string };
+  const { pergunta, docIds, cadernoId, modo = "padrao" } = req.body as { pergunta: string; docIds?: number[]; cadernoId?: number; modo?: string; materialPreferences?: any };
+  const materialPreferences = normalizeMaterialPreferences((req.body as any)?.materialPreferences);
   if (!pergunta?.trim()) { res.status(400).json({ erro: "Pergunta obrigatória" }); return; }
 
   res.setHeader("Content-Type", "text/event-stream");
@@ -1351,7 +1703,7 @@ router.post("/notebook/chat-stream", async (req: Request, res: Response) => {
       trechoCompleto: c.text,
     })));
 
-    const modePrompt = CHAT_MODE_PROMPTS[modo] ?? CHAT_MODE_PROMPTS.padrao;
+    const modePrompt = `${CHAT_MODE_PROMPTS[modo] ?? CHAT_MODE_PROMPTS.padrao}${buildMaterialInstruction(materialPreferences)}`;
 
     // ── DeepSeek Pro via OpenRouter — fontes injetadas no contexto ───────────
     let full = "";
@@ -1491,7 +1843,8 @@ NUNCA comece com "Este documento/texto fala sobre...". Vá direto ao insight.`,
 // ─── POST /api/notebook/study-guide ──────────────────────────────────────────
 router.post("/notebook/study-guide", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
-  const { docId } = req.body as { docId: number };
+  const { docId } = req.body as { docId: number; materialPreferences?: any };
+  const materialPreferences = normalizeMaterialPreferences((req.body as any)?.materialPreferences);
 
   try {
     const docs = await db.execute(sql`
@@ -1540,14 +1893,19 @@ REGRAS OBRIGATÓRIAS:
 - Cada aprofundamento: MÍNIMO 4 frases com dados específicos do documento
 - Cada exemploResolvido: MÍNIMO 4 passos detalhados
 - Use dados, datas, nomes e números reais do documento
-- Linguagem envolvente: como um professor apaixonado explicaria para um aluno`;
+- Linguagem envolvente: como um professor apaixonado explicaria para um aluno
+${buildMaterialInstruction(materialPreferences)}
+Inclua, quando possível, campos "objetivoFinal", "prerequisitos", "modulos", "sintese", "aplicacaoPratica", "expansao" e "cronogramaSugerido" preenchidos com evidências da fonte.`;
 
     const studyGuideUserPrompt = `Tema: "${row.title}"\n\nConteúdo:\n${row.content_text.slice(0, 60_000)}`;
 
     // Gemini 2.5 Flash — NotebookLM-style com contexto completo do documento
     const raw = await generateWithGemini(studyGuideSystemPrompt, studyGuideUserPrompt, 8000);
-    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    res.json(JSON.parse(clean));
+    const parsed = parseNotebookJson(raw) ?? JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
+    const enriched = await enrichMaterialPayload("study-guide", row.title, row.content_text, parsed, materialPreferences);
+    await saveArtifact(req.userId, docId, "study-guide", enriched.titulo ?? row.title, enriched);
+    trackNotebookMaterialEvent({ userId: req.userId, docId, kind: "study-guide", title: row.title, prefs: materialPreferences, payload: enriched, source: { content: row.content_text } });
+    res.json(enriched);
   } catch (e) {
     console.error("notebook study-guide:", e);
     res.status(500).json({ erro: "Erro ao gerar guia de estudo" });
@@ -1557,7 +1915,8 @@ REGRAS OBRIGATÓRIAS:
 // ─── POST /api/notebook/flashcards ───────────────────────────────────────────
 router.post("/notebook/flashcards", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
-  const { docId, quantidade = 20 } = req.body as { docId: number; quantidade?: number };
+  const { docId, quantidade = 20 } = req.body as { docId: number; quantidade?: number; materialPreferences?: any };
+  const materialPreferences = normalizeMaterialPreferences((req.body as any)?.materialPreferences);
 
   try {
     const docs = await db.execute(sql`
@@ -1594,15 +1953,20 @@ REGRAS:
 - Verso: MÍNIMO 3 frases com dados específicos do documento (nomes, datas, números)
 - Mnemônico: SEMPRE preenchido — nunca null — seja criativo
 - Cubra TODOS os conceitos importantes do documento
-- Priorize o que mais cai no ENEM`,
+- Priorize o que mais cai no ENEM
+${buildMaterialInstruction(materialPreferences)}
+- Inclua nos cards, quando fizer sentido, pistas visuais/analogias concretas e evidências do documento.`,
         },
         { role: "user", content: `Tema: "${row.title}"\n\n${row.content_text.slice(0, 15_000)}` },
       ],
     });
 
     const raw = completion.choices[0].message.content ?? "{}";
-    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    res.json(JSON.parse(clean));
+    const parsed = parseNotebookJson(raw) ?? JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
+    const enriched = await enrichMaterialPayload("flashcards", row.title, row.content_text, parsed, materialPreferences);
+    await saveArtifact(req.userId, docId, "flashcards", row.title, enriched);
+    trackNotebookMaterialEvent({ userId: req.userId, docId, kind: "flashcards", title: row.title, prefs: materialPreferences, payload: enriched, source: { content: row.content_text } });
+    res.json(enriched);
   } catch (e) {
     console.error("notebook flashcards:", e);
     res.status(500).json({ erro: "Erro ao gerar flashcards" });
@@ -1612,7 +1976,8 @@ REGRAS:
 // ─── POST /api/notebook/questoes ─────────────────────────────────────────────
 router.post("/notebook/questoes", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
-  const { docId, quantidade = 5 } = req.body as { docId: number; quantidade?: number };
+  const { docId, quantidade = 5 } = req.body as { docId: number; quantidade?: number; materialPreferences?: any };
+  const materialPreferences = normalizeMaterialPreferences((req.body as any)?.materialPreferences);
 
   try {
     const docs = await db.execute(sql`
@@ -1643,15 +2008,20 @@ Retorne APENAS JSON:
     "dicaResolutora": "Estratégia para resolver essa categoria de questão no ENEM"
   }
 ]}
-REGRAS: alternativas plausíveis (sem opções obviamente erradas), distractores baseados em erros conceituais reais, contexto sempre antes do enunciado.`,
+REGRAS: alternativas plausíveis (sem opções obviamente erradas), distractores baseados em erros conceituais reais, contexto sempre antes do enunciado.
+${buildMaterialInstruction(materialPreferences)}
+Inclua explicações e gabarito com evidência da fonte e, quando útil, uma descrição visual do contexto da questão.`,
         },
         { role: "user", content: `Tema: "${row.title}"\n\n${row.content_text.slice(0, 12_000)}` },
       ],
     });
 
     const raw = completion.choices[0].message.content ?? "{}";
-    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    res.json(JSON.parse(clean));
+    const parsed = parseNotebookJson(raw) ?? JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
+    const enriched = await enrichMaterialPayload("questoes", row.title, row.content_text, parsed, materialPreferences);
+    await saveArtifact(req.userId, docId, "questoes", row.title, enriched);
+    trackNotebookMaterialEvent({ userId: req.userId, docId, kind: "questoes", title: row.title, prefs: materialPreferences, payload: enriched, source: { content: row.content_text } });
+    res.json(enriched);
   } catch (e) {
     console.error("notebook questoes:", e);
     res.status(500).json({ erro: "Erro ao gerar questões" });
@@ -1661,7 +2031,8 @@ REGRAS: alternativas plausíveis (sem opções obviamente erradas), distractores
 // ─── POST /api/notebook/mapa-mental ──────────────────────────────────────────
 router.post("/notebook/mapa-mental", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
-  const { docId } = req.body as { docId: number };
+  const { docId } = req.body as { docId: number; materialPreferences?: any };
+  const materialPreferences = normalizeMaterialPreferences((req.body as any)?.materialPreferences);
 
   try {
     const docs = await db.execute(sql`
@@ -1709,7 +2080,9 @@ REGRAS:
 - 6 a 8 conceitos-chave com definições curtas
 - Use termos, exemplos, dados e nomes que aparecem na fonte. Não gere mapa genérico.
 - Saída com menos de 4 ramos ou sem subtópicos é inválida.
-- O JSON DEVE estar 100% fechado e válido`;
+- O JSON DEVE estar 100% fechado e válido
+${buildMaterialInstruction(materialPreferences)}
+- Adapte cores, ramos, exemplos e densidade ao público e ao estilo visual solicitado.`;
 
     // Gemini 2.5 Flash — NotebookLM-style com contexto completo
     const raw = await generateWithGemini(
@@ -1718,8 +2091,9 @@ REGRAS:
       8000,
     );
     const parsed = parseNotebookJson(raw);
-    const mapa = normalizeMindMap(parsed, row.title, row.content_text);
+    const mapa = await enrichMaterialPayload("mapa-mental", row.title, row.content_text, normalizeMindMap(parsed, row.title, row.content_text), materialPreferences);
     await saveArtifact(req.userId, docId, "mapa-mental", mapa.subject ?? row.title, mapa);
+    trackNotebookMaterialEvent({ userId: req.userId, docId, kind: "mapa-mental", title: row.title, prefs: materialPreferences, payload: mapa, source: { content: row.content_text } });
     res.json(mapa);
   } catch (e) {
     console.error("notebook mapa-mental:", e);
@@ -1800,7 +2174,8 @@ REGRAS:
 // ─── POST /api/notebook/briefing ─────────────────────────────────────────────
 router.post("/notebook/briefing", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
-  const { docId } = req.body as { docId: number };
+  const { docId } = req.body as { docId: number; materialPreferences?: any };
+  const materialPreferences = normalizeMaterialPreferences((req.body as any)?.materialPreferences);
   try {
     const docs = await db.execute(sql`
       SELECT content_text, title FROM knowledge_documents
@@ -1832,15 +2207,20 @@ Retorne APENAS JSON válido:
   "palavrasChave": ["termo 1", "termo 2", "termo 3", "termo 4", "termo 5"],
   "conexoesEnem": "Como esses tópicos aparecem no ENEM — competências e habilidades"
 }
-Gere 4-6 pontos-chave e 3-4 recomendações. Tom direto e executivo — sem rodeios.`,
+Gere 4-6 pontos-chave e 3-4 recomendações. Tom direto e executivo — sem rodeios.
+${buildMaterialInstruction(materialPreferences)}
+Inclua evidências específicas, próximos passos e plano visual quando o conteúdo pedir comparação, linha do tempo ou imagem de contexto.`,
         },
         { role: "user", content: `Tema: "${row.title}"\n\nConteúdo:\n${row.content_text.slice(0, 14_000)}` },
       ],
     });
 
     const raw = completion.choices[0].message.content ?? "{}";
-    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    res.json(JSON.parse(clean));
+    const parsed = parseNotebookJson(raw) ?? JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
+    const enriched = await enrichMaterialPayload("briefing", row.title, row.content_text, parsed, materialPreferences);
+    await saveArtifact(req.userId, docId, "briefing", enriched.titulo ?? row.title, enriched);
+    trackNotebookMaterialEvent({ userId: req.userId, docId, kind: "briefing", title: row.title, prefs: materialPreferences, payload: enriched, source: { content: row.content_text } });
+    res.json(enriched);
   } catch (e) {
     console.error("notebook briefing:", e);
     res.status(500).json({ erro: "Erro ao gerar briefing" });
@@ -3461,7 +3841,9 @@ router.post("/notebook/infografico", async (req: Request, res: Response) => {
     docId: number;
     estilo?: "kawaii" | "profissional" | "cientifico" | "anime" | "esboco" | "minimalista";
     orientacao?: "quadrado" | "paisagem" | "retrato";
+    materialPreferences?: any;
   };
+  const materialPreferences = normalizeMaterialPreferences((req.body as any)?.materialPreferences);
 
   try {
     const docs = await db.execute(sql`
@@ -3493,7 +3875,8 @@ Retorne APENAS JSON:
 Regras:
 - 2 a 4 seções principais (lados do infográfico)
 - 3 a 5 elementos por seção, MUITO concisos
-- Ícones devem ser objetos visuais concretos (não conceitos abstratos)`,
+- Ícones devem ser objetos visuais concretos (não conceitos abstratos)
+${buildMaterialInstruction(materialPreferences)}`,
         },
         { role: "user", content: `Documento: "${row.title}"\n\n${row.content_text.slice(0, 12_000)}` },
       ],
@@ -3550,15 +3933,16 @@ REQUIREMENTS:
     const buffer = await generateImageBuffer(prompt, size);
     const b64_json = buffer.toString("base64");
 
-    const result = {
+    const result = await enrichMaterialPayload("infografico", row.title, row.content_text, {
       b64_json,
       mimeType: "image/png",
       titulo: brief.titulo,
       subtitulo: brief.subtitulo,
       estilo,
       orientacao,
-    };
+    }, materialPreferences);
     await saveArtifact(req.userId, docId, "infografico", brief.titulo ?? row.title, result);
+    trackNotebookMaterialEvent({ userId: req.userId, docId, kind: "infografico", title: row.title, prefs: materialPreferences, payload: result, source: { content: row.content_text } });
     res.json(result);
   } catch (e: any) {
     console.error("notebook infografico:", e);
@@ -3569,7 +3953,8 @@ REQUIREMENTS:
 // ─── POST /api/notebook/slides ───────────────────────────────────────────────
 router.post("/notebook/slides", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
-  const { docId } = req.body as { docId: number };
+  const { docId } = req.body as { docId: number; materialPreferences?: any };
+  const materialPreferences = normalizeMaterialPreferences((req.body as any)?.materialPreferences);
 
   try {
     const docs = await db.execute(sql`
@@ -3613,7 +3998,9 @@ REGRAS:
 - Cada slide de conteúdo deve ter 3-5 bullets úteis; slide com só título é inválido
 - Escreva para impressão/exportação: textos curtos por slide, sem depender de animações, com títulos claros e contraste alto
 - Sempre preencha objetivos, prerequisitos e indicadoresQualidade para o export premium
-- Tema: escolha baseado no assunto (emerald=natureza/saúde, indigo=tecnologia/finanças, rose=humanas/arte, amber=história/geo)`;
+- Tema: escolha baseado no assunto (emerald=natureza/saúde, indigo=tecnologia/finanças, rose=humanas/arte, amber=história/geo)
+${buildMaterialInstruction(materialPreferences)}
+- Inclua sugestões visuais por slide em "visualPrompt" ou "imagemDescricao" quando relevante.`;
 
     const slidesRaw = await generateWithGemini(
       slidesSystemPrompt,
@@ -3635,8 +4022,10 @@ Style: clean modern flat design, sophisticated color palette matching the theme 
       }
     }
 
-    await saveArtifact(req.userId, docId, "slides", apresentacao.titulo ?? row.title, { apresentacao, titulo: row.title });
-    res.json({ apresentacao, titulo: row.title });
+    const enriched = await enrichMaterialPayload("slides", row.title, row.content_text, { apresentacao, titulo: row.title }, materialPreferences);
+    await saveArtifact(req.userId, docId, "slides", apresentacao.titulo ?? row.title, enriched);
+    trackNotebookMaterialEvent({ userId: req.userId, docId, kind: "slides", title: row.title, prefs: materialPreferences, payload: enriched, source: { content: row.content_text } });
+    res.json(enriched);
   } catch (e) {
     console.error("notebook slides:", e);
     res.status(500).json({ erro: "Erro ao gerar apresentação" });
@@ -3747,6 +4136,69 @@ Style: clean modern flat vector illustration, sophisticated palette matching "${
   }
 });
 
+// ─── POST /api/notebook/telemetry ─────────────────────────────────────────────
+// Lightweight events for Hermes/analytics: export, retry, generation failure and feedback.
+router.post("/notebook/telemetry", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const { action, kind, docId, cadernoId, preferences, metadata, feedback } = req.body as {
+    action?: "export" | "generation_failed" | "retry" | "feedback";
+    kind?: string;
+    docId?: number;
+    cadernoId?: number;
+    preferences?: any;
+    metadata?: Record<string, unknown>;
+    feedback?: { rating?: "up" | "down"; comment?: string; scope?: string };
+  };
+  if (!action) { res.status(400).json({ erro: "action obrigatório" }); return; }
+  const eventType =
+    action === "export" ? "notebook_export" :
+    action === "generation_failed" || action === "retry" ? "notebook_generation_failed" :
+    "notebook_feedback";
+
+  trackEvent({
+    userId: req.userId,
+    eventType,
+    entityType: kind ? "notebook_material" : undefined,
+    entityId: docId ? String(docId) : undefined,
+    notebookId: cadernoId,
+    metadata: {
+      action,
+      kind,
+      preferences: preferences ? normalizeMaterialPreferences(preferences) : undefined,
+      feedback,
+      ...(metadata ?? {}),
+    },
+  });
+
+  if (action === "feedback" && feedback?.rating === "down") {
+    const recommendation: HermesRecommendation = {
+      agentId: "hermes_notebook_rag",
+      area: "notebook_rag_feedback",
+      targetSurface: kind ? `/api/notebook/${kind}` : "Notebook RAG",
+      observedState: `Usuário marcou saída como ruim${feedback.comment ? `: ${compactText(feedback.comment, 180)}` : "."}`,
+      evidence: `kind=${kind ?? "desconhecido"}; docId=${docId ?? "n/a"}; preferences=${JSON.stringify(preferences ?? {})}`,
+      problemOpportunity: "Feedback negativo indica material possivelmente genérico, pouco visual, mal adaptado ao prompt ou com baixa qualidade de exportação.",
+      recommendedChange: "Auditar o tipo de material e ajustar prompt/renderer para mais grounding, imagens, seções pedagógicas e controle por preferências.",
+      expectedImpact: "Reduzir rejeição explícita e aumentar confiança do usuário em materiais Notebook RAG.",
+      confidence: "media",
+      successMetric: "Reduzir razão notebook_feedback down/up para o tipo de material afetado.",
+      acceptanceCriteria: [
+        "Regeração respeita preferências selecionadas.",
+        "Material inclui evidências da fonte e plano visual renderizado.",
+        "Export PDF mantém layout, imagens/captions e exercícios.",
+      ],
+    };
+    persistDescoberta(
+      "hermes_notebook_rag",
+      formatHermesRecommendation(recommendation),
+      { kind, docId, preferences, feedback, recommendation },
+      4,
+    ).catch((err) => console.warn("[hermes notebook feedback] persist failed:", err));
+  }
+
+  res.json({ ok: true });
+});
+
 // ─── POST /api/notebook/suggest-questions ────────────────────────────────────
 router.post("/notebook/suggest-questions", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
@@ -3775,20 +4227,23 @@ router.post("/notebook/suggest-questions", async (req: Request, res: Response) =
 // ─── POST /api/notebook/tabela ────────────────────────────────────────────────
 router.post("/notebook/tabela", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
-  const { docIds, cadernoId } = req.body as { docIds?: number[]; cadernoId?: number };
+  const { docIds, cadernoId } = req.body as { docIds?: number[]; cadernoId?: number; materialPreferences?: any };
+  const materialPreferences = normalizeMaterialPreferences((req.body as any)?.materialPreferences);
   try {
     const chunks = await ragSearch(req.userId, docIds?.length ? docIds : null, "dados comparação conceitos", 10);
     if (!chunks.length) { res.status(400).json({ erro: "Adicione documentos primeiro." }); return; }
     const context = chunks.map(c => `[${c.title}]\n${c.text}`).join("\n\n").slice(0, 6000);
     // Gemini 2.5 Flash — NotebookLM-style com contexto completo das fontes
     const tabelaRaw = await generateWithGemini(
-      'Analise as fontes e crie uma tabela comparativa dos conceitos/dados principais. Retorne APENAS JSON: {"titulo":"string","colunas":["col1","col2",...],"linhas":[["val1","val2",...],...],"notas":"string opcional"}. Mínimo 3 colunas e 8 linhas. Preencha cada célula com dados ricos e específicos do material.',
+      `Analise as fontes e crie uma tabela comparativa dos conceitos/dados principais. Retorne APENAS JSON: {"titulo":"string","colunas":["col1","col2",...],"linhas":[["val1","val2",...],...],"notas":"string opcional"}. Mínimo 3 colunas e 8 linhas. Preencha cada célula com dados ricos e específicos do material.${buildMaterialInstruction(materialPreferences)}`,
       `Fontes:\n${context}`,
       3000,
     );
     const tabelaMatch = tabelaRaw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim().match(/\{[\s\S]*\}/);
     const tabela = tabelaMatch ? JSON.parse(tabelaMatch[0]) : { titulo: "Tabela", colunas: [], linhas: [] };
-    res.json(tabela);
+    const enriched = await enrichMaterialPayload("tabela", "Tabela comparativa", context, tabela, materialPreferences);
+    trackNotebookMaterialEvent({ userId: req.userId, kind: "tabela", title: enriched.titulo ?? "Tabela comparativa", prefs: materialPreferences, payload: enriched, source: { content: context } });
+    res.json(enriched);
   } catch (e) {
     console.error("tabela:", e);
     res.status(500).json({ erro: "Erro ao gerar tabela" });
@@ -3798,7 +4253,8 @@ router.post("/notebook/tabela", async (req: Request, res: Response) => {
 // ─── POST /api/notebook/relatorio ─────────────────────────────────────────────
 router.post("/notebook/relatorio", async (req: Request, res: Response) => {
   if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
-  const { docIds, cadernoId, template = "academico" } = req.body as { docIds?: number[]; cadernoId?: number; template?: string };
+  const { docIds, cadernoId, template = "academico" } = req.body as { docIds?: number[]; cadernoId?: number; template?: string; materialPreferences?: any };
+  const materialPreferences = normalizeMaterialPreferences((req.body as any)?.materialPreferences);
   try {
     const chunks = await ragSearch(req.userId, docIds?.length ? docIds : null, "conteúdo principal análise", 12);
     if (!chunks.length) { res.status(400).json({ erro: "Adicione documentos primeiro." }); return; }
@@ -3811,11 +4267,13 @@ router.post("/notebook/relatorio", async (req: Request, res: Response) => {
     };
     // Gemini 2.5 Flash — NotebookLM-style com contexto completo das fontes
     const relatorioConteudo = await generateWithGemini(
-      `Você é especialista sênior em produção de conteúdo educacional. Escreva um ${templates[template] ?? templates.academico} com base nas fontes. Use Markdown formatado, com seções bem estruturadas, dados específicos citados das fontes, exemplos práticos e análises aprofundadas. Mínimo 600 palavras. Cite fontes com [Fonte N] quando relevante.`,
+      `Você é especialista sênior em produção de conteúdo educacional. Escreva um ${templates[template] ?? templates.academico} com base nas fontes. Use Markdown formatado, com seções bem estruturadas, dados específicos citados das fontes, exemplos práticos e análises aprofundadas. Mínimo 600 palavras. Cite fontes com [Fonte N] quando relevante.${buildMaterialInstruction(materialPreferences)}Inclua blocos explícitos de objetivo, pré-requisitos, conceitos-chave, erros comuns, exercícios/checkpoints, resumo, referências e sugestões visuais/captions.`,
       `Fontes:\n${context}`,
       5000,
     );
-    res.json({ conteudo: relatorioConteudo, template });
+    const enriched = await enrichMaterialPayload("relatorio", "Relatório", context, { conteudo: relatorioConteudo, template }, materialPreferences);
+    trackNotebookMaterialEvent({ userId: req.userId, kind: "relatorio", title: "Relatório", prefs: materialPreferences, payload: enriched, source: { content: context } });
+    res.json(enriched);
   } catch (e) {
     console.error("relatorio:", e);
     res.status(500).json({ erro: "Erro ao gerar relatório" });

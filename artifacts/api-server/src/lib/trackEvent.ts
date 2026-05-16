@@ -8,6 +8,8 @@ export type EventType =
   | "flashcard_reviewed"
   | "essay_submitted" | "essay_corrected"
   | "notebook_chat" | "notebook_source_added" | "notebook_created"
+  | "notebook_material_generated" | "notebook_generation_failed"
+  | "notebook_export" | "notebook_feedback"
   | "trilha_session" | "trilha_completed"
   | "plano_aula_created"
   | "activity_assigned" | "activity_submitted"

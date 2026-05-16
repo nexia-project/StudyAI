@@ -285,6 +285,272 @@ const TOOL_CONFIG: Record<Tool, { label: string; icon: React.ElementType; color:
 // Ferramentas que aparecem como cards grandes no Studio (estilo NotebookLM)
 const FEATURED_STUDIO_TOOLS: Tool[] = ["mapa-mental", "study-guide", "podcast"];
 
+const escapeHtml = (value: unknown) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const stripMarkdownFences = (value: string) =>
+  (value ?? "")
+    .trim()
+    .replace(/^```(?:html|HTML|markdown|md)?\s*\r?\n?/i, "")
+    .replace(/\r?\n?```\s*$/i, "")
+    .trim();
+
+const humanizeArtifactKey = (key: string) =>
+  key
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, c => c.toUpperCase());
+
+const PREMIUM_PRINT_CSS = `
+  :root{--ink:#0f172a;--muted:#64748b;--line:#dbe3ef;--paper:#fffdf8;--violet:#5b21b6;--indigo:#4f46e5;--rose:#e11d48;--amber:#d97706;--emerald:#059669;--soft:#f8fafc}
+  *{box-sizing:border-box}
+  html{background:#eef2ff}
+  body{margin:0;background:linear-gradient(180deg,#eef2ff 0,#f8fafc 280px,#f6f3eb 100%);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.62}
+  .studyai-print-shell{max-width:980px;margin:28px auto;padding:0 24px 48px}
+  .studyai-cover{position:relative;overflow:hidden;border-radius:30px;padding:42px;background:radial-gradient(circle at 15% 10%,rgba(255,255,255,.35),transparent 30%),linear-gradient(135deg,#312e81,#7c3aed 54%,#db2777);color:white;box-shadow:0 28px 70px rgba(49,46,129,.26);break-after:avoid}
+  .studyai-cover:after{content:"";position:absolute;inset:auto -80px -120px auto;width:300px;height:300px;border-radius:999px;background:rgba(255,255,255,.13)}
+  .studyai-kicker{font-size:12px;font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:#c4b5fd;margin:0 0 14px}
+  .studyai-title{font-size:42px;line-height:1.02;margin:0;letter-spacing:-.04em;max-width:780px}
+  .studyai-subtitle{font-size:16px;color:#ede9fe;max-width:680px;margin:18px 0 0}
+  .studyai-meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
+  .studyai-pill{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.24);background:rgba(255,255,255,.13);border-radius:999px;padding:7px 11px;font-size:11px;font-weight:800;color:white}
+  .studyai-quality-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:16px 0 24px}
+  .studyai-quality-grid>div{border:1px solid #e9d5ff;background:#fff;border-radius:18px;padding:12px;box-shadow:0 10px 24px rgba(15,23,42,.04)}
+  .studyai-quality-grid strong{display:block;font-size:11px;color:#6d28d9;text-transform:uppercase;letter-spacing:.08em}
+  .studyai-quality-grid span{display:block;font-size:12px;color:#475569;margin-top:3px}
+  .studyai-content{background:white;border:1px solid var(--line);border-radius:26px;padding:34px;margin-top:18px;box-shadow:0 18px 48px rgba(15,23,42,.08)}
+  .studyai-section{break-inside:avoid;margin:0 0 22px;padding:20px;border:1px solid #e2e8f0;border-radius:22px;background:linear-gradient(180deg,#fff,#fbfdff)}
+  .studyai-section h2,.studyai-section h3{margin-top:0}
+  .studyai-card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+  .studyai-card{break-inside:avoid;border:1px solid #e2e8f0;border-radius:18px;padding:16px;background:#fff;box-shadow:0 10px 24px rgba(15,23,42,.045)}
+  .studyai-card h3{font-size:15px;margin:0 0 8px;color:#312e81}
+  .studyai-callout{break-inside:avoid;border-left:6px solid var(--indigo);background:#eef2ff;border-radius:16px;padding:14px 16px;margin:14px 0;color:#312e81}
+  .studyai-callout.warning{border-left-color:var(--amber);background:#fffbeb;color:#92400e}
+  .studyai-callout.success{border-left-color:var(--emerald);background:#ecfdf5;color:#065f46}
+  .studyai-callout.danger{border-left-color:var(--rose);background:#fff1f2;color:#9f1239}
+  .studyai-slide{break-after:page;min-height:520px;border-radius:28px;padding:42px;background:linear-gradient(135deg,#312e81,#6d28d9);color:white;position:relative;overflow:hidden;box-shadow:0 20px 60px rgba(49,46,129,.2);margin:0 0 24px}
+  .studyai-slide img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.23}
+  .studyai-slide-content{position:relative;z-index:1;max-width:760px}
+  .studyai-slide h2{font-size:38px;line-height:1.04;margin:0 0 18px;color:white}
+  .studyai-slide p,.studyai-slide li{color:#ede9fe;font-size:18px}
+  .studyai-slide .badge{display:inline-block;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:6px 11px;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.12em;margin-bottom:18px}
+  h1,h2,h3{letter-spacing:-.025em;color:#312e81}
+  h1{font-size:34px;line-height:1.08;margin:0 0 20px}
+  h2{font-size:24px;margin:30px 0 12px}
+  h3{font-size:17px;margin:20px 0 8px;color:#4338ca}
+  p{margin:0 0 12px}
+  ul,ol{padding-left:1.35rem;margin:10px 0 16px}
+  li{margin:5px 0}
+  blockquote{margin:18px 0;padding:16px 20px;border-left:5px solid #8b5cf6;background:#f5f3ff;border-radius:14px;color:#312e81;font-weight:650}
+  table{width:100%;border-collapse:separate;border-spacing:0;margin:16px 0;border:1px solid #dbe3ef;border-radius:16px;overflow:hidden}
+  th{background:#312e81;color:white;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+  th,td{padding:10px 12px;border-bottom:1px solid #e2e8f0;vertical-align:top}
+  tr:nth-child(even) td{background:#f8fafc}
+  img{max-width:100%;height:auto;border-radius:18px;box-shadow:0 16px 38px rgba(15,23,42,.12);break-inside:avoid}
+  figure{margin:18px 0;break-inside:avoid}
+  figcaption{font-size:12px;color:#64748b;margin-top:8px;text-align:center}
+  code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#f1f5f9;border-radius:8px}
+  code{padding:.15rem .35rem}
+  pre{padding:14px;overflow:auto;white-space:pre-wrap}
+  .studyai-footer{font-size:11px;color:#94a3b8;text-align:center;margin-top:28px}
+  @page{size:A4;margin:13mm}
+  @media print{
+    html,body{background:white!important}
+    body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .studyai-print-shell{max-width:none;margin:0;padding:0}
+    .studyai-cover,.studyai-content,.studyai-section,.studyai-card,.studyai-slide{box-shadow:none}
+    .studyai-cover,.studyai-content{border-radius:0}
+    .studyai-quality-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .no-print{display:none!important}
+  }
+`;
+
+function markdownToPremiumHtml(markdown: string): string {
+  const lines = stripMarkdownFences(markdown).split(/\r?\n/);
+  const out: string[] = [];
+  let list: "ul" | "ol" | null = null;
+  let table: string[][] = [];
+  const inlineMarkdown = (value: string) =>
+    escapeHtml(value)
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*(.+?)\*/g, "<em>$1</em>")
+      .replace(/`(.+?)`/g, "<code>$1</code>");
+  const closeList = () => {
+    if (list) {
+      out.push(`</${list}>`);
+      list = null;
+    }
+  };
+  const flushTable = () => {
+    if (!table.length) return;
+    const rows = table.filter(row => !row.every(cell => /^:?-{3,}:?$/.test(cell.trim())));
+    if (rows.length) {
+      const [head, ...body] = rows;
+      out.push("<table><thead><tr>");
+      head.forEach(cell => out.push(`<th>${inlineMarkdown(cell)}</th>`));
+      out.push("</tr></thead><tbody>");
+      body.forEach(row => {
+        out.push("<tr>");
+        row.forEach(cell => out.push(`<td>${inlineMarkdown(cell)}</td>`));
+        out.push("</tr>");
+      });
+      out.push("</tbody></table>");
+    }
+    table = [];
+  };
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) {
+      closeList();
+      flushTable();
+      continue;
+    }
+    if (line.includes("|") && /^\|?[^|]+\|/.test(line)) {
+      closeList();
+      table.push(line.replace(/^\||\|$/g, "").split("|").map(cell => cell.trim()));
+      continue;
+    }
+    flushTable();
+    const heading = line.match(/^(#{1,3})\s+(.+)$/);
+    if (heading) {
+      closeList();
+      const level = heading[1].length;
+      out.push(`<h${level}>${inlineMarkdown(heading[2])}</h${level}>`);
+      continue;
+    }
+    const ordered = line.match(/^\d+\.\s+(.+)$/);
+    const unordered = line.match(/^[-*]\s+(.+)$/);
+    if (ordered || unordered) {
+      const nextList = ordered ? "ol" : "ul";
+      if (list !== nextList) {
+        closeList();
+        list = nextList;
+        out.push(`<${list}>`);
+      }
+      out.push(`<li>${inlineMarkdown((ordered ?? unordered)![1])}</li>`);
+      continue;
+    }
+    closeList();
+    if (line.startsWith(">")) out.push(`<blockquote>${inlineMarkdown(line.replace(/^>\s*/, ""))}</blockquote>`);
+    else out.push(`<p>${inlineMarkdown(line)}</p>`);
+  }
+  closeList();
+  flushTable();
+  return out.join("\n");
+}
+
+function injectPremiumCssIntoHtml(rawHtml: string, title: string): string {
+  const cleaned = stripMarkdownFences(rawHtml);
+  const style = `<style id="studyai-premium-print">${PREMIUM_PRINT_CSS}</style>`;
+  if (/^<!doctype/i.test(cleaned) || /^<html[\s>]/i.test(cleaned)) {
+    if (cleaned.includes("studyai-premium-print")) return cleaned;
+    if (/<\/head>/i.test(cleaned)) return cleaned.replace(/<\/head>/i, `${style}</head>`);
+    return cleaned.replace(/<body[^>]*>/i, match => `${match}${style}`);
+  }
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title>${style}</head><body><main class="studyai-print-shell"><section class="studyai-cover"><p class="studyai-kicker">StudyAI Notebook RAG</p><h1 class="studyai-title">${escapeHtml(title)}</h1><p class="studyai-subtitle">Material premium gerado com suas fontes, pronto para revisar, imprimir e compartilhar.</p><div class="studyai-meta"><span class="studyai-pill">PDF premium</span><span class="studyai-pill">Fontes preservadas</span><span class="studyai-pill">Visual didático</span></div></section><div class="studyai-content">${cleaned}</div><p class="studyai-footer">StudyAI · Material gerado para estudo</p></main></body></html>`;
+}
+
+function renderPrimitiveList(items: unknown[]): string {
+  return `<ul>${items.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+}
+
+function renderArtifactValue(value: unknown, key = "conteudo", depth = 0): string {
+  if (value === null || value === undefined || value === "") return "";
+  if (depth > 7) return `<p>${escapeHtml(value)}</p>`;
+  if (typeof value === "string") {
+    const text = stripMarkdownFences(value);
+    if (/^data:image\//.test(text) || /^https?:\/\/.+\.(png|jpe?g|webp|gif)(\?.*)?$/i.test(text)) {
+      return `<figure><img src="${escapeHtml(text)}" alt="${escapeHtml(humanizeArtifactKey(key))}"><figcaption>${escapeHtml(humanizeArtifactKey(key))}</figcaption></figure>`;
+    }
+    if (/<(h1|h2|h3|p|ul|ol|li|table|img|section|article|div|blockquote)\b/i.test(text)) return text;
+    return markdownToPremiumHtml(text);
+  }
+  if (typeof value === "number" || typeof value === "boolean") return `<p>${escapeHtml(value)}</p>`;
+  if (Array.isArray(value)) {
+    if (!value.length) return "";
+    if (value.every(item => ["string", "number", "boolean"].includes(typeof item))) return renderPrimitiveList(value);
+    return `<div class="studyai-card-grid">${value.map((item, i) => `<article class="studyai-card"><h3>${escapeHtml(humanizeArtifactKey(key))} ${i + 1}</h3>${renderArtifactValue(item, key, depth + 1)}</article>`).join("")}</div>`;
+  }
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    if (typeof obj.html === "string") return obj.html;
+    if (typeof obj.b64_json === "string") {
+      const mime = typeof obj.mimeType === "string" ? obj.mimeType : "image/png";
+      const caption = typeof obj.titulo === "string" ? obj.titulo : humanizeArtifactKey(key);
+      return `<figure><img src="data:${escapeHtml(mime)};base64,${obj.b64_json}" alt="${escapeHtml(caption)}"><figcaption>${escapeHtml(caption)}</figcaption></figure>`;
+    }
+    const entries = Object.entries(obj).filter(([k, v]) =>
+      v !== null &&
+      v !== undefined &&
+      !["id", "created_at", "createdAt", "kind", "mimeType", "formato"].includes(k) &&
+      !(k === "titulo" && typeof v === "string") &&
+      !(k === "title" && typeof v === "string")
+    );
+    return entries.map(([k, v]) => {
+      const label = humanizeArtifactKey(k);
+      const className = /erro|dificuldade|warning|aten/i.test(k) ? "studyai-callout warning"
+        : /gabarito|resposta|sucesso|checkpoint|objetivo/i.test(k) ? "studyai-callout success"
+        : /imagem|image|capa|b64/i.test(k) ? ""
+        : "studyai-section";
+      const content = renderArtifactValue(v, k, depth + 1);
+      if (!content) return "";
+      if (!className) return content;
+      return `<section class="${className}"><h2>${escapeHtml(label)}</h2>${content}</section>`;
+    }).join("");
+  }
+  return `<p>${escapeHtml(value)}</p>`;
+}
+
+function renderSlidesForPrint(deck: Slides): string {
+  const slides = deck.slides ?? [];
+  const coverImage = (deck as any).capaImagem as string | undefined;
+  const meta = [
+    ((deck as any).objetivos?.length ?? 0) > 0 ? `<section class="studyai-section"><h2>Objetivos de aprendizagem</h2>${renderPrimitiveList((deck as any).objetivos)}</section>` : "",
+    ((deck as any).prerequisitos?.length ?? 0) > 0 ? `<section class="studyai-section"><h2>Pré-requisitos</h2>${renderPrimitiveList((deck as any).prerequisitos)}</section>` : "",
+    ((deck as any).indicadoresQualidade?.length ?? 0) > 0 ? `<section class="studyai-section"><h2>Indicadores de qualidade</h2>${renderPrimitiveList((deck as any).indicadoresQualidade)}</section>` : "",
+  ].filter(Boolean).join("");
+  return meta + slides.map((slide: any, index) => {
+    const img = index === 0 && coverImage ? `<img src="${escapeHtml(coverImage)}" alt="">` : "";
+    const items = slide.bullets ?? slide.itens ?? slide.etapas?.map((e: any) => `${e.numero ?? ""} ${e.titulo ?? e.evento ?? ""} ${e.descricao ?? ""}`) ?? [];
+    const nums = slide.numeros?.map((n: any) => `${n.valor}: ${n.label ?? n.descricao ?? ""}`) ?? [];
+    const comparison = slide.esquerda || slide.direita
+      ? `<div class="studyai-card-grid">${[slide.esquerda, slide.direita].filter(Boolean).map((col: any) => `<article class="studyai-card"><h3>${escapeHtml(col.titulo)}</h3>${renderPrimitiveList(col.itens ?? [])}</article>`).join("")}</div>`
+      : "";
+    return `<section class="studyai-slide">${img}<div class="studyai-slide-content"><span class="badge">Slide ${index + 1} de ${slides.length}</span><h2>${escapeHtml(slide.titulo ?? deck.titulo)}</h2>${slide.subtitulo ? `<p>${escapeHtml(slide.subtitulo)}</p>` : ""}${items.length ? renderPrimitiveList(items) : ""}${nums.length ? renderPrimitiveList(nums) : ""}${comparison}${slide.texto ? `<blockquote>${escapeHtml(slide.texto)}</blockquote>` : ""}${slide.mensagem ? `<p>${escapeHtml(slide.mensagem)}</p>` : ""}${slide.destaque ? `<div class="studyai-callout">${escapeHtml(slide.destaque)}</div>` : ""}${slide.dicaEnem ? `<div class="studyai-callout success"><strong>Como cai:</strong> ${escapeHtml(slide.dicaEnem)}</div>` : ""}</div></section>`;
+  }).join("");
+}
+
+function buildPremiumPrintableHtml(payload: unknown, title: string, kind?: string): string {
+  const payloadObj = payload && typeof payload === "object" ? payload as Record<string, unknown> : null;
+  if (payloadObj && typeof payloadObj.html === "string") return injectPremiumCssIntoHtml(payloadObj.html, title);
+  if (payloadObj?.apresentacao && typeof payloadObj.apresentacao === "object") {
+    const deck = payloadObj.apresentacao as Slides;
+    const slidesHtml = renderSlidesForPrint(deck);
+    return injectPremiumCssIntoHtml(slidesHtml, deck.titulo ?? title);
+  }
+  const displayTitle =
+    (payloadObj && typeof payloadObj.titulo === "string" && payloadObj.titulo) ||
+    (payloadObj && typeof payloadObj.title === "string" && payloadObj.title) ||
+    title;
+  const body = renderArtifactValue(payload, kind ?? "material");
+  return injectPremiumCssIntoHtml(body || `<p>${escapeHtml(title)}</p>`, displayTitle);
+}
+
+function openPremiumPrintWindow(payload: unknown, title: string, kind?: string) {
+  const win = window.open("", "_blank");
+  if (!win) return;
+  win.document.write(buildPremiumPrintableHtml(payload, title, kind));
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 500);
+}
+
 const COLOR_MAP: Record<string, string> = {
   indigo:  "bg-violet-50/60  border-violet-200  text-violet-700",
   violet:  "bg-violet-50/60  border-violet-200  text-violet-700",
@@ -1738,30 +2004,7 @@ export default function Notebook() {
       const payload = data?.payload ?? data;
       const cfg = TOOL_CONFIG[(a.kind as Tool)];
       const title = a.title || cfg?.label || a.kind;
-
-      // Build printable HTML and open in new window
-      const lines = extractTextFromPayload(payload)
-        .split("\n")
-        .map(l => l.trim())
-        .filter(Boolean);
-      const bodyHtml = lines.map(l => `<p style="margin:0 0 6px;font-size:13px;line-height:1.6">${l.replace(/</g,"&lt;")}</p>`).join("");
-
-      const win = window.open("", "_blank");
-      if (!win) return;
-      win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
-        <title>${title}</title>
-        <style>
-          body{font-family:system-ui,sans-serif;max-width:780px;margin:40px auto;padding:0 20px;color:#1e293b}
-          h1{font-size:22px;font-weight:800;margin-bottom:24px;color:#312e81;border-bottom:2px solid #e2e8f0;padding-bottom:12px}
-          p{margin:0 0 8px;font-size:13px;line-height:1.65}
-          @media print{body{margin:20px}}
-        </style>
-      </head><body>
-        <h1>${title}</h1>
-        ${bodyHtml}
-        <script>window.onload=function(){window.print();}<\/script>
-      </body></html>`);
-      win.document.close();
+      openPremiumPrintWindow(payload, title, a.kind);
     } catch { /* silent */ }
   }, []);
 
@@ -3227,12 +3470,17 @@ export default function Notebook() {
 
   // ─── TOOLS PANEL ───────────────────────────────────────────────────────────
   const ToolsPanel = (
-    <div className="flex flex-col h-full bg-white border-l border-slate-200/70">
-      <div className="px-4 py-3.5 border-b border-slate-100 flex-shrink-0">
+    <div className="flex flex-col h-full bg-gradient-to-b from-white via-white to-violet-50/30 border-l border-slate-200/70">
+      <div className="px-4 py-3.5 border-b border-violet-100 flex-shrink-0 bg-white/95 backdrop-blur">
         <div className="flex items-center justify-between mb-2.5">
           <div className="flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-fuchsia-500" />
-            <p className="text-[11px] font-black text-slate-900 uppercase tracking-[0.08em]">Studio</p>
+            <span className="w-7 h-7 rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white flex items-center justify-center shadow-sm">
+              <Sparkles className="w-3.5 h-3.5" />
+            </span>
+            <div>
+              <p className="text-[11px] font-black text-slate-900 uppercase tracking-[0.08em]">Studio Premium</p>
+              <p className="text-[9px] text-violet-500 font-bold">Materiais prontos para aula, PDF e revisão</p>
+            </div>
           </div>
           {selectedDocIds.length > 0 && <span className="text-[9px] font-bold text-slate-400">{selectedDocIds.length} doc</span>}
         </div>
@@ -3279,17 +3527,17 @@ export default function Notebook() {
       {/* ── Tools list: hidden when result is showing, scrollable otherwise ── */}
       <div className={`overflow-y-auto p-4 transition-all ${toolResult && activeTool ? "hidden" : "flex-1"}`}>
         {selectedDocIds.length === 0 ? (
-          <div className="rounded-xl bg-slate-50 border border-dashed border-slate-200 p-4 text-center">
-            <Sparkles className="w-5 h-5 text-slate-300 mx-auto mb-2" />
-            <p className="text-xs font-semibold text-slate-500">Selecione uma fonte</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">para liberar as ferramentas IA</p>
+          <div className="rounded-2xl bg-gradient-to-br from-violet-50 to-fuchsia-50 border border-dashed border-violet-200 p-5 text-center shadow-sm">
+            <Sparkles className="w-6 h-6 text-violet-400 mx-auto mb-2" />
+            <p className="text-sm font-black text-slate-700">Selecione uma fonte</p>
+            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">Depois gere guias, mapas, slides e materiais com exportação premium.</p>
           </div>
         ) : (
           <div className="space-y-3">
 
             {/* ── 3 Ferramentas em destaque (estilo NotebookLM Studio) ── */}
             <div>
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Gerar com IA</p>
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Gerar material premium</p>
               <div className="space-y-2">
                 {FEATURED_STUDIO_TOOLS.map(key => {
                   const cfg = TOOL_CONFIG[key];
@@ -3301,10 +3549,10 @@ export default function Notebook() {
                     <button key={key}
                       onClick={() => runTool(key, selectedDocIds[0])}
                       disabled={toolLoading}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all disabled:opacity-60 active:scale-[0.98] ${
+                      className={`w-full flex items-center gap-3 px-3 py-3 rounded-2xl border text-left transition-all disabled:opacity-60 active:scale-[0.98] ${
                         isActive
                           ? `${COLOR_MAP[cfg.color]} shadow-sm`
-                          : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm"
+                          : "bg-white border-slate-200 hover:border-violet-200 hover:shadow-md hover:-translate-y-0.5"
                       }`}>
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isActive ? "bg-white/60" : tintClass}`}>
                         <Icon className="w-4.5 h-4.5" />
@@ -3330,7 +3578,7 @@ export default function Notebook() {
             {/* ── Artefatos gerados — lista com 3-pontos (estilo NotebookLM) ── */}
             {savedArtifacts.length > 0 && (
               <div>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Conteúdo gerado</p>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Conteúdo gerado e exportável</p>
                 <div className="space-y-1">
                   {savedArtifacts.map(a => {
                     const cfg = TOOL_CONFIG[(a.kind as Tool)];
@@ -3509,33 +3757,16 @@ export default function Notebook() {
               ); })()}
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold text-slate-800 truncate">{TOOL_CONFIG[activeTool].label}</p>
-                <p className="text-[9px] text-slate-400">Resultado gerado por IA</p>
+                <p className="text-[9px] text-slate-400">Preview formatado · exportação premium disponível</p>
               </div>
               {/* Download buttons */}
               <button
-                onClick={() => {
-                  const fakeArtifact = { id: 0, kind: activeTool, title: TOOL_CONFIG[activeTool].label, created_at: "" };
-                  // Download PDF by creating print window from current toolResult
-                  const extractText = (payload: unknown, depth = 0): string => {
-                    if (depth > 6 || !payload) return "";
-                    if (typeof payload === "string") return payload;
-                    if (Array.isArray(payload)) return payload.map(v => extractText(v, depth + 1)).join("\n");
-                    if (typeof payload === "object") return Object.entries(payload as Record<string, unknown>).filter(([k]) => !["icon","color","image","emoji","id","url"].includes(k)).map(([,v]) => extractText(v, depth + 1)).join("\n");
-                    return String(payload);
-                  };
-                  const title = TOOL_CONFIG[activeTool].label;
-                  const lines = extractText(toolResult).split("\n").map(l => l.trim()).filter(Boolean);
-                  const bodyHtml = lines.map(l => `<p style="margin:0 0 6px;font-size:13px;line-height:1.6">${l.replace(/</g,"&lt;")}</p>`).join("");
-                  const win = window.open("", "_blank");
-                  if (win) {
-                    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>body{font-family:system-ui,sans-serif;max-width:780px;margin:40px auto;padding:0 20px;color:#1e293b}h1{font-size:22px;font-weight:800;margin-bottom:24px;color:#312e81;border-bottom:2px solid #e2e8f0;padding-bottom:12px}p{margin:0 0 8px;font-size:13px;line-height:1.65}@media print{body{margin:20px}}</style></head><body><h1>${title}</h1>${bodyHtml}<script>window.onload=function(){window.print();}<\/script></body></html>`);
-                    win.document.close();
-                  }
-                }}
-                className="p-1.5 rounded-lg border border-rose-200 text-rose-500 hover:bg-rose-50 transition-colors"
-                title="Baixar como PDF"
+                onClick={() => openPremiumPrintWindow(toolResult, TOOL_CONFIG[activeTool].label, activeTool)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors text-[10px] font-black"
+                title="Imprimir / salvar como PDF premium"
               >
                 <Download className="w-3.5 h-3.5" />
+                PDF premium
               </button>
               <button
                 onClick={async () => {
@@ -3875,27 +4106,7 @@ export default function Notebook() {
               const r = toolResult as { apresentacao?: Slides; html?: string; titulo?: string; formato?: string };
               if (r?.html) {
                 const safeName = (r.titulo ?? "material-studyai").replace(/[^a-zA-Z0-9-_]+/g, "-").replace(/^-+|-+$/g, "").toLowerCase() || "material-studyai";
-                // Wraps fragment HTML in a complete document so browsers render it instead of showing as raw text
-                const ensureFullHtml = (raw: string, title: string): string => {
-                  let t = (raw ?? "").trim();
-                  if (!t) return "";
-                  // Defesa: remove cercas markdown ```html ... ``` que a IA às vezes deixa
-                  t = t.replace(/^```(?:html|HTML)?\s*\r?\n?/i, "").replace(/\r?\n?```\s*$/i, "").trim();
-                  if (/^<!doctype/i.test(t) || /^<html[\s>]/i.test(t)) return t;
-                  return `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${title.replace(/</g, "&lt;")}</title>
-<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:960px;margin:2rem auto;padding:0 1.25rem;line-height:1.6;color:#0f172a}h1,h2,h3{color:#4f46e5}img{max-width:100%;height:auto}table{border-collapse:collapse;width:100%}th,td{border:1px solid #e2e8f0;padding:.5rem}code,pre{background:#f1f5f9;border-radius:6px;padding:.15rem .35rem;font-family:ui-monospace,Menlo,Consolas,monospace}pre{padding:.75rem;overflow:auto}</style>
-</head>
-<body>
-${t}
-</body>
-</html>`;
-                };
-                const fullHtml = ensureFullHtml(r.html ?? "", r.titulo ?? "Material StudyAI");
+                const fullHtml = injectPremiumCssIntoHtml(r.html ?? "", r.titulo ?? "Material StudyAI");
                 const openInNewTab = () => {
                   const blob = new Blob([fullHtml], { type: "text/html;charset=utf-8" });
                   const url = URL.createObjectURL(blob);
@@ -3918,9 +4129,19 @@ ${t}
                     <div className="flex items-center justify-between gap-2 px-3 py-2 bg-white border border-gray-200 rounded-xl shadow-sm">
                       <div className="min-w-0 flex items-center gap-2">
                         <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white text-[10px] font-bold flex-shrink-0">HTML</span>
-                        <p className="text-xs font-semibold text-slate-800 truncate">{r.titulo ?? "Material StudyAI"}</p>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-slate-800 truncate">{r.titulo ?? "Material StudyAI"}</p>
+                          <p className="text-[9px] text-violet-500 font-bold">Template premium com CSS de impressão, cores e imagens preservadas</p>
+                        </div>
                       </div>
                       <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button
+                          onClick={() => openPremiumPrintWindow(r, r.titulo ?? "Material StudyAI", "material_html")}
+                          className="inline-flex items-center gap-1 text-[10px] font-black bg-rose-50 border border-rose-200 text-rose-600 px-2.5 py-1.5 rounded-lg hover:bg-rose-100 transition-colors"
+                          title="Imprimir ou salvar como PDF com template premium"
+                        >
+                          <Printer className="w-3 h-3" /> PDF premium
+                        </button>
                         <button
                           onClick={openInNewTab}
                           className="inline-flex items-center gap-1 text-[10px] font-semibold bg-white border border-slate-200 text-slate-700 px-2.5 py-1.5 rounded-lg hover:border-violet-400 hover:text-violet-700 transition-colors"

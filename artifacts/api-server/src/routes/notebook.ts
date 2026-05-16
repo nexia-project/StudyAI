@@ -3323,13 +3323,16 @@ router.post("/notebook/slides", async (req: Request, res: Response) => {
 
     // Gemini 2.5 Flash — NotebookLM-style: lê o documento completo (até 80K chars)
     const slidesSystemPrompt = `Você é o Professor Tiagão criando uma APRESENTAÇÃO PROFISSIONAL em slides sobre o documento.
-Pense como o NotebookLM: conteúdo 100% fiel às fontes, títulos magnéticos, hierarquia visual clara, variedade de tipos de slide.
+Pense como o NotebookLM em padrão editorial premium: conteúdo 100% fiel às fontes, títulos magnéticos, hierarquia visual clara, variedade de tipos de slide e material final bonito em PDF/print.
 Retorne APENAS JSON válido:
 {
   "titulo": "Título magnético da apresentação (≤ 8 palavras)",
   "subtitulo": "Subtítulo de uma linha",
   "autor": "Professor Tiagão",
   "tema": "indigo" | "rose" | "emerald" | "amber",
+  "objetivos": ["objetivo pedagógico mensurável 1", "objetivo pedagógico mensurável 2", "objetivo pedagógico mensurável 3"],
+  "prerequisitos": ["conceito prévio necessário 1", "conceito prévio necessário 2"],
+  "indicadoresQualidade": ["usa dados da fonte", "tem exemplo resolvido", "tem checkpoint", "tem conexão ENEM"],
   "slides": [
     { "tipo": "capa", "titulo": "string", "subtitulo": "string", "icone": "BookOpen" },
     { "tipo": "agenda", "titulo": "Roteiro", "itens": ["tópico 1", "tópico 2", "tópico 3", "tópico 4", "tópico 5"] },
@@ -3347,6 +3350,9 @@ REGRAS:
 - Varie os tipos: mínimo 3 tipos diferentes além de capa/agenda/encerramento
 - Use tipo "destaque_numerico" quando há dados quantitativos relevantes
 - Use tipo "comparacao" quando há dois lados/categorias para comparar
+- Inclua pelo menos 1 exemplo resolvido, 1 erro comum/pegadinha e 1 checkpoint de autoavaliação em slides de conteúdo ou destaque
+- Escreva para impressão/exportação: textos curtos por slide, sem depender de animações, com títulos claros e contraste alto
+- Sempre preencha objetivos, prerequisitos e indicadoresQualidade para o export premium
 - Tema: escolha baseado no assunto (emerald=natureza/saúde, indigo=tecnologia/finanças, rose=humanas/arte, amber=história/geo)`;
 
     const slidesRaw = await generateWithGemini(

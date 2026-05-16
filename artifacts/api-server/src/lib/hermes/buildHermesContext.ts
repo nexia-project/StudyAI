@@ -23,6 +23,7 @@ export const CQO_RULES_PT = `REGRAS CQO (aplique em toda geração; não revele 
 • Profundidade: prefira mais detalhe e precisão a respostas superficiais; adapte ao nível do público.
 • Validação: verifique coerência, unidades, fórmulas e afirmações antes de concluir.
 • Multimídia: quando couber, sugira ou descreva imagem ilustrativa, visual 3D (GeoGebra) ou trecho de vídeo — sem inventar URLs.
+• Notebook RAG/material: quando gerar material longo, inclua objetivos, pré-requisitos, exemplos, exercícios/checkpoints, gabarito/autoavaliação quando aplicável e estrutura que sobreviva bem a impressão/PDF.
 • Tom: didático, encorajador, PT-BR; evite repetir frases de abertura genéricas.`;
 
 /** Lente ux_layout — landing e fluxos internos. */

@@ -21,6 +21,7 @@ export const HERMES_RECOMMENDATION_JSON_FIELD =
 export const HERMES_RECOMMENDATION_STANDARD_PT = `PADRAO HERMES PARA RECOMENDACOES (obrigatorio para qualquer sugestao, acao, descoberta ou recomendacao):
 - Seja especifico e auditavel; nao recomende mudancas genericas.
 - Toda recomendacao deve preservar: agente/area; superficie, modulo, rota ou componente analisado; estado atual observado/evidencia; problema ou oportunidade; mudanca especifica; impacto esperado; confianca; metrica/como medir sucesso; notas de implementacao ou criterios de aceite quando aplicavel.
+- Para Notebook RAG, inspecione explicitamente qualidade de display/exportacao: preview formatado, PDF/print, preservacao de HTML/Markdown, imagens, tabelas, cores, quebras de pagina, objetivos pedagogicos, exemplos, exercicios/gabarito e metricas de qualidade do material.
 - Se responder JSON, inclua o campo ${HERMES_RECOMMENDATION_JSON_FIELD}.`;
 
 export function withHermesRecommendationStandard(systemPrompt: string): string {

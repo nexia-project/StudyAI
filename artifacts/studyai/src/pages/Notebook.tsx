@@ -68,6 +68,10 @@ interface Slides {
   subtitulo?: string;
   autor?: string;
   tema?: "indigo" | "rose" | "emerald" | "amber";
+  objetivos?: string[];
+  prerequisitos?: string[];
+  indicadoresQualidade?: string[];
+  generatedByFallback?: boolean;
   slides: Array<
     | { tipo: "capa"; titulo: string; subtitulo?: string }
     | { tipo: "agenda"; titulo: string; itens: string[] }
@@ -205,6 +209,11 @@ interface DnaFontes {
 interface MindMap {
   subject: string;
   color: string;
+  icone?: string;
+  categories?: Array<{ name: string; icone?: string; cor?: string; topics: Array<{ name: string; subtopics: Array<{ name: string; detail: string }> }> }>;
+  conexoesCruzadas?: Array<{ de: string; para: string; relacao: string }>;
+  conceitosChave?: string[];
+  generatedByFallback?: boolean;
   topics: Array<{ name: string; color: string; subtopics: Array<{ name: string; detail: string }> }>;
 }
 interface Flashcard { frente: string; verso: string; materia: string; dificuldade: string; }
@@ -283,7 +292,7 @@ const TOOL_CONFIG: Record<Tool, { label: string; icon: React.ElementType; color:
 };
 
 // Ferramentas que aparecem como cards grandes no Studio (estilo NotebookLM)
-const FEATURED_STUDIO_TOOLS: Tool[] = ["mapa-mental", "study-guide", "podcast"];
+const FEATURED_STUDIO_TOOLS: Tool[] = ["slides", "mapa-mental", "study-guide", "podcast"];
 
 const escapeHtml = (value: unknown) =>
   String(value ?? "")
@@ -526,6 +535,31 @@ function renderSlidesForPrint(deck: Slides): string {
   }).join("");
 }
 
+function renderMindMapForPrint(map: MindMap): string {
+  const categories = (map as any).categories ?? [];
+  const conceitos = (map as any).conceitosChave ?? [];
+  const conexoes = (map as any).conexoesCruzadas ?? [];
+  const meta = [
+    conceitos.length ? `<section class="studyai-section"><h2>Conceitos-chave</h2>${renderPrimitiveList(conceitos)}</section>` : "",
+    (map as any).generatedByFallback ? `<div class="studyai-callout warning"><strong>Observação:</strong> a IA retornou uma estrutura fraca; o StudyAI reconstruiu um mapa determinístico a partir da fonte para evitar saída vazia.</div>` : "",
+  ].filter(Boolean).join("");
+  const branches = categories.map((cat: any) => `
+    <article class="studyai-card">
+      <h3>${escapeHtml(cat.icone ? `${cat.icone} ${cat.name}` : cat.name)}</h3>
+      ${(cat.topics ?? []).map((topic: any) => `
+        <section class="studyai-section">
+          <h2>${escapeHtml(topic.name)}</h2>
+          ${renderPrimitiveList((topic.subtopics ?? []).map((sub: any) => `${sub.name}: ${sub.detail}`))}
+        </section>
+      `).join("")}
+    </article>
+  `).join("");
+  const links = conexoes.length
+    ? `<section class="studyai-section"><h2>Conexões entre ramos</h2>${renderPrimitiveList(conexoes.map((c: any) => `${c.de} → ${c.para}: ${c.relacao}`))}</section>`
+    : "";
+  return `${meta}<section class="studyai-section"><h2>Mapa mental</h2><div class="studyai-card-grid">${branches}</div></section>${links}`;
+}
+
 function buildPremiumPrintableHtml(payload: unknown, title: string, kind?: string): string {
   const payloadObj = payload && typeof payload === "object" ? payload as Record<string, unknown> : null;
   if (payloadObj && typeof payloadObj.html === "string") return injectPremiumCssIntoHtml(payloadObj.html, title);
@@ -533,6 +567,10 @@ function buildPremiumPrintableHtml(payload: unknown, title: string, kind?: strin
     const deck = payloadObj.apresentacao as Slides;
     const slidesHtml = renderSlidesForPrint(deck);
     return injectPremiumCssIntoHtml(slidesHtml, deck.titulo ?? title);
+  }
+  if ((kind === "mapa-mental" || kind === "mapa_mental" || payloadObj?.categories) && payloadObj?.subject) {
+    const mapHtml = renderMindMapForPrint(payloadObj as unknown as MindMap);
+    return injectPremiumCssIntoHtml(mapHtml, String(payloadObj.subject ?? title));
   }
   const displayTitle =
     (payloadObj && typeof payloadObj.titulo === "string" && payloadObj.titulo) ||
@@ -621,179 +659,136 @@ function MindMapView({ map }: { map: MindMap }) {
     setExpandedRows(s => { const ns = new Set(s); ns.has(i) ? ns.delete(i) : ns.add(i); return ns; });
 
   const rootColor = (hasCategories ? categories[0]?.cor : map.color) ?? "#6366f1";
-
-  // Group rows by catName for visual separators
-  const grouped: Array<{ catName: string; catIcon: string; color: string; rowIndexes: number[] }> = [];
-  if (hasCategories) {
-    let cur = "";
-    rows.forEach((r, i) => {
-      if (r.catName !== cur) {
-        cur = r.catName;
-        grouped.push({ catName: r.catName, catIcon: r.catIcon, color: r.color, rowIndexes: [i] });
-      } else {
-        grouped[grouped.length - 1].rowIndexes.push(i);
-      }
-    });
-  }
+  const branchCards = hasCategories
+    ? categories.map(cat => ({
+        name: cat.name,
+        icon: cat.icone ?? "",
+        color: cat.cor ?? rootColor,
+        topics: cat.topics ?? [],
+      }))
+    : rows.map(row => ({
+        name: row.name,
+        icon: row.catIcon,
+        color: row.color,
+        topics: [{ name: row.name, subtopics: row.subtopics }],
+      }));
+  const subtopicCount = branchCards.reduce((sum, branch) =>
+    sum + branch.topics.reduce((topicSum, topic) => topicSum + (topic.subtopics?.length ?? 0), 0), 0);
 
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden bg-gradient-to-br from-slate-50 to-white">
-      {/* Conceitos-chave header */}
-      {conceitosChave.length > 0 && (
-        <div className="flex-shrink-0 flex flex-wrap gap-1.5 px-4 pt-3 pb-2 border-b border-slate-100">
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider self-center mr-1">Conceitos:</span>
-          {conceitosChave.map((c, i) => (
-            <span key={i} className="text-[10px] font-semibold bg-violet-50 text-violet-700 border border-violet-100 px-2 py-0.5 rounded-full">{c}</span>
-          ))}
-        </div>
-      )}
-
-      {/* Horizontal tree */}
-      <div className="flex-1 overflow-auto p-4">
-        <div className="inline-flex items-start gap-0" style={{ minWidth: "max-content", minHeight: "100%" }}>
-
-          {/* ── Root node ── */}
-          <div className="flex flex-col items-center self-center">
+    <div className="w-full h-full flex flex-col overflow-hidden bg-slate-50">
+      <div className="flex-shrink-0 border-b border-slate-200 bg-white px-4 py-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0 flex items-start gap-3">
             <div
-              className="px-5 py-3.5 rounded-2xl font-black text-white text-sm shadow-2xl whitespace-nowrap select-none cursor-default text-center"
+              className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl text-white shadow-sm flex-shrink-0"
               style={{ background: `linear-gradient(135deg, ${rootColor}, ${rootColor}cc)` }}
             >
-              <div className="text-2xl mb-1">{rootIcone}</div>
-              <div className="leading-tight">{map.subject}</div>
+              {rootIcone}
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-black text-violet-500 uppercase tracking-wider">Mapa mental de estudo</p>
+              <h3 className="text-lg font-black text-slate-900 leading-tight truncate">{map.subject}</h3>
+              <p className="text-xs text-slate-500">
+                {branchCards.length} ramos principais · {rows.length} topicos · {subtopicCount} subnos explicativos
+                {mapAny.generatedByFallback ? " · fallback estruturado usado" : ""}
+              </p>
             </div>
           </div>
-
-          {/* Root → branches connector */}
-          <div className="self-center w-8 h-0.5 flex-shrink-0" style={{ backgroundColor: rootColor + "60" }} />
-
-          {/* ── Categories / Topics column ── */}
-          <div className="flex flex-col gap-2 self-center">
-            {hasCategories ? (
-              // Render by category groups
-              grouped.map((grp, gi) => (
-                <div key={gi} className="flex items-start gap-0">
-                  {/* Category node */}
-                  <div className="flex flex-col items-center self-stretch justify-center">
-                    <div
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-black text-xs text-white shadow-lg whitespace-nowrap"
-                      style={{ backgroundColor: grp.color }}
-                    >
-                      {grp.catIcon && <span className="text-base">{grp.catIcon}</span>}
-                      {grp.catName}
-                    </div>
-                  </div>
-
-                  {/* Category → topics connector */}
-                  <div className="self-center w-5 h-0.5 flex-shrink-0" style={{ backgroundColor: grp.color + "60" }} />
-
-                  {/* Topics of this category */}
-                  <div className="flex flex-col gap-1.5">
-                    {grp.rowIndexes.map(ri => {
-                      const row = rows[ri];
-                      const isOpen = expandedRows.has(ri);
-                      return (
-                        <div key={ri} className="flex items-center gap-0">
-                          {/* Topic node */}
-                          <button
-                            onClick={() => toggleRow(ri)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold text-xs shadow-md whitespace-nowrap hover:opacity-90 active:scale-[0.97] transition-all border"
-                            style={{ backgroundColor: row.color + "15", borderColor: row.color + "40", color: row.color }}
-                          >
-                            {row.name}
-                            {row.subtopics.length > 0 && (
-                              <span className="text-[9px] font-black opacity-60">{isOpen ? "−" : `+${row.subtopics.length}`}</span>
-                            )}
-                          </button>
-
-                          {/* Topic → Subtopics */}
-                          {isOpen && row.subtopics.length > 0 && (
-                            <>
-                              <div className="w-4 h-0.5 flex-shrink-0" style={{ backgroundColor: row.color + "50" }} />
-                              <div className="flex flex-col gap-1">
-                                {row.subtopics.map((sub, si) => {
-                                  const key = `${ri}-${si}`;
-                                  const isSubOpen = expandedSub === key;
-                                  return (
-                                    <div key={si} className="flex items-start gap-0">
-                                      <div className="w-2 h-0.5 self-center flex-shrink-0" style={{ backgroundColor: row.color + "40" }} />
-                                      <div
-                                        className="rounded-lg border bg-white shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-                                        style={{ borderColor: row.color + "25", maxWidth: 260 }}
-                                        onClick={() => setExpandedSub(isSubOpen ? null : key)}
-                                      >
-                                        <div className="px-2.5 py-1.5 flex items-center gap-1.5">
-                                          <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: row.color }} />
-                                          <p className="text-xs font-semibold text-slate-800 leading-tight">{sub.name}</p>
-                                          {sub.detail && (
-                                            <span className="text-[8px] ml-auto text-slate-400">{isSubOpen ? "▲" : "▼"}</span>
-                                          )}
-                                        </div>
-                                        {isSubOpen && sub.detail && (
-                                          <div className="px-2.5 pb-2 pt-0">
-                                            <p className="text-[11px] text-slate-600 leading-relaxed">{sub.detail}</p>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))
-            ) : (
-              // Flat topics (old format)
-              rows.map((row, ri) => {
-                const isOpen = expandedRows.has(ri);
-                return (
-                  <div key={ri} className="flex items-center gap-0">
-                    <div className="w-2 h-0.5" style={{ backgroundColor: row.color + "60" }} />
-                    <button
-                      onClick={() => toggleRow(ri)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs text-white shadow-md whitespace-nowrap hover:opacity-90 transition-all"
-                      style={{ backgroundColor: row.color }}
-                    >
-                      {row.name}
-                      {row.subtopics.length > 0 && <span className="text-[9px] opacity-70">{isOpen ? "−" : `+${row.subtopics.length}`}</span>}
-                    </button>
-                    {isOpen && row.subtopics.length > 0 && (
-                      <>
-                        <div className="w-4 h-0.5" style={{ backgroundColor: row.color + "50" }} />
-                        <div className="flex flex-col gap-1">
-                          {row.subtopics.map((sub, si) => {
-                            const key = `${ri}-${si}`;
-                            const isSubOpen = expandedSub === key;
-                            return (
-                              <div key={si} className="flex items-start gap-0" onClick={() => setExpandedSub(isSubOpen ? null : key)}>
-                                <div className="w-2 h-0.5 self-center" style={{ backgroundColor: row.color + "40" }} />
-                                <div className="px-2.5 py-1.5 rounded-lg text-xs bg-white shadow-sm border cursor-pointer hover:shadow-md transition-shadow"
-                                  style={{ borderColor: row.color + "30", maxWidth: 240 }}>
-                                  <p className="font-semibold text-slate-800">{sub.name}</p>
-                                  {isSubOpen && sub.detail && <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">{sub.detail}</p>}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                );
-              })
-            )}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setExpandedRows(new Set(rows.map((_, i) => i)))}
+              className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-[10px] font-bold text-slate-600 hover:bg-slate-50"
+            >
+              Expandir tudo
+            </button>
+            <button
+              onClick={() => { setExpandedRows(new Set()); setExpandedSub(null); }}
+              className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-[10px] font-bold text-slate-600 hover:bg-slate-50"
+            >
+              Recolher
+            </button>
           </div>
         </div>
+        {conceitosChave.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-3">
+            {conceitosChave.slice(0, 8).map((c, i) => (
+              <span key={i} className="text-[10px] font-semibold bg-violet-50 text-violet-700 border border-violet-100 px-2 py-0.5 rounded-full">{c}</span>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Conexões Cruzadas footer */}
+      <div className="flex-1 overflow-auto p-4">
+        {branchCards.length === 0 ? (
+          <div className="h-full min-h-[320px] flex items-center justify-center">
+            <div className="max-w-sm text-center rounded-2xl border border-dashed border-slate-300 bg-white p-6">
+              <AlertCircle className="w-7 h-7 text-amber-500 mx-auto mb-2" />
+              <p className="text-sm font-black text-slate-800">Mapa sem estrutura útil</p>
+              <p className="text-xs text-slate-500 mt-1">Gere novamente para reconstruir ramos, tópicos e subnós a partir da fonte.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-3 pb-4">
+            {branchCards.map((branch, branchIndex) => (
+              <section key={`${branch.name}-${branchIndex}`} className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+                <div className="px-4 py-3 flex items-center gap-2 text-white" style={{ backgroundColor: branch.color }}>
+                  {branch.icon && <span className="text-lg">{branch.icon}</span>}
+                  <div className="min-w-0">
+                    <p className="text-sm font-black truncate">{branch.name}</p>
+                    <p className="text-[10px] text-white/75">{branch.topics.length} tópicos</p>
+                  </div>
+                </div>
+                <div className="p-3 space-y-2">
+                  {branch.topics.map((topic, topicIndex) => {
+                    const rowIndex = rows.findIndex(r => r.name === topic.name || (r.catName === branch.name && r.subtopics === topic.subtopics));
+                    const safeRowIndex = rowIndex >= 0 ? rowIndex : branchIndex * 10 + topicIndex;
+                    const isOpen = expandedRows.has(safeRowIndex) || rowIndex < 0;
+                    return (
+                      <div key={`${topic.name}-${topicIndex}`} className="rounded-xl border border-slate-100 bg-slate-50/70">
+                        <button
+                          onClick={() => rowIndex >= 0 && toggleRow(safeRowIndex)}
+                          className="w-full px-3 py-2 flex items-center justify-between gap-2 text-left"
+                        >
+                          <span className="text-xs font-black text-slate-800">{topic.name}</span>
+                          <span className="text-[10px] font-bold text-slate-400">{isOpen ? "−" : `+${topic.subtopics?.length ?? 0}`}</span>
+                        </button>
+                        {isOpen && (
+                          <div className="px-3 pb-3 space-y-2">
+                            {(topic.subtopics ?? []).map((sub, subIndex) => {
+                              const key = `${branchIndex}-${topicIndex}-${subIndex}`;
+                              const isSubOpen = expandedSub === key;
+                              return (
+                                <button
+                                  key={key}
+                                  onClick={() => setExpandedSub(isSubOpen ? null : key)}
+                                  className="w-full text-left rounded-lg bg-white border border-slate-200 px-3 py-2 hover:border-violet-200 hover:shadow-sm transition"
+                                >
+                                  <div className="flex items-start gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ backgroundColor: branch.color }} />
+                                    <div className="min-w-0">
+                                      <p className="text-[11px] font-bold text-slate-800 leading-snug">{sub.name}</p>
+                                      <p className={`text-[10px] text-slate-600 leading-relaxed mt-0.5 ${isSubOpen ? "" : "line-clamp-2"}`}>{sub.detail}</p>
+                                    </div>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+      </div>
+
       {conexoesCruzadas.length > 0 && (
-        <div className="flex-shrink-0 border-t border-slate-100 px-4 py-2.5 bg-white">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">🔗 Conexões entre ramos</p>
+        <div className="flex-shrink-0 border-t border-slate-200 px-4 py-3 bg-white">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Conexões entre ramos</p>
           <div className="flex flex-wrap gap-2">
             {conexoesCruzadas.map((c, i) => (
               <div key={i} className="text-[10px] bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
@@ -1368,6 +1363,24 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
           <button onClick={handlePrint} className="flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-violet-600 px-2 py-1 rounded-md hover:bg-violet-50">
             <Printer className="w-3 h-3" /> Imprimir
           </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
+        <div className="lg:col-span-2 rounded-xl border border-violet-100 bg-violet-50/70 px-3 py-2">
+          <p className="text-[9px] font-black uppercase tracking-wider text-violet-500 mb-1">Objetivo pedagógico</p>
+          <p className="text-[11px] text-slate-700 leading-relaxed">
+            {(deck.objetivos ?? [deck.subtitulo ?? "Apresentação estruturada para estudo e aula."]).slice(0, 2).join(" · ")}
+          </p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+          <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Qualidade</p>
+          <p className="text-[11px] text-slate-600 leading-relaxed">
+            {(deck.indicadoresQualidade ?? ["slides", "checkpoint", "exportacao"]).slice(0, 3).join(" · ")}
+          </p>
+          {deck.generatedByFallback && (
+            <p className="mt-1 text-[10px] font-bold text-amber-700">IA retornou fraco; usamos fallback estruturado.</p>
+          )}
         </div>
       </div>
 
@@ -2627,6 +2640,7 @@ export default function Notebook() {
     setActiveTool(tool);
     setToolResult(null);
     setToolLoading(true);
+    setNotebookView("workspace");
     setMobilePanel("tools");
 
     const endpoints: Partial<Record<Tool, string>> = {
@@ -2656,6 +2670,12 @@ export default function Notebook() {
       relatorio: "/api/notebook/relatorio",
     };
     if (tool === "slides") setSlideIdx(0);
+    const endpoint = endpoints[tool];
+    if (!endpoint) {
+      setToolError(`Ferramenta "${TOOL_CONFIG[tool]?.label ?? tool}" ainda não tem rota de geração configurada.`);
+      setToolLoading(false);
+      return;
+    }
 
     try {
       const body: any = { docId: targetDocId, docIds: selectedDocIds.length ? selectedDocIds : [targetDocId] };
@@ -2670,16 +2690,21 @@ export default function Notebook() {
       }
       // Aula Viva sub-formatos (/tools/aula_viva/*.py)
       if (tool === "aula-viva-formato") { body.formato = aulaVivaFormato; }
-      const r = await fetch(`${BASE_URL}${endpoints[tool]}`, {
+      const r = await fetch(`${BASE_URL}${endpoint}`, {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
         body: JSON.stringify(body),
       });
-      const data = await r.json();
+      const rawText = await r.text();
+      let data: any = {};
+      try { data = rawText ? JSON.parse(rawText) : {}; }
+      catch { data = { erro: rawText.slice(0, 240) || "Resposta inválida do servidor" }; }
       if (r.ok) { setToolResult(data); }
-      else { setToolError(data.erro ?? "Erro ao gerar conteúdo"); }
-    } catch { setToolError("Erro de conexão. Tente novamente."); }
+      else { setToolError(data.erro ?? `Erro ${r.status} ao gerar conteúdo`); }
+    } catch (e: any) {
+      setToolError(e?.message ? `Erro de conexão: ${e.message}` : "Erro de conexão. Tente novamente.");
+    }
     finally { setToolLoading(false); }
-  }, [selectedDocIds, navigate]);
+  }, [selectedDocIds, navigate, relatorioTemplate, selectedPersona, aulaVivaFormato]);
 
   const selectedDocs = docs.filter(d => selectedDocIds.includes(d.id));
 
@@ -3534,6 +3559,32 @@ export default function Notebook() {
           </div>
         ) : (
           <div className="space-y-3">
+            <div className="rounded-2xl bg-white border border-slate-200 p-3 shadow-sm">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Fluxo de trabalho</p>
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-black flex items-center justify-center flex-shrink-0">1</span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-black text-slate-800">Fonte selecionada</p>
+                    <p className="text-[10px] text-slate-500 truncate">{selectedDocs[0]?.title ?? `${selectedDocIds.length} fontes selecionadas`}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="w-5 h-5 rounded-full bg-violet-100 text-violet-700 text-[10px] font-black flex items-center justify-center flex-shrink-0">2</span>
+                  <div>
+                    <p className="text-[11px] font-black text-slate-800">Escolha um resultado útil</p>
+                    <p className="text-[10px] text-slate-500">Slides e mapa mental agora validam estrutura antes de renderizar.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-black flex items-center justify-center flex-shrink-0">3</span>
+                  <div>
+                    <p className="text-[11px] font-black text-slate-800">Pré-visualize, regenere ou exporte</p>
+                    <p className="text-[10px] text-slate-500">Se a IA falhar, o sistema mostra erro e caminho de retry.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             {/* ── 3 Ferramentas em destaque (estilo NotebookLM Studio) ── */}
             <div>
@@ -3741,7 +3792,19 @@ export default function Notebook() {
           <div className="m-3 p-3 bg-red-50 border border-red-200 rounded-xl">
             <div className="flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-red-700">{toolError}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-red-800">Não deu para gerar este material.</p>
+                <p className="text-xs text-red-700 mt-0.5">{toolError}</p>
+                {activeTool && selectedDocIds[0] && (
+                  <button
+                    onClick={() => runTool(activeTool, selectedDocIds[0])}
+                    className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-red-200 text-[10px] font-black text-red-700 hover:bg-red-100"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    Tentar novamente
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -3757,8 +3820,19 @@ export default function Notebook() {
               ); })()}
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold text-slate-800 truncate">{TOOL_CONFIG[activeTool].label}</p>
-                <p className="text-[9px] text-slate-400">Preview formatado · exportação premium disponível</p>
+                <p className="text-[9px] text-slate-400 truncate">
+                  Fonte: {selectedDocs[0]?.title ?? "selecionada"} · preview estruturado · exportação disponível
+                </p>
               </div>
+              <button
+                onClick={() => selectedDocIds[0] && runTool(activeTool, selectedDocIds[0])}
+                disabled={toolLoading || !selectedDocIds[0]}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors text-[10px] font-black disabled:opacity-50"
+                title="Gerar novamente usando a fonte selecionada"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Regenerar
+              </button>
               {/* Download buttons */}
               <button
                 onClick={() => openPremiumPrintWindow(toolResult, TOOL_CONFIG[activeTool].label, activeTool)}
@@ -4089,7 +4163,17 @@ export default function Notebook() {
 
             {activeTool === "mapa-mental" && (() => {
               const r = toolResult as MindMap;
-              return r.subject ? <MindMapView map={r} /> : null;
+              return r.subject
+                ? <MindMapView map={r} />
+                : (
+                  <div className="m-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                    <p className="text-sm font-black text-amber-900">Mapa mental inválido</p>
+                    <p className="text-xs text-amber-800 mt-1">A resposta chegou sem tema central. Gere novamente para reconstruir a hierarquia.</p>
+                    <button onClick={() => selectedDocIds[0] && runTool("mapa-mental", selectedDocIds[0])} className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-amber-200 text-[10px] font-black text-amber-800">
+                      <RefreshCw className="w-3 h-3" /> Regenerar mapa
+                    </button>
+                  </div>
+                );
             })()}
 
             {activeTool === "podcast" && (() => {
@@ -4169,7 +4253,15 @@ export default function Notebook() {
               }
               return r.apresentacao?.slides?.length
                 ? <SlidesView deck={r.apresentacao} idx={slideIdx} setIdx={setSlideIdx} />
-                : null;
+                : (
+                  <div className="m-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                    <p className="text-sm font-black text-amber-900">Apresentação inválida</p>
+                    <p className="text-xs text-amber-800 mt-1">A geração não trouxe slides renderizáveis. Tente novamente para reconstruir um deck estruturado.</p>
+                    <button onClick={() => selectedDocIds[0] && runTool("slides", selectedDocIds[0])} className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-amber-200 text-[10px] font-black text-amber-800">
+                      <RefreshCw className="w-3 h-3" /> Regenerar apresentação
+                    </button>
+                  </div>
+                );
             })()}
 
             {activeTool === "infografico" && (() => {

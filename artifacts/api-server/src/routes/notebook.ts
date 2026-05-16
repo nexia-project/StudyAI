@@ -246,6 +246,292 @@ async function saveArtifact(userId: string, docId: number, kind: string, title: 
   }
 }
 
+function parseNotebookJson(raw: string): any | null {
+  const cleaned = String(raw ?? "")
+    .replace(/```json\n?/gi, "")
+    .replace(/```\n?/g, "")
+    .trim();
+  const first = cleaned.indexOf("{");
+  const last = cleaned.lastIndexOf("}");
+  const candidates = [
+    cleaned,
+    first >= 0 && last > first ? cleaned.slice(first, last + 1) : "",
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    try { return JSON.parse(candidate); } catch {}
+  }
+
+  let repaired = candidates[1] ?? cleaned;
+  if (!repaired) return null;
+  if ((repaired.match(/"/g) ?? []).length % 2 !== 0) repaired += '"';
+  const stack: string[] = [];
+  let inString = false;
+  for (let i = 0; i < repaired.length; i++) {
+    const c = repaired[i];
+    const prev = repaired[i - 1];
+    if (c === '"' && prev !== "\\") inString = !inString;
+    if (!inString) {
+      if (c === "{") stack.push("}");
+      else if (c === "[") stack.push("]");
+      else if ((c === "}" || c === "]") && stack.length) stack.pop();
+    }
+  }
+  while (stack.length) repaired += stack.pop();
+  try { return JSON.parse(repaired); } catch { return null; }
+}
+
+function compactText(value: unknown, max = 160): string {
+  return String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
+}
+
+function splitStudySentences(content: string): string[] {
+  return content
+    .replace(/\s+/g, " ")
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map(s => compactText(s, 220))
+    .filter(s => s.length > 45 && /[a-zA-ZÀ-ÿ]/.test(s))
+    .slice(0, 80);
+}
+
+function titleWords(title: string): string[] {
+  return title
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(w => w.length > 3);
+}
+
+function extractKeyTerms(title: string, content: string, limit = 18): string[] {
+  const stop = new Set([
+    "para", "como", "mais", "muito", "pela", "pelo", "entre", "sobre", "quando", "onde", "esta", "este",
+    "essa", "esse", "isso", "ainda", "tambem", "porque", "anos", "cada", "todo", "toda", "ser", "tem",
+    "com", "uma", "das", "dos", "que", "por", "sao", "aos", "nas", "nos", "seu", "sua", "suas", "seus",
+  ]);
+  const counts = new Map<string, number>();
+  const titleSet = new Set(titleWords(title));
+  const words = `${title} ${content.slice(0, 40_000)}`
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(w => w.length > 3 && !stop.has(w));
+  for (const word of words) counts.set(word, (counts.get(word) ?? 0) + (titleSet.has(word) ? 5 : 1));
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([word]) => word)
+    .slice(0, limit);
+}
+
+function chunkArray<T>(items: T[], groups: number): T[][] {
+  const buckets = Array.from({ length: groups }, () => [] as T[]);
+  items.forEach((item, index) => buckets[index % groups].push(item));
+  return buckets;
+}
+
+function buildFallbackMindMap(title: string, content: string) {
+  const sentences = splitStudySentences(content);
+  const terms = extractKeyTerms(title, content, 24);
+  const palette = ["#7c3aed", "#059669", "#ea580c", "#2563eb", "#db2777", "#0891b2", "#ca8a04"];
+  const branchNames = [
+    "Ideia central",
+    "Conceitos-chave",
+    "Processos",
+    "Exemplos",
+    "Como cai",
+    "Revisao final",
+  ];
+  const sentenceGroups = chunkArray(sentences.length ? sentences : [title], 6);
+  const termGroups = chunkArray(terms.length ? terms : title.split(/\s+/).filter(Boolean), 6);
+  const categories = branchNames.map((name, i) => {
+    const localTerms = termGroups[i].length ? termGroups[i] : terms.slice(i, i + 4);
+    const localSentences = sentenceGroups[i].length ? sentenceGroups[i] : sentences.slice(i, i + 3);
+    return {
+      name,
+      icone: ["🎯", "🧩", "⚙️", "💡", "📝", "✅"][i],
+      cor: palette[i],
+      topics: Array.from({ length: 3 }, (_, j) => {
+        const term = compactText(localTerms[j] ?? localTerms[0] ?? title, 42);
+        const sentence = compactText(localSentences[j] ?? localSentences[0] ?? content ?? title, 180);
+        return {
+          name: term ? term[0].toUpperCase() + term.slice(1) : `${name} ${j + 1}`,
+          subtopics: [
+            {
+              name: j === 0 ? "Definicao essencial" : j === 1 ? "Exemplo da fonte" : "Ponto de prova",
+              detail: sentence || `Relacione este ponto ao tema "${title}" e revise com suas proprias palavras.`,
+            },
+            {
+              name: j === 0 ? "Por que importa" : j === 1 ? "Conexao pratica" : "Pergunta-checkpoint",
+              detail: j === 2
+                ? `Explique como "${term || title}" se conecta ao tema central sem consultar o material.`
+                : `Use este ramo para entender ${term || title} dentro do contexto geral do documento.`,
+            },
+          ],
+        };
+      }),
+    };
+  });
+  return {
+    subject: compactText(title, 48) || "Mapa Mental",
+    color: "#7c3aed",
+    icone: "🧠",
+    categories,
+    conexoesCruzadas: [
+      { de: "Ideia central", para: "Conceitos-chave", relacao: "A ideia central organiza os termos que precisam ser dominados." },
+      { de: "Processos", para: "Exemplos", relacao: "Os exemplos mostram como os processos aparecem no material." },
+      { de: "Como cai", para: "Revisao final", relacao: "Os checkpoints transformam o mapa em roteiro de estudo." },
+    ],
+    conceitosChave: terms.slice(0, 6).map(t => `${t}: termo recorrente da fonte`),
+  };
+}
+
+function normalizeMindMap(input: any, title: string, content: string) {
+  const fallback = buildFallbackMindMap(title, content);
+  const parsed = input && typeof input === "object" ? input : {};
+  const categories = Array.isArray(parsed.categories) ? parsed.categories : [];
+  const normalizedCategories = categories
+    .map((cat: any, index: number) => ({
+      name: compactText(cat?.name, 42) || fallback.categories[index % fallback.categories.length].name,
+      icone: compactText(cat?.icone, 8) || fallback.categories[index % fallback.categories.length].icone,
+      cor: /^#[0-9a-f]{6}$/i.test(String(cat?.cor ?? "")) ? cat.cor : fallback.categories[index % fallback.categories.length].cor,
+      topics: (Array.isArray(cat?.topics) ? cat.topics : []).slice(0, 4).map((topic: any, topicIndex: number) => ({
+        name: compactText(topic?.name, 52) || `Topico ${topicIndex + 1}`,
+        subtopics: (Array.isArray(topic?.subtopics) ? topic.subtopics : []).slice(0, 4).map((sub: any) => ({
+          name: compactText(sub?.name, 60) || "Conceito",
+          detail: compactText(sub?.detail, 260) || "Revise este ponto com base na fonte selecionada.",
+        })),
+      })),
+    }))
+    .filter((cat: any) => cat.topics.length > 0);
+
+  const subtopicCount = normalizedCategories.reduce((sum: number, cat: any) =>
+    sum + cat.topics.reduce((topicSum: number, topic: any) => topicSum + topic.subtopics.length, 0), 0);
+  const weak = normalizedCategories.length < 4 || subtopicCount < 12;
+  const map = weak ? fallback : {
+    subject: compactText(parsed.subject, 48) || fallback.subject,
+    color: /^#[0-9a-f]{6}$/i.test(String(parsed.color ?? "")) ? parsed.color : fallback.color,
+    icone: compactText(parsed.icone, 8) || fallback.icone,
+    categories: normalizedCategories.slice(0, 7),
+    conexoesCruzadas: Array.isArray(parsed.conexoesCruzadas) && parsed.conexoesCruzadas.length
+      ? parsed.conexoesCruzadas.slice(0, 5).map((c: any) => ({
+          de: compactText(c?.de, 48),
+          para: compactText(c?.para, 48),
+          relacao: compactText(c?.relacao, 160),
+        }))
+      : fallback.conexoesCruzadas,
+    conceitosChave: Array.isArray(parsed.conceitosChave) && parsed.conceitosChave.length
+      ? parsed.conceitosChave.slice(0, 8).map((c: any) => compactText(c, 90)).filter(Boolean)
+      : fallback.conceitosChave,
+  };
+  return {
+    ...map,
+    generatedByFallback: weak,
+    topics: map.categories.flatMap((cat: any) =>
+      cat.topics.map((topic: any) => ({
+        ...topic,
+        color: cat.cor ?? map.color,
+        category: cat.name,
+        categoryIcon: cat.icone ?? "",
+      })),
+    ),
+  };
+}
+
+function buildFallbackSlides(title: string, content: string) {
+  const sentences = splitStudySentences(content);
+  const terms = extractKeyTerms(title, content, 12);
+  const pick = (index: number, fallback: string) => sentences[index] ?? fallback;
+  const agenda = ["Objetivo da aula", "Conceitos essenciais", "Exemplo guiado", "Checkpoint", "Resumo para revisar"];
+  return {
+    titulo: compactText(title, 70) || "Apresentacao StudyAI",
+    subtitulo: "Material estruturado a partir da fonte selecionada",
+    autor: "Professor Tiagao",
+    tema: "indigo",
+    objetivos: [
+      `Explicar o tema "${compactText(title, 60)}" com base na fonte.`,
+      "Identificar conceitos, exemplos e relacoes importantes.",
+      "Responder checkpoints para verificar entendimento.",
+    ],
+    prerequisitos: terms.slice(0, 3).map(t => `Noção previa de ${t}`),
+    indicadoresQualidade: ["estrutura pedagogica", "exemplos da fonte", "checkpoint", "resumo imprimivel"],
+    slides: [
+      { tipo: "capa", titulo: compactText(title, 70) || "Apresentacao StudyAI", subtitulo: "Roteiro de estudo gerado pelo Notebook RAG" },
+      { tipo: "agenda", titulo: "Roteiro", itens: agenda },
+      { tipo: "conteudo", titulo: "Objetivo", subtitulo: "O que dominar ao final", bullets: [
+        pick(0, `Compreender o tema central: ${title}.`),
+        "Separar conceitos principais de detalhes secundarios.",
+        "Usar exemplos da fonte para justificar respostas.",
+      ], destaque: "Checkpoint: explique o tema em 30 segundos." },
+      { tipo: "conteudo", titulo: "Conceitos essenciais", subtitulo: "Termos que organizam o assunto", bullets: terms.slice(0, 5).map(t => `${t}: termo recorrente no material`) },
+      { tipo: "conteudo", titulo: "Exemplo guiado", subtitulo: "Como aplicar a ideia", bullets: [
+        pick(1, "Localize um trecho da fonte que sustente a ideia central."),
+        pick(2, "Transforme o trecho em explicacao com causa e consequencia."),
+        "Conclua conectando o exemplo ao objetivo da aula.",
+      ], destaque: "Exemplo bom cita a fonte e explica por que ela importa." },
+      { tipo: "comparacao", titulo: "Compare e diferencie", esquerda: { titulo: "Ideia principal", itens: [pick(3, title), "Serve para orientar a revisao."] }, direita: { titulo: "Detalhes de apoio", itens: [pick(4, "Dados, exemplos e termos ajudam a provar a ideia."), "Use para enriquecer respostas."] } },
+      { tipo: "conteudo", titulo: "Erros comuns", subtitulo: "O que evitar", bullets: [
+        "Decorar termos sem explicar relacoes.",
+        "Ignorar exemplos especificos da fonte.",
+        "Responder sem objetivo, evidencia e conclusao.",
+      ], destaque: "Pegadinha: resumo util nao e lista solta; precisa de hierarquia." },
+      { tipo: "conteudo", titulo: "Checkpoint", subtitulo: "Teste rapido", bullets: [
+        `Qual e a ideia central de "${compactText(title, 50)}"?`,
+        `Quais tres termos aparecem como base: ${terms.slice(0, 3).join(", ") || "conceitos principais"}?`,
+        "Que exemplo da fonte voce usaria numa resposta?",
+      ] },
+      { tipo: "encerramento", titulo: "Resumo final", mensagem: pick(5, "Revise objetivo, conceitos, exemplo e checkpoint antes de avançar."), dicaEnem: "Em provas, transforme o tema em causa, consequencia e exemplo concreto." },
+    ],
+  };
+}
+
+function normalizeSlides(input: any, title: string, content: string) {
+  const fallback = buildFallbackSlides(title, content);
+  const parsed = input && typeof input === "object" ? input : {};
+  const rawSlides = Array.isArray(parsed.slides) ? parsed.slides : [];
+  const slides = rawSlides
+    .map((slide: any, index: number) => {
+      const tipo = ["capa", "agenda", "conteudo", "comparacao", "citacao", "encerramento", "destaque_numerico", "timeline"].includes(slide?.tipo)
+        ? slide.tipo
+        : "conteudo";
+      if (tipo === "agenda") return { tipo, titulo: compactText(slide.titulo, 70) || "Roteiro", itens: (Array.isArray(slide.itens) ? slide.itens : []).slice(0, 6).map((x: any) => compactText(x, 90)).filter(Boolean) };
+      if (tipo === "comparacao") return {
+        tipo,
+        titulo: compactText(slide.titulo, 70) || "Comparacao",
+        esquerda: { titulo: compactText(slide.esquerda?.titulo, 50) || "Lado A", itens: (Array.isArray(slide.esquerda?.itens) ? slide.esquerda.itens : []).slice(0, 5).map((x: any) => compactText(x, 120)).filter(Boolean) },
+        direita: { titulo: compactText(slide.direita?.titulo, 50) || "Lado B", itens: (Array.isArray(slide.direita?.itens) ? slide.direita.itens : []).slice(0, 5).map((x: any) => compactText(x, 120)).filter(Boolean) },
+      };
+      if (tipo === "encerramento") return { tipo, titulo: compactText(slide.titulo, 70) || "Conclusao", mensagem: compactText(slide.mensagem, 180) || "Revise os pontos principais.", dicaEnem: compactText(slide.dicaEnem, 160) };
+      if (tipo === "citacao") return { tipo, texto: compactText(slide.texto, 220) || compactText(title, 120), autor: compactText(slide.autor, 70) };
+      if (tipo === "destaque_numerico") return { tipo, titulo: compactText(slide.titulo, 70) || "Dados importantes", numeros: (Array.isArray(slide.numeros) ? slide.numeros : []).slice(0, 4).map((n: any) => ({ valor: compactText(n?.valor, 24), label: compactText(n?.label ?? n?.descricao, 80) })).filter((n: any) => n.valor) };
+      if (tipo === "timeline") return { tipo, titulo: compactText(slide.titulo, 70) || "Linha do tempo", etapas: (Array.isArray(slide.etapas) ? slide.etapas : []).slice(0, 5).map((e: any, i: number) => ({ numero: compactText(e?.numero ?? e?.ano ?? String(i + 1), 12), titulo: compactText(e?.titulo ?? e?.evento, 70), descricao: compactText(e?.descricao, 130) })) };
+      return {
+        tipo: index === 0 ? "capa" : tipo,
+        titulo: compactText(slide.titulo, 70) || (index === 0 ? fallback.titulo : `Slide ${index + 1}`),
+        subtitulo: compactText(slide.subtitulo, 120),
+        bullets: (Array.isArray(slide.bullets) ? slide.bullets : Array.isArray(slide.itens) ? slide.itens : []).slice(0, 6).map((x: any) => compactText(x, 150)).filter(Boolean),
+        destaque: compactText(slide.destaque, 170),
+      };
+    })
+    .filter((slide: any) => slide.titulo || slide.texto);
+  const contentSlides = slides.filter((s: any) => s.tipo !== "capa" && s.tipo !== "agenda").length;
+  const weak = slides.length < 8 || contentSlides < 5;
+  if (weak) return { ...fallback, generatedByFallback: true };
+  return {
+    titulo: compactText(parsed.titulo, 70) || fallback.titulo,
+    subtitulo: compactText(parsed.subtitulo, 140) || fallback.subtitulo,
+    autor: compactText(parsed.autor, 70) || "Professor Tiagao",
+    tema: ["indigo", "rose", "emerald", "amber"].includes(parsed.tema) ? parsed.tema : fallback.tema,
+    objetivos: Array.isArray(parsed.objetivos) && parsed.objetivos.length ? parsed.objetivos.slice(0, 5).map((x: any) => compactText(x, 150)) : fallback.objetivos,
+    prerequisitos: Array.isArray(parsed.prerequisitos) && parsed.prerequisitos.length ? parsed.prerequisitos.slice(0, 5).map((x: any) => compactText(x, 120)) : fallback.prerequisitos,
+    indicadoresQualidade: Array.isArray(parsed.indicadoresQualidade) && parsed.indicadoresQualidade.length ? parsed.indicadoresQualidade.slice(0, 6).map((x: any) => compactText(x, 120)) : fallback.indicadoresQualidade,
+    slides: slides.slice(0, 14),
+    generatedByFallback: false,
+  };
+}
+
 async function getOrCreateDefaultNotebook(userId: string): Promise<number> {
   await ensureNotebooksSchema();
   const existing = await db.execute(sql`
@@ -1385,7 +1671,7 @@ router.post("/notebook/mapa-mental", async (req: Request, res: Response) => {
     const row = (docs.rows as any[])[0];
     if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
-    const mapaSystemPrompt = `Você é um especialista em síntese visual e pedagogia para ENEM/vestibulares. Crie um mapa mental RICO e COMPLETO.
+    const mapaSystemPrompt = `Você é um especialista em síntese visual e pedagogia para ENEM/vestibulares. Crie um mapa mental realmente útil para estudar, não um desenho vazio.
 Retorne APENAS JSON válido e COMPLETO (nunca truncado):
 {
   "subject": "Tema central (max 5 palavras)",
@@ -1414,12 +1700,15 @@ Retorne APENAS JSON válido e COMPLETO (nunca truncado):
   "conceitosChave": ["conceito: definição curta", "conceito 2", "conceito 3", "conceito 4", "conceito 5"]
 }
 REGRAS:
-- 4 a 5 ramos principais (categories), cada um com cor HEX única
-- 3 a 4 tópicos por ramo
+- 5 a 7 ramos principais (categories), cada um com cor HEX única
+- Cada ramo precisa ter função pedagógica clara: conceito, causa/processo, exemplo, aplicação, erro comum, revisão/checkpoint
+- 2 a 4 tópicos por ramo
 - 2 a 3 subtópicos por tópico com detail CURTO (1-2 frases)
 - Nomes curtos (sem pontuação final)
-- 3 conexões cruzadas entre ramos
-- 5 conceitos-chave com definições curtas
+- 3 a 5 conexões cruzadas entre ramos
+- 6 a 8 conceitos-chave com definições curtas
+- Use termos, exemplos, dados e nomes que aparecem na fonte. Não gere mapa genérico.
+- Saída com menos de 4 ramos ou sem subtópicos é inválida.
 - O JSON DEVE estar 100% fechado e válido`;
 
     // Gemini 2.5 Flash — NotebookLM-style com contexto completo
@@ -1428,41 +1717,10 @@ REGRAS:
       `Documento: "${row.title}"\n\n${row.content_text.slice(0, 60_000)}`,
       8000,
     );
-    let clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    let parsed: any;
-    try {
-      parsed = JSON.parse(clean);
-    } catch {
-      // Tenta reparar JSON truncado: fecha strings e objetos abertos
-      let rep = clean;
-      if ((rep.match(/"/g) ?? []).length % 2 !== 0) rep += '"';
-      const stack: string[] = [];
-      let inStr = false;
-      for (let i = 0; i < rep.length; i++) {
-        const c = rep[i]; const prev = rep[i - 1];
-        if (c === '"' && prev !== '\\') inStr = !inStr;
-        if (!inStr) { if (c === '{') stack.push('}'); else if (c === '[') stack.push(']'); else if (c === '}' || c === ']') stack.pop(); }
-      }
-      while (stack.length) rep += stack.pop();
-      try { parsed = JSON.parse(rep); }
-      catch { parsed = { subject: "Mapa Mental", categories: [], conceitosChave: [], conexoesCruzadas: [] }; }
-    }
-
-    // Flatten categories into topics array for frontend compatibility
-    if (parsed.categories) {
-      parsed.topics = parsed.categories.flatMap((cat: any) =>
-        cat.topics.map((t: any) => ({
-          ...t,
-          color: cat.cor ?? "#6366f1",
-          category: cat.name,
-          categoryIcon: cat.icone ?? "",
-        }))
-      );
-    } else if (parsed.topics && !parsed.categories) {
-      // backward compat: old format
-      parsed.categories = [{ name: parsed.subject, topics: parsed.topics }];
-    }
-    res.json(parsed);
+    const parsed = parseNotebookJson(raw);
+    const mapa = normalizeMindMap(parsed, row.title, row.content_text);
+    await saveArtifact(req.userId, docId, "mapa-mental", mapa.subject ?? row.title, mapa);
+    res.json(mapa);
   } catch (e) {
     console.error("notebook mapa-mental:", e);
     res.status(500).json({ erro: "Erro ao gerar mapa mental" });
@@ -3322,8 +3580,8 @@ router.post("/notebook/slides", async (req: Request, res: Response) => {
     if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
 
     // Gemini 2.5 Flash — NotebookLM-style: lê o documento completo (até 80K chars)
-    const slidesSystemPrompt = `Você é o Professor Tiagão criando uma APRESENTAÇÃO PROFISSIONAL em slides sobre o documento.
-Pense como o NotebookLM em padrão editorial premium: conteúdo 100% fiel às fontes, títulos magnéticos, hierarquia visual clara, variedade de tipos de slide e material final bonito em PDF/print.
+    const slidesSystemPrompt = `Você é o Professor Tiagão criando uma APRESENTAÇÃO PROFISSIONAL e USÁVEL em slides sobre o documento.
+Premium aqui significa: estrutura pedagógica, conteúdo fiel à fonte, preview claro, exportação imprimível, objetivos, exemplos e checkpoints. Não faça lista genérica.
 Retorne APENAS JSON válido:
 {
   "titulo": "Título magnético da apresentação (≤ 8 palavras)",
@@ -3351,6 +3609,8 @@ REGRAS:
 - Use tipo "destaque_numerico" quando há dados quantitativos relevantes
 - Use tipo "comparacao" quando há dois lados/categorias para comparar
 - Inclua pelo menos 1 exemplo resolvido, 1 erro comum/pegadinha e 1 checkpoint de autoavaliação em slides de conteúdo ou destaque
+- Inclua objetivo de aprendizagem, pré-requisitos e uma síntese final que o aluno consiga revisar sem abrir a fonte
+- Cada slide de conteúdo deve ter 3-5 bullets úteis; slide com só título é inválido
 - Escreva para impressão/exportação: textos curtos por slide, sem depender de animações, com títulos claros e contraste alto
 - Sempre preencha objetivos, prerequisitos e indicadoresQualidade para o export premium
 - Tema: escolha baseado no assunto (emerald=natureza/saúde, indigo=tecnologia/finanças, rose=humanas/arte, amber=história/geo)`;
@@ -3358,22 +3618,21 @@ REGRAS:
     const slidesRaw = await generateWithGemini(
       slidesSystemPrompt,
       `Documento: "${row.title}"\n\n${row.content_text.slice(0, 80_000)}`,
-      5000,
+      9000,
     );
 
-    const clean = slidesRaw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    let apresentacao: any;
-    try { apresentacao = JSON.parse(clean); }
-    catch { apresentacao = JSON.parse(clean.slice(0, clean.lastIndexOf('}') + 1) || "{}"); }
+    let apresentacao: any = normalizeSlides(parseNotebookJson(slidesRaw), row.title, row.content_text);
 
-    // Generate cover hero image in background (non-blocking is hard in Express; do inline ~8s)
-    try {
-      const coverPrompt = `Editorial magazine cover illustration for an educational presentation IN BRAZILIAN PORTUGUESE titled "${apresentacao.titulo}".
+    if (!apresentacao.generatedByFallback) {
+      // Cover image is nice-to-have. Never let image generation break the deck.
+      try {
+        const coverPrompt = `Editorial magazine cover illustration for an educational presentation IN BRAZILIAN PORTUGUESE titled "${apresentacao.titulo}".
 Style: clean modern flat design, sophisticated color palette matching the theme "${apresentacao.tema || "indigo"}", balanced composition, no readable text in image (we'll overlay it), abstract conceptual visual representing the subject. Professional editorial quality, suitable for a NotebookLM-style slide deck cover.`;
-      const coverBuf = await generateImageBuffer(coverPrompt, "1536x1024");
-      apresentacao.capaImagem = `data:image/png;base64,${coverBuf.toString("base64")}`;
-    } catch (imgErr) {
-      console.warn("Cover image generation failed:", imgErr);
+        const coverBuf = await generateImageBuffer(coverPrompt, "1536x1024");
+        apresentacao = { ...apresentacao, capaImagem: `data:image/png;base64,${coverBuf.toString("base64")}` };
+      } catch (imgErr) {
+        console.warn("Cover image generation failed:", imgErr);
+      }
     }
 
     await saveArtifact(req.userId, docId, "slides", apresentacao.titulo ?? row.title, { apresentacao, titulo: row.title });

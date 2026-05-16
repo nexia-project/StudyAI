@@ -7,6 +7,7 @@ import { uxLayoutDailyLearn, uxLayoutProactive } from "./jobs/ux-layout";
 import { sucessoAlunoDailyLearn, sucessoAlunoProactive } from "./jobs/sucesso-aluno";
 import { monitorProactive } from "./jobs/monitor";
 import { cqoConteudoDailyLearn } from "./jobs/cqo-conteudo";
+import { qaSinteticoDailyLearn } from "./jobs/qa-sintetico";
 
 let registered = false;
 
@@ -106,6 +107,17 @@ export function registerDefaultAgents(): void {
       message: "CQO enriquece geração via buildHermesContext; dailyLearn indexa lacunas.",
     }),
     dailyLearn: cqoConteudoDailyLearn,
+  });
+
+  agentRegistry.register({
+    id: "qa_sintetico",
+    description: "QA sintético — jornadas reais por persona para bugs, UX e qualidade pedagógica",
+    role: "system",
+    handler: async () => ({
+      ok: true,
+      message: "Use GET /api/agents/qa_sintetico/catalogo ou POST /executar-auditoria.",
+    }),
+    dailyLearn: qaSinteticoDailyLearn,
   });
 
   registered = true;

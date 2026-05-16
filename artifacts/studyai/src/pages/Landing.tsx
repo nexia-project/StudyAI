@@ -22,6 +22,23 @@ import {
 const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
 const pricingHref = `${BASE}/pricing`.replace(/([^:]\/)\/+/g, "$1");
 
+/** A/B hero (crescimento): nota ENEM vs. tempo economizado — 50/50 por sessão. */
+const HERO_AB_STORAGE = "studyia_hero_ab_v1";
+export type HeroAbVariant = "enem_nota" | "tempo_economia";
+
+function initHeroAbVariant(): HeroAbVariant {
+  if (typeof window === "undefined") return "enem_nota";
+  try {
+    const s = sessionStorage.getItem(HERO_AB_STORAGE);
+    if (s === "enem_nota" || s === "tempo_economia") return s;
+    const v: HeroAbVariant = Math.random() < 0.5 ? "enem_nota" : "tempo_economia";
+    sessionStorage.setItem(HERO_AB_STORAGE, v);
+    return v;
+  } catch {
+    return "enem_nota";
+  }
+}
+
 /** Capturas de produto (public/landing) — mesma convenção de BASE_URL que o restante do app. */
 const LANDING_IMG = {
   professorTiagao: `${BASE}/landing/professor-tiagao-feature.png`.replace(/([^:]\/)\/+/g, "$1"),
@@ -314,6 +331,7 @@ const B2B_STUDENTS = ["Até 100 alunos", "101 – 500 alunos", "501 – 2.000 al
 export default function Landing() {
   const [, navigate] = useLocation();
   const { isAuthenticated, isLoading: authLoading } = useStudyAuth();
+  const [heroAbVariant] = useState<HeroAbVariant>(initHeroAbVariant);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [activeTest, setActiveTest] = useState(0);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -371,7 +389,18 @@ export default function Landing() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleStart = () => navigate("/app");
+  const handleStart = () => {
+    try {
+      window.dispatchEvent(
+        new CustomEvent("studyia_landing_cta", {
+          detail: { variant: heroAbVariant, action: "start_app", surface: "landing" },
+        }),
+      );
+    } catch {
+      /* ignore */
+    }
+    navigate("/app");
+  };
   const handleSignIn = () => navigate("/sign-in");
   const handlePro = async () => {
     if (authLoading) return;
@@ -483,10 +512,10 @@ export default function Landing() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2 md:ml-auto">
-              <button type="button" onClick={handleStart} className="rounded-xl bg-white px-4 py-2 text-xs font-bold text-gray-900 hover:bg-violet-100 transition-colors">
+              <button type="button" onClick={handleStart} className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-white px-4 py-2 text-xs font-bold text-gray-900 hover:bg-violet-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-950">
                 Criar conta grátis
               </button>
-              <a href="#videos" className="rounded-xl border border-white/25 px-4 py-2 text-xs font-semibold text-white hover:bg-white/10 transition-colors inline-flex items-center justify-center">
+              <a href="#videos" className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-white/25 px-4 py-2 text-xs font-semibold text-white hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-950">
                 Ver vídeo na página
               </a>
             </div>
@@ -497,7 +526,7 @@ export default function Landing() {
                 key={item.title}
                 type="button"
                 onClick={() => navigate(item.path)}
-                className="snap-start shrink-0 w-[min(100%,220px)] md:w-auto text-left rounded-2xl overflow-hidden ring-1 ring-white/10 bg-gray-900/80 hover:ring-violet-400/60 hover:bg-gray-900 transition-all group"
+                className="snap-start shrink-0 w-[min(100%,220px)] md:w-auto text-left rounded-2xl overflow-hidden ring-1 ring-white/10 bg-gray-900/80 hover:ring-violet-400/60 hover:bg-gray-900 transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-950"
               >
                 <div className="relative min-h-[180px] sm:min-h-[200px] w-full overflow-hidden bg-slate-900">
                   <img src={item.img} alt={`${item.title}: ${item.desc}`} width={400} height={240} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover object-center opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" />
@@ -537,18 +566,36 @@ export default function Landing() {
               </span>
             </motion.div>
 
-            <motion.h1 variants={fadeUp} initial="hidden" animate="show" custom={1}
-              className="text-4xl sm:text-5xl lg:text-[3.35rem] font-black tracking-tight leading-[1.08] mb-5 text-gray-900">
-              Plano, voz, materiais e{" "}
-              <span className="bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
-                desafios reais
-              </span>
-              {" "}— no mesmo lugar
+            <motion.h1
+              variants={fadeUp}
+              initial="hidden"
+              animate="show"
+              custom={1}
+              data-hero-ab={heroAbVariant}
+              className="text-4xl sm:text-5xl lg:text-[3.35rem] font-black tracking-tight leading-[1.08] mb-5 text-gray-900 text-balance"
+            >
+              {heroAbVariant === "enem_nota" ? (
+                <>
+                  No ENEM,{" "}
+                  <span className="bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
+                    sua nota sobe quando a semana tem direção clara
+                  </span>
+                  .
+                </>
+              ) : (
+                <>
+                  No estudo diário,{" "}
+                  <span className="bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
+                    seu tempo sobra quando a sessão tem direção clara
+                  </span>
+                  .
+                </>
+              )}
             </motion.h1>
 
             <motion.p variants={fadeUp} initial="hidden" animate="show" custom={2}
-              className="text-lg sm:text-xl text-gray-600 leading-relaxed mb-3 max-w-xl">
-              StudyAI é a plataforma brasileira que une plano inteligente, Tiagão por voz, Notebook RAG, Lousa Imersiva, Tutor com GPT e Claude, Simulado ENEM e o módulo <span className="font-semibold text-gray-900">Fazedores</span> para destravar hábitos e rotina.
+              className="text-lg sm:text-xl text-gray-600 leading-relaxed mb-3 max-w-xl text-pretty">
+              StudyAI reúne plano inteligente, Tiagão por voz, Notebook RAG, Lousa Imersiva, Tutor IA, Simulado ENEM e <span className="font-semibold text-gray-900">Fazedores</span> em uma rotina guiada.
             </motion.p>
             <motion.p variants={fadeUp} initial="hidden" animate="show" custom={2}
               className="text-base text-gray-700 font-medium leading-relaxed mb-2 max-w-xl">
@@ -556,11 +603,11 @@ export default function Landing() {
             </motion.p>
             <motion.p variants={fadeUp} initial="hidden" animate="show" custom={2}
               className="text-sm text-gray-500 leading-relaxed mb-6 max-w-xl">
-              No mesmo login você acessa Simulado ENEM, Notebook RAG, Lousa Imersiva, Tutor IA (GPT e Claude), Fazedores, ranking, cronograma e sala de estudos — com ou sem cartão no plano gratuito.
+              Comece sem cartão no plano gratuito e avance com ranking, cronograma e sala de estudos no mesmo login.
             </motion.p>
 
             <motion.div variants={fadeUp} initial="hidden" animate="show" custom={2}
-              className="flex flex-wrap items-end gap-4 sm:gap-6 mb-8">
+              className="hidden md:flex flex-wrap items-end gap-4 sm:gap-6 mb-8">
               <StudyHeroIllustration className="w-[min(100%,300px)] h-auto shrink-0" />
               <div className="hidden sm:flex items-center justify-center shrink-0 pb-2">
                 <StudySparkIllustration className="w-20 h-20 sm:w-24 sm:h-24" />
@@ -568,23 +615,34 @@ export default function Landing() {
             </motion.div>
 
             <motion.div variants={fadeUp} initial="hidden" animate="show" custom={3}
-              className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 mb-10">
-              <button type="button" onClick={handleStart}
-                className="group inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-2xl font-bold text-white bg-violet-600 hover:bg-violet-500 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-violet-500/25 text-sm sm:text-base">
-                Começar grátis — 2 minutos
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
-              <button type="button" onClick={(e) => openVideo(VIDEOS[0], e)}
-                className="group inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-2xl font-medium text-gray-800 bg-white hover:bg-gray-50 border border-gray-200 transition-all text-sm sm:text-base shadow-sm">
-                <span className="w-8 h-8 rounded-full bg-violet-600 text-white flex items-center justify-center group-hover:scale-105 transition-transform">
-                  <Play className="w-3.5 h-3.5 ml-0.5" fill="currentColor" />
-                </span>
-                Ver demonstração — 1:32
-              </button>
-              <a href={pricingHref}
-                className="inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl text-sm font-semibold text-violet-700 hover:text-violet-800 hover:bg-violet-50/80 border border-transparent hover:border-violet-200 transition-all">
-                  Ver preços e Pro <ArrowUpRight className="w-4 h-4" />
-              </a>
+              className="flex flex-col gap-3 mb-10">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-4">
+                <button type="button" onClick={handleStart}
+                  className="group inline-flex min-h-[44px] items-center justify-center gap-2.5 px-7 py-3.5 rounded-2xl font-bold text-white bg-violet-600 hover:bg-violet-500 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-violet-500/25 text-sm sm:text-base focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50">
+                  Começar grátis — 2 minutos
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform shrink-0" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => openVideo(VIDEOS[0], e)}
+                  className="inline-flex min-h-[44px] items-center justify-center sm:justify-start gap-2 rounded-xl px-4 sm:px-3 text-sm font-semibold text-violet-700 hover:text-violet-900 hover:bg-violet-50/90 border border-violet-100 sm:border-transparent hover:border-violet-200/70 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50"
+                >
+                  <Play className="w-4 h-4 shrink-0 text-violet-600" fill="currentColor" aria-hidden />
+                  <span>
+                    Ver demonstração{" "}
+                    <span className="font-normal text-gray-500">(1:32)</span>
+                  </span>
+                </button>
+              </div>
+              <p className="text-sm text-gray-600 sm:pl-0">
+                <a
+                  href={pricingHref}
+                  className="inline-flex min-h-[44px] sm:min-h-0 items-center gap-1 py-2 sm:py-0 text-violet-700/90 hover:text-violet-800 underline-offset-4 hover:underline font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50 rounded-lg"
+                >
+                  Ver preços e Pro
+                  <ArrowUpRight className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                </a>
+              </p>
             </motion.div>
 
             <motion.div variants={fadeUp} initial="hidden" animate="show" custom={4}
@@ -621,7 +679,7 @@ export default function Landing() {
               <div className="absolute inset-0 bg-gradient-to-tr from-violet-950/40 via-transparent to-transparent pointer-events-none" />
               <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2 rounded-xl bg-black/55 px-3 py-2 text-[11px] text-white backdrop-blur-sm ring-1 ring-white/10">
                 <span className="font-semibold">Prévia em vídeo · substitua pelo tour oficial quando gravar</span>
-                <button type="button" onClick={(e) => openVideo(VIDEOS[0], e)} className="shrink-0 rounded-lg bg-white px-2 py-1 text-[10px] font-black uppercase tracking-wide text-gray-900 hover:bg-violet-100">
+                <button type="button" onClick={(e) => openVideo(VIDEOS[0], e)} className="inline-flex min-h-[36px] shrink-0 items-center justify-center rounded-lg bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-gray-900 hover:bg-violet-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black/70">
                   Tela cheia
                 </button>
               </div>

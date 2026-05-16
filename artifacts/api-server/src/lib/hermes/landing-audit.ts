@@ -12,7 +12,7 @@ export const LANDING_AUDIT = {
         { type: "badge", text: "Top 10 EdTech Brasil 2025" },
         {
           type: "h1",
-          text: "Plano, voz, materiais e desafios reais — no mesmo lugar",
+          text: "A/B hero (sessionStorage studyia_hero_ab_v1): (A) No ENEM, sua nota sobe quando cada semana tem direção clara — um único lugar, do primeiro passo ao dia da prova. | (B) No estudo diário, seu tempo sobra quando cada sessão tem direção clara — um único lugar, sem perder hora escolhendo o que fazer.",
         },
         {
           type: "subhead",
@@ -21,8 +21,14 @@ export const LANDING_AUDIT = {
         { type: "subhead", text: "Feito para o ENEM, vestibular e concursos brasileiros." },
         { type: "body", text: "No mesmo login você acessa Simulado ENEM, Notebook RAG…" },
         { type: "cta_primary", text: "Começar grátis — 2 minutos" },
-        { type: "cta_secondary", text: "Ver demonstração — 1:32" },
-        { type: "cta_tertiary", text: "Ver preços e Pro" },
+        {
+          type: "cta_secondary",
+          text: "Ver demonstração (1:32) — link com ícone Play, mesma linha que o primário em desktop",
+        },
+        {
+          type: "text_link",
+          text: "Ver preços e Pro — linha única abaixo do grupo de CTAs do hero",
+        },
       ],
       stats: [
         "100 mil+ estudantes impactados no ecossistema*",
@@ -78,8 +84,8 @@ export const LANDING_AUDIT = {
     },
   ],
   uxNotes: [
-    "Hero concentra 3 CTAs + link preços — risco de competição visual.",
-    "H1 mistura benefício (plano/voz) com lista de módulos implícita.",
+    "Hero: hierarquia de CTA — um botão primário + demonstração como ação secundária leve (ícone + texto); preços em linha de texto abaixo.",
+    "H1 em teste A/B (sessão): nota ENEM vs. tempo/foco; CTA dispara studyia_landing_cta com variant.",
     "Stats com asterisco de disclaimer — boa prática de clareza.",
     "Grid de 15 features pode sobrecarregar escaneabilidade.",
   ],

@@ -317,6 +317,16 @@ type Stats = {
   xp: number | null;
 };
 
+type StudyMission = {
+  eyebrow: string;
+  title: string;
+  subject: string;
+  estimate: string;
+  reason: string;
+  primaryLabel: string;
+  tiagaoPrompt: string;
+};
+
 // ─── Página ───────────────────────────────────────────────────────────────────
 export default function Home() {
   const [, navigate] = useLocation();
@@ -428,6 +438,38 @@ export default function Home() {
   }, [profile?.nome]);
 
   const resumeTarget = recentPlans[0] ?? null;
+
+  const studyMission = useMemo<StudyMission>(() => {
+    const objetivo = profile?.objetivo?.trim();
+    const concurso = profile?.concursoAlvo?.trim();
+    const focus = concurso || objetivo || "seu objetivo principal";
+
+    if (resumeTarget) {
+      const dias = Array.isArray(resumeTarget.plan?.dias) ? resumeTarget.plan.dias.length : 0;
+      const subject = resumeTarget.materia || resumeTarget.plan?.materia || focus;
+      return {
+        eyebrow: "Próxima melhor ação",
+        title: `Continuar ${subject}`,
+        subject,
+        estimate: dias > 1 ? "25 min" : "15 min",
+        reason: dias > 0
+          ? `Você já tem um plano com ${dias} etapa${dias !== 1 ? "s" : ""}. O melhor agora é retomar antes de abrir outra frente.`
+          : "Você tem um plano salvo. Retomar evita recomeçar do zero e mantém o estudo em movimento.",
+        primaryLabel: "Começar missão",
+        tiagaoPrompt: `Tiagão, quero continuar minha missão de estudo em ${subject}. Me guia pelo próximo passo sem enrolar?`,
+      };
+    }
+
+    return {
+      eyebrow: "Missão de estudo",
+      title: "Definir foco e estudar 15 minutos",
+      subject: focus,
+      estimate: "15 min",
+      reason: "Ainda não há um plano recente por aqui. Comece com uma missão curta: foco, explicação simples e um exercício para checar se entendeu.",
+      primaryLabel: "Montar missão",
+      tiagaoPrompt: `Tiagão, monta uma missão de estudo de 15 minutos para ${focus}. Quero um passo claro, uma explicação curta e uma checagem no final.`,
+    };
+  }, [profile?.concursoAlvo, profile?.objetivo, resumeTarget]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   // Send / Enter → BUSCA INLINE. Não abre Tiagão. O aluno pode encaminhar
@@ -646,6 +688,14 @@ export default function Home() {
     navigate("/app/legacy");
   };
 
+  const startStudyMission = useCallback(() => {
+    if (resumeTarget) {
+      handleResume(resumeTarget.plan);
+      return;
+    }
+    askTiagao(studyMission.tiagaoPrompt);
+  }, [resumeTarget, studyMission.tiagaoPrompt]);
+
   return (
     <div className="relative min-h-[100dvh] overflow-hidden bg-gradient-to-b from-violet-50/70 via-white to-fuchsia-50/40">
       {/* ── Background decorativo ─────────────────────────────────────────── */}
@@ -715,18 +765,18 @@ export default function Home() {
 
               <div className="space-y-2">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-violet-500">
-                  Seu co-pilot de estudos
+                  Centro de comando do estudante
                 </p>
                 <h1 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
                   Oi, {firstName}!{" "}
                   <span className="bg-gradient-to-r from-violet-600 via-fuchsia-500 to-purple-700 bg-clip-text text-transparent">
-                    O que vamos estudar hoje?
+                    sua próxima ação já começa aqui.
                   </span>
                 </h1>
                 <p className="mx-auto max-w-xl text-sm text-slate-500 sm:text-base">
-                  Pesquise aqui ou suba um arquivo — a resposta aparece nesta
-                  tela. Quando quiser uma aula completa, fale com o Tiagão pelo
-                  microfone.
+                  Pesquise, suba um arquivo ou siga a missão recomendada. O
+                  Tiagão continua no centro para transformar dúvida, material e
+                  plano em estudo de verdade.
                 </p>
               </div>
 
@@ -865,6 +915,16 @@ export default function Home() {
           </section>
         )}
 
+        {/* ── Próxima melhor ação ──────────────────────────────────────── */}
+        <StudyMissionCard
+          mission={studyMission}
+          stats={stats}
+          hasRecentPlan={!!resumeTarget}
+          onStart={startStudyMission}
+          onAskTiagao={() => askTiagao(studyMission.tiagaoPrompt)}
+          onOpenNotebook={() => navigate("/notebook")}
+        />
+
         {/* ── Secondary rail ────────────────────────────────────────────── */}
         <section>
           <div className="mb-4 flex items-end justify-between">
@@ -967,6 +1027,136 @@ export default function Home() {
       {/* ── Floating voice button ─────────────────────────────────────────── */}
       <FloatingVoiceButton onClick={() => openTiagao()} />
     </div>
+  );
+}
+
+// ─── Próxima melhor ação ──────────────────────────────────────────────────────
+function StudyMissionCard({
+  mission,
+  stats,
+  hasRecentPlan,
+  onStart,
+  onAskTiagao,
+  onOpenNotebook,
+}: {
+  mission: StudyMission;
+  stats: Stats;
+  hasRecentPlan: boolean;
+  onStart: () => void;
+  onAskTiagao: () => void;
+  onOpenNotebook: () => void;
+}) {
+  const statusItems = [
+    {
+      label: "Ritmo",
+      value:
+        typeof stats.streak === "number" && stats.streak > 0
+          ? `${stats.streak} ${stats.streak === 1 ? "dia" : "dias"}`
+          : "comece hoje",
+      icon: Flame,
+    },
+    {
+      label: "Progresso",
+      value:
+        typeof stats.xp === "number" && stats.xp > 0
+          ? `${stats.xp.toLocaleString("pt-BR")} XP`
+          : "sem pressão",
+      icon: Trophy,
+    },
+    {
+      label: "Fonte",
+      value: hasRecentPlan ? "plano recente" : "Tiagão guia",
+      icon: BookOpen,
+    },
+  ];
+
+  return (
+    <section aria-label="Missão de estudo recomendada">
+      <motion.article
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="relative overflow-hidden rounded-[1.75rem] border border-violet-200/70 bg-white/85 p-5 shadow-xl shadow-violet-200/40 backdrop-blur-xl sm:p-6 lg:p-7"
+      >
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-violet-100/80 via-fuchsia-50/60 to-transparent" />
+
+        <div className="relative z-10 grid gap-5 lg:grid-cols-[1.35fr,0.85fr] lg:items-center">
+          <div className="flex gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-400/35">
+              <ListChecks className="h-6 w-6" strokeWidth={2.5} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-violet-500">
+                {mission.eyebrow}
+              </p>
+              <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
+                {mission.title}
+              </h2>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50/80 px-3 py-1 text-xs font-bold text-violet-700">
+                  <Clock className="h-3.5 w-3.5" />
+                  {mission.estimate}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-fuchsia-200 bg-fuchsia-50/80 px-3 py-1 text-xs font-bold text-fuchsia-700">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {mission.subject}
+                </span>
+              </div>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600">
+                {mission.reason}
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200/80 bg-white/75 p-3 shadow-sm">
+            <p className="px-1 pb-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+              Status útil, sem dashboard
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {statusItems.map((item) => (
+                <div key={item.label} className="rounded-xl bg-slate-50/80 px-3 py-2">
+                  <item.icon className="mb-1 h-3.5 w-3.5 text-violet-500" />
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    {item.label}
+                  </p>
+                  <p className="truncate text-xs font-black text-slate-800">
+                    {item.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
+              <button
+                type="button"
+                onClick={onStart}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-violet-400/35 transition hover:scale-[1.01] hover:shadow-xl active:scale-100"
+              >
+                <PlayCircle className="h-4 w-4" />
+                {mission.primaryLabel}
+              </button>
+              <button
+                type="button"
+                onClick={onAskTiagao}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-violet-200 bg-violet-50/80 px-4 py-3 text-sm font-black text-violet-700 transition hover:border-violet-300 hover:bg-violet-100"
+              >
+                <MessageCircle className="h-4 w-4" />
+                Tiagão
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={onOpenNotebook}
+              className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-50 hover:text-violet-600"
+            >
+              Estudar com meu material no Notebook
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      </motion.article>
+    </section>
   );
 }
 

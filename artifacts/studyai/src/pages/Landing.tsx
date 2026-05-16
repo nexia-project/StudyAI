@@ -7,7 +7,7 @@ import {
   PenLine, Map, Target, CheckCircle, ChevronDown, Mic,
   Radio, Cpu, Layers, Shield, Building2, Globe, MessageSquare,
   TrendingUp, Bell, Play, Menu, X, MessageCircle, AlertTriangle,
-  Video, Film, Award, Quote, Volume2, ArrowUpRight,
+  Video, Film, Quote, Volume2, ArrowUpRight,
   Hammer,
 } from "lucide-react";
 import { startCheckout } from "@/hooks/useSubscription";
@@ -169,11 +169,29 @@ const fadeUp: any = {
 };
 
 const STATS = [
-  { v: "100 mil+", l: "estudantes impactados no ecossistema*" },
-  { v: "Feedback muito positivo", l: "em testes com grupos focados*" },
-  { v: "4.8★", l: "média em pesquisas com usuários piloto*" },
-  { v: "24/7", l: "IA por texto e voz no app" },
+  { v: "ENEM", l: "simulado, treino e revisão no mesmo fluxo" },
+  { v: "RAG", l: "respostas ancoradas no seu material" },
+  { v: "Tiagão", l: "voz e texto para orientar o próximo passo" },
+  { v: "B2B", l: "professor e gestor com revisão humana" },
 ];
+
+const CREDIBILITY_ITEMS = [
+  {
+    icon: Target,
+    title: "Próximo passo, não lista solta",
+    desc: "Objetivo, prazo e matéria viram uma rotina curta: diagnosticar, estudar, treinar e revisar.",
+  },
+  {
+    icon: Layers,
+    title: "Seu material continua sendo fonte",
+    desc: "PDFs, links e caderno entram no Notebook RAG para respostas e exercícios com contexto.",
+  },
+  {
+    icon: Shield,
+    title: "IA com limites claros",
+    desc: "Sem promessa de aprovação: o StudyAI organiza a jornada e preserva controle humano em usos sensíveis.",
+  },
+] as const;
 
 const FEATURES = [
   { icon: Target,    label: "Plano de Estudos IA",      desc: "Plano personalizado dia a dia com IA. PDF, foto ou tema digitado.", color: "text-violet-700", bg: "bg-violet-50", border: "border-violet-200/80" },
@@ -314,15 +332,6 @@ const VIDEOS = [
     poster:
       "https://images.unsplash.com/photo-1580582932707-52087e40d367?auto=format&fit=crop&w=1280&q=82",
   },
-];
-
-const PRESS = [
-  { name: "Estadão Educação", color: "text-slate-700" },
-  { name: "Folha — Tec", color: "text-slate-700" },
-  { name: "Valor Econômico", color: "text-slate-700" },
-  { name: "Exame", color: "text-slate-700" },
-  { name: "Globo Educação", color: "text-slate-700" },
-  { name: "Brasil Escola", color: "text-slate-700" },
 ];
 
 const B2B_TYPES = ["Escola privada", "Cursinho pré-vestibular", "Universidade / Faculdade", "Secretaria de Educação", "ONG / Terceiro Setor", "Empresa (RH / T&D)", "Outro"];
@@ -561,8 +570,8 @@ export default function Landing() {
               <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-violet-50 text-violet-800 border border-violet-200/90 shadow-sm">
                 <Radio className="w-3 h-3 animate-pulse text-violet-600 shrink-0" /> Novo: Tutor Tiagão — Voz proativa em PT-BR
               </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                <Award className="w-3 h-3 shrink-0" /> Top 10 EdTech Brasil 2025
+              <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                <Shield className="w-3 h-3 shrink-0" /> Estudo com fontes, revisão e controle humano
               </span>
             </motion.div>
 
@@ -578,7 +587,7 @@ export default function Landing() {
                 <>
                   No ENEM,{" "}
                   <span className="bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
-                    sua nota sobe quando a semana tem direção clara
+                    a semana rende mais quando o próximo passo fica claro
                   </span>
                   .
                 </>
@@ -586,7 +595,7 @@ export default function Landing() {
                 <>
                   No estudo diário,{" "}
                   <span className="bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
-                    seu tempo sobra quando a sessão tem direção clara
+                    seu tempo rende mais quando cada sessão tem direção clara
                   </span>
                   .
                 </>
@@ -595,15 +604,15 @@ export default function Landing() {
 
             <motion.p variants={fadeUp} initial="hidden" animate="show" custom={2}
               className="text-lg sm:text-xl text-gray-600 leading-relaxed mb-3 max-w-xl text-pretty">
-              StudyAI reúne plano inteligente, Tiagão por voz, Notebook RAG, Lousa Imersiva, Tutor IA, Simulado ENEM e <span className="font-semibold text-gray-900">Fazedores</span> em uma rotina guiada.
+              Entre com seu objetivo, prova-alvo ou material. O Tiagão organiza diagnóstico, plano, treino e revisão para você estudar melhor, sem ficar pulando entre ferramentas.
             </motion.p>
             <motion.p variants={fadeUp} initial="hidden" animate="show" custom={2}
               className="text-base text-gray-700 font-medium leading-relaxed mb-2 max-w-xl">
-              Feito para o ENEM, vestibular e concursos brasileiros.
+              Feito para ENEM, vestibular, concursos e estudo cotidiano no Brasil.
             </motion.p>
             <motion.p variants={fadeUp} initial="hidden" animate="show" custom={2}
               className="text-sm text-gray-500 leading-relaxed mb-6 max-w-xl">
-              Comece sem cartão no plano gratuito e avance com ranking, cronograma e sala de estudos no mesmo login.
+              Comece sem cartão no plano gratuito e avance com simulado, Notebook RAG, cronograma e sala de estudos no mesmo login.
             </motion.p>
 
             <motion.div variants={fadeUp} initial="hidden" animate="show" custom={2}
@@ -646,16 +655,18 @@ export default function Landing() {
             </motion.div>
 
             <motion.div variants={fadeUp} initial="hidden" animate="show" custom={4}
-              className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 text-sm border-t border-gray-100 pt-8">
+              className="rounded-3xl border border-white/80 bg-white/75 p-4 sm:p-5 shadow-lg shadow-violet-900/5 ring-1 ring-gray-100 backdrop-blur">
+              <p className="mb-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+                Prova de capacidade
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 text-sm">
               {STATS.map((s, i) => (
                 <div key={i} className="min-w-0">
                   <p className="font-black text-violet-600 text-lg sm:text-xl tabular-nums">{s.v}</p>
                   <p className="text-gray-500 text-xs sm:text-sm leading-snug mt-0.5">{s.l}</p>
                 </div>
               ))}
-              <p className="col-span-full text-center text-[10px] text-gray-400 leading-snug mt-4 max-w-2xl mx-auto">
-                * Valores ilustrativos para comunicar escala e ritmo; números consolidados variam por canal e não substituem métricas auditadas publicamente.
-              </p>
+              </div>
             </motion.div>
           </div>
 
@@ -694,26 +705,22 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── SOCIAL PROOF + IMPRENSA ── */}
-      <section className="border-y border-gray-100 py-10 px-6 bg-gray-50/70">
-        <div className="max-w-5xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-10 items-center">
-            <div className="text-center md:text-left">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.18em] mb-4">Confiado por estudantes das melhores escolas</p>
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-6 gap-y-3">
-                {["USP", "UNICAMP", "PUC", "FUVEST", "Cursinho Popular", "Objetivo"].map(name => (
-                  <span key={name} className="text-sm font-black text-gray-400 tracking-tight hover:text-gray-700 transition-colors">{name}</span>
-                ))}
-              </div>
-            </div>
-            <div className="text-center md:text-right">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.18em] mb-4">Imprensa</p>
-              <div className="flex flex-wrap items-center justify-center md:justify-end gap-x-5 gap-y-3">
-                {PRESS.map(p => (
-                  <span key={p.name} className={`text-xs font-bold tracking-tight ${p.color} opacity-50 hover:opacity-100 transition-opacity`}>{p.name}</span>
-                ))}
-              </div>
-            </div>
+      {/* ── CREDIBILIDADE ── */}
+      <section className="border-y border-gray-100 py-10 px-6 bg-white">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid gap-4 md:grid-cols-3">
+            {CREDIBILITY_ITEMS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <article key={item.title} className="rounded-3xl border border-gray-200 bg-gray-50/70 p-5 shadow-sm">
+                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-50 text-violet-700 ring-1 ring-violet-100">
+                    <Icon className="h-5 w-5" aria-hidden />
+                  </div>
+                  <h2 className="text-base font-black tracking-tight text-gray-900">{item.title}</h2>
+                  <p className="mt-2 text-sm leading-relaxed text-gray-600">{item.desc}</p>
+                </article>
+              );
+            })}
           </div>
         </div>
       </section>

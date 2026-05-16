@@ -2,6 +2,13 @@ import { openrouter, OR } from "../../aiClient";
 import { fetchPlatformMetrics } from "../metrics";
 import { analyzeContentDatabases, persistKnowledgeIndexDescoberta } from "./knowledge-index";
 import { insertAdminInbox, persistAcaoProativa, persistDescoberta } from "../persist";
+import {
+  formatHermesRecommendation,
+  normalizeHermesRecommendation,
+  withHermesRecommendationStandard,
+  withRecommendationPayload,
+  type HermesRecommendation,
+} from "../recommendationStandard";
 
 export async function gestaoDailyLearn(): Promise<void> {
   const [metricas, contentIndex] = await Promise.all([
@@ -17,14 +24,27 @@ export async function gestaoDailyLearn(): Promise<void> {
   );
 
   await persistKnowledgeIndexDescoberta("gestao", contentIndex, { metricas });
+  const fallbackRecommendation: HermesRecommendation = {
+    agentId: "gestao",
+    area: "gestao",
+    targetSurface: "operacao/conteudo",
+    observedState: `Periodo ${metricas.periodoDias}d: ${metricas.novosUsuariosPeriodo} novos usuarios, ${metricas.assinantesAtivos} assinantes ativos, ${contentIndex.contentGaps.length} lacunas.`,
+    evidence: JSON.stringify({ metricas, contentGaps: contentIndex.contentGaps }),
+    problemOpportunity: "Priorizar a acao operacional com maior impacto em conteudo ou funil.",
+    recommendedChange: "Definir uma recomendacao unica a partir das metricas e do indice de bases.",
+    expectedImpact: "Melhorar cobertura pedagogica ou saude do funil com uma proxima acao clara.",
+    confidence: "media",
+    successMetric: "Reducao de lacunas criticas, novos usuarios, atividade de estudo ou conversao.",
+  };
 
   const completion = await openrouter.chat.completions.create({
     model: OR.claudeFast,
     messages: [
       {
         role: "system",
-        content:
-          "Você é o agente de gestão do StudyAI. Sintetize UMA descoberta acionável sobre operação e cobertura de conteúdo (métricas + índice de bases). Priorize lacunas de matéria se houver. Responda JSON: { descoberta: string, importancia: 1-5 }",
+        content: withHermesRecommendationStandard(
+          "Você é o agente de gestão do StudyAI. Sintetize UMA descoberta acionável sobre operação e cobertura de conteúdo (métricas + índice de bases). Priorize lacunas de matéria se houver. Responda JSON: { descoberta: string, importancia: 1-5, recommendation }",
+        ),
       },
       { role: "user", content: JSON.stringify({ metricas, contentIndex }) },
     ],
@@ -34,21 +54,22 @@ export async function gestaoDailyLearn(): Promise<void> {
   });
 
   const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
-  let parsed: { descoberta?: string; importancia?: number } = {};
+  let parsed: { descoberta?: string; importancia?: number; recommendation?: unknown } = {};
   try {
     parsed = JSON.parse(raw);
   } catch {
     parsed = { descoberta: raw.slice(0, 500), importancia: 2 };
   }
+  const recommendation = normalizeHermesRecommendation(parsed.recommendation, fallbackRecommendation);
 
   const descoberta =
     parsed.descoberta?.trim() ||
-    `Período ${metricas.periodoDias}d: ${metricas.novosUsuariosPeriodo} novos usuários, ${metricas.assinantesAtivos} assinantes ativos.`;
+    formatHermesRecommendation(recommendation);
 
   await persistDescoberta(
     "gestao",
     descoberta,
-    { metricas, contentIndex },
+    { metricas, contentIndex, recommendation },
     parsed.importancia ?? 2,
   );
 }
@@ -78,12 +99,26 @@ export async function gestaoProactive(): Promise<void> {
   if (anomalies.length === 0) return;
 
   const descricao = anomalies.join(" ");
-  await persistAcaoProativa("gestao", "anomalia_metrica", descricao, { metricas, anomalies });
+  const recommendation: HermesRecommendation = {
+    agentId: "gestao",
+    area: "gestao",
+    targetSurface: "operacao/metricas",
+    observedState: descricao,
+    evidence: JSON.stringify({ metricas, anomalies }),
+    problemOpportunity: "Anomalia operacional pode indicar queda de aquisicao, atividade ou monetizacao.",
+    recommendedChange: "Investigar a anomalia nos dashboards e priorizar o fluxo afetado antes do proximo ciclo.",
+    expectedImpact: "Reduzir tempo de deteccao e corrigir perda de tracao ou engajamento.",
+    confidence: "alta",
+    successMetric: "Metrica anomalica volta a pelo menos 80% da media do periodo anterior.",
+    implementationNotes: "Cruzar com deploys, campanhas e eventos de produto do mesmo intervalo.",
+  };
+  const payload = withRecommendationPayload({ metricas, anomalies }, recommendation);
+  await persistAcaoProativa("gestao", "anomalia_metrica", descricao, payload);
   await insertAdminInbox(
     "gestao",
     "anomalia",
     "Anomalia operacional detectada",
     descricao,
-    { metricas },
+    payload,
   );
 }

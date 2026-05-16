@@ -5,6 +5,7 @@ import { requireAuth } from "../../middlewares/requireAuth";
 import { openrouter, OR } from "../../lib/aiClient";
 import { requireAdmin } from "../../lib/hermes/requireAdmin";
 import { fetchPlatformMetrics } from "../../lib/hermes/metrics";
+import { withHermesRecommendationStandard } from "../../lib/hermes/recommendationStandard";
 
 const router: IRouter = Router();
 
@@ -26,12 +27,12 @@ router.post("/query", requireAuth, requireAdmin, async (req: Request, res: Respo
   try {
     const metricas = await fetchPlatformMetrics(dias);
 
-    const systemPrompt = [
+    const systemPrompt = withHermesRecommendationStandard([
       "Você é o agente de gestão do StudyAI — copiloto analítico do founder.",
       "Responda em português, objetivo, com bullets curtos.",
       "Use exclusivamente os dados fornecidos. Quando faltar dado, diga 'sem dado'.",
       "Termine com 1-3 recomendações acionáveis.",
-    ].join(" ");
+    ].join(" "));
 
     const userPrompt = [
       `Métricas (últimos ${dias} dia(s)):`,

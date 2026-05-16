@@ -5,6 +5,7 @@ import { requireAuth } from "../../middlewares/requireAuth";
 import { openrouter, OR } from "../../lib/aiClient";
 import { UX_LAYOUT_LENS_PT } from "../../lib/hermes/buildHermesContext";
 import { requireAdmin } from "../../lib/hermes/requireAdmin";
+import { withHermesRecommendationStandard } from "../../lib/hermes/recommendationStandard";
 
 const router: IRouter = Router();
 
@@ -35,12 +36,12 @@ router.post("/revisar-tela", requireAuth, requireAdmin, async (req: Request, res
       messages: [
         {
           role: "system",
-          content: [
+          content: withHermesRecommendationStandard([
             "Você é o agente ux_layout do StudyAI.",
             UX_LAYOUT_LENS_PT,
             "Retorne JSON estrito:",
-            "{ hierarquia: string[], ctas: { primario?: string, secundario?: string, notas: string }, clareza: string[], microcopy: string[], prioridade: 'alta'|'media'|'baixa' }",
-          ].join(" "),
+            "{ hierarquia: string[], ctas: { primario?: string, secundario?: string, notas: string }, clareza: string[], microcopy: string[], prioridade: 'alta'|'media'|'baixa', recommendation }",
+          ].join(" ")),
         },
         {
           role: "user",

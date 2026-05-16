@@ -5,6 +5,7 @@ import {
 } from "@workspace/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { isContentGapDescoberta } from "./jobs/knowledge-index";
+import { HERMES_RECOMMENDATION_STANDARD_PT } from "./recommendationStandard";
 
 export type HermesAudience = "aluno" | "professor" | "interno";
 
@@ -195,6 +196,7 @@ export async function buildHermesContext(opts: BuildHermesContextOpts = {}): Pro
   }
 
   parts.push("", CQO_RULES_PT);
+  parts.push("", HERMES_RECOMMENDATION_STANDARD_PT);
 
   if (opts.kind === "landing" || audience === "interno") {
     parts.push("", UX_LAYOUT_LENS_PT);

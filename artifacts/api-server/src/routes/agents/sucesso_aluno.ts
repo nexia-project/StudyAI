@@ -6,6 +6,7 @@ import { requireAuth } from "../../middlewares/requireAuth";
 import { openrouter, OR } from "../../lib/aiClient";
 import { requireAdmin } from "../../lib/hermes/requireAdmin";
 import { fetchInactiveUserPatterns } from "../../lib/hermes/retention-metrics";
+import { withHermesRecommendationStandard } from "../../lib/hermes/recommendationStandard";
 
 const router: IRouter = Router();
 
@@ -73,11 +74,11 @@ router.post("/analisar-risco", requireAuth, requireAdmin, async (req: Request, r
       };
     }
 
-    const systemPrompt = [
+    const systemPrompt = withHermesRecommendationStandard([
       "Você é o agente sucesso_aluno do StudyAI — retenção e customer success.",
       "Analise risco de churn com base nos dados JSON. Responda em português, bullets curtos.",
       "Inclua: nível de risco (baixo/médio/alto), sinais observados, hipóteses e próximos passos.",
-    ].join(" ");
+    ].join(" "));
 
     const userPrompt = [
       pergunta?.trim() ? `Pergunta do admin: ${pergunta.trim()}` : "",
@@ -158,8 +159,9 @@ router.post("/plano-intervencao", requireAuth, requireAdmin, async (req: Request
       messages: [
         {
           role: "system",
-          content:
+          content: withHermesRecommendationStandard(
             "Agente sucesso_aluno StudyAI. Plano de intervenção de retenção acionável, sem executar envios — só estrutura para o time.",
+          ),
         },
         { role: "user", content: userPrompt },
       ],

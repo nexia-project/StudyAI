@@ -5,6 +5,7 @@ import { requireAuth } from "../../middlewares/requireAuth";
 import { openrouter, OR } from "../../lib/aiClient";
 import { requireAdmin } from "../../lib/hermes/requireAdmin";
 import { fetchPlatformMetrics } from "../../lib/hermes/metrics";
+import { withHermesRecommendationStandard } from "../../lib/hermes/recommendationStandard";
 
 const router: IRouter = Router();
 
@@ -20,11 +21,11 @@ async function runMarketingLlm(
     messages: [
       {
         role: "system",
-        content: [
+        content: withHermesRecommendationStandard([
           "Você é o agente de marketing do StudyAI (ENEM, vestibulares, concursos).",
           "Responda em português, estruturado, acionável.",
           systemExtra,
-        ].join(" "),
+        ].join(" ")),
       },
       { role: "user", content: userContent },
     ],

@@ -1,6 +1,7 @@
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { persistDescoberta } from "../persist";
+import { type HermesRecommendation } from "../recommendationStandard";
 
 /** Contagem de documentos pai na base global (knowledge_documents). */
 export async function countKnowledgeDocuments(): Promise<number> {
@@ -441,12 +442,39 @@ export async function persistKnowledgeIndexDescoberta(
   extraEvidencia: Record<string, unknown> = {},
 ): Promise<void> {
   const { descoberta, importancia } = buildContentIndexDescoberta(index);
+  const recommendation: HermesRecommendation = {
+    agentId,
+    area: "conteudo/indice",
+    targetSurface: "knowledge_documents/knowledge_base/board_lessons/generated_content",
+    observedState: descoberta,
+    evidence: JSON.stringify({
+      postulados: index.knowledgeDocuments.postulados,
+      docsGlobais: index.knowledgeDocuments.totalParents,
+      kb: index.knowledgeBase.total,
+      lousa: index.boardLessons.total,
+      gerados: index.generatedContent.totalActive,
+      lacunas: index.contentGaps,
+    }),
+    problemOpportunity:
+      index.contentGaps.length > 0
+        ? "Existem materias com demanda interna e pouca cobertura de postulados."
+        : "A cobertura precisa continuar monitorada para evitar lacunas futuras.",
+    recommendedChange:
+      index.contentGaps.length > 0
+        ? `Priorizar ingestao ou curadoria das lacunas: ${index.contentGaps.slice(0, 4).join("; ")}.`
+        : "Manter monitoramento do ratio postulado/demanda e qualidade dos materiais gerados.",
+    expectedImpact: "Melhorar grounding pedagogico e reduzir respostas sem base suficiente.",
+    confidence: index.contentGaps.length > 0 || index.knowledgeDocuments.postulados === 0 ? "alta" : "media",
+    successMetric: "Aumento do ratio postulado/demanda e reducao de contentGaps.",
+    implementationNotes: "Atualizar ingestao/metadados source=postulado antes de ampliar geracao.",
+  };
   await persistDescoberta(
     agentId,
     descoberta,
     {
       kind: "content_index",
       contentIndex: index,
+      recommendation,
       ...extraEvidencia,
     },
     importancia,

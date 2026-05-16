@@ -4,6 +4,7 @@ import { hermesMemoriaInteracaoTable } from "@workspace/db/schema";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { openrouter, OR } from "../../lib/aiClient";
 import { requireAdmin } from "../../lib/hermes/requireAdmin";
+import { withHermesRecommendationStandard } from "../../lib/hermes/recommendationStandard";
 
 const router: IRouter = Router();
 
@@ -32,12 +33,12 @@ router.post("/gerar-copy", requireAuth, requireAdmin, async (req: Request, res: 
   const numVariacoes = Math.max(2, Math.min(6, Number(n) || 3));
 
   try {
-    const systemPrompt = [
+    const systemPrompt = withHermesRecommendationStandard([
       "Você é o agente de crescimento do StudyAI (plataforma de estudos com IA — ENEM, vestibulares, concursos).",
       "Gere copy de marketing em português, tom autêntico, sem clichês ('transforme sua vida' etc.).",
       "Retorne JSON estrito, sem markdown, no formato:",
-      "{ variacoes: [{ headline: string, sub: string, cta: string }], hipoteseTesteAB: string, metricaAlvo: string }",
-    ].join(" ");
+      "{ variacoes: [{ headline: string, sub: string, cta: string }], hipoteseTesteAB: string, metricaAlvo: string, recommendation }",
+    ].join(" "));
 
     const userPrompt = [
       `Briefing: ${briefing.trim()}`,

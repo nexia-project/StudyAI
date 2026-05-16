@@ -2,6 +2,7 @@ import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { fetchPlatformMetrics } from "../metrics";
 import { insertAdminInbox } from "../persist";
+import { withRecommendationPayload, type HermesRecommendation } from "../recommendationStandard";
 
 async function tableExists(tableName: string): Promise<boolean> {
   try {
@@ -79,9 +80,23 @@ export async function monitorProactive(): Promise<void> {
   if (issues.length === 0) return;
 
   const corpo = issues.join(" ");
-  await insertAdminInbox("monitor", "saude_sistema", "Alerta de saúde da plataforma", corpo, {
+  const recommendation: HermesRecommendation = {
+    agentId: "monitor",
+    area: "saude_sistema",
+    targetSurface: "plataforma/metricas-erros",
+    observedState: corpo,
+    evidence: JSON.stringify({ metricas, errorPatterns: errorPatterns ?? null, issues }),
+    problemOpportunity: "Sinais operacionais podem indicar degradacao de aquisicao, estudo ou estabilidade.",
+    recommendedChange: "Triar a origem dos sinais e abrir correcao para a rota, tabela ou fluxo afetado.",
+    expectedImpact: "Reduzir tempo de resposta a incidentes e preservar funil/engajamento.",
+    confidence: errorPatterns && errorPatterns.total >= 10 ? "alta" : "media",
+    successMetric: "Erros recentes abaixo do limite e metricas anomalicas normalizadas em 24h.",
+    implementationNotes: "Verificar logs, deploys recentes e disponibilidade das tabelas candidatas.",
+  };
+
+  await insertAdminInbox("monitor", "saude_sistema", "Alerta de saúde da plataforma", corpo, withRecommendationPayload({
     metricas,
     errorPatterns: errorPatterns ?? { stub: "platform_metrics" },
     issues,
-  });
+  }, recommendation));
 }

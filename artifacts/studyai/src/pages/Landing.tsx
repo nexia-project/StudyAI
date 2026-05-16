@@ -15,8 +15,6 @@ import { useStudyAuth } from "@/hooks/useStudyAuth";
 import { Logo } from "@/components/Logo";
 import {
   StudyBooksIllustration,
-  StudyHeroIllustration,
-  StudySparkIllustration,
 } from "@/components/landing/StudyFlatIllustrations";
 
 const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
@@ -190,6 +188,27 @@ const CREDIBILITY_ITEMS = [
     icon: Shield,
     title: "IA com limites claros",
     desc: "Sem promessa de aprovação: o StudyAI organiza a jornada e preserva controle humano em usos sensíveis.",
+  },
+] as const;
+
+const HERO_PREVIEW_CARDS = [
+  {
+    icon: Target,
+    label: "Diagnóstico",
+    title: "Objetivo ENEM em foco",
+    desc: "prioridade da semana definida",
+  },
+  {
+    icon: Layers,
+    label: "Notebook RAG",
+    title: "Material virou treino",
+    desc: "resumos e questões ancoradas",
+  },
+  {
+    icon: Mic,
+    label: "Tiagão",
+    title: "Próxima sessão guiada",
+    desc: "voz, texto e lembrete no fluxo",
   },
 ] as const;
 
@@ -535,9 +554,9 @@ export default function Landing() {
                 key={item.title}
                 type="button"
                 onClick={() => navigate(item.path)}
-                className="snap-start shrink-0 w-[min(100%,220px)] md:w-auto text-left rounded-2xl overflow-hidden ring-1 ring-white/10 bg-gray-900/80 hover:ring-violet-400/60 hover:bg-gray-900 transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-950"
+                className="snap-start shrink-0 w-[min(100%,190px)] md:w-auto text-left rounded-2xl overflow-hidden ring-1 ring-white/10 bg-gray-900/80 hover:ring-violet-400/60 hover:bg-gray-900 transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-950"
               >
-                <div className="relative min-h-[180px] sm:min-h-[200px] w-full overflow-hidden bg-slate-900">
+                <div className="relative hidden min-h-[180px] w-full overflow-hidden bg-slate-900 md:block lg:min-h-[200px]">
                   <img src={item.img} alt={`${item.title}: ${item.desc}`} width={400} height={240} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover object-center opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" />
                   <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/20 to-transparent" />
                   <span className="absolute top-2 left-2 rounded-md bg-violet-500 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white">
@@ -558,22 +577,29 @@ export default function Landing() {
       </section>
 
       {/* ── HERO ── */}
-      <section className="relative pt-20 pb-16 md:pt-24 md:pb-20 px-6 overflow-hidden bg-slate-50">
-        <div aria-hidden className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-24 right-0 h-[420px] w-[420px] rounded-full bg-violet-100/50 blur-3xl" />
-          <div className="absolute bottom-0 left-0 h-[320px] w-[320px] rounded-full bg-emerald-50/60 blur-3xl" />
+      <section className="relative overflow-hidden bg-slate-950 px-6 pb-12 pt-14 text-white md:pb-20 md:pt-20">
+        <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.35),transparent_34%),radial-gradient(circle_at_80%_10%,rgba(14,165,233,0.24),transparent_28%),radial-gradient(circle_at_50%_100%,rgba(16,185,129,0.16),transparent_36%)]" />
+          <div className="absolute inset-0 opacity-[0.18] [background-image:linear-gradient(rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.12)_1px,transparent_1px)] [background-size:48px_48px]" />
+          <div className="absolute -right-24 top-10 h-[420px] w-[420px] rounded-full bg-violet-500/25 blur-3xl" />
+          <div className="absolute -left-24 bottom-0 h-[360px] w-[360px] rounded-full bg-fuchsia-500/15 blur-3xl" />
         </div>
 
-        <div className="relative max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <div className="relative mx-auto grid max-w-6xl items-center gap-9 lg:grid-cols-[1.02fr_0.98fr] lg:gap-12">
           <div>
-            <motion.div variants={fadeUp} initial="hidden" animate="show" custom={0} className="flex flex-wrap items-center gap-2 mb-6">
-              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-violet-50 text-violet-800 border border-violet-200/90 shadow-sm">
-                <Radio className="w-3 h-3 animate-pulse text-violet-600 shrink-0" /> Novo: Tutor Tiagão — Voz proativa em PT-BR
+            <motion.div variants={fadeUp} initial="hidden" animate="show" custom={0} className="mb-5 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-2 rounded-full border border-violet-300/30 bg-white/10 px-4 py-2 text-xs font-bold text-violet-50 shadow-lg shadow-violet-950/20 backdrop-blur">
+                <Radio className="h-3 w-3 shrink-0 animate-pulse text-violet-200" /> Novo: Tutor Tiagão — voz proativa em PT-BR
               </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                <Shield className="w-3 h-3 shrink-0" /> Estudo com fontes, revisão e controle humano
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-2 text-xs font-bold text-emerald-50 backdrop-blur">
+                <Shield className="h-3 w-3 shrink-0" /> Fontes, revisão e controle humano
               </span>
             </motion.div>
+
+            <motion.p variants={fadeUp} initial="hidden" animate="show" custom={0.5}
+              className="mb-3 text-xs font-black uppercase tracking-[0.24em] text-violet-200">
+              Centro de comando inteligente para estudar
+            </motion.p>
 
             <motion.h1
               variants={fadeUp}
@@ -581,12 +607,12 @@ export default function Landing() {
               animate="show"
               custom={1}
               data-hero-ab={heroAbVariant}
-              className="text-4xl sm:text-5xl lg:text-[3.35rem] font-black tracking-tight leading-[1.08] mb-5 text-gray-900 text-balance"
+              className="mb-5 max-w-3xl text-4xl font-black leading-[1.02] tracking-tight text-white text-balance sm:text-5xl lg:text-[4.1rem]"
             >
               {heroAbVariant === "enem_nota" ? (
                 <>
                   No ENEM,{" "}
-                  <span className="bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
+                  <span className="bg-gradient-to-r from-violet-200 via-fuchsia-200 to-cyan-200 bg-clip-text text-transparent">
                     a semana rende mais quando o próximo passo fica claro
                   </span>
                   .
@@ -594,7 +620,7 @@ export default function Landing() {
               ) : (
                 <>
                   No estudo diário,{" "}
-                  <span className="bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
+                  <span className="bg-gradient-to-r from-violet-200 via-fuchsia-200 to-cyan-200 bg-clip-text text-transparent">
                     seu tempo rende mais quando cada sessão tem direção clara
                   </span>
                   .
@@ -603,117 +629,147 @@ export default function Landing() {
             </motion.h1>
 
             <motion.p variants={fadeUp} initial="hidden" animate="show" custom={2}
-              className="text-lg sm:text-xl text-gray-600 leading-relaxed mb-3 max-w-xl text-pretty">
-              Entre com seu objetivo, prova-alvo ou material. O Tiagão organiza diagnóstico, plano, treino e revisão para você estudar melhor, sem ficar pulando entre ferramentas.
+              className="mb-3 max-w-2xl text-lg leading-relaxed text-slate-200 text-pretty sm:text-xl">
+              Entre com seu objetivo, prova-alvo ou material. O StudyAI transforma tudo em um hub de diagnóstico, plano, treino, revisão e tutor IA, sem você ficar pulando entre ferramentas.
             </motion.p>
             <motion.p variants={fadeUp} initial="hidden" animate="show" custom={2}
-              className="text-base text-gray-700 font-medium leading-relaxed mb-2 max-w-xl">
-              Feito para ENEM, vestibular, concursos e estudo cotidiano no Brasil.
+              className="mb-6 max-w-xl text-sm font-medium leading-relaxed text-slate-300 sm:text-base">
+              Feito para ENEM, vestibular, concursos e estudo cotidiano no Brasil. Comece sem cartão e avance com Tiagão, Notebook RAG, simulado e sala de estudos no mesmo login.
             </motion.p>
-            <motion.p variants={fadeUp} initial="hidden" animate="show" custom={2}
-              className="text-sm text-gray-500 leading-relaxed mb-6 max-w-xl">
-              Comece sem cartão no plano gratuito e avance com simulado, Notebook RAG, cronograma e sala de estudos no mesmo login.
-            </motion.p>
-
-            <motion.div variants={fadeUp} initial="hidden" animate="show" custom={2}
-              className="hidden md:flex flex-wrap items-end gap-4 sm:gap-6 mb-8">
-              <StudyHeroIllustration className="w-[min(100%,300px)] h-auto shrink-0" />
-              <div className="hidden sm:flex items-center justify-center shrink-0 pb-2">
-                <StudySparkIllustration className="w-20 h-20 sm:w-24 sm:h-24" />
-              </div>
-            </motion.div>
 
             <motion.div variants={fadeUp} initial="hidden" animate="show" custom={3}
-              className="flex flex-col gap-3 mb-10">
-              <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-4">
+              className="mb-8 flex flex-col gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
                 <button type="button" onClick={handleStart}
-                  className="group inline-flex min-h-[44px] items-center justify-center gap-2.5 px-7 py-3.5 rounded-2xl font-bold text-white bg-violet-600 hover:bg-violet-500 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-violet-500/25 text-sm sm:text-base focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50">
+                  className="group inline-flex min-h-[48px] items-center justify-center gap-2.5 rounded-2xl bg-white px-7 py-3.5 text-sm font-black text-slate-950 shadow-2xl shadow-violet-950/30 transition-all hover:scale-[1.02] hover:bg-violet-50 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 sm:text-base">
                   Começar grátis — 2 minutos
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform shrink-0" aria-hidden />
+                  <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1" aria-hidden />
                 </button>
                 <button
                   type="button"
                   onClick={(e) => openVideo(VIDEOS[0], e)}
-                  className="inline-flex min-h-[44px] items-center justify-center sm:justify-start gap-2 rounded-xl px-4 sm:px-3 text-sm font-semibold text-violet-700 hover:text-violet-900 hover:bg-violet-50/90 border border-violet-100 sm:border-transparent hover:border-violet-200/70 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50"
+                  className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-bold text-white backdrop-blur transition-colors hover:bg-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
                 >
-                  <Play className="w-4 h-4 shrink-0 text-violet-600" fill="currentColor" aria-hidden />
+                  <Play className="h-4 w-4 shrink-0 text-violet-100" fill="currentColor" aria-hidden />
                   <span>
                     Ver demonstração{" "}
-                    <span className="font-normal text-gray-500">(1:32)</span>
+                    <span className="font-normal text-slate-300">(1:32)</span>
                   </span>
                 </button>
               </div>
-              <p className="text-sm text-gray-600 sm:pl-0">
+              <p className="text-sm text-slate-300">
                 <a
                   href={pricingHref}
-                  className="inline-flex min-h-[44px] sm:min-h-0 items-center gap-1 py-2 sm:py-0 text-violet-700/90 hover:text-violet-800 underline-offset-4 hover:underline font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50 rounded-lg"
+                  className="inline-flex min-h-[44px] items-center gap-1 rounded-lg py-2 font-medium text-violet-100 underline-offset-4 hover:text-white hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 sm:min-h-0 sm:py-0"
                 >
                   Ver preços e Pro
-                  <ArrowUpRight className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                  <ArrowUpRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 </a>
               </p>
             </motion.div>
 
             <motion.div variants={fadeUp} initial="hidden" animate="show" custom={4}
-              className="rounded-3xl border border-white/80 bg-white/75 p-4 sm:p-5 shadow-lg shadow-violet-900/5 ring-1 ring-gray-100 backdrop-blur">
-              <p className="mb-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
-                Prova de capacidade
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 text-sm">
+              className="grid grid-cols-2 gap-3 rounded-3xl border border-white/10 bg-white/[0.07] p-4 shadow-2xl shadow-black/20 backdrop-blur sm:grid-cols-4">
               {STATS.map((s, i) => (
                 <div key={i} className="min-w-0">
-                  <p className="font-black text-violet-600 text-lg sm:text-xl tabular-nums">{s.v}</p>
-                  <p className="text-gray-500 text-xs sm:text-sm leading-snug mt-0.5">{s.l}</p>
+                  <p className="text-base font-black text-white tabular-nums sm:text-lg">{s.v}</p>
+                  <p className="mt-1 text-xs leading-snug text-slate-300">{s.l}</p>
                 </div>
               ))}
-              </div>
             </motion.div>
           </div>
 
           <motion.div variants={fadeUp} initial="hidden" animate="show" custom={2}
-            className="relative z-10 lg:justify-self-end w-full max-w-lg mx-auto lg:mx-0">
-            <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-violet-900/15 ring-1 ring-gray-900/10 bg-black">
-              <span className="absolute top-3 right-3 z-20 inline-flex items-center rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-white ring-1 ring-white/25 backdrop-blur-sm">
-                Demonstração em breve
-              </span>
-              <video
-                src={MAIN_DEMO_VIDEO.src}
-                poster={MAIN_DEMO_VIDEO.poster}
-                autoPlay
-                muted
-                loop
-                playsInline
-                preload="metadata"
-                className="w-full aspect-[4/3] sm:aspect-video object-cover"
-                aria-label="Prévia em vídeo da experiência StudyAI (demonstração CC0)"
-              />
-              <div className="absolute inset-0 bg-gradient-to-tr from-violet-950/40 via-transparent to-transparent pointer-events-none" />
-              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2 rounded-xl bg-black/55 px-3 py-2 text-[11px] text-white backdrop-blur-sm ring-1 ring-white/10">
-                <span className="font-semibold">Prévia em vídeo · substitua pelo tour oficial quando gravar</span>
-                <button type="button" onClick={(e) => openVideo(VIDEOS[0], e)} className="inline-flex min-h-[36px] shrink-0 items-center justify-center rounded-lg bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-gray-900 hover:bg-violet-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black/70">
-                  Tela cheia
-                </button>
+            className="relative z-10 mx-auto w-full max-w-xl lg:mx-0 lg:justify-self-end">
+            <div className="absolute -left-8 top-10 hidden h-28 w-28 rounded-full bg-cyan-300/20 blur-2xl md:block" aria-hidden />
+            <div className="absolute -right-8 bottom-16 hidden h-36 w-36 rounded-full bg-fuchsia-400/20 blur-2xl md:block" aria-hidden />
+
+            <div className="relative overflow-hidden rounded-[2rem] border border-white/15 bg-white/10 p-3 shadow-2xl shadow-black/35 backdrop-blur-xl">
+              <div className="rounded-[1.45rem] border border-slate-700/70 bg-slate-950/95 p-4">
+                <div className="mb-4 flex items-center justify-between gap-3 border-b border-white/10 pb-3">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-violet-200">StudyAI Hub</p>
+                    <p className="mt-1 text-sm font-bold text-white">Plano da semana em modo comando</p>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-200 ring-1 ring-emerald-300/20">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> Ativo
+                  </span>
+                </div>
+
+                <div className="grid gap-3">
+                  {HERO_PREVIEW_CARDS.map((item, i) => {
+                    const Icon = item.icon;
+                    return (
+                      <div key={item.label} className={`rounded-2xl border border-white/10 bg-white/[0.06] p-4 ${i === 1 ? "ml-4 sm:ml-10" : ""}`}>
+                        <div className="flex items-start gap-3">
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-violet-400/15 text-violet-100 ring-1 ring-violet-300/20">
+                            <Icon className="h-5 w-5" aria-hidden />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{item.label}</p>
+                            <p className="mt-1 text-sm font-black leading-tight text-white">{item.title}</p>
+                            <p className="mt-1 text-xs leading-snug text-slate-300">{item.desc}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-4 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 p-[1px]">
+                  <div className="rounded-2xl bg-slate-950/95 p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <p className="text-xs font-black text-white">Próxima ação sugerida</p>
+                      <Sparkles className="h-4 w-4 text-fuchsia-200" aria-hidden />
+                    </div>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm leading-snug text-slate-300">
+                        Revisar matemática por 25 min e gerar 8 questões do seu material.
+                      </p>
+                      <button type="button" onClick={handleStart}
+                        className="inline-flex min-h-[40px] shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2 text-xs font-black text-slate-950 transition-colors hover:bg-violet-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950">
+                        Abrir hub <ArrowRight className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="mt-4 sm:mt-0 sm:absolute sm:-bottom-4 sm:-left-2 sm:left-4 max-w-[min(100%,300px)] rounded-2xl bg-white/95 backdrop-blur-md border border-gray-200 shadow-lg p-4 text-left">
-              <p className="text-[10px] font-black uppercase tracking-widest text-violet-600 mb-1">Destaques ativos</p>
-              <p className="text-sm font-bold text-gray-900 leading-snug">
-                Fazedores + Notebook RAG + Lousa + Tutor multi-modelo — rotas reais, um login.
-              </p>
+
+            <div className="mt-4 grid grid-cols-2 gap-3 text-left">
+              <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
+                <p className="text-[10px] font-black uppercase tracking-widest text-violet-200">Rotas reais</p>
+                <p className="mt-1 text-sm font-bold text-white">Fazedores, Notebook, Lousa e Tutor IA</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
+                <p className="text-[10px] font-black uppercase tracking-widest text-cyan-200">Mobile first</p>
+                <p className="mt-1 text-sm font-bold text-white">Ação principal visível no primeiro scroll</p>
+              </div>
             </div>
           </motion.div>
         </div>
       </section>
 
       {/* ── CREDIBILIDADE ── */}
-      <section className="border-y border-gray-100 py-10 px-6 bg-white">
+      <section className="border-y border-violet-100/70 bg-gradient-to-b from-white via-violet-50/60 to-white px-6 py-12">
         <div className="max-w-6xl mx-auto">
+          <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-violet-600">Prova operacional</p>
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-gray-950 md:text-3xl">
+                Credibilidade sem logos inventados: o produto mostra como ajuda.
+              </h2>
+            </div>
+            <p className="max-w-sm text-sm leading-relaxed text-gray-600">
+              O StudyAI prioriza fonte, próximo passo e revisão humana onde importa.
+            </p>
+          </div>
           <div className="grid gap-4 md:grid-cols-3">
             {CREDIBILITY_ITEMS.map((item) => {
               const Icon = item.icon;
               return (
-                <article key={item.title} className="rounded-3xl border border-gray-200 bg-gray-50/70 p-5 shadow-sm">
-                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-50 text-violet-700 ring-1 ring-violet-100">
+                <article key={item.title} className="rounded-3xl border border-violet-100 bg-white/85 p-5 shadow-xl shadow-violet-900/5 ring-1 ring-white backdrop-blur">
+                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-600 text-white shadow-lg shadow-violet-500/20">
                     <Icon className="h-5 w-5" aria-hidden />
                   </div>
                   <h2 className="text-base font-black tracking-tight text-gray-900">{item.title}</h2>

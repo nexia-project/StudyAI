@@ -22,6 +22,61 @@ async function safeQueryOne<T = any>(label: string, query: () => Promise<{ rows:
   return rows[0] ?? null;
 }
 
+const ADMIN_TIME_ZONE = "America/Sao_Paulo";
+const USD_TO_BRL = 5.85;
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function dateInAdminTimeZone(date = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: ADMIN_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const value = (type: string) => parts.find(part => part.type === type)?.value ?? "01";
+  return `${value("year")}-${value("month")}-${value("day")}`;
+}
+
+function isValidDateOnly(value: string): boolean {
+  if (!DATE_ONLY_RE.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+function addDays(dateOnly: string, days: number): string {
+  const [year, month, day] = dateOnly.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function daysInclusive(from: string, to: string): number {
+  return Math.floor((Date.parse(`${to}T00:00:00.000Z`) - Date.parse(`${from}T00:00:00.000Z`)) / 86400000) + 1;
+}
+
+function normalizeDateRange(qFrom: unknown, qTo: unknown) {
+  const today = dateInAdminTimeZone();
+  let from = typeof qFrom === "string" && isValidDateOnly(qFrom) ? qFrom : addDays(today, -29);
+  let to = typeof qTo === "string" && isValidDateOnly(qTo) ? qTo : today;
+
+  if (from > to) [from, to] = [to, from];
+
+  const days = daysInclusive(from, to);
+  const prevTo = addDays(from, -1);
+  const prevFrom = addDays(prevTo, -(days - 1));
+
+  return { from, to, prevFrom, prevTo, days, timeZone: ADMIN_TIME_ZONE };
+}
+
+function roundMoney(value: number): number {
+  return Math.round((value + Number.EPSILON) * 1_000_000) / 1_000_000;
+}
+
+function sumUsd(rows: any[]): number {
+  return roundMoney(rows.reduce((sum, row) => sum + Number(row.cost_usd ?? row.costUsd ?? 0), 0));
+}
+
 const router = Router();
 
 // Debug endpoint — returns full auth & admin status info
@@ -158,19 +213,14 @@ router.post("/admin/role-requests/:id/review", async (req: Request, res: Respons
 router.get("/admin/stats", async (req: Request, res: Response) => {
   if (!await isAdminUserAsync(req.userId)) return void res.status(403).json({ error: "Acesso negado" });
 
-  const today = new Date().toISOString().slice(0, 10);
-  const USD_TO_BRL = 5.85;
-
   // ── Date range from query params (default: last 30 days) ─────────────────
-  const qFrom = typeof req.query.from === "string" ? req.query.from : null;
-  const qTo   = typeof req.query.to   === "string" ? req.query.to   : null;
-  const rangeFrom = qFrom ?? new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10);
-  const rangeTo   = qTo   ?? today;
-
-  // Previous period: same number of days, shifted back
-  const rangeDays = Math.ceil((new Date(rangeTo).getTime() - new Date(rangeFrom).getTime()) / 86400000) + 1;
-  const prevTo   = new Date(new Date(rangeFrom).getTime() - 86400000).toISOString().slice(0, 10);
-  const prevFrom = new Date(new Date(rangeFrom).getTime() - rangeDays * 86400000).toISOString().slice(0, 10);
+  const normalizedRange = normalizeDateRange(req.query.from, req.query.to);
+  const rangeFrom = normalizedRange.from;
+  const rangeTo = normalizedRange.to;
+  const prevFrom = normalizedRange.prevFrom;
+  const prevTo = normalizedRange.prevTo;
+  const rangeDays = normalizedRange.days;
+  const today = dateInAdminTimeZone();
 
 
   // Ensure schema (idempotent)
@@ -272,24 +322,51 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
 
   // ── AI cost metrics ───────────────────────────────────────────────────────────
   const [aiCostRange, aiCostPrev, aiCostByFeature, aiCostByModel, aiCostPerDay, aiCallsTotal, aiCostToday, aiCostMonth] = await Promise.all([
-    safeQueryOne("aiCostRange",  () => db.execute(sql`SELECT COALESCE(SUM(cost_usd::numeric), 0)::float AS total, COUNT(*)::int AS calls, COALESCE(SUM(tokens_in + tokens_out), 0)::int AS tokens FROM ai_cost_log WHERE created_at::date BETWEEN ${rangeFrom}::date AND ${rangeTo}::date`)),
-    safeQueryOne("aiCostPrev",   () => db.execute(sql`SELECT COALESCE(SUM(cost_usd::numeric), 0)::float AS total FROM ai_cost_log WHERE created_at::date BETWEEN ${prevFrom}::date AND ${prevTo}::date`)),
-    safeQuery("aiByFeature",     () => db.execute(sql`SELECT feature, COUNT(*)::int AS calls, COALESCE(SUM(cost_usd::numeric), 0)::float AS cost_usd, COALESCE(SUM(tokens_in + tokens_out)::int, 0) AS tokens FROM ai_cost_log WHERE created_at::date BETWEEN ${rangeFrom}::date AND ${rangeTo}::date GROUP BY feature ORDER BY cost_usd DESC`)),
-    // Strip provider prefix (e.g. openai/gpt-4o-mini → gpt-4o-mini) so totals match pricing keys and avoid split rows.
-    safeQuery("aiByModel",       () => db.execute(sql`
+    safeQueryOne("aiCostRange",  () => db.execute(sql`
       SELECT
-        CASE WHEN POSITION('/' IN COALESCE(model, '')) > 0
-          THEN SUBSTRING(model FROM POSITION('/' IN model) + 1)
-          ELSE COALESCE(model, '(desconhecido)')
-        END AS model,
+        COALESCE(SUM(cost_usd::numeric), 0)::float AS total,
         COUNT(*)::int AS calls,
-        COALESCE(SUM(cost_usd::numeric), 0)::float AS cost_usd
+        COALESCE(SUM(COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0)), 0)::int AS tokens
       FROM ai_cost_log
-      WHERE created_at::date BETWEEN ${rangeFrom}::date AND ${rangeTo}::date
+      WHERE (created_at AT TIME ZONE ${ADMIN_TIME_ZONE})::date BETWEEN ${rangeFrom}::date AND ${rangeTo}::date
+    `)),
+    safeQueryOne("aiCostPrev",   () => db.execute(sql`
+      SELECT
+        COALESCE(SUM(cost_usd::numeric), 0)::float AS total
+      FROM ai_cost_log
+      WHERE (created_at AT TIME ZONE ${ADMIN_TIME_ZONE})::date BETWEEN ${prevFrom}::date AND ${prevTo}::date
+    `)),
+    safeQuery("aiByFeature",     () => db.execute(sql`
+      SELECT
+        COALESCE(NULLIF(BTRIM(feature), ''), 'Não classificado') AS feature,
+        COUNT(*)::int AS calls,
+        COALESCE(SUM(cost_usd::numeric), 0)::float AS cost_usd,
+        COALESCE(SUM(COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0)), 0)::int AS tokens
+      FROM ai_cost_log
+      WHERE (created_at AT TIME ZONE ${ADMIN_TIME_ZONE})::date BETWEEN ${rangeFrom}::date AND ${rangeTo}::date
       GROUP BY 1
       ORDER BY cost_usd DESC
     `)),
-    // One row per calendar day in the filter (zero-filled), so charts match the selected range even on sparse usage.
+    safeQuery("aiByModel",       () => db.execute(sql`
+      WITH normalized AS (
+        SELECT
+          COALESCE(NULLIF(BTRIM(model), ''), 'Não classificado') AS raw_model,
+          cost_usd,
+          COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0) AS tokens
+        FROM ai_cost_log
+        WHERE (created_at AT TIME ZONE ${ADMIN_TIME_ZONE})::date BETWEEN ${rangeFrom}::date AND ${rangeTo}::date
+      )
+      SELECT
+        CASE WHEN POSITION('/' IN raw_model) > 0 THEN SPLIT_PART(raw_model, '/', 1) ELSE 'Não informado' END AS provider,
+        CASE WHEN POSITION('/' IN raw_model) > 0 THEN SUBSTRING(raw_model FROM POSITION('/' IN raw_model) + 1) ELSE raw_model END AS model,
+        COUNT(*)::int AS calls,
+        COALESCE(SUM(cost_usd::numeric), 0)::float AS cost_usd,
+        COALESCE(SUM(tokens), 0)::int AS tokens
+      FROM normalized
+      GROUP BY 1, 2
+      ORDER BY cost_usd DESC
+    `)),
+    // One row per calendar day in the normalized admin timezone, so charts reconcile with the selected range.
     safeQuery("aiPerDay",        () => db.execute(sql`
       WITH days AS (
         SELECT generate_series(${rangeFrom}::date, ${rangeTo}::date, interval '1 day')::date AS d
@@ -299,13 +376,24 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
         COALESCE(SUM(l.cost_usd::numeric), 0)::float AS cost_usd,
         COUNT(l.id)::int AS calls
       FROM days
-      LEFT JOIN ai_cost_log l ON l.created_at::date = days.d
+      LEFT JOIN ai_cost_log l ON (l.created_at AT TIME ZONE ${ADMIN_TIME_ZONE})::date = days.d
       GROUP BY days.d
       ORDER BY days.d
     `)),
-    safeQueryOne("aiCallsTotal", () => db.execute(sql`SELECT COUNT(*)::int AS calls, COALESCE(SUM(tokens_in + tokens_out), 0)::int AS tokens FROM ai_cost_log`)),
-    safeQueryOne("aiCostToday",  () => db.execute(sql`SELECT COALESCE(SUM(cost_usd::numeric), 0)::float AS total, COUNT(*)::int AS calls FROM ai_cost_log WHERE created_at::date = ${today}::date`)),
-    safeQueryOne("aiCostMonth",  () => db.execute(sql`SELECT COALESCE(SUM(cost_usd::numeric), 0)::float AS total FROM ai_cost_log WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())`)),
+    safeQueryOne("aiCallsTotal", () => db.execute(sql`SELECT COUNT(*)::int AS calls, COALESCE(SUM(COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0)), 0)::int AS tokens FROM ai_cost_log`)),
+    safeQueryOne("aiCostToday",  () => db.execute(sql`
+      SELECT
+        COALESCE(SUM(cost_usd::numeric), 0)::float AS total,
+        COUNT(*)::int AS calls,
+        COALESCE(SUM(COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0)), 0)::int AS tokens
+      FROM ai_cost_log
+      WHERE (created_at AT TIME ZONE ${ADMIN_TIME_ZONE})::date = ${today}::date
+    `)),
+    safeQueryOne("aiCostMonth",  () => db.execute(sql`
+      SELECT COALESCE(SUM(cost_usd::numeric), 0)::float AS total
+      FROM ai_cost_log
+      WHERE DATE_TRUNC('month', created_at AT TIME ZONE ${ADMIN_TIME_ZONE}) = DATE_TRUNC('month', NOW() AT TIME ZONE ${ADMIN_TIME_ZONE})
+    `)),
   ]);
 
   // ── AI feature metrics (date-filtered) ────────────────────────────────────────
@@ -335,13 +423,19 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
   const costTodayUsd  = (aiCostToday as any)?.total ?? 0;
   const costMonthUsd  = (aiCostMonth as any)?.total ?? 0;
   const totalDocsKb   = (notebookDocs as any)?.total_kb ?? 0;
+  const aiFeatureCostUsd = sumUsd(aiCostByFeature);
+  const aiModelCostUsd = sumUsd(aiCostByModel);
+  const aiDailyCostUsd = sumUsd(aiCostPerDay);
+  const aiTotalCostUsd = roundMoney(costRangeUsd);
+  const aiCostConsistent = [aiFeatureCostUsd, aiModelCostUsd, aiDailyCostUsd]
+    .every(total => Math.abs(total - aiTotalCostUsd) < 0.000001);
 
   // ── Helper: compute % change ─────────────────────────────────────────────────
   const pct = (cur: number, prev: number) => prev === 0 ? null : Math.round(((cur - prev) / prev) * 100);
 
   res.json({
     // ── Meta: the applied date range (so UI can show it) ──────────────────────
-    dateRange: { from: rangeFrom, to: rangeTo, prevFrom, prevTo, days: rangeDays },
+    dateRange: { ...normalizedRange, prevFrom, prevTo, days: rangeDays },
 
     // User counts
     totalUsers: (totalUsersRow as any)?.count ?? 0,
@@ -424,6 +518,11 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
       { label: "Redações", value: (redacoesAll as any)?.count ?? 0, color: "#ef4444" },
     ],
     aiCost: {
+      period: {
+        ...normalizedRange,
+        boundary: "created_at convertido para America/Sao_Paulo, com from/to inclusivos",
+      },
+      currency: { source: "USD", display: "BRL", usdToBrl: USD_TO_BRL },
       // Range-based (respects dateRange filter)
       rangeUsd: costRangeUsd,
       rangeBrl: costRangeUsd * USD_TO_BRL,
@@ -442,8 +541,25 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
       tokensToday: (aiCostToday as any)?.tokens ?? 0,
       tokensTotal: (aiCallsTotal as any)?.tokens ?? 0,
       byFeature: aiCostByFeature.map((r: any) => ({ feature: r.feature, calls: r.calls, costUsd: r.cost_usd, costBrl: r.cost_usd * USD_TO_BRL, tokens: Number(r.tokens) })),
-      byModel: aiCostByModel.map((r: any) => ({ model: r.model, calls: r.calls, costUsd: r.cost_usd, costBrl: r.cost_usd * USD_TO_BRL })),
+      byModel: aiCostByModel.map((r: any) => ({
+        provider: r.provider,
+        model: r.model,
+        label: r.provider && r.provider !== "Não informado" ? `${r.provider}/${r.model}` : r.model,
+        calls: r.calls,
+        costUsd: r.cost_usd,
+        costBrl: r.cost_usd * USD_TO_BRL,
+        tokens: Number(r.tokens),
+      })),
       perDay: aiCostPerDay.map((r: any) => ({ day: r.day, costUsd: r.cost_usd, costBrl: r.cost_usd * USD_TO_BRL, calls: r.calls })),
+      reconciliation: {
+        source: "ai_cost_log",
+        totalUsd: aiTotalCostUsd,
+        featureUsd: aiFeatureCostUsd,
+        modelUsd: aiModelCostUsd,
+        dailyUsd: aiDailyCostUsd,
+        consistent: aiCostConsistent,
+        rule: "rangeUsd, byFeature, byModel e perDay são agregados das mesmas linhas filtradas por period.from/to.",
+      },
     },
   });
 });

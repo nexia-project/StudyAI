@@ -69,6 +69,11 @@ type AdminStats = {
   recentEvents: { event_type: string; created_at: string; metadata: any; email: string | null; first_name: string | null; last_name: string | null }[];
   eventsByType30d: { event_type: string; count: number; users: number }[];
   aiCost: {
+    period?: {
+      from: string; to: string; prevFrom: string; prevTo: string; days: number;
+      timeZone?: string; boundary?: string;
+    };
+    currency?: { source: string; display: string; usdToBrl: number };
     rangeUsd: number; rangeBrl: number; prevRangeUsd: number; prevRangeBrl: number;
     costPct: number | null; callsRange: number; tokensRange: number;
     todayUsd: number; todayBrl: number;
@@ -76,8 +81,12 @@ type AdminStats = {
     callsToday: number; callsTotal: number;
     tokensToday: number; tokensTotal: number;
     byFeature: { feature: string; calls: number; costUsd: number; costBrl: number; tokens: number }[];
-    byModel: { model: string; calls: number; costUsd: number; costBrl: number }[];
+    byModel: { provider?: string; model: string; label?: string; calls: number; costUsd: number; costBrl: number; tokens?: number }[];
     perDay: { day: string; costUsd: number; costBrl: number; calls: number }[];
+    reconciliation?: {
+      source: string; totalUsd: number; featureUsd: number; modelUsd: number; dailyUsd: number;
+      consistent: boolean; rule: string;
+    };
   };
 };
 
@@ -1537,10 +1546,14 @@ export default function AdminPage() {
             const ac = stats?.aiCost;
             const fmtBrl = (v: number) => `R$ ${v.toFixed(4)}`;
             const fmtBrlShort = (v: number) => v < 0.01 ? `R$ ${v.toFixed(4)}` : `R$ ${v.toFixed(2)}`;
+            const period = ac?.period ?? stats?.dateRange;
+            const periodLabel = period ? `${period.from} → ${period.to}` : "período selecionado";
             const callsRange = ac?.callsRange ?? (ac ? ac.byFeature.reduce((s, f) => s + f.calls, 0) : 0);
             const tokensRange = ac?.tokensRange ?? (ac ? ac.byFeature.reduce((s, f) => s + f.tokens, 0) : 0);
             const noData = !ac || ac.byFeature.length === 0;
             const costPct = ac?.costPct;
+            const rangeBrl = ac?.rangeBrl ?? 0;
+            const reconciles = ac?.reconciliation?.consistent !== false;
             return (
             <div className="space-y-5">
               <h2 className="text-lg font-black flex items-center gap-2"><Bot className="w-5 h-5 text-violet-400" /> IA & Custos Reais</h2>
@@ -1554,11 +1567,11 @@ export default function AdminPage() {
                 {[
                   {
                     label: "Custo no Período", val: fmtBrlShort(ac?.rangeBrl ?? 0),
-                    sub: `US$ ${(ac?.rangeUsd ?? 0).toFixed(4)}`,
+                    sub: `US$ ${(ac?.rangeUsd ?? 0).toFixed(4)} · ${periodLabel}`,
                     pct: costPct != null ? { v: costPct, invert: true } : null,
                     color: "text-violet-400"
                   },
-                  { label: "Custo Hoje", val: fmtBrlShort(ac?.todayBrl ?? 0), sub: `US$ ${(ac?.todayUsd ?? 0).toFixed(4)}`, color: "text-violet-400", pct: null },
+                  { label: "Custo Hoje", val: fmtBrlShort(ac?.todayBrl ?? 0), sub: `Fora do filtro · US$ ${(ac?.todayUsd ?? 0).toFixed(4)}`, color: "text-violet-400", pct: null },
                   { label: "Chamadas no Período", val: callsRange.toLocaleString("pt-BR"), sub: "registradas", color: "text-amber-400", pct: null },
                   { label: "Tokens no Período", val: tokensRange >= 1000 ? `${(tokensRange/1000).toFixed(1)}k` : String(tokensRange), sub: "in + out", color: "text-emerald-400", pct: null },
                 ].map(k => (
@@ -1577,8 +1590,18 @@ export default function AdminPage() {
 
               {/* Custo por dia */}
               <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
-                <p className="text-sm font-bold text-white/70 mb-1">Custo diário — últimos 30 dias</p>
-                <p className="text-[10px] text-white/40 mb-3">Custo em R$ por dia de uso</p>
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div>
+                    <p className="text-sm font-bold text-white/70 mb-1">Custo diário — período selecionado</p>
+                    <p className="text-[10px] text-white/40">Custo em R$ por dia de uso · {periodLabel}</p>
+                  </div>
+                  <span className="text-[10px] text-white/30 font-mono">{ac?.currency?.display ?? "BRL"} @ {(ac?.currency?.usdToBrl ?? 5.85).toFixed(2)}</span>
+                </div>
+                {!reconciles && (
+                  <p className="text-[10px] text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 mb-3">
+                    Atenção: o backend marcou divergência entre total, dia, feature ou modelo. Recarregue e verifique os logs.
+                  </p>
+                )}
                 {(ac?.perDay?.length ?? 0) === 0 ? (
                   <div className="h-[140px] flex items-center justify-center text-xs text-white/30">Sem dados ainda — os custos aparecerão aqui após as primeiras chamadas de IA</div>
                 ) : (
@@ -1604,13 +1627,14 @@ export default function AdminPage() {
               <div className="grid grid-cols-2 gap-4">
                 {/* Custo por feature */}
                 <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
-                  <p className="text-sm font-bold text-white/70 mb-3">Custo por Feature</p>
+                  <p className="text-sm font-bold text-white/70 mb-1">Custo por Feature</p>
+                  <p className="text-[10px] text-white/40 mb-3">Soma deve bater com Custo no Período</p>
                   {noData ? (
                     <p className="text-xs text-white/30 py-4 text-center">Sem dados ainda</p>
                   ) : (
                     <div className="space-y-2.5">
                       {ac!.byFeature.map(f => {
-                        const pct = ac!.monthBrl > 0 ? Math.round((f.costBrl / ac!.monthBrl) * 100) : 0;
+                        const pct = rangeBrl > 0 ? Math.round((f.costBrl / rangeBrl) * 100) : 0;
                         return (
                           <div key={f.feature}>
                             <div className="flex justify-between mb-1">
@@ -1629,7 +1653,8 @@ export default function AdminPage() {
 
                 {/* Custo por modelo */}
                 <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
-                  <p className="text-sm font-bold text-white/70 mb-3">Custo por Modelo</p>
+                  <p className="text-sm font-bold text-white/70 mb-1">Custo por Modelo</p>
+                  <p className="text-[10px] text-white/40 mb-3">Agrupado por provedor/modelo no mesmo período</p>
                   {(ac?.byModel?.length ?? 0) === 0 ? (
                     <p className="text-xs text-white/30 py-4 text-center">Sem dados ainda</p>
                   ) : (
@@ -1637,9 +1662,9 @@ export default function AdminPage() {
                       {ac!.byModel.map((m, i) => {
                         const colors = ["text-violet-400", "text-violet-400", "text-amber-400", "text-emerald-400", "text-rose-400"];
                         return (
-                          <div key={m.model} className="flex items-center justify-between py-2 border-b border-white/[0.05] last:border-0">
+                          <div key={m.label ?? `${m.provider ?? ""}/${m.model}`} className="flex items-center justify-between py-2 border-b border-white/[0.05] last:border-0">
                             <div>
-                              <span className={`text-xs font-bold ${colors[i % colors.length]}`}>{m.model}</span>
+                              <span className={`text-xs font-bold ${colors[i % colors.length]}`}>{m.label ?? m.model}</span>
                               <span className="text-[10px] text-white/30 ml-1.5">{m.calls} chamadas</span>
                             </div>
                             <span className="text-xs font-bold text-white/80">{fmtBrl(m.costBrl)}</span>
@@ -1647,8 +1672,8 @@ export default function AdminPage() {
                         );
                       })}
                       <div className="pt-2 flex justify-between">
-                        <span className="text-xs text-white/40">Total acumulado</span>
-                        <span className="text-sm font-black text-white">{fmtBrlShort(ac?.monthBrl ?? 0)}</span>
+                        <span className="text-xs text-white/40">Total no período</span>
+                        <span className="text-sm font-black text-white">{fmtBrlShort(rangeBrl)}</span>
                       </div>
                     </div>
                   )}

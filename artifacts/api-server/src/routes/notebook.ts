@@ -16,6 +16,7 @@ import { sql } from "drizzle-orm";
 import { validateFileUpload } from "../middlewares/security";
 import { generateImageBuffer } from "@workspace/integrations-openai-ai-server/image";
 import { logAiUsage } from "../lib/aiCostLogger";
+import { estimateTokensFromMessages, estimateTokensFromText, logTextUsage } from "../lib/aiUsageTelemetry";
 import { trackEvent } from "../lib/trackEvent";
 import { injectHermes } from "../lib/hermes/buildHermesContext";
 
@@ -69,6 +70,22 @@ const gpt = new Proxy(_rawGpt, {
                   return async (params: Parameters<typeof compTarget.create>[0], opts?: Parameters<typeof compTarget.create>[1]) => {
                     const enriched = await enrichNotebookChatParams(params as { messages?: unknown[] });
                     const result = await (compTarget.create as Function)(enriched, opts);
+                    if ((enriched as { stream?: boolean }).stream && result?.[Symbol.asyncIterator]) {
+                      return (async function* () {
+                        let accumulated = "";
+                        for await (const chunk of result as AsyncIterable<{ choices?: Array<{ delta?: { content?: string } }> }>) {
+                          const delta = chunk.choices?.[0]?.delta?.content ?? "";
+                          if (delta) accumulated += delta;
+                          yield chunk;
+                        }
+                        logAiUsage({
+                          feature: "notebook_stream",
+                          model: (enriched as { model?: string }).model ?? "gpt-4o-mini",
+                          tokensIn: estimateTokensFromMessages((enriched as { messages?: unknown[] }).messages),
+                          tokensOut: estimateTokensFromText(accumulated),
+                        });
+                      })();
+                    }
                     if (result && typeof result === "object" && "usage" in result && result.usage) {
                       logAiUsage({
                         feature: "notebook",
@@ -832,6 +849,13 @@ router.post("/notebook/upload-audio", upload.single("audio"), async (req: Reques
       language: "pt",
     });
     const text = (transcription.text || "").trim();
+    logTextUsage({
+      userId: req.userId,
+      feature: "notebook_audio_transcription",
+      model: "whisper-1",
+      inputText: file.originalname || file.mimetype || "audio",
+      outputText: text,
+    });
     if (text.length < 20) { res.status(422).json({ erro: "Áudio sem fala detectável" }); return; }
 
     const docTitle = (req.body?.title as string) || file.originalname || "Áudio transcrito";

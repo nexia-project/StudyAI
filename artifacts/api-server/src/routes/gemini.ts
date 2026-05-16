@@ -6,6 +6,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import multer from "multer";
 import { generateImageBuffer } from "@workspace/integrations-openai-ai-server/image";
 import { openrouter, OR } from "../lib/aiClient";
+import { logChatCompletionUsage, logTextUsage } from "../lib/aiUsageTelemetry";
 
 const router: IRouter = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
@@ -40,6 +41,13 @@ router.post("/gemini/gerar-imagem", async (req: Request, res: Response) => {
     ].filter(Boolean).join(" ");
 
     const buffer = await generateImageBuffer(prompt);
+    logTextUsage({
+      userId: req.userId,
+      feature: "gemini_compat_image_generation",
+      model: "gpt-image-1",
+      inputText: prompt,
+      costUsd: 0.04,
+    });
     const b64_json = buffer.toString("base64");
     res.json({ b64_json, mimeType: "image/png", topico });
   } catch (err) {
@@ -67,19 +75,27 @@ router.post("/gemini/analisar-problema", upload.single("imagem"), async (req: Re
       ? `O aluno perguntou: "${pergunta}". Analise a imagem e responda com base nela.`
       : "Analise esta questão ou exercício e resolva passo a passo de forma didática para um aluno do ensino médio.";
 
+    const messages = [{
+      role: "user" as const,
+      content: [
+        { type: "image_url" as const, image_url: { url: `data:${mimeType};base64,${b64}` } },
+        {
+          type: "text" as const,
+          text: `Você é o Professor Tiagão, tutor educacional brasileiro especializado em ENEM. ${instrucao}\nResponda em português brasileiro de forma didática e clara.`,
+        },
+      ],
+    }];
     const completion = await openrouter.chat.completions.create({
       model: OR.vision,
       max_tokens: 1500,
-      messages: [{
-        role: "user",
-        content: [
-          { type: "image_url", image_url: { url: `data:${mimeType};base64,${b64}` } },
-          {
-            type: "text",
-            text: `Você é o Professor Tiagão, tutor educacional brasileiro especializado em ENEM. ${instrucao}\nResponda em português brasileiro de forma didática e clara.`,
-          },
-        ],
-      }],
+      messages,
+    });
+    logChatCompletionUsage({
+      userId: req.userId,
+      feature: "gemini_compat_vision_problem",
+      model: OR.vision,
+      messages,
+      response: completion,
     });
 
     const texto = completion.choices[0]?.message?.content ?? "";
@@ -115,13 +131,22 @@ router.post("/gemini/explicar-texto", async (req: Request, res: Response) => {
       avancado:       "de forma aprofundada, incluindo detalhes técnicos relevantes para o ENEM",
     };
 
+    const prompt = `Você é o Professor Tiagão. Explique o seguinte conteúdo ${nivelMap[nivel ?? "intermediario"]}. Responda em português brasileiro de forma didática e engajadora.\n\n${texto.slice(0, 5000)}`;
+    const messages = [{
+      role: "user" as const,
+      content: prompt,
+    }];
     const completion = await openrouter.chat.completions.create({
       model: OR.claude,
       max_tokens: 1500,
-      messages: [{
-        role: "user",
-        content: `Você é o Professor Tiagão. Explique o seguinte conteúdo ${nivelMap[nivel ?? "intermediario"]}. Responda em português brasileiro de forma didática e engajadora.\n\n${texto.slice(0, 5000)}`,
-      }],
+      messages,
+    });
+    logChatCompletionUsage({
+      userId: req.userId,
+      feature: "gemini_compat_explain_text",
+      model: OR.claude,
+      messages,
+      response: completion,
     });
 
     const resposta = completion.choices[0]?.message?.content ?? "";

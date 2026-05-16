@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import type OpenAI from "openai";
 import { openrouter, OR } from "../lib/aiClient";
+import { logChatCompletionUsage } from "../lib/aiUsageTelemetry";
 
 const router: IRouter = Router();
 
@@ -45,13 +46,21 @@ Regras:
     ];
 
     // gpt-4o (pro): vision-capable on OpenRouter — gpt-4o-mini has no image endpoints
+    const messages = [
+      { role: "system" as const, content: systemPrompt },
+      { role: "user" as const, content: userContent },
+    ];
     const completion = await openrouter.chat.completions.create({
       model: OR.pro,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userContent },
-      ],
+      messages,
       max_tokens: 1200,
+    });
+    logChatCompletionUsage({
+      userId: req.userId,
+      feature: "ocr_explain_vision",
+      model: OR.pro,
+      messages,
+      response: completion,
     });
 
     const explicacao = completion.choices[0]?.message?.content ?? "";

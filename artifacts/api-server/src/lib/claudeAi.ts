@@ -13,6 +13,7 @@
  */
 
 import { openrouter, OR } from "./aiClient";
+import { logChatCompletionUsage } from "./aiUsageTelemetry";
 
 // Modelos Claude via OpenRouter (prefixo anthropic/)
 export const CLAUDE_OPUS   = "anthropic/claude-3-opus";
@@ -41,14 +42,16 @@ export async function claudeText(
   user: string,
   maxTokens = 4096,
 ): Promise<string> {
+  const messages = [
+    { role: "system" as const, content: system },
+    { role: "user" as const, content: user },
+  ];
   const completion = await openrouter.chat.completions.create({
     model,
     max_tokens: maxTokens,
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: user },
-    ],
+    messages,
   });
+  logChatCompletionUsage({ feature: "claude_helper_text", model, messages, response: completion });
   const content = completion.choices[0]?.message?.content;
   if (!content) throw new Error("OpenRouter/Claude retornou resposta vazia");
   return content;
@@ -102,15 +105,17 @@ export async function claudeJson<T = any>(opts: ClaudeJsonOpts): Promise<T> {
   }
 
   // 3) GPT-4o fallback final via OpenRouter
+  const messages = [
+    { role: "system" as const, content: system },
+    { role: "user" as const, content: user },
+  ];
   const completion = await openrouter.chat.completions.create({
     model: openaiFallback,
     temperature: 0.6,
     response_format: { type: "json_object" },
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: user },
-    ],
+    messages,
   });
+  logChatCompletionUsage({ feature: "claude_helper_json_fallback", model: openaiFallback, messages, response: completion });
   const content = completion.choices[0]?.message?.content ?? "{}";
   return JSON.parse(content) as T;
 }
@@ -137,15 +142,17 @@ export async function claudeChat(opts: {
 
   // 1) Claude via OpenRouter
   try {
+    const messages = [
+      { role: "system" as const, content: system },
+      ...history.map(h => ({ role: h.role as "user" | "assistant", content: h.content })),
+      { role: "user" as const, content: user },
+    ];
     const completion = await openrouter.chat.completions.create({
       model: primary,
       max_tokens: maxTokens,
-      messages: [
-        { role: "system", content: system },
-        ...history.map(h => ({ role: h.role as "user" | "assistant", content: h.content })),
-        { role: "user", content: user },
-      ],
+      messages,
     });
+    logChatCompletionUsage({ feature: "claude_helper_chat", model: primary, messages, response: completion });
     const content = completion.choices[0]?.message?.content;
     if (content) return content;
   } catch (err) {
@@ -153,14 +160,16 @@ export async function claudeChat(opts: {
   }
 
   // 2) GPT-4o fallback via OpenRouter
+  const messages = [
+    { role: "system" as const, content: system },
+    ...history.map(h => ({ role: h.role as "user" | "assistant", content: h.content })),
+    { role: "user" as const, content: user },
+  ];
   const completion = await openrouter.chat.completions.create({
     model: openaiFallback,
     temperature: 0.6,
-    messages: [
-      { role: "system", content: system },
-      ...history.map(h => ({ role: h.role as "user" | "assistant", content: h.content })),
-      { role: "user", content: user },
-    ],
+    messages,
   });
+  logChatCompletionUsage({ feature: "claude_helper_chat_fallback", model: openaiFallback, messages, response: completion });
   return completion.choices[0]?.message?.content ?? "";
 }

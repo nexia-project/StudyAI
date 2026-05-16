@@ -8,6 +8,7 @@ import { checkFreeUsage } from "../lib/freeUsage";
 import { searchKnowledge } from "./knowledge";
 import { getBnccContext } from "../data/bncc-data";
 import { logAiUsage } from "../lib/aiCostLogger";
+import { estimateTokensFromMessages, estimateTokensFromText } from "../lib/aiUsageTelemetry";
 import {
   TIAGAO_TOOLS,
   executeTiagaoTool,
@@ -507,7 +508,13 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
     }
     logAiUsage({
       feature: isLanding ? "tiagao-chat-landing" : mathQuery ? "tiagao-chat-math" : "tiagao-chat",
-      model: chatModel, tokensIn: usageIn1, tokensOut: usageOut1, userId: req.userId ?? null,
+      model: chatModel,
+      tokensIn: usageIn1 || estimateTokensFromMessages([
+        { role: "system", content: systemPrompt },
+        ...maxCtxMessages,
+      ]),
+      tokensOut: usageOut1 || estimateTokensFromText(streamedText),
+      userId: req.userId ?? null,
     });
 
     const toolCalls = Object.values(toolCallsMap);
@@ -545,6 +552,7 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
         res.write(`data: ${JSON.stringify({ text: navMsg })}\n\n`);
       } else if (!usedHeavy) {
         // Ferramentas leves: 2ª chamada streaming para comentário final
+        const beforeFollowupText = streamedText;
         const stream2 = await openai.chat.completions.create({
           model: chatModel,
           stream: true,
@@ -566,7 +574,17 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
           }
           if (chunk.usage) { usageIn2 = chunk.usage.prompt_tokens; usageOut2 = chunk.usage.completion_tokens; }
         }
-        logAiUsage({ feature: "tiagao-chat-tool-followup", model: chatModel, tokensIn: usageIn2, tokensOut: usageOut2, userId: req.userId ?? null });
+        logAiUsage({
+          feature: "tiagao-chat-tool-followup",
+          model: chatModel,
+          tokensIn: usageIn2 || estimateTokensFromMessages([
+            { role: "system", content: systemPrompt },
+            ...maxCtxMessages,
+            ...toolResults,
+          ]),
+          tokensOut: usageOut2 || estimateTokensFromText(streamedText.slice(beforeFollowupText.length)),
+          userId: req.userId ?? null,
+        });
       }
       // Ferramentas pesadas: ACK já foi enviado antes da execução → fecha aqui
 

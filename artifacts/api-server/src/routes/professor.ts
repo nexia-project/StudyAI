@@ -34,6 +34,7 @@ import { loadMethodState, saveMethodState } from "../lib/tiagao-method-state";
 import { isMathQuestion } from "../lib/math-detection";
 import { TIAGAO_LANDING_SYSTEM_PROMPT } from "../lib/tiagao-landing-prompt";
 import { humanizeMathForTTS } from "../lib/math-narration";
+import { estimateTokensFromMessages, estimateTokensFromText, logAiUsage as logAiTelemetry, logTextUsage } from "../lib/aiUsageTelemetry";
 
 /**
  * Qwen Math (PR-7) — modelo especializado em exatas via OpenRouter.
@@ -59,8 +60,55 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY ?? process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? "dummy",
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ?? "https://api.openai.com/v1",
 });
-// gptChat → OpenRouter (DeepSeek Flash — rápido e barato)
-const gptChat = openrouter;
+// gptChat → OpenRouter, com telemetria local para o painel IA & Custos.
+const gptChat = new Proxy(openrouter, {
+  get(target, prop) {
+    if (prop === "chat") {
+      return new Proxy(target.chat, {
+        get(chatTarget, chatProp) {
+          if (chatProp === "completions") {
+            return new Proxy(chatTarget.completions, {
+              get(compTarget, compProp) {
+                if (compProp === "create") {
+                  return async (params: Parameters<typeof compTarget.create>[0], opts?: Parameters<typeof compTarget.create>[1]) => {
+                    const result = await (compTarget.create as Function)(params, opts);
+                    if ((params as { stream?: boolean }).stream && result?.[Symbol.asyncIterator]) {
+                      return (async function* () {
+                        let accumulated = "";
+                        for await (const chunk of result as AsyncIterable<{ choices?: Array<{ delta?: { content?: string } }> }>) {
+                          const delta = chunk.choices?.[0]?.delta?.content ?? "";
+                          if (delta) accumulated += delta;
+                          yield chunk;
+                        }
+                        logAiTelemetry({
+                          feature: "tiagao_voice_chat_stream",
+                          model: String((params as { model?: string }).model ?? "nao_classificado"),
+                          tokensIn: estimateTokensFromMessages((params as { messages?: unknown }).messages),
+                          tokensOut: estimateTokensFromText(accumulated),
+                        });
+                      })();
+                    }
+                    if (result && typeof result === "object" && "usage" in result && result.usage) {
+                      logAiTelemetry({
+                        feature: "tiagao_voice_chat",
+                        model: String((params as { model?: string }).model ?? "nao_classificado"),
+                        usage: (result as { usage?: any }).usage,
+                      });
+                    }
+                    return result;
+                  };
+                }
+                return (compTarget as any)[compProp];
+              },
+            });
+          }
+          return (chatTarget as any)[chatProp];
+        },
+      });
+    }
+    return (target as any)[prop];
+  },
+}) as OpenAI;
 const CHAT_MODEL = OR.mini;              // GPT-4o-mini — alunos (rápido e barato)
 const CHAT_MODEL_ADVANCED = OR.pro;     // GPT-4o — professores/admin (qualidade)
 
@@ -1233,6 +1281,13 @@ router.post("/voice-tts", async (req, res) => {
       const errBody = await ttsRes.text().catch(() => "");
       throw new Error(`TTS HTTP ${ttsRes.status}: ${errBody}`);
     }
+    logTextUsage({
+      userId: req.userId,
+      feature: "tiagao_voice_tts",
+      model: "tts-1",
+      inputText: ttsText,
+      costUsd: (ttsText.length / 1_000_000) * 15,
+    });
 
     const audioBuffer = Buffer.from(await ttsRes.arrayBuffer());
     res.setHeader("Content-Type", "audio/mpeg");
@@ -1263,6 +1318,13 @@ router.post("/transcribe", upload.single("audio"), async (req, res) => {
       file: audioFile,
       model: "whisper-1",
       language: "pt",
+    });
+    logTextUsage({
+      userId: req.userId,
+      feature: "tiagao_voice_transcription",
+      model: "whisper-1",
+      inputText: file.originalname || file.mimetype || "audio",
+      outputText: transcription.text,
     });
 
     res.json({ text: transcription.text });

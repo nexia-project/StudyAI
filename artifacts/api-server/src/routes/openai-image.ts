@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { generateImageBuffer } from "@workspace/integrations-openai-ai-server/image";
 import multer from "multer";
+import { logTextUsage } from "../lib/aiUsageTelemetry";
 
 const router: IRouter = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
@@ -19,6 +20,10 @@ const ESTILO_PROMPTS: Record<string, string> = {
   "capa":
     "Artistic book cover style, professional design, strong visual hierarchy, bold colors, creative composition representing the subject matter",
 };
+
+function estimatedImageCostUsd(size: string): number {
+  return size === "1536x1024" || size === "1024x1536" ? 0.08 : 0.04;
+}
 
 // ─── POST /api/openai/gerar-imagem ───────────────────────────────────────────
 // Gera imagem educacional de alta qualidade com gpt-image-1 (OpenAI)
@@ -47,6 +52,13 @@ router.post("/openai/gerar-imagem", async (req: Request, res: Response) => {
     ].filter(Boolean).join(" ");
 
     const buffer = await generateImageBuffer(prompt, size);
+    logTextUsage({
+      userId: req.userId,
+      feature: "openai_image_generation",
+      model: "gpt-image-1",
+      inputText: prompt,
+      costUsd: estimatedImageCostUsd(size),
+    });
     const b64_json = buffer.toString("base64");
 
     res.json({ b64_json, mimeType: "image/png", topico, estilo });
@@ -83,6 +95,13 @@ router.post("/openai/gerar-wallpaper", async (req: Request, res: Response) => {
     ].join(" ");
 
     const buffer = await generateImageBuffer(prompt, "1536x1024");
+    logTextUsage({
+      userId: req.userId,
+      feature: "openai_wallpaper_generation",
+      model: "gpt-image-1",
+      inputText: prompt,
+      costUsd: estimatedImageCostUsd("1536x1024"),
+    });
     const b64_json = buffer.toString("base64");
 
     res.json({ b64_json, mimeType: "image/png" });
@@ -114,6 +133,13 @@ router.post("/openai/editar-imagem", upload.single("imagem"), async (req: Reques
 
     const buffer = await editImages([tmpPath], instrucao);
     fs.unlinkSync(tmpPath);
+    logTextUsage({
+      userId: req.userId,
+      feature: "openai_image_edit",
+      model: "gpt-image-1",
+      inputText: instrucao,
+      costUsd: 0.08,
+    });
 
     const b64_json = buffer.toString("base64");
     res.json({ b64_json, mimeType: "image/png" });

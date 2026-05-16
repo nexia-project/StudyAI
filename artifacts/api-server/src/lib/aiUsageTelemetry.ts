@@ -20,6 +20,11 @@ type LogAiUsageInput = {
   costUsd?: number;
 };
 
+type ChatCompletionLike = {
+  choices?: Array<{ message?: { content?: string | null } }>;
+  usage?: TokenUsage | null;
+};
+
 const MODEL_PRICING_USD_PER_1M_TOKENS: Record<string, { input: number; output: number }> = {
   "openai/gpt-4o-mini": { input: 0.15, output: 0.6 },
   "openai/gpt-4o": { input: 2.5, output: 10 },
@@ -67,6 +72,47 @@ export function estimateTokensFromMessages(messages: unknown): number {
   } catch {
     return 0;
   }
+}
+
+function responseText(response: ChatCompletionLike): string {
+  return response.choices?.map(choice => choice.message?.content ?? "").join("\n") ?? "";
+}
+
+export function logChatCompletionUsage(input: {
+  userId?: string | null;
+  feature: string;
+  model: string;
+  messages: unknown;
+  response: ChatCompletionLike;
+  costUsd?: number;
+}): void {
+  logAiUsage({
+    userId: input.userId,
+    feature: input.feature,
+    model: input.model,
+    usage: input.response.usage,
+    tokensIn: estimateTokensFromMessages(input.messages),
+    tokensOut: estimateTokensFromText(responseText(input.response)),
+    costUsd: input.costUsd,
+  });
+}
+
+export function logTextUsage(input: {
+  userId?: string | null;
+  feature: string;
+  model: string;
+  inputText?: string;
+  outputText?: string;
+  costUsd?: number;
+}): void {
+  logAiUsage({
+    userId: input.userId,
+    feature: input.feature,
+    model: input.model,
+    tokensIn: estimateTokensFromText(input.inputText ?? ""),
+    tokensOut: estimateTokensFromText(input.outputText ?? ""),
+    costUsd: input.costUsd,
+  });
 }
 
 export function logAiUsage(input: LogAiUsageInput): void {

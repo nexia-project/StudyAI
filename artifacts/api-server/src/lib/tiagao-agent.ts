@@ -24,6 +24,7 @@ import {
   appendHermesToSystemPrompt,
   type HermesAudience,
 } from "./hermes/buildHermesContext";
+import { estimateTokensFromMessages, estimateTokensFromText, logAiUsage as logAiTelemetry } from "./aiUsageTelemetry";
 
 // Limpa output da IA (remove markdown fences ```html ... ```), extrai apenas o
 // conteúdo do <body> caso a IA tenha retornado um documento completo, e envolve
@@ -43,7 +44,55 @@ function buildMaterialHTML(title: string, raw: string): string {
 
 // ─── Clients ──────────────────────────────────────────────────────────────────
 // Geração de conteúdo pesado (planos, materiais, HTML) → OpenRouter (mais barato)
-function getGpt() { return openrouter; }
+const tiagaoTrackedOpenrouter = new Proxy(openrouter, {
+  get(target, prop) {
+    if (prop === "chat") {
+      return new Proxy(target.chat, {
+        get(chatTarget, chatProp) {
+          if (chatProp === "completions") {
+            return new Proxy(chatTarget.completions, {
+              get(compTarget, compProp) {
+                if (compProp === "create") {
+                  return async (params: Parameters<typeof compTarget.create>[0], opts?: Parameters<typeof compTarget.create>[1]) => {
+                    const result = await (compTarget.create as Function)(params, opts);
+                    if ((params as { stream?: boolean }).stream && result?.[Symbol.asyncIterator]) {
+                      return (async function* () {
+                        let accumulated = "";
+                        for await (const chunk of result as AsyncIterable<{ choices?: Array<{ delta?: { content?: string } }> }>) {
+                          const delta = chunk.choices?.[0]?.delta?.content ?? "";
+                          if (delta) accumulated += delta;
+                          yield chunk;
+                        }
+                        logAiTelemetry({
+                          feature: "tiagao_agent_tool_stream",
+                          model: String((params as { model?: string }).model ?? CONTENT_MODEL),
+                          tokensIn: estimateTokensFromMessages((params as { messages?: unknown }).messages),
+                          tokensOut: estimateTokensFromText(accumulated),
+                        });
+                      })();
+                    }
+                    if (result && typeof result === "object" && "usage" in result && result.usage) {
+                      logAiTelemetry({
+                        feature: "tiagao_agent_tool",
+                        model: String((params as { model?: string }).model ?? CONTENT_MODEL),
+                        usage: (result as { usage?: any }).usage,
+                      });
+                    }
+                    return result;
+                  };
+                }
+                return (compTarget as any)[compProp];
+              },
+            });
+          }
+          return (chatTarget as any)[chatProp];
+        },
+      });
+    }
+    return (target as any)[prop];
+  },
+}) as OpenAI;
+function getGpt() { return tiagaoTrackedOpenrouter; }
 const CONTENT_MODEL = OR.claude; // Claude Sonnet via OpenRouter — qualidade educacional
 
 /**

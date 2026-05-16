@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import { openai, openrouter, OR } from "../lib/aiClient";
 import { requireAuth } from "../middlewares/requireAuth";
 import { logAiUsage } from "../lib/aiCostLogger";
+import { logTextUsage } from "../lib/aiUsageTelemetry";
 import { cacheGet, cacheSave } from "../lib/semanticCache";
 import { incrementTopicFrequency } from "../lib/generativeMemory";
 import { getVisual } from "../lib/visuals/get-visual";
@@ -405,6 +406,13 @@ router.post("/aula-ia/transcrever", requireAuth, upload.single("audio"), async (
       model: "whisper-1",
       language: "pt",
       response_format: "text",
+    });
+    logTextUsage({
+      userId: req.userId,
+      feature: "aula_ia_transcription",
+      model: "whisper-1",
+      inputText: req.file.originalname || req.file.mimetype || "audio",
+      outputText: String(transcription ?? ""),
     });
 
     res.json({ texto: transcription });

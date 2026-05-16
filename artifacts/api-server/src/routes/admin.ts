@@ -275,8 +275,34 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
     safeQueryOne("aiCostRange",  () => db.execute(sql`SELECT COALESCE(SUM(cost_usd::numeric), 0)::float AS total, COUNT(*)::int AS calls, COALESCE(SUM(tokens_in + tokens_out), 0)::int AS tokens FROM ai_cost_log WHERE created_at::date BETWEEN ${rangeFrom}::date AND ${rangeTo}::date`)),
     safeQueryOne("aiCostPrev",   () => db.execute(sql`SELECT COALESCE(SUM(cost_usd::numeric), 0)::float AS total FROM ai_cost_log WHERE created_at::date BETWEEN ${prevFrom}::date AND ${prevTo}::date`)),
     safeQuery("aiByFeature",     () => db.execute(sql`SELECT feature, COUNT(*)::int AS calls, COALESCE(SUM(cost_usd::numeric), 0)::float AS cost_usd, COALESCE(SUM(tokens_in + tokens_out)::int, 0) AS tokens FROM ai_cost_log WHERE created_at::date BETWEEN ${rangeFrom}::date AND ${rangeTo}::date GROUP BY feature ORDER BY cost_usd DESC`)),
-    safeQuery("aiByModel",       () => db.execute(sql`SELECT model, COUNT(*)::int AS calls, COALESCE(SUM(cost_usd::numeric), 0)::float AS cost_usd FROM ai_cost_log WHERE created_at::date BETWEEN ${rangeFrom}::date AND ${rangeTo}::date GROUP BY model ORDER BY cost_usd DESC`)),
-    safeQuery("aiPerDay",        () => db.execute(sql`SELECT created_at::date::text AS day, COALESCE(SUM(cost_usd::numeric), 0)::float AS cost_usd, COUNT(*)::int AS calls FROM ai_cost_log WHERE created_at::date BETWEEN ${rangeFrom}::date AND ${rangeTo}::date GROUP BY created_at::date ORDER BY day`)),
+    // Strip provider prefix (e.g. openai/gpt-4o-mini → gpt-4o-mini) so totals match pricing keys and avoid split rows.
+    safeQuery("aiByModel",       () => db.execute(sql`
+      SELECT
+        CASE WHEN POSITION('/' IN COALESCE(model, '')) > 0
+          THEN SUBSTRING(model FROM POSITION('/' IN model) + 1)
+          ELSE COALESCE(model, '(desconhecido)')
+        END AS model,
+        COUNT(*)::int AS calls,
+        COALESCE(SUM(cost_usd::numeric), 0)::float AS cost_usd
+      FROM ai_cost_log
+      WHERE created_at::date BETWEEN ${rangeFrom}::date AND ${rangeTo}::date
+      GROUP BY 1
+      ORDER BY cost_usd DESC
+    `)),
+    // One row per calendar day in the filter (zero-filled), so charts match the selected range even on sparse usage.
+    safeQuery("aiPerDay",        () => db.execute(sql`
+      WITH days AS (
+        SELECT generate_series(${rangeFrom}::date, ${rangeTo}::date, interval '1 day')::date AS d
+      )
+      SELECT
+        days.d::text AS day,
+        COALESCE(SUM(l.cost_usd::numeric), 0)::float AS cost_usd,
+        COUNT(l.id)::int AS calls
+      FROM days
+      LEFT JOIN ai_cost_log l ON l.created_at::date = days.d
+      GROUP BY days.d
+      ORDER BY days.d
+    `)),
     safeQueryOne("aiCallsTotal", () => db.execute(sql`SELECT COUNT(*)::int AS calls, COALESCE(SUM(tokens_in + tokens_out), 0)::int AS tokens FROM ai_cost_log`)),
     safeQueryOne("aiCostToday",  () => db.execute(sql`SELECT COALESCE(SUM(cost_usd::numeric), 0)::float AS total, COUNT(*)::int AS calls FROM ai_cost_log WHERE created_at::date = ${today}::date`)),
     safeQueryOne("aiCostMonth",  () => db.execute(sql`SELECT COALESCE(SUM(cost_usd::numeric), 0)::float AS total FROM ai_cost_log WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())`)),

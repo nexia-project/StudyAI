@@ -115,7 +115,13 @@ type HermesDescoberta = {
 };
 type HermesInboxItem = {
   id: string; agentId: string; tipo: string; titulo: string; corpo: string;
-  lida: boolean; createdAt: string;
+  payload: Record<string, unknown> | null; lida: boolean; createdAt: string;
+};
+type HermesRecommendation = {
+  agentId?: string; area?: string; targetSurface?: string; observedState?: string;
+  evidence?: string; problemOpportunity?: string; recommendedChange?: string;
+  expectedImpact?: string; confidence?: string; successMetric?: string;
+  implementationNotes?: string; acceptanceCriteria?: string[];
 };
 type HermesStatus = {
   ok: boolean;
@@ -134,6 +140,43 @@ type HermesStatus = {
     keywordStats: { postuladoCoverageRatio: number };
   } | null;
 };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function extractHermesRecommendation(source: Record<string, unknown> | null | undefined): HermesRecommendation | null {
+  if (!source) return null;
+  const recommendation = source.recommendation;
+  return isRecord(recommendation) ? (recommendation as HermesRecommendation) : null;
+}
+
+function HermesRecommendationDetails({ recommendation }: { recommendation: HermesRecommendation | null }) {
+  if (!recommendation) return null;
+
+  const fields: Array<[string, unknown]> = [
+    ["Superfície", recommendation.targetSurface],
+    ["Evidência", recommendation.observedState || recommendation.evidence],
+    ["Problema/oportunidade", recommendation.problemOpportunity],
+    ["Mudança", recommendation.recommendedChange],
+    ["Impacto", recommendation.expectedImpact],
+    ["Confiança", recommendation.confidence],
+    ["Métrica", recommendation.successMetric],
+    ["Notas/aceite", recommendation.implementationNotes || recommendation.acceptanceCriteria?.join("; ")],
+  ];
+
+  return (
+    <div className="mt-2 rounded-lg border border-cyan-500/10 bg-cyan-500/[0.03] p-2 text-[11px] text-white/55 space-y-1">
+      {fields
+        .filter(([, value]) => typeof value === "string" && value.trim())
+        .map(([label, value]) => (
+          <p key={label}>
+            <span className="text-cyan-300/80 font-semibold">{label}:</span> {String(value)}
+          </p>
+        ))}
+    </div>
+  );
+}
 
 /* ─── Sidebar nav config ─────────────────────────────────────── */
 const NAV = [
@@ -566,7 +609,7 @@ export default function AdminPage() {
   });
 
   /* ── Charts derived from REAL backend metrics ──────────────────────── */
-  // IA & Custos: usage volume per AI feature (last 7d) — replaces hardcoded model bars
+  // IA & Custos (Visão Geral): volume por feature — backend já filtra a maioria pelo período; rótulos seguem o filtro de datas.
   const aiCostsChart = (stats?.aiFeatures ?? []).map((f) => ({
     model: f.feature.length > 7 ? f.feature.slice(0, 6) + "…" : f.feature,
     cost: f.last7d || f.uses || 0,
@@ -955,7 +998,7 @@ export default function AdminPage() {
                     <BarChart data={aiCostsChart} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
                       <XAxis dataKey="model" tick={{ fill: "rgba(255,255,255,0.2)", fontSize: 8 }} />
                       <Tooltip contentStyle={{ background: "#1a1a2e", border: "none", borderRadius: 8, color: "#fff", fontSize: 10 }}
-                        formatter={(v: any) => [`${Number(v).toLocaleString("pt-BR")} usos`, "Últ. 7d"]} />
+                        formatter={(v: any) => [`${Number(v).toLocaleString("pt-BR")} usos`, stats?.dateRange?.days ? `${stats.dateRange.days}d` : "Período"]} />
                       <Bar dataKey="cost" fill="#3b82f6" radius={[2, 2, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -2037,6 +2080,7 @@ export default function AdminPage() {
                                 </span>
                               </motion.div>
                               <p className="text-sm text-white/80 leading-snug">{d.descoberta}</p>
+                              <HermesRecommendationDetails recommendation={extractHermesRecommendation(d.evidencia)} />
                             </div>
                           ))}
                         </div>
@@ -2073,6 +2117,7 @@ export default function AdminPage() {
                                       <span className="text-[10px] text-white/40">{item.agentId} · {item.tipo}</span>
                                     </div>
                                     <p className="text-xs text-white/60 line-clamp-3">{item.corpo}</p>
+                                    <HermesRecommendationDetails recommendation={extractHermesRecommendation(item.payload)} />
                                   </motion.div>
                                   <div className="flex flex-col gap-1 flex-shrink-0">
                                     <Button

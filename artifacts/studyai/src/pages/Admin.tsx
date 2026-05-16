@@ -119,9 +119,10 @@ type HermesInboxItem = {
 };
 type HermesRecommendation = {
   agentId?: string; area?: string; targetSurface?: string; observedState?: string;
-  evidence?: string; problemOpportunity?: string; recommendedChange?: string;
-  expectedImpact?: string; confidence?: string; successMetric?: string;
-  implementationNotes?: string; acceptanceCriteria?: string[];
+  evidence?: unknown; problemOpportunity?: unknown; recommendedChange?: unknown;
+  expectedImpact?: unknown; confidence?: unknown; successMetric?: unknown;
+  implementationNotes?: unknown; acceptanceCriteria?: unknown;
+  metrics?: unknown; actions?: unknown;
 };
 type HermesStatus = {
   ok: boolean;
@@ -145,6 +146,135 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+function asRecord(value: unknown): Record<string, any> {
+  return isRecord(value) ? value : {};
+}
+
+function asArray<T = any>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
+function asNumber(value: unknown, fallback = 0): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function textValue(value: unknown): string | null {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed ? trimmed : null;
+  }
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) {
+    const text = value.map(textValue).filter(Boolean).join("; ");
+    return text || null;
+  }
+  return null;
+}
+
+function normalizeAdminStatsPayload(payload: unknown): AdminStats {
+  const data = asRecord(payload);
+  const aiCost = asRecord(data.aiCost);
+  return {
+    ...(data as AdminStats),
+    plansPerDay: asArray(data.plansPerDay),
+    simuladosPerDay: asArray(data.simuladosPerDay),
+    newUsersPerDay: asArray(data.newUsersPerDay),
+    recentUsers: asArray(data.recentUsers),
+    recentLogins: asArray(data.recentLogins),
+    loginsByDay: asArray(data.loginsByDay),
+    loginsByHour: asArray(data.loginsByHour),
+    topMaterias: asArray(data.topMaterias),
+    activityHeatmap: asArray(data.activityHeatmap),
+    aiFeatures: asArray(data.aiFeatures),
+    aiProviders: asArray(data.aiProviders),
+    trilhaBySubject: asArray(data.trilhaBySubject),
+    contentBreakdown: asArray(data.contentBreakdown),
+    subscriptionDist: asArray(data.subscriptionDist),
+    recentEvents: asArray(data.recentEvents),
+    eventsByType30d: asArray(data.eventsByType30d),
+    aiCost: {
+      ...(aiCost as AdminStats["aiCost"]),
+      byFeature: asArray(aiCost.byFeature),
+      byModel: asArray(aiCost.byModel),
+      perDay: asArray(aiCost.perDay),
+    },
+  };
+}
+
+function normalizeFonteConsumoPayload(payload: unknown): FonteConsumo {
+  const data = asRecord(payload);
+  const ia = asRecord(data.ia);
+  const cache = asRecord(data.cache);
+  return {
+    ...(data as FonteConsumo),
+    ia: {
+      ...(ia as FonteConsumo["ia"]),
+      byModel: asArray(ia.byModel),
+    },
+    cache: {
+      ...(cache as FonteConsumo["cache"]),
+      byFeature: asArray(cache.byFeature),
+    },
+    fontes: asArray(data.fontes),
+  };
+}
+
+function normalizeHermesStatusPayload(payload: unknown): HermesStatus {
+  const data = asRecord(payload);
+  const inbox = asRecord(data.inbox);
+  const lastCronHint = data.lastCronHint ? asRecord(data.lastCronHint) : null;
+  const contentIndex = data.contentIndex ? asRecord(data.contentIndex) : null;
+  const knowledgeDocuments = asRecord(contentIndex?.knowledgeDocuments);
+
+  return {
+    ...(data as HermesStatus),
+    ok: data.ok !== false,
+    descobertas: asArray(data.descobertas),
+    inbox: {
+      ...(inbox as HermesStatus["inbox"]),
+      items: asArray(inbox.items),
+      unreadCount: asNumber(inbox.unreadCount),
+    },
+    pendingAcoesCount: asNumber(data.pendingAcoesCount),
+    lastCronHint: lastCronHint
+      ? ({
+          ...(lastCronHint as HermesStatus["lastCronHint"]),
+          ran: asArray(lastCronHint.ran),
+        } as HermesStatus["lastCronHint"])
+      : null,
+    contentIndex: contentIndex
+      ? ({
+          ...(contentIndex as HermesStatus["contentIndex"]),
+          knowledgeDocuments: {
+            ...knowledgeDocuments,
+            totalParents: asNumber(knowledgeDocuments.totalParents),
+            postulados: asNumber(knowledgeDocuments.postulados),
+            contentGaps: asArray(knowledgeDocuments.contentGaps),
+          },
+          knowledgeBase: {
+            ...asRecord(contentIndex.knowledgeBase),
+            total: asNumber(asRecord(contentIndex.knowledgeBase).total),
+            distinctUsers: asNumber(asRecord(contentIndex.knowledgeBase).distinctUsers),
+          },
+          boardLessons: {
+            ...asRecord(contentIndex.boardLessons),
+            total: asNumber(asRecord(contentIndex.boardLessons).total),
+            ready: asNumber(asRecord(contentIndex.boardLessons).ready),
+          },
+          generatedContent: {
+            ...asRecord(contentIndex.generatedContent),
+            totalActive: asNumber(asRecord(contentIndex.generatedContent).totalActive),
+          },
+          keywordStats: {
+            ...asRecord(contentIndex.keywordStats),
+            postuladoCoverageRatio: asNumber(asRecord(contentIndex.keywordStats).postuladoCoverageRatio),
+          },
+        } as HermesStatus["contentIndex"])
+      : null,
+  };
+}
+
 function extractHermesRecommendation(source: Record<string, unknown> | null | undefined): HermesRecommendation | null {
   if (!source) return null;
   const recommendation = source.recommendation;
@@ -162,13 +292,17 @@ function HermesRecommendationDetails({ recommendation }: { recommendation: Herme
     ["Impacto", recommendation.expectedImpact],
     ["Confiança", recommendation.confidence],
     ["Métrica", recommendation.successMetric],
-    ["Notas/aceite", recommendation.implementationNotes || recommendation.acceptanceCriteria?.join("; ")],
+    ["Notas", recommendation.implementationNotes],
+    ["Critérios de aceite", recommendation.acceptanceCriteria],
+    ["Métricas", recommendation.metrics],
+    ["Ações", recommendation.actions],
   ];
 
   return (
     <div className="mt-2 rounded-lg border border-cyan-500/10 bg-cyan-500/[0.03] p-2 text-[11px] text-white/55 space-y-1">
       {fields
-        .filter(([, value]) => typeof value === "string" && value.trim())
+        .map(([label, value]) => [label, textValue(value)] as const)
+        .filter(([, value]) => value)
         .map(([label, value]) => (
           <p key={label}>
             <span className="text-cyan-300/80 font-semibold">{label}:</span> {String(value)}
@@ -460,7 +594,7 @@ export default function AdminPage() {
       const qs = new URLSearchParams({ from: r.from, to: r.to }).toString();
       const res = await adminFetch(`/api/admin/stats?${qs}`);
       if (res.ok) {
-        setStats(await res.json());
+        setStats(normalizeAdminStatsPayload(await res.json()));
       } else {
         console.error("[fetchStats] error", res.status, await res.text().catch(() => ""));
       }
@@ -475,7 +609,7 @@ export default function AdminPage() {
     setFonteLoading(true);
     try {
       const res = await adminFetch("/api/admin/fonte-consumo");
-      if (res.ok) setFonteConsumo(await res.json());
+      if (res.ok) setFonteConsumo(normalizeFonteConsumoPayload(await res.json()));
     } catch {}
     finally { setFonteLoading(false); }
   }
@@ -500,7 +634,7 @@ export default function AdminPage() {
     setHermesLoading(true);
     try {
       const res = await adminFetch("/api/agents/hermes/status");
-      if (res.ok) setHermesStatus(await res.json());
+      if (res.ok) setHermesStatus(normalizeHermesStatusPayload(await res.json()));
       else setHermesStatus(null);
     } catch {
       setHermesStatus(null);
@@ -610,10 +744,13 @@ export default function AdminPage() {
 
   /* ── Charts derived from REAL backend metrics ──────────────────────── */
   // IA & Custos (Visão Geral): volume por feature — backend já filtra a maioria pelo período; rótulos seguem o filtro de datas.
-  const aiCostsChart = (stats?.aiFeatures ?? []).map((f) => ({
-    model: f.feature.length > 7 ? f.feature.slice(0, 6) + "…" : f.feature,
-    cost: f.last7d || f.uses || 0,
-  }));
+  const aiCostsChart = (stats?.aiFeatures ?? []).map((f) => {
+    const feature = String(f.feature ?? "ia");
+    return {
+      model: feature.length > 7 ? feature.slice(0, 6) + "…" : feature,
+      cost: f.last7d || f.uses || 0,
+    };
+  });
   const aiFeaturesList = stats?.aiFeatures ?? [];
   const totalAiUses = Math.max(1, aiFeaturesList.reduce((s, f) => s + (f.uses || 0), 0));
 
@@ -1062,7 +1199,7 @@ export default function AdminPage() {
                         <span className="text-[10px] font-bold text-violet-400">{m.count}</span>
                       </div>
                     ))}
-                    {(!stats || stats.topMaterias.length === 0) && (
+                    {(!stats || (stats.topMaterias ?? []).length === 0) && (
                       <p className="text-[10px] text-white/20 text-center py-1">Sem dados ainda</p>
                     )}
                   </div>
@@ -1949,7 +2086,7 @@ export default function AdminPage() {
                       </div>
                     );
                   })}
-                  {(!stats || stats.recentLogins.length === 0) && <p className="text-center text-white/30 py-4 text-sm">Nenhum login registrado</p>}
+                  {(!stats || (stats.recentLogins ?? []).length === 0) && <p className="text-center text-white/30 py-4 text-sm">Nenhum login registrado</p>}
                 </div>
               </div>
 

@@ -30,13 +30,34 @@ type CostBasis = "logged_usage" | "provider_invoice" | "mixed";
 
 type ProviderDiagnostic = {
   id: string;
+  name?: string;
   ok: boolean;
+  runtimeStatus?: IntegrationStatus;
+  statusLabel?: string;
+  requiredEnv?: string[];
+  configuredEnv?: string[];
   billingIntegrated: boolean;
+  billingStatus?: ProviderBillingStatus;
   loggedVia: string[];
   notes?: string;
 };
 
 type ProviderBillingStatus = "connected" | "missing_config" | "unsupported" | "error" | "not_implemented";
+type IntegrationStatus = "configured" | "connected" | "missing_config" | "unsupported" | "not_implemented" | "routed" | "local" | "disabled" | "error";
+
+type AdminIntegration = {
+  id: string;
+  name: string;
+  category: "ai-runtime" | "ai-billing" | "media" | "data" | "platform" | "content";
+  status: IntegrationStatus;
+  ok: boolean;
+  requiredEnv: string[];
+  configuredEnv: string[];
+  runtimeStatus?: IntegrationStatus;
+  billingStatus?: ProviderBillingStatus;
+  detail: string;
+  action?: string;
+};
 
 type ProviderBilling = {
   provider: string;
@@ -107,6 +128,20 @@ function sumUsd(rows: any[]): number {
 
 function isConfigured(...names: string[]): boolean {
   return names.some(name => {
+    const value = process.env[name];
+    return Boolean(value && value !== "dummy" && value.length > 0);
+  });
+}
+
+function allConfigured(...names: string[]): boolean {
+  return names.every(name => {
+    const value = process.env[name];
+    return Boolean(value && value !== "dummy" && value.length > 0);
+  });
+}
+
+function configuredEnvNames(...names: string[]): string[] {
+  return names.filter(name => {
     const value = process.env[name];
     return Boolean(value && value !== "dummy" && value.length > 0);
   });
@@ -226,12 +261,14 @@ async function getOpenRouterBilling(): Promise<ProviderBilling> {
 }
 
 async function getOpenAiBilling(rangeFrom: string, rangeTo: string): Promise<ProviderBilling> {
-  const key = getConfiguredEnv("OPENAI_ADMIN_API_KEY", "OPENAI_API_KEY");
+  const key = getConfiguredEnv("OPENAI_ADMIN_API_KEY");
   if (!key) {
     return providerBillingBase(
       "openai",
       "missing_config",
-      "Configure OPENAI_ADMIN_API_KEY (org owner/admin com permissão de Usage/Costs). OPENAI_API_KEY comum pode não ter acesso a custos.",
+      isConfigured("OPENAI_API_KEY", "AI_INTEGRATIONS_OPENAI_API_KEY")
+        ? "Runtime OpenAI está configurado, mas custo real exige OPENAI_ADMIN_API_KEY com permissão de Usage/Costs."
+        : "Configure OPENAI_ADMIN_API_KEY (org owner/admin com permissão de Usage/Costs). Chave runtime comum não consulta custos.",
       { period: { from: rangeFrom, to: rangeTo } },
     );
   }
@@ -418,13 +455,25 @@ async function buildProviderBilling(rangeFrom: string, rangeTo: string): Promise
     providerBillingBase(
       "gemini",
       "unsupported",
-      "Gemini/Google não tem endpoint simples de fatura via GEMINI_API_KEY; custos reais exigem Google Cloud Billing Export/API no projeto.",
+      "Gemini/Google AI não tem endpoint de fatura via GEMINI_API_KEY; custos reais exigem Google Cloud Billing Export/API.",
+      { period: { from: rangeFrom, to: rangeTo } },
+    ),
+    providerBillingBase(
+      "google-cloud-billing",
+      "not_implemented",
+      "Google Cloud Billing Export/API ainda não está implementado nesta API admin.",
       { period: { from: rangeFrom, to: rangeTo } },
     ),
     providerBillingBase(
       "deepseek",
       "not_implemented",
-      "DeepSeek está sendo usado via OpenRouter neste deploy; reconcilie pelo saldo/uso do OpenRouter ou configure integração direta dedicada.",
+      "DeepSeek direto não está implementado; os modelos deepseek/* rodam via OpenRouter neste deploy.",
+      { period: { from: rangeFrom, to: rangeTo } },
+    ),
+    providerBillingBase(
+      "together",
+      "not_implemented",
+      "Together/FLUX pode gerar imagens com TOGETHER_API_KEY, mas billing real da Together ainda não é consultado.",
       { period: { from: rangeFrom, to: rangeTo } },
     ),
     elevenlabs,
@@ -442,59 +491,391 @@ async function tableExists(tableName: string): Promise<boolean> {
   return Boolean((row as any)?.exists);
 }
 
-function buildProviderDiagnostics(aiCostByModel: any[]): ProviderDiagnostic[] {
+function integrationOk(status: IntegrationStatus): boolean {
+  return status === "configured" || status === "connected" || status === "routed" || status === "local";
+}
+
+function integrationStatusLabel(status: IntegrationStatus): string {
+  const labels: Record<IntegrationStatus, string> = {
+    configured: "Config env presente",
+    connected: "Validado",
+    missing_config: "Config ausente",
+    unsupported: "Sem API suportada",
+    not_implemented: "Não implementado",
+    routed: "Roteado",
+    local: "Local/gratuito",
+    disabled: "Desligado por env",
+    error: "Erro",
+  };
+  return labels[status];
+}
+
+function makeIntegration(input: Omit<AdminIntegration, "ok" | "configuredEnv"> & { configuredEnv?: string[] }): AdminIntegration {
+  return {
+    ...input,
+    ok: integrationOk(input.status),
+    configuredEnv: input.configuredEnv ?? configuredEnvNames(...input.requiredEnv),
+  };
+}
+
+function billingStatusToIntegrationStatus(status?: ProviderBillingStatus): IntegrationStatus {
+  if (status === "connected") return "connected";
+  if (status === "error") return "error";
+  if (status === "unsupported") return "unsupported";
+  if (status === "not_implemented") return "not_implemented";
+  return "missing_config";
+}
+
+function buildIntegrationInventory(providerBilling: ProviderBilling[], missingTables: string[]): AdminIntegration[] {
+  const billingByProvider = new Map(providerBilling.map(item => [item.provider, item]));
+  const billingIntegration = (provider: string) => billingStatusToIntegrationStatus(billingByProvider.get(provider)?.status);
+  const billingStatus = (provider: string) => billingByProvider.get(provider)?.status;
+  const openrouterConfigured = isConfigured("AI_INTEGRATIONS_OPENROUTER_API_KEY", "OPENROUTER_API_KEY");
+  const openaiRuntimeConfigured = isConfigured("OPENAI_API_KEY", "AI_INTEGRATIONS_OPENAI_API_KEY");
+  const visualsDisabled = String(process.env.VISUALS_ENABLED ?? "").toLowerCase() === "false";
+  const visualsConfigured = !visualsDisabled && isConfigured("TOGETHER_API_KEY", "OPENAI_API_KEY");
+
+  return [
+    makeIntegration({
+      id: "openrouter",
+      name: "OpenRouter runtime",
+      category: "ai-runtime",
+      status: openrouterConfigured ? "configured" : "missing_config",
+      runtimeStatus: openrouterConfigured ? "configured" : "missing_config",
+      billingStatus: billingStatus("openrouter"),
+      requiredEnv: ["AI_INTEGRATIONS_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"],
+      detail: "Cliente central de chat/completions para GPT, Claude e DeepSeek via OpenRouter.",
+      action: "Configure AI_INTEGRATIONS_OPENROUTER_API_KEY ou OPENROUTER_API_KEY.",
+    }),
+    makeIntegration({
+      id: "openrouter-billing",
+      name: "OpenRouter billing/credits",
+      category: "ai-billing",
+      status: billingIntegration("openrouter"),
+      billingStatus: billingStatus("openrouter"),
+      requiredEnv: ["OPENROUTER_MANAGEMENT_API_KEY"],
+      detail: "Saldo real consultado em /api/v1/credits quando a management key responde.",
+      action: billingByProvider.get("openrouter")?.action,
+    }),
+    makeIntegration({
+      id: "openai-runtime",
+      name: "OpenAI runtime direto",
+      category: "ai-runtime",
+      status: openaiRuntimeConfigured ? "configured" : "missing_config",
+      runtimeStatus: openaiRuntimeConfigured ? "configured" : "missing_config",
+      billingStatus: billingStatus("openai"),
+      requiredEnv: ["OPENAI_API_KEY", "AI_INTEGRATIONS_OPENAI_API_KEY"],
+      detail: "Usado diretamente para TTS, Whisper/STT, embeddings do cache semântico e DALL-E premium.",
+      action: "Configure OPENAI_API_KEY para APIs diretas; AI_INTEGRATIONS_OPENAI_API_KEY pode cobrir parte do runtime.",
+    }),
+    makeIntegration({
+      id: "openai-billing",
+      name: "OpenAI Admin billing",
+      category: "ai-billing",
+      status: billingIntegration("openai"),
+      billingStatus: billingStatus("openai"),
+      requiredEnv: ["OPENAI_ADMIN_API_KEY"],
+      configuredEnv: configuredEnvNames("OPENAI_ADMIN_API_KEY", "OPENAI_ORG_ID", "OPENAI_PROJECT_ID"),
+      detail: "Custo real vem de /v1/organization/costs; OPENAI_ORG_ID/OPENAI_PROJECT_ID são opcionais quando a conta exige escopo.",
+      action: billingByProvider.get("openai")?.action,
+    }),
+    makeIntegration({
+      id: "anthropic-messages",
+      name: "Anthropic Messages API",
+      category: "ai-runtime",
+      status: isConfigured("ANTHROPIC_API_KEY") ? "configured" : openrouterConfigured ? "routed" : "missing_config",
+      runtimeStatus: isConfigured("ANTHROPIC_API_KEY") ? "configured" : openrouterConfigured ? "routed" : "missing_config",
+      billingStatus: billingStatus("anthropic"),
+      requiredEnv: ["ANTHROPIC_API_KEY"],
+      detail: openrouterConfigured
+        ? "Claude em produção está roteado via modelos anthropic/* no OpenRouter; cliente Anthropic direto não é usado no código atual."
+        : "Sem OpenRouter ou ANTHROPIC_API_KEY, Claude não tem rota operacional.",
+      action: "Para Anthropic direto, implemente cliente Messages API e configure ANTHROPIC_API_KEY; hoje o caminho suportado é OpenRouter.",
+    }),
+    makeIntegration({
+      id: "anthropic-admin-billing",
+      name: "Anthropic Admin billing",
+      category: "ai-billing",
+      status: billingIntegration("anthropic"),
+      billingStatus: billingStatus("anthropic"),
+      requiredEnv: ["ANTHROPIC_ADMIN_API_KEY", "ANTHROPIC_ADMIN_KEY"],
+      detail: "Custo real consultado pelo Cost Report da Admin API, separado de ANTHROPIC_API_KEY de mensagens.",
+      action: billingByProvider.get("anthropic")?.action,
+    }),
+    makeIntegration({
+      id: "deepseek-via-openrouter",
+      name: "DeepSeek via OpenRouter",
+      category: "ai-runtime",
+      status: openrouterConfigured ? "routed" : "missing_config",
+      runtimeStatus: openrouterConfigured ? "routed" : "missing_config",
+      billingStatus: billingStatus("openrouter"),
+      requiredEnv: ["AI_INTEGRATIONS_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"],
+      detail: "Modelo deepseek/deepseek-r1-0528 é selecionado pelo router, mas executa via OpenRouter.",
+      action: "Para medir fatura real, use OpenRouter billing/credits.",
+    }),
+    makeIntegration({
+      id: "deepseek-direct",
+      name: "DeepSeek direto",
+      category: "ai-runtime",
+      status: "not_implemented",
+      runtimeStatus: "not_implemented",
+      billingStatus: billingStatus("deepseek"),
+      requiredEnv: ["DEEPSEEK_API_KEY"],
+      detail: "Não há cliente DeepSeek direto no código atual; DEEPSEEK_API_KEY não torna a rota operacional.",
+      action: "Manter via OpenRouter ou implementar cliente direto antes de marcar como configurado.",
+    }),
+    makeIntegration({
+      id: "gemini-google-ai",
+      name: "Gemini / Google AI",
+      category: "ai-runtime",
+      status: "not_implemented",
+      runtimeStatus: "not_implemented",
+      billingStatus: billingStatus("gemini"),
+      requiredEnv: ["GEMINI_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY"],
+      detail: "A função legada generateWithGemini usa Claude via OpenRouter; não existe cliente Gemini ativo nesta API.",
+      action: "Implementar cliente Gemini antes de considerar GEMINI_API_KEY como runtime OK.",
+    }),
+    makeIntegration({
+      id: "google-cloud-billing",
+      name: "Google Cloud Billing",
+      category: "ai-billing",
+      status: billingIntegration("google-cloud-billing"),
+      billingStatus: billingStatus("google-cloud-billing"),
+      requiredEnv: ["GOOGLE_CLOUD_PROJECT", "GOOGLE_APPLICATION_CREDENTIALS"],
+      detail: "Separado de GEMINI_API_KEY; exigiria Billing Export/API do projeto Google Cloud.",
+      action: billingByProvider.get("google-cloud-billing")?.action,
+    }),
+    makeIntegration({
+      id: "openai-tts-stt",
+      name: "OpenAI TTS / Whisper",
+      category: "media",
+      status: openaiRuntimeConfigured ? "configured" : "missing_config",
+      runtimeStatus: openaiRuntimeConfigured ? "configured" : "missing_config",
+      billingStatus: billingStatus("openai"),
+      requiredEnv: ["OPENAI_API_KEY", "AI_INTEGRATIONS_OPENAI_API_KEY", "AI_INTEGRATIONS_OPENAI_BASE_URL"],
+      configuredEnv: configuredEnvNames("OPENAI_API_KEY", "AI_INTEGRATIONS_OPENAI_API_KEY", "AI_INTEGRATIONS_OPENAI_BASE_URL"),
+      detail: "Rotas /voice-tts e /transcribe usam OpenAI direto/proxy, com fallback de voz no navegador quando TTS falha.",
+      action: "Configure OPENAI_API_KEY para TTS/STT direto e OPENAI_ADMIN_API_KEY para custos reais.",
+    }),
+    makeIntegration({
+      id: "ocr-vision",
+      name: "OCR/visão",
+      category: "media",
+      status: openrouterConfigured ? "routed" : "missing_config",
+      runtimeStatus: openrouterConfigured ? "routed" : "missing_config",
+      billingStatus: billingStatus("openrouter"),
+      requiredEnv: ["AI_INTEGRATIONS_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"],
+      detail: "Upload de imagem usa OR.vision (openai/gpt-4o por padrão) via OpenRouter.",
+      action: "Configure OpenRouter; custos reais ficam no OpenRouter credits ou no ai_cost_log quando logado.",
+    }),
+    makeIntegration({
+      id: "image-generation",
+      name: "Geração de imagens",
+      category: "media",
+      status: visualsDisabled ? "disabled" : visualsConfigured ? "configured" : "missing_config",
+      runtimeStatus: visualsDisabled ? "disabled" : visualsConfigured ? "configured" : "missing_config",
+      billingStatus: isConfigured("TOGETHER_API_KEY") ? billingStatus("together") : billingStatus("openai"),
+      requiredEnv: ["TOGETHER_API_KEY", "OPENAI_API_KEY", "VISUALS_ENABLED"],
+      detail: "Imagens usam Together/FLUX no tier padrão e DALL-E 3/OpenAI no premium; Wikimedia continua gratuita.",
+      action: visualsDisabled ? "VISUALS_ENABLED=false desliga geração por IA." : "Configure TOGETHER_API_KEY ou OPENAI_API_KEY para fallback pago.",
+    }),
+    makeIntegration({
+      id: "elevenlabs",
+      name: "ElevenLabs",
+      category: "media",
+      status: isConfigured("ELEVENLABS_API_KEY") ? "not_implemented" : "missing_config",
+      runtimeStatus: isConfigured("ELEVENLABS_API_KEY") ? "not_implemented" : "missing_config",
+      billingStatus: billingStatus("elevenlabs"),
+      requiredEnv: ["ELEVENLABS_API_KEY"],
+      detail: "A API admin consulta assinatura/uso de caracteres, mas o runtime TTS atual usa OpenAI, não ElevenLabs.",
+      action: billingByProvider.get("elevenlabs")?.action ?? "Implemente runtime ElevenLabs antes de marcar TTS ElevenLabs como operacional.",
+    }),
+    makeIntegration({
+      id: "postgres",
+      name: "Postgres / DATABASE_URL",
+      category: "data",
+      status: isConfigured("DATABASE_URL") ? "connected" : "missing_config",
+      requiredEnv: ["DATABASE_URL"],
+      detail: "A própria rota admin consultou o banco para montar este painel.",
+      action: "Configure DATABASE_URL no ambiente de deploy.",
+    }),
+    ...["ai_cost_log", "ai_response_cache", "activity_events"].map(table => makeIntegration({
+      id: `table-${table}`,
+      name: `Tabela ${table}`,
+      category: "data" as const,
+      status: missingTables.includes(table) ? "missing_config" : "connected",
+      requiredEnv: [],
+      detail: missingTables.includes(table)
+        ? "Tabela opcional ausente; seções de custos, cache ou eventos ficam incompletas."
+        : "Tabela opcional encontrada e disponível para as seções admin.",
+      action: missingTables.includes(table) ? "Rodar migrations/ensureSchema do ambiente." : undefined,
+    })),
+    makeIntegration({
+      id: "stripe",
+      name: "Stripe",
+      category: "platform",
+      status: allConfigured("STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PREMIUM_PRICE_ID") ? "configured" : "missing_config",
+      requiredEnv: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_PREMIUM_PRICE_ID"],
+      detail: "Pagamentos/assinaturas só devem aparecer como configurados quando as envs principais existem.",
+      action: "Configure STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET e STRIPE_PREMIUM_PRICE_ID.",
+    }),
+    makeIntegration({
+      id: "clerk",
+      name: "Clerk Auth",
+      category: "platform",
+      status: isConfigured("CLERK_SECRET_KEY") && isConfigured("CLERK_PUBLISHABLE_KEY", "VITE_CLERK_PUBLISHABLE_KEY") ? "configured" : "missing_config",
+      requiredEnv: ["CLERK_SECRET_KEY", "CLERK_PUBLISHABLE_KEY", "VITE_CLERK_PUBLISHABLE_KEY"],
+      configuredEnv: configuredEnvNames("CLERK_SECRET_KEY", "CLERK_PUBLISHABLE_KEY", "VITE_CLERK_PUBLISHABLE_KEY"),
+      detail: "Autenticação precisa de secret no backend e publishable key no frontend/proxy.",
+      action: "Configure CLERK_SECRET_KEY e CLERK_PUBLISHABLE_KEY ou VITE_CLERK_PUBLISHABLE_KEY.",
+    }),
+    makeIntegration({
+      id: "resend",
+      name: "Resend Email",
+      category: "platform",
+      status: isConfigured("RESEND_API_KEY") ? "configured" : "missing_config",
+      requiredEnv: ["RESEND_API_KEY"],
+      detail: "Emails transacionais via Resend.",
+      action: "Configure RESEND_API_KEY se emails transacionais forem usados.",
+    }),
+    makeIntegration({
+      id: "inep-bncc",
+      name: "INEP / BNCC local",
+      category: "content",
+      status: "local",
+      requiredEnv: [],
+      detail: "Fontes locais/gratuitas; não exigem API key para aparecerem como disponíveis.",
+    }),
+    makeIntegration({
+      id: "wikipedia",
+      name: "Wikipedia API",
+      category: "content",
+      status: "local",
+      requiredEnv: [],
+      detail: "API pública usada sem chave; disponibilidade depende de rede externa.",
+    }),
+    makeIntegration({
+      id: "youtube",
+      name: "YouTube Data API",
+      category: "content",
+      status: isConfigured("YOUTUBE_API_KEY") ? "configured" : "missing_config",
+      requiredEnv: ["YOUTUBE_API_KEY"],
+      detail: "Opcional; sem chave o app usa base curada/fallback.",
+      action: "Configure YOUTUBE_API_KEY para buscas dinâmicas.",
+    }),
+    makeIntegration({
+      id: "wolfram",
+      name: "Wolfram Alpha",
+      category: "content",
+      status: isConfigured("WOLFRAM_APP_ID") ? "configured" : "missing_config",
+      requiredEnv: ["WOLFRAM_APP_ID"],
+      detail: "Opcional para exatas; sem chave cai para mathjs + algebrite.",
+      action: "Configure WOLFRAM_APP_ID se quiser solver pago.",
+    }),
+    makeIntegration({
+      id: "google-books",
+      name: "Google Books",
+      category: "content",
+      status: "not_implemented",
+      requiredEnv: ["GOOGLE_BOOKS_API_KEY"],
+      detail: "O endpoint RAG lista Google Books como TODO; ainda não há implementação.",
+      action: "Implementar provedor antes de exigir GOOGLE_BOOKS_API_KEY.",
+    }),
+  ];
+}
+
+function buildProviderDiagnostics(aiCostByModel: any[], providerBilling: ProviderBilling[]): ProviderDiagnostic[] {
   const loggedModels = aiCostByModel.map((row: any) => String(row.provider ?? "").toLowerCase());
   const hasLoggedProvider = (provider: string) => loggedModels.includes(provider);
+  const billingByProvider = new Map(providerBilling.map(item => [item.provider, item]));
+  const bill = (provider: string) => billingByProvider.get(provider);
+  const openrouterConfigured = isConfigured("AI_INTEGRATIONS_OPENROUTER_API_KEY", "OPENROUTER_API_KEY");
+  const provider = (input: Omit<ProviderDiagnostic, "statusLabel">): ProviderDiagnostic => ({
+    ...input,
+    statusLabel: integrationStatusLabel(input.runtimeStatus ?? (input.ok ? "configured" : "missing_config")),
+  });
+
   return [
-    {
+    provider({
       id: "openrouter",
+      name: "OpenRouter",
       ok: isConfigured("AI_INTEGRATIONS_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"),
-      billingIntegrated: isConfigured("OPENROUTER_MANAGEMENT_API_KEY"),
+      runtimeStatus: openrouterConfigured ? "configured" : "missing_config",
+      requiredEnv: ["AI_INTEGRATIONS_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"],
+      configuredEnv: configuredEnvNames("AI_INTEGRATIONS_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"),
+      billingIntegrated: bill("openrouter")?.status === "connected",
+      billingStatus: bill("openrouter")?.status,
       loggedVia: ["openrouterFallback", "hermes_qa_sintetico"],
-      notes: isConfigured("OPENROUTER_MANAGEMENT_API_KEY")
+      notes: bill("openrouter")?.status === "connected"
         ? "Saldo real consultável via OpenRouter credits."
         : "Para saldo real, configure OPENROUTER_MANAGEMENT_API_KEY; chaves normais podem retornar 403.",
-    },
-    {
+    }),
+    provider({
       id: "openai",
+      name: "OpenAI direto",
       ok: isConfigured("AI_INTEGRATIONS_OPENAI_API_KEY", "OPENAI_API_KEY"),
-      billingIntegrated: isConfigured("OPENAI_ADMIN_API_KEY", "OPENAI_API_KEY"),
-      loggedVia: ["openai-direct fallback", "semantic_cache_embedding"],
-      notes: isConfigured("OPENAI_ADMIN_API_KEY")
+      runtimeStatus: isConfigured("AI_INTEGRATIONS_OPENAI_API_KEY", "OPENAI_API_KEY") ? "configured" : "missing_config",
+      requiredEnv: ["OPENAI_API_KEY", "AI_INTEGRATIONS_OPENAI_API_KEY"],
+      configuredEnv: configuredEnvNames("OPENAI_API_KEY", "AI_INTEGRATIONS_OPENAI_API_KEY"),
+      billingIntegrated: bill("openai")?.status === "connected",
+      billingStatus: bill("openai")?.status,
+      loggedVia: ["openai-direct fallback", "semantic_cache_embedding", "voice-tts", "transcribe"],
+      notes: bill("openai")?.status === "connected"
         ? "Costs API será consultada com chave admin."
         : hasLoggedProvider("openai") || hasLoggedProvider("openai-direct")
           ? "Para custo real, use OPENAI_ADMIN_API_KEY com permissão de Usage/Costs."
           : "Pode haver TTS/STT/imagem sem logger específico; custo real exige OPENAI_ADMIN_API_KEY.",
-    },
-    {
+    }),
+    provider({
       id: "anthropic",
-      ok: isConfigured("ANTHROPIC_API_KEY", "ANTHROPIC_ADMIN_API_KEY", "ANTHROPIC_ADMIN_KEY") || hasLoggedProvider("anthropic"),
-      billingIntegrated: isConfigured("ANTHROPIC_ADMIN_API_KEY", "ANTHROPIC_ADMIN_KEY"),
+      name: "Anthropic Claude",
+      ok: isConfigured("ANTHROPIC_API_KEY") || openrouterConfigured || hasLoggedProvider("anthropic"),
+      runtimeStatus: isConfigured("ANTHROPIC_API_KEY") ? "configured" : openrouterConfigured ? "routed" : "missing_config",
+      requiredEnv: ["ANTHROPIC_API_KEY"],
+      configuredEnv: configuredEnvNames("ANTHROPIC_API_KEY"),
+      billingIntegrated: bill("anthropic")?.status === "connected",
+      billingStatus: bill("anthropic")?.status,
       loggedVia: ["via OpenRouter quando o modelo é anthropic/*"],
-      notes: isConfigured("ANTHROPIC_ADMIN_API_KEY", "ANTHROPIC_ADMIN_KEY")
+      notes: bill("anthropic")?.status === "connected"
         ? "Cost Report da Anthropic será consultado com Admin API key."
-        : "Anthropic direto requer ANTHROPIC_ADMIN_API_KEY para custos reais; ANTHROPIC_API_KEY só envia mensagens.",
-    },
-    {
+        : "Claude runtime está via OpenRouter; custos reais Anthropic exigem ANTHROPIC_ADMIN_API_KEY.",
+    }),
+    provider({
       id: "deepseek",
-      ok: isConfigured("DEEPSEEK_API_KEY") || hasLoggedProvider("deepseek"),
+      name: "DeepSeek",
+      ok: openrouterConfigured || hasLoggedProvider("deepseek"),
+      runtimeStatus: openrouterConfigured ? "routed" : "missing_config",
+      requiredEnv: ["AI_INTEGRATIONS_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"],
+      configuredEnv: configuredEnvNames("AI_INTEGRATIONS_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"),
       billingIntegrated: false,
+      billingStatus: bill("deepseek")?.status,
       loggedVia: ["via OpenRouter quando o modelo é deepseek/*"],
-    },
-    {
+      notes: "DeepSeek direto não está implementado; o runtime suportado é via OpenRouter.",
+    }),
+    provider({
       id: "gemini",
-      ok: isConfigured("GEMINI_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY"),
+      name: "Gemini / Google AI",
+      ok: false,
+      runtimeStatus: "not_implemented",
+      requiredEnv: ["GEMINI_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY"],
+      configuredEnv: configuredEnvNames("GEMINI_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY"),
       billingIntegrated: false,
+      billingStatus: bill("gemini")?.status,
       loggedVia: [],
-      notes: "Nenhum logger local específico de Gemini foi encontrado nesta base.",
-    },
-    {
+      notes: "Não há cliente Gemini ativo; generateWithGemini é legado e usa Claude via OpenRouter.",
+    }),
+    provider({
       id: "elevenlabs",
-      ok: isConfigured("ELEVENLABS_API_KEY"),
-      billingIntegrated: false,
+      name: "ElevenLabs",
+      ok: false,
+      runtimeStatus: isConfigured("ELEVENLABS_API_KEY") ? "not_implemented" : "missing_config",
+      requiredEnv: ["ELEVENLABS_API_KEY"],
+      configuredEnv: configuredEnvNames("ELEVENLABS_API_KEY"),
+      billingIntegrated: bill("elevenlabs")?.status === "connected",
+      billingStatus: bill("elevenlabs")?.status,
       loggedVia: [],
-      notes: "Nenhum logger local específico de ElevenLabs/TTS foi encontrado nesta base.",
-    },
+      notes: "Billing/uso pode ser consultado, mas o runtime TTS atual usa OpenAI.",
+    }),
   ];
 }
 
@@ -872,13 +1253,97 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
   const aiModelCostUsd = sumUsd(aiCostByModel);
   const aiDailyCostUsd = sumUsd(aiCostPerDay);
   const aiTotalCostUsd = roundMoney(costRangeUsd);
+  const providerBilling = await buildProviderBilling(rangeFrom, rangeTo);
   const aiCostConsistent = [aiFeatureCostUsd, aiModelCostUsd, aiDailyCostUsd]
     .every(total => Math.abs(total - aiTotalCostUsd) < 0.000001);
-  const aiProvidersDiagnostics = buildProviderDiagnostics(aiCostByModel);
-  const providerBilling = await buildProviderBilling(rangeFrom, rangeTo);
+  const aiProvidersDiagnostics = buildProviderDiagnostics(aiCostByModel, providerBilling);
+  const integrationInventory = buildIntegrationInventory(providerBilling, missingTables);
   const billingIntegratedProviders = providerBilling.filter(provider => provider.billingIntegrated).map(provider => provider.provider);
   const missingProviderConfigs = aiProvidersDiagnostics.filter(provider => !provider.ok).map(provider => provider.id);
   const loggedFeatures = aiCostByFeature.map((row: any) => String(row.feature));
+  const hasLoggedFeature = (...features: string[]) => features.some(feature => loggedFeatures.includes(feature));
+  const telemetryCoverage = [
+    {
+      id: "tiagao-chat-streaming",
+      label: "Tiagão/chat streaming",
+      status: hasLoggedFeature("tiagao-chat", "tiagao-chat-math", "tiagao-chat-landing", "tiagao_voice_chat") ? "instrumented" : "routed_via_openrouter",
+      provider: "OpenRouter",
+      features: ["tiagao-chat", "tiagao-chat-math", "tiagao-chat-landing", "tiagao_voice_chat"],
+      notes: "Streaming estima tokens quando o SDK não devolve usage no stream.",
+    },
+    {
+      id: "openrouter-fallback",
+      label: "OpenRouter fallback/non-streaming/streaming",
+      status: "instrumented",
+      provider: "OpenRouter",
+      features: ["chat_completion", "chat_completion_stream", "generate_with_gemini"],
+      notes: "Cliente central registra modelo final usado e fallback OpenAI direto com prefixo openai-direct.",
+    },
+    {
+      id: "openai-direct",
+      label: "OpenAI direto",
+      status: isConfigured("OPENAI_API_KEY", "AI_INTEGRATIONS_OPENAI_API_KEY") ? "instrumented" : "requires_env",
+      provider: "OpenAI",
+      features: ["tiagao_voice_tts", "tiagao_voice_transcription", "aula_ia_transcription", "notebook_audio_transcription"],
+      notes: "STT/TTS registram estimativas locais; custo real exige OPENAI_ADMIN_API_KEY.",
+    },
+    {
+      id: "anthropic-direct",
+      label: "Anthropic direto",
+      status: "routed_via_openrouter",
+      provider: "Anthropic via OpenRouter",
+      features: ["claude_helper_text", "claude_helper_chat", "claude_helper_json_fallback"],
+      notes: "Não há SDK Anthropic direto ativo; Claude usa slugs anthropic/* via OpenRouter.",
+    },
+    {
+      id: "gemini-direct",
+      label: "Gemini direto",
+      status: "routed_via_openrouter",
+      provider: "Gemini compat via OpenRouter/OpenAI",
+      features: ["gemini_compat_vision_problem", "gemini_compat_explain_text", "gemini_compat_image_generation"],
+      notes: "Rotas /gemini são compatibilidade; billing real Google exige Cloud Billing Export/API.",
+    },
+    {
+      id: "elevenlabs-tts",
+      label: "ElevenLabs TTS",
+      status: "unsupported",
+      provider: "ElevenLabs",
+      features: [],
+      notes: "Não foi encontrado runtime TTS ElevenLabs; só há consulta de assinatura/uso quando ELEVENLABS_API_KEY existe.",
+    },
+    {
+      id: "image-generation",
+      label: "Geração/edição de imagem",
+      status: hasLoggedFeature("openai_image_generation", "openai_wallpaper_generation", "openai_image_edit", "gemini_compat_image_generation") ? "instrumented" : "requires_env",
+      provider: "OpenAI gpt-image-1",
+      features: ["openai_image_generation", "openai_wallpaper_generation", "openai_image_edit", "gemini_compat_image_generation"],
+      notes: "Registra custo estimado por imagem; fatura real permanece no providerBilling/OpenAI Costs.",
+    },
+    {
+      id: "embeddings-rag-notebook",
+      label: "Embeddings/RAG/notebook",
+      status: hasLoggedFeature("semantic_cache_embedding", "notebook", "notebook_stream") ? "instrumented" : "requires_env",
+      provider: "OpenAI/OpenRouter",
+      features: ["semantic_cache_embedding", "notebook", "notebook_stream"],
+      notes: "Embeddings e chat do notebook são registrados; RAG externo gratuito não gera custo de IA.",
+    },
+    {
+      id: "ocr-transcription",
+      label: "OCR/transcrição",
+      status: hasLoggedFeature("ocr_explain_vision", "notebook_audio_transcription", "aula_ia_transcription", "tiagao_voice_transcription") ? "instrumented" : "requires_env",
+      provider: "OpenRouter/OpenAI",
+      features: ["ocr_explain_vision", "notebook_audio_transcription", "aula_ia_transcription", "tiagao_voice_transcription"],
+      notes: "OCR vision usa OpenRouter; transcrição direta usa Whisper com tokens aproximados por texto transcrito.",
+    },
+    {
+      id: "hermes-jobs",
+      label: "Hermes jobs/QA/sugestões",
+      status: hasLoggedFeature("hermes_qa_sintetico") ? "instrumented" : "not_instrumented",
+      provider: "OpenRouter",
+      features: ["hermes_qa_sintetico"],
+      notes: "QA sintético está instrumentado; demais jobs Hermes diretos ainda devem migrar para helper rastreado ou logar feature própria.",
+    },
+  ];
   const loggedModels = aiCostByModel.map((row: any) => {
     const provider = String(row.provider ?? "");
     const model = String(row.model ?? "");
@@ -968,6 +1433,7 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
     ],
     aiProviders: aiProvidersDiagnostics,
     providerBilling,
+    integrationInventory,
     dataQuality: {
       costBasis,
       lastEventAt: (aiLastEvent as any)?.last_event_at ?? null,
@@ -978,6 +1444,7 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
         models: loggedModels,
         providers: aiProvidersDiagnostics.filter(provider => provider.loggedVia.length > 0).map(provider => provider.id),
       },
+      telemetryCoverage,
       warning: billingIntegratedProviders.length > 0
         ? "IA & Custos separa gasto real dos provedores do uso registrado internamente. Não some os dois sem reconciliação."
         : "IA & Custos mostra uso/custo registrado no sistema, não gasto real de fatura dos provedores. Configure billing/saldo para reconciliar com invoice.",
@@ -1004,6 +1471,7 @@ router.get("/admin/stats", async (req: Request, res: Response) => {
         missingSources,
         trackedFeatures: loggedFeatures,
         trackedModels: loggedModels,
+        telemetryCoverage,
         warning: "Totais desta seção são calculados somente a partir de ai_cost_log. O gasto real dos provedores está em providerBilling.",
       },
       period: {

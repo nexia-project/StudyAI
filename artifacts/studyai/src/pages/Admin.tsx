@@ -41,6 +41,7 @@ type RoleRequest = {
   email: string | null; firstName: string | null; lastName: string | null;
 };
 type ProviderBillingStatus = "connected" | "missing_config" | "unsupported" | "error" | "not_implemented";
+type IntegrationStatus = "configured" | "connected" | "missing_config" | "unsupported" | "not_implemented" | "routed" | "local" | "disabled" | "error";
 type ProviderBilling = {
   provider: string;
   status: ProviderBillingStatus;
@@ -55,6 +56,27 @@ type ProviderBilling = {
   usage?: Record<string, unknown>;
   error?: string;
   action: string;
+};
+type AdminIntegration = {
+  id: string;
+  name: string;
+  category: "ai-runtime" | "ai-billing" | "media" | "data" | "platform" | "content";
+  status: IntegrationStatus;
+  ok: boolean;
+  requiredEnv: string[];
+  configuredEnv: string[];
+  runtimeStatus?: IntegrationStatus;
+  billingStatus?: ProviderBillingStatus;
+  detail: string;
+  action?: string;
+};
+type TelemetryCoverage = {
+  id: string;
+  label: string;
+  status: "instrumented" | "not_instrumented" | "requires_env" | "routed_via_openrouter" | "unsupported" | string;
+  provider: string;
+  features: string[];
+  notes: string;
 };
 type AdminStats = {
   totalUsers: number; todayNewUsers: number; premiumUsers: number;
@@ -75,14 +97,16 @@ type AdminStats = {
   topMaterias: { materia: string; count: number; avg_score: number }[];
   activityHeatmap: { study_date: string; active_users: number }[];
   aiFeatures: { feature: string; uses: number; users: number; last7d: number }[];
-  aiProviders: { id: string; ok: boolean; billingIntegrated?: boolean; loggedVia?: string[]; notes?: string }[];
+  aiProviders: { id: string; name?: string; ok: boolean; runtimeStatus?: IntegrationStatus; statusLabel?: string; requiredEnv?: string[]; configuredEnv?: string[]; billingIntegrated?: boolean; billingStatus?: ProviderBillingStatus; loggedVia?: string[]; notes?: string }[];
   providerBilling?: ProviderBilling[];
+  integrationInventory?: AdminIntegration[];
   dataQuality?: {
     costBasis?: "logged_usage" | "provider_invoice" | "mixed" | string;
     lastEventAt?: string | null;
     missingTables?: string[];
     missingSources?: string[];
     trackedSources?: { features?: string[]; models?: string[]; providers?: string[] };
+    telemetryCoverage?: TelemetryCoverage[];
     warning?: string;
   };
   trilhaBySubject: { subject: string; students: number; avgLevel: number; maxLevel: number }[];
@@ -102,6 +126,7 @@ type AdminStats = {
       missingSources?: string[];
       trackedFeatures?: string[];
       trackedModels?: string[];
+      telemetryCoverage?: TelemetryCoverage[];
       warning?: string;
     };
     period?: {
@@ -235,6 +260,13 @@ function normalizeAdminStatsPayload(payload: unknown): AdminStats {
     aiFeatures: asArray(data.aiFeatures),
     aiProviders: asArray(data.aiProviders),
     providerBilling: asArray<ProviderBilling>(data.providerBilling),
+    integrationInventory: asArray<AdminIntegration>(data.integrationInventory),
+    dataQuality: data.dataQuality
+      ? {
+          ...(data.dataQuality as AdminStats["dataQuality"]),
+          telemetryCoverage: asArray<TelemetryCoverage>(asRecord(data.dataQuality).telemetryCoverage),
+        }
+      : undefined,
     trilhaBySubject: asArray(data.trilhaBySubject),
     contentBreakdown: asArray(data.contentBreakdown),
     subscriptionDist: asArray(data.subscriptionDist),
@@ -245,6 +277,12 @@ function normalizeAdminStatsPayload(payload: unknown): AdminStats {
       byFeature: asArray(aiCost.byFeature),
       byModel: asArray(aiCost.byModel),
       perDay: asArray(aiCost.perDay),
+      dataQuality: aiCost.dataQuality
+        ? {
+            ...(aiCost.dataQuality as AdminStats["aiCost"]["dataQuality"]),
+            telemetryCoverage: asArray<TelemetryCoverage>(asRecord(aiCost.dataQuality).telemetryCoverage),
+          }
+        : undefined,
     },
   };
 }
@@ -806,6 +844,24 @@ export default function AdminPage() {
   const billingFromApi = stats?.providerBilling ?? [];
   const providerStatus = (id: string) => providersFromApi.find(p => p.id === id);
   const providerBillingStatus = (id: string) => billingFromApi.find(p => p.provider === id);
+  const runtimeStatusLabel: Record<IntegrationStatus, string> = {
+    configured: "ENV presente",
+    connected: "Validado",
+    missing_config: "Config ausente",
+    unsupported: "Sem suporte",
+    not_implemented: "Não implementado",
+    routed: "Roteado",
+    local: "Local",
+    disabled: "Desligado",
+    error: "Erro",
+  };
+  const billingStatusLabel: Record<ProviderBillingStatus, string> = {
+    connected: "Conectado",
+    missing_config: "Config ausente",
+    unsupported: "Sem API direta",
+    error: "Erro",
+    not_implemented: "Não implementado",
+  };
   const aiProviders = [
     { id: "deepseek",  name: "DeepSeek",       emoji: "🧠", bg: "bg-violet-500/15",   usage: "via OpenRouter quando modelo deepseek/*" },
     { id: "anthropic", name: "Anthropic Claude", emoji: "🟠", bg: "bg-amber-500/15", usage: "via OpenRouter quando modelo anthropic/*" },
@@ -818,7 +874,12 @@ export default function AdminPage() {
     const billing = providerBillingStatus(provider.id);
     return {
       ...provider,
+      name: diagnostic?.name ?? provider.name,
       ok: diagnostic?.ok ?? false,
+      runtimeStatus: diagnostic?.runtimeStatus,
+      statusLabel: diagnostic?.statusLabel,
+      requiredEnv: diagnostic?.requiredEnv ?? [],
+      configuredEnv: diagnostic?.configuredEnv ?? [],
       billingIntegrated: billing?.status === "connected",
       billingStatus: billing?.status,
       billingAction: billing?.action,
@@ -1611,6 +1672,7 @@ export default function AdminPage() {
             const missingSources = dataQuality?.missingSources ?? [];
             const trackedFeatures = ac?.dataQuality?.trackedFeatures ?? stats?.dataQuality?.trackedSources?.features ?? [];
             const trackedModels = ac?.dataQuality?.trackedModels ?? stats?.dataQuality?.trackedSources?.models ?? [];
+            const telemetryCoverage = ac?.dataQuality?.telemetryCoverage ?? stats?.dataQuality?.telemetryCoverage ?? [];
             const lastEventAt = ac?.lastEventAt ?? stats?.dataQuality?.lastEventAt ?? null;
             const costBasis = ac?.costBasis ?? stats?.dataQuality?.costBasis ?? "logged_usage";
             const costBasisLabel = costBasis === "provider_invoice" ? "Fatura do provedor" : costBasis === "mixed" ? "Misto: fatura + logs" : "Uso registrado no sistema";
@@ -1787,6 +1849,47 @@ export default function AdminPage() {
                     </div>
                   </div>
                 </div>
+                {telemetryCoverage.length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-[10px] text-white/40 font-bold uppercase mb-2">Cobertura por caminho de IA</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {telemetryCoverage.map(path => {
+                        const statusClass =
+                          path.status === "instrumented"
+                            ? "bg-emerald-500/15 text-emerald-300"
+                            : path.status === "routed_via_openrouter"
+                              ? "bg-sky-500/15 text-sky-300"
+                              : path.status === "unsupported"
+                                ? "bg-white/10 text-white/45"
+                                : "bg-amber-500/15 text-amber-300";
+                        const statusLabel: Record<string, string> = {
+                          instrumented: "instrumentado",
+                          not_instrumented: "sem hook",
+                          requires_env: "depende env",
+                          routed_via_openrouter: "via OpenRouter",
+                          unsupported: "sem runtime",
+                        };
+                        return (
+                          <div key={path.id} className="rounded-xl border border-white/[0.05] bg-white/[0.02] p-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="text-xs font-bold text-white/80">{path.label}</p>
+                                <p className="text-[9px] text-white/35 mt-0.5">{path.provider}</p>
+                              </div>
+                              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${statusClass}`}>
+                                {statusLabel[path.status] ?? path.status}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-white/45 mt-2 leading-relaxed">{path.notes}</p>
+                            {path.features.length > 0 && (
+                              <p className="text-[9px] text-white/30 mt-1 truncate">{path.features.join(", ")}</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Custo por dia */}
@@ -1997,14 +2100,19 @@ export default function AdminPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-bold text-white truncate">{p.name}</p>
-                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${p.ok ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"}`}>
-                            {p.ok ? "CONFIG" : "PENDENTE"}
+                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${p.ok ? "bg-emerald-500/15 text-emerald-300" : p.runtimeStatus === "not_implemented" ? "bg-white/10 text-white/45" : "bg-amber-500/15 text-amber-300"}`}>
+                            {p.statusLabel ?? (p.runtimeStatus ? runtimeStatusLabel[p.runtimeStatus] : p.ok ? "ENV presente" : "Pendente")}
                           </span>
                           <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${p.billingIntegrated ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"}`}>
                             {p.billingIntegrated ? "BILLING REAL" : (p.billingStatus === "error" ? "BILLING ERRO" : "SEM BILLING")}
                           </span>
                         </div>
                         <p className="text-[10px] text-white/40 truncate">{p.loggedVia.length ? `log: ${p.loggedVia.join(", ")}` : p.usage}</p>
+                        {p.requiredEnv.length > 0 && (
+                          <p className="text-[9px] text-white/30 truncate">
+                            env: {p.configuredEnv.length ? p.configuredEnv.join(", ") : `faltando ${p.requiredEnv.join(" ou ")}`}
+                          </p>
+                        )}
                         {p.billingAction && <p className="text-[9px] text-white/35 truncate">{p.billingAction}</p>}
                         {p.notes && <p className="text-[9px] text-amber-200/70 truncate">{p.notes}</p>}
                       </div>
@@ -2185,31 +2293,86 @@ export default function AdminPage() {
           )}
 
           {/* ══ INTEGRAÇÕES ══ */}
-          {activeSection === "integracoes" && (
+          {activeSection === "integracoes" && (() => {
+            const inventory = stats?.integrationInventory ?? [];
+            const categoryLabel: Record<AdminIntegration["category"], string> = {
+              "ai-runtime": "IA runtime",
+              "ai-billing": "Billing/admin",
+              media: "TTS/OCR/imagem",
+              data: "Dados",
+              platform: "Plataforma",
+              content: "Conteúdo",
+            };
+            const statusMeta: Record<IntegrationStatus, { label: string; cls: string; dot: string }> = {
+              configured: { label: "Env presente", cls: "bg-emerald-500/10 text-emerald-300", dot: "bg-emerald-400" },
+              connected: { label: "Validado", cls: "bg-emerald-500/10 text-emerald-300", dot: "bg-emerald-400" },
+              routed: { label: "Roteado", cls: "bg-blue-500/10 text-blue-300", dot: "bg-blue-400" },
+              local: { label: "Local/grátis", cls: "bg-violet-500/10 text-violet-300", dot: "bg-violet-400" },
+              missing_config: { label: "Config ausente", cls: "bg-amber-500/10 text-amber-300", dot: "bg-amber-400" },
+              disabled: { label: "Desligado", cls: "bg-white/10 text-white/45", dot: "bg-white/30" },
+              unsupported: { label: "Sem API", cls: "bg-white/10 text-white/45", dot: "bg-white/30" },
+              not_implemented: { label: "Não implementado", cls: "bg-white/10 text-white/45", dot: "bg-white/30" },
+              error: { label: "Erro", cls: "bg-red-500/10 text-red-300", dot: "bg-red-400" },
+            };
+            const categoryOrder: AdminIntegration["category"][] = ["ai-runtime", "ai-billing", "media", "data", "platform", "content"];
+            return (
             <div className="space-y-5">
-              <h2 className="text-lg font-black flex items-center gap-2"><Link className="w-5 h-5 text-violet-400" /> Integrações</h2>
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  ...aiProviders.map(p => ({ name: p.name, status: p.ok ? "Ativo" : "Pendente", color: p.ok ? "emerald" : "gray", icon: p.emoji })),
-                  { name: "Stripe", status: "Conectado", color: "emerald", icon: "💳" },
-                  { name: "Clerk Auth", status: "Conectado", color: "emerald", icon: "🔐" },
-                  { name: "INEP / BNCC", status: "Configurado", color: "blue", icon: "📚" },
-                  { name: "Wikipedia API", status: "Ativo", color: "emerald", icon: "🌐" },
-                  { name: "Resend Email", status: "Conectado", color: "emerald", icon: "📧" },
-                  { name: "WhatsApp", status: "Não configurado", color: "gray", icon: "💬" },
-                ].map(i => (
-                  <div key={i.name} className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
-                    <div className="text-2xl mb-3">{i.icon}</div>
-                    <p className="font-bold text-sm text-white">{i.name}</p>
-                    <div className={`inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-full text-xs font-bold ${i.color === "emerald" ? "bg-emerald-500/10 text-emerald-400" : i.color === "blue" ? "bg-violet-500/10 text-violet-400" : "bg-white/10 text-white/40"}`}>
-                      <div className={`w-1.5 h-1.5 rounded-full ${i.color === "emerald" ? "bg-emerald-400" : i.color === "blue" ? "bg-violet-400" : "bg-white/30"}`} />
-                      {i.status}
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-black flex items-center gap-2"><Link className="w-5 h-5 text-violet-400" /> Integrações</h2>
+                  <p className="text-xs text-white/40 mt-1">
+                    Inventário vindo do backend: separa chave de runtime, billing real, rotas via OpenRouter e itens ainda não implementados.
+                  </p>
+                </div>
+                <span className="text-[10px] font-black px-2 py-1 rounded bg-white/10 text-white/50">
+                  {inventory.filter(i => i.ok).length}/{inventory.length || 0} operacionais/configuradas
+                </span>
+              </div>
+
+              {inventory.length === 0 ? (
+                <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-8 text-center text-sm text-white/35">
+                  Backend ainda não retornou integrationInventory. Atualize após o deploy.
+                </div>
+              ) : categoryOrder.map(category => {
+                const items = inventory.filter(i => i.category === category);
+                if (items.length === 0) return null;
+                return (
+                  <div key={category} className="space-y-3">
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-white/35">{categoryLabel[category]}</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      {items.map(i => {
+                        const meta = statusMeta[i.status] ?? statusMeta.missing_config;
+                        return (
+                          <div key={i.id} className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="font-bold text-sm text-white truncate">{i.name}</p>
+                                <p className="text-[10px] text-white/40 mt-1 leading-relaxed line-clamp-2">{i.detail}</p>
+                              </div>
+                              <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${meta.cls}`}>
+                                <div className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+                                {meta.label}
+                              </div>
+                            </div>
+                            <div className="mt-3 space-y-1">
+                              <p className="text-[9px] text-white/30 truncate">
+                                env: {i.requiredEnv.length ? (i.configuredEnv.length ? i.configuredEnv.join(", ") : `faltando ${i.requiredEnv.join(" / ")}`) : "não exige"}
+                              </p>
+                              {i.billingStatus && (
+                                <p className="text-[9px] text-white/30 truncate">billing: {billingStatusLabel[i.billingStatus] ?? i.billingStatus}</p>
+                              )}
+                              {i.action && <p className="text-[9px] text-amber-200/70 truncate">{i.action}</p>}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
-          )}
+            );
+          })()}
 
           {/* ══ LOGS & SEGURANÇA ══ */}
           {activeSection === "logs-seguranca" && (() => {

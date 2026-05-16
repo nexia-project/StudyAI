@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
+import express, { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { initHermes } from "../lib/hermes/bootstrap";
 import { agentRegistry } from "../lib/hermes/agentRegistry";
 import { setHermesCronHint } from "../lib/hermes/cronState";
@@ -26,6 +26,10 @@ function requireCronSecret(req: Request, res: Response, next: NextFunction): voi
 }
 
 const router: IRouter = Router();
+
+// Este router é montado antes dos parsers globais para escapar do /api + Clerk.
+// Mantém um parser mínimo aqui para permitir `{ "limit": 10 }` no worker.
+router.use("/internal/hermes", express.json({ limit: "16kb" }));
 
 router.post("/internal/hermes/daily-learn", requireCronSecret, async (_req: Request, res: Response) => {
   const ran: string[] = [];

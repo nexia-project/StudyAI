@@ -30,21 +30,28 @@ function getStripeId(value: StripeId): string | undefined {
   return value?.id;
 }
 
+function allowUnverifiedStripeWebhook(): boolean {
+  return process.env.NODE_ENV !== "production" && process.env.STRIPE_WEBHOOK_ALLOW_UNVERIFIED === "true";
+}
+
 router.post("/subscription/webhook", async (req: Request, res: Response) => {
-  const sig = req.headers["stripe-signature"] as string;
+  const sig = req.headers["stripe-signature"];
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   let event: Stripe.Event;
 
   try {
-    const stripe = await getUncachableStripeClient();
-
     if (webhookSecret && sig) {
+      const stripe = await getUncachableStripeClient();
       event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-    } else {
-      // Dev/sandbox mode: parse raw body as JSON without signature verification
+    } else if (allowUnverifiedStripeWebhook()) {
+      req.log.warn("Processing unverified Stripe webhook because STRIPE_WEBHOOK_ALLOW_UNVERIFIED=true in non-production");
       const rawBody = req.body instanceof Buffer ? req.body.toString("utf8") : String(req.body);
       event = JSON.parse(rawBody) as Stripe.Event;
+    } else {
+      req.log.warn({ hasWebhookSecret: Boolean(webhookSecret), hasStripeSignature: Boolean(sig) }, "Rejecting unsigned Stripe webhook");
+      res.status(400).json({ error: "Missing Stripe webhook signature or secret" });
+      return;
     }
   } catch (err: any) {
     req.log.error({ err }, "Webhook signature verification failed");

@@ -117,4 +117,6 @@ Estes fluxos substituem várias telas que hoje se sobrepõem (vários chats / v�
 
 Alterações relevantes de produto/UI devem **atualizar este PRD** ou referenciar um ADR; releases devem citar **qual fase** avançou.
 
+Para evolução premium de produto, design e pedagogia, usar também `docs/plano-mestre-evolucao-studyai.md` como guardrail complementar.
+
 **Autorização:** diretriz aprovada pelo gestor do projeto para orientar implementação contínua.

@@ -1,20 +1,22 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, BookOpen, Trash2, Sparkles, ChevronLeft, Save, Tag,
   BookMarked, Lightbulb, Brain, HelpCircle, List, Loader2, X,
-  Search, StickyNote, GraduationCap,
+  Search, StickyNote, GraduationCap, Flame, CalendarCheck, CheckCircle2,
 } from "lucide-react";
 import {
   SIMULADO_ERROR_REVIEW_DRAFT_KEY,
   completeErrorReviewMission,
   clearErrorReviewMission,
   emitHermesLearningSignal,
+  buildErrorReviewStats,
   readErrorReviewHistory,
   readErrorReviewMission,
   type ErrorReviewCompletion,
   type ErrorReviewDraft,
+  type ErrorReviewMission,
 } from "@/lib/error-review";
 import { clearSimuladoRecoveryMission, completeSimuladoRecoveryMission, readSimuladoRecoveryMission } from "@/lib/next-best-action";
 
@@ -79,6 +81,7 @@ export default function Caderno() {
   const [showEditor, setShowEditor] = useState(false);
   const [importedErrorReview, setImportedErrorReview] = useState<ErrorReviewDraft | null>(null);
   const [reviewHistory, setReviewHistory] = useState<ErrorReviewCompletion[]>([]);
+  const [pendingReviewMission, setPendingReviewMission] = useState<ErrorReviewMission | null>(null);
 
   // Editor state
   const [editTitle, setEditTitle] = useState("");
@@ -98,6 +101,7 @@ export default function Caderno() {
   const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const selectedNote = notes.find(n => n.id === selectedId) ?? null;
+  const reviewStats = useMemo(() => buildErrorReviewStats(reviewHistory), [reviewHistory]);
 
   // Load notes
   const loadNotes = useCallback(async () => {
@@ -115,6 +119,7 @@ export default function Caderno() {
 
   const refreshReviewHistory = useCallback(() => {
     setReviewHistory(readErrorReviewHistory());
+    setPendingReviewMission(readErrorReviewMission());
   }, []);
 
   useEffect(() => {
@@ -282,6 +287,24 @@ export default function Caderno() {
     if (selectedId === id) { setSelectedId(null); setShowEditor(false); }
   }, [selectedId]);
 
+  const completePendingReview = useCallback(() => {
+    if (!pendingReviewMission) return;
+    completeErrorReviewMission({
+      mission: pendingReviewMission,
+      completion: "manual_close",
+    });
+    emitHermesLearningSignal({
+      surface: "caderno",
+      event: "error_review_mission_completed",
+      source: pendingReviewMission.source,
+      primarySubject: pendingReviewMission.subject,
+      errors: pendingReviewMission.errorsCount,
+      accuracy: pendingReviewMission.accuracy,
+      completion: "manual_close",
+    });
+    refreshReviewHistory();
+  }, [pendingReviewMission, refreshReviewHistory]);
+
   // AI process
   const handleProcess = useCallback(async () => {
     if (!selectedId) return;
@@ -382,23 +405,77 @@ export default function Caderno() {
             <div className="flex items-center justify-between gap-2">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-500">
-                  Revisões concluídas
+                  Loop de revisão
                 </p>
                 <p className="text-xs text-gray-500">
                   Histórico local do Caderno de Erros
                 </p>
               </div>
               <span className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-black text-violet-700">
-                {reviewHistory.length}
+                {reviewStats.totalCompleted}
               </span>
             </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="rounded-xl bg-orange-50 px-3 py-2">
+                <p className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-orange-600">
+                  <Flame className="w-3 h-3" />
+                  Streak
+                </p>
+                <p className="mt-1 text-sm font-black text-slate-900">
+                  {reviewStats.currentStreak} dia{reviewStats.currentStreak !== 1 ? "s" : ""}
+                </p>
+                <p className="text-[10px] text-slate-500">recorde {reviewStats.longestStreak}</p>
+              </div>
+              <div className="rounded-xl bg-emerald-50 px-3 py-2">
+                <p className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-emerald-700">
+                  <CalendarCheck className="w-3 h-3" />
+                  Próxima
+                </p>
+                <p className="mt-1 text-xs font-black text-slate-900">
+                  {reviewStats.nextReviewDueAt ? formatDate(reviewStats.nextReviewDueAt) : "sem data"}
+                </p>
+                <p className="text-[10px] text-slate-500">sem agenda falsa</p>
+              </div>
+            </div>
+            {pendingReviewMission && (
+              <div className="mt-3 rounded-xl border border-violet-200 bg-violet-50/70 p-3">
+                <p className="text-[10px] font-black uppercase tracking-wider text-violet-600">Missão pendente</p>
+                <p className="mt-1 text-xs font-black text-slate-900">{pendingReviewMission.subject}</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-600">
+                  {pendingReviewMission.errorsCount} erro{pendingReviewMission.errorsCount !== 1 ? "s" : ""} · {pendingReviewMission.accuracy}% · {pendingReviewMission.errorType}
+                </p>
+                <button
+                  type="button"
+                  onClick={completePendingReview}
+                  className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-violet-600 px-3 py-2 text-xs font-black text-white transition hover:bg-violet-700 active:scale-[0.98]"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Marcar revisão feita
+                </button>
+              </div>
+            )}
+            {reviewStats.bySubject.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {reviewStats.bySubject.slice(0, 2).map(item => (
+                  <div key={item.subject} className="rounded-xl bg-slate-50 px-3 py-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="truncate text-xs font-black text-slate-800">{item.subject}</p>
+                      <span className="text-[11px] font-black text-violet-700">{item.averageAccuracy}%</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      {item.completed} revisão{item.completed !== 1 ? "ões" : ""} · última {formatDate(item.lastCompletedAt)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
             {reviewHistory.length > 0 ? (
               <div className="mt-3 space-y-2">
                 {reviewHistory.slice(0, 3).map(item => (
                   <div key={`${item.createdAt}-${item.completedAt}`} className="rounded-xl bg-violet-50/60 px-3 py-2">
                     <p className="truncate text-xs font-black text-slate-800">{item.subject}</p>
                     <p className="text-[11px] text-slate-500">
-                      {item.errorsCount} erro{item.errorsCount !== 1 ? "s" : ""} · {item.accuracy}% · {formatDate(item.completedAt)}
+                      {item.errorsCount} erro{item.errorsCount !== 1 ? "s" : ""} · {item.accuracy}% · {item.completion === "manual_close" ? "feito" : "nota salva"} · {formatDate(item.completedAt)}
                     </p>
                   </div>
                 ))}

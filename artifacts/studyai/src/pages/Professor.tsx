@@ -69,6 +69,32 @@ const NAV = [
 const SCORE_COLOR = (s: number) => s >= 70 ? "bg-emerald-50 border-emerald-200 text-emerald-700" : s >= 50 ? "bg-amber-50 border-amber-200 text-amber-700" : s >= 30 ? "bg-orange-50 border-orange-200 text-orange-700" : "bg-red-50 border-red-200 text-red-700";
 const MATERIAS = ["Matemática","Português","Física","Química","Biologia","História","Geografia","Filosofia","Sociologia","Inglês","Artes","Educação Física"];
 
+function csvCell(value: unknown) {
+  const text = String(value ?? "").replace(/\r?\n/g, " ").trim();
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function buildTeacherReportSignals(row: Record<string, any>) {
+  const signals: string[] = [];
+  const xp = Number(row.xp ?? 0);
+  const average = Number(row.media_simulados ?? 0);
+  const tiagaoUse = Number(row.uso_tiagao ?? 0);
+  const delivered = Number(row.atividades_entregues ?? 0);
+  if (xp < 50) signals.push("baixo XP nos dados atuais");
+  if (average > 0 && average < 60) signals.push("media de simulados abaixo de 60%");
+  if (tiagaoUse === 0) signals.push("sem uso registrado do Tiagao");
+  if (delivered === 0) signals.push("sem atividade entregue registrada");
+  return signals;
+}
+
+function buildTeacherReportAction(signals: string[]) {
+  if (signals.some(signal => signal.includes("simulados"))) return "Criar revisao guiada antes de novo conteudo.";
+  if (signals.some(signal => signal.includes("Tiagao"))) return "Enviar orientacao curta para usar o Tiagao em uma duvida real.";
+  if (signals.some(signal => signal.includes("atividade"))) return "Publicar tarefa curta com prazo proximo e criterio claro.";
+  if (signals.some(signal => signal.includes("XP"))) return "Propor missao de 10 minutos para gerar primeiro sinal de engajamento.";
+  return "Manter acompanhamento e buscar variacao semanal antes de intervir.";
+}
+
 // ─── Slide Viewer ─────────────────────────────────────────────────────────────
 function SlideViewer({ slides }: { slides: SlideData[] }) {
   const [idx, setIdx] = useState(0);
@@ -1661,11 +1687,35 @@ function RelatoriosSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
       const json = await res.json();
       const rows: any[] = json.rows ?? [];
       if (!rows.length) { alert("Nenhum dado para exportar."); return; }
-      const headers = ["Turma", "Aluno", "Email", "XP", "Média Simulados (%)", "Uso Tiagão", "Atividades Entregues"];
+      const headers = [
+        "Turma",
+        "Aluno",
+        "Email",
+        "XP",
+        "Média Simulados (%)",
+        "Uso Tiagão",
+        "Atividades Entregues",
+        "Sinais Disponíveis",
+        "Ação Recomendada",
+        "Lacunas de Dados",
+      ];
       const keys = ["turma", "aluno", "email", "xp", "media_simulados", "uso_tiagao", "atividades_entregues"];
       const csv = [
-        headers.join(";"),
-        ...rows.map(r => keys.map(k => `"${String(r[k] ?? "").replace(/"/g, '""')}"`).join(";")),
+        headers.map(csvCell).join(";"),
+        ...rows.map(r => {
+          const signals = buildTeacherReportSignals(r);
+          const gaps = [
+            "ultimo login bruto",
+            "tempo real por sessao",
+            "intervencoes registradas",
+          ];
+          return [
+            ...keys.map(k => r[k] ?? ""),
+            signals.join(" | ") || "sem sinal critico pelos dados atuais",
+            buildTeacherReportAction(signals),
+            gaps.join(" | "),
+          ].map(csvCell).join(";");
+        }),
       ].join("\n");
       const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
@@ -1714,6 +1764,34 @@ function RelatoriosSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
             <p className="text-gray-400 text-xs mt-1">{c.label}</p>
           </div>
         ))}
+      </div>
+
+      <div className="rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-fuchsia-50 p-5">
+        <div className="flex items-start gap-3">
+          <Shield className="w-5 h-5 text-violet-600 mt-0.5" />
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-violet-600">
+              Export premium v2
+            </p>
+            <h3 className="mt-1 text-sm font-black text-slate-900">
+              CSV e PDF com decisão pedagógica, não só tabela.
+            </h3>
+            <p className="mt-1 text-xs leading-relaxed text-slate-600">
+              O CSV adiciona sinais disponíveis, ação recomendada e lacunas de dados por aluno. O PDF/print preserva estes critérios para revisão humana antes de qualquer ação institucional.
+            </p>
+          </div>
+        </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          {[
+            "Sem inventar último login, tempo real de sessão ou intervenção não registrada.",
+            "Ação sugerida deriva apenas de XP, simulados, uso do Tiagão e entregas carregadas.",
+            "Relatório institucional deve ser revisado pelo professor/gestor antes de contato com aluno.",
+          ].map(item => (
+            <div key={item} className="rounded-xl bg-white/75 px-3 py-2 text-[11px] font-semibold leading-relaxed text-slate-600">
+              {item}
+            </div>
+          ))}
+        </div>
       </div>
 
       {data.heatMap.length > 0 && (

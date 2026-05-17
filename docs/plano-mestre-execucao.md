@@ -28,6 +28,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - **Relatorios B2B v2:** professor e gestor deixam de exibir exportacao apenas como placeholder e passam a baixar CSV util com diagnostico, sinais disponiveis e proxima acao sem inventar linhas por aluno fora dos dados atuais.
 - **Analytics aluno + fechamento de recuperacao:** Home ganhou painel leve de aprendizagem com dominio por area, streak, habilidades fracas, marcos e lacunas transparentes; Caderno registra historico local de revisoes concluidas; Simulado permite marcar a missao de recuperacao como feita.
 - **Gates Notebook + coaching Tiagao:** producao foi confirmada no commit `65e9e83`/`65e9e836`; smoke Notebook agora cobre serializacao de preview/export de apresentacoes e mapas; Home usa analytics local para oferecer coaching proativo do Tiagao sem inventar metrica nova.
+- **Caderno loop v2 + exports B2B:** Caderno agora mostra streak local, proxima revisao e fechamento manual de missao pendente; relatorio professor/gestor ganhou CSV com sinais, acao recomendada e lacunas explicitas, alem de bloco imprimivel de criterios.
 
 ## Tickets em execucao
 
@@ -131,7 +132,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 
 ### F2-02 B2B premium diagnostico professor/gestor
 
-**Status:** v2 implementado com diagnostico e exportacao CSV; pendente QA manual e rollout.
+**Status:** v2 implementado com diagnostico, CSV enriquecido e bloco imprimivel; pendente QA manual e rollout.
 
 **Objetivo:** acelerar percepcao premium no modulo B2B sem redesenhar rotas: professor ve risco/baixa atividade por turma e gestor ve adocao/cobertura institucional com proxima acao clara.
 
@@ -143,6 +144,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - Turma mostra resumo de usuarios, XP, simulados, acerto e dias ativos ja disponiveis no endpoint atual.
 - Gestor institucional recebe diagnostico de cobertura, tracao e relatorio com recomendacao operacional.
 - Exportacao CSV usa os dados ja carregados no painel e mantem lacunas explicitas quando faltam linhas detalhadas.
+- Relatorio geral do professor adiciona sinais disponiveis, acao recomendada e lacunas por linha exportada.
 - Lacunas de dados ficam explicitas: tempo real por sessao, ultimo login bruto, entregas atrasadas e intervencoes registradas.
 
 **Criterios de aceite:**
@@ -151,7 +153,8 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - Nao ha numeros inventados para risco individual no agregado institucional.
 - Estados sem alunos, sem relatorio e sem dados suficientes orientam o proximo setup.
 - Professor baixa CSV por turma com status, sinais disponiveis, XP, simulados, acerto e recomendacao.
-- Gestor baixa CSV institucional com resumo, turmas, sinal de tracao por XP medio e acao recomendada.
+- Gestor/professor baixa CSV institucional com sinais disponiveis, acao recomendada e lacunas sem inventar telemetria ausente.
+- Impressao/PDF mostra criterios de revisao humana e origem dos sinais.
 - Typecheck do app passa antes de commit/deploy.
 
 ### F2-03 Curadoria premium de materiais
@@ -192,6 +195,8 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - Home destaca streak, habilidades fracas, proximos marcos e lacunas de dados explicitamente.
 - Home sugere uma intervencao curta do Tiagao quando houver area fraca ou padrao de erro local.
 - Caderno de Erros registra historico local de revisoes concluidas ao salvar nota importada do simulado.
+- Caderno mostra streak local, recorde, proxima revisao conhecida e agrupamento por materia.
+- Caderno permite fechar manualmente uma missao pendente quando o aluno revisou fora do fluxo de salvar nota.
 - Simulado permite marcar o plano de recuperacao como concluido e remove a missao pendente da Home.
 - Eventos Hermes locais registram exibicao/click/conclusao sem depender de backend novo.
 
@@ -200,6 +205,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - Nao ha metricas globais inventadas quando faltam dados; estados vazios orientam o proximo passo.
 - O historico local limita quantidade de registros e nao altera schema/API do Caderno.
 - Marcar recuperacao como feita fecha a proxima acao local do Simulado.
+- Fechamento manual do Caderno registra historico local e sinal Hermes sem criar progresso global falso.
 - Coaching do Tiagao usa somente evidencias locais e registra sinal Hermes ao clique.
 - Typecheck focado do app passa antes de commit/deploy.
 
@@ -330,9 +336,18 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 
 - [x] Caderno registra historico local de revisoes de erro concluidas ao salvar nota importada.
 - [x] Caderno mostra estado resumido de revisoes concluidas sem depender de backend novo.
+- [x] Caderno mostra streak/recorde local, proxima revisao conhecida e resumo por materia.
+- [x] Caderno permite marcar missao pendente como feita manualmente com evento Hermes e `manual_close`.
 - [x] Simulado permite marcar missao de recuperacao como feita e limpa a missao pendente local.
 - [ ] QA manual: simulado com erro -> concluir recuperacao -> Home deve deixar de priorizar a missao de recuperacao.
 - [ ] QA manual: simulado com erro -> enviar ao Caderno -> salvar nota -> historico de revisoes deve ganhar novo item.
+- [ ] QA manual: missao pendente no Caderno -> marcar revisao feita -> streak/historico local atualizam.
+
+### Relatorios B2B premium v2
+
+- [x] Relatorio geral CSV inclui sinais disponiveis por aluno, acao recomendada e lacunas de dados.
+- [x] Relatorio imprimivel/PDF inclui criterio de revisao humana e explicita que nao inventa ultimo login, tempo real por sessao ou intervencoes.
+- [ ] QA manual: baixar CSV do relatorio geral e imprimir/salvar PDF validando colunas novas e bloco de criterios.
 
 ### Metricas
 
@@ -393,5 +408,6 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [x] Adicionar workflow manual local de curadoria e fechamento local da missao Simulado -> Caderno.
 - [x] Adicionar analytics leve do aluno, historico local de revisoes concluidas e fechamento manual de recuperacao do Simulado.
 - [x] Automatizar parte do QA Notebook/RAG com smoke de serializacao preview/export e adicionar coaching proativo do Tiagao no analytics local.
+- [x] Evoluir Caderno com streak local/fechamento manual e melhorar export institucional com sinais/lacunas.
 - [ ] Proximo lote de Caderno de Erros: persistir historico estruturado no backend quando houver schema/API definido.
 - [ ] Depois do lote de erros: evoluir modos pedagogicos do Tiagao com taxonomia oficial e metricas por modo.

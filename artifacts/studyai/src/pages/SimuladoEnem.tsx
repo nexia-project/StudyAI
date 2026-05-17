@@ -17,15 +17,22 @@ import {
 } from "@/lib/error-review";
 
 const DIAS_INFO = [
-  { dia: 1, nome: "Linguagens", cor: "from-violet-500 to-violet-600", bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-200", emoji: "📝", materias: "Língua Portuguesa, Literatura, Inglês, Arte, Educação Física" },
-  { dia: 2, nome: "Ciências Humanas", cor: "from-amber-500 to-orange-600", bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200", emoji: "🌍", materias: "História, Geografia, Filosofia, Sociologia" },
-  { dia: 3, nome: "Ciências Naturais", cor: "from-emerald-500 to-teal-600", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", emoji: "🔬", materias: "Física, Química, Biologia" },
-  { dia: 4, nome: "Matemática", cor: "from-violet-500 to-violet-600", bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-200", emoji: "📐", materias: "Matemática — 45 questões" },
+  { dia: 1, nome: "Linguagens", areaOficial: "Linguagens, Códigos e suas Tecnologias", cor: "from-violet-500 to-violet-600", bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-200", emoji: "📝", materias: "Língua Portuguesa, Literatura, Inglês, Arte, Educação Física" },
+  { dia: 2, nome: "Ciências Humanas", areaOficial: "Ciências Humanas e suas Tecnologias", cor: "from-amber-500 to-orange-600", bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200", emoji: "🌍", materias: "História, Geografia, Filosofia, Sociologia" },
+  { dia: 3, nome: "Ciências Naturais", areaOficial: "Ciências da Natureza e suas Tecnologias", cor: "from-emerald-500 to-teal-600", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", emoji: "🔬", materias: "Física, Química, Biologia" },
+  { dia: 4, nome: "Matemática", areaOficial: "Matemática e suas Tecnologias", cor: "from-violet-500 to-violet-600", bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-200", emoji: "📐", materias: "Matemática — 45 questões" },
 ];
 
 interface Questao {
   numero: number;
   materia: string;
+  area?: string;
+  areaConhecimento?: string;
+  competencia?: string;
+  competenciaCodigo?: string;
+  habilidade?: string;
+  habilidadeCodigo?: string;
+  objetoConhecimento?: string;
   enunciado: string;
   pergunta: string;
   alternativas: Record<string, string>;
@@ -44,6 +51,36 @@ interface SubjectAnalysis {
   pct: number;
   habilidade: string;
   foco: string;
+}
+
+interface SkillPerformance {
+  key: string;
+  label: string;
+  kind: "area" | "competencia" | "habilidade";
+  total: number;
+  acertos: number;
+  erros: number;
+  pct: number;
+  focus: string;
+  metadataSource: "question-bank" | "fallback";
+}
+
+interface ErrorPattern {
+  key: string;
+  label: string;
+  count: number;
+  severity: "alta" | "media" | "baixa";
+  insight: string;
+  action: string;
+}
+
+interface RecoveryMission {
+  title: string;
+  estimatedTime: string;
+  objective: string;
+  steps: string[];
+  evidence: string;
+  check: string;
 }
 
 const HABILIDADES_POR_MATERIA: Record<string, string> = {
@@ -66,6 +103,37 @@ function difficultyLabel(value: string) {
   if (value === "facil") return "fácil";
   if (value === "dificil") return "difícil";
   return "média";
+}
+
+function normalizeOptional(value?: string | null) {
+  const trimmed = String(value ?? "").trim();
+  return trimmed.length ? trimmed : null;
+}
+
+function getQuestionArea(q: Questao, diaInfo?: typeof DIAS_INFO[number]) {
+  return normalizeOptional(q.areaConhecimento) ?? normalizeOptional(q.area) ?? diaInfo?.areaOficial ?? diaInfo?.nome ?? "Área ENEM";
+}
+
+function getQuestionCompetency(q: Questao) {
+  const label = normalizeOptional(q.competencia);
+  const code = normalizeOptional(q.competenciaCodigo);
+  if (!label && !code) return null;
+  return code && label ? `${code} — ${label}` : label ?? code;
+}
+
+function getQuestionSkill(q: Questao) {
+  const explicit = normalizeOptional(q.habilidade);
+  const code = normalizeOptional(q.habilidadeCodigo);
+  if (explicit && code) return `${code} — ${explicit}`;
+  if (explicit || code) return explicit ?? code;
+  return null;
+}
+
+function getSkillFocus(pct: number, erros: number) {
+  if (erros === 0) return "manter como ponto forte";
+  if (pct >= 70) return "lapidar consistência";
+  if (pct >= 50) return "revisar fundamento e comando";
+  return "recuperação prioritária";
 }
 
 function buildSubjectAnalysis(questoes: Questao[], respostas: Record<number, string>): SubjectAnalysis[] {
@@ -91,6 +159,189 @@ function buildSubjectAnalysis(questoes: Questao[], respostas: Record<number, str
       };
     })
     .sort((a, b) => b.erros - a.erros || a.pct - b.pct || b.total - a.total);
+}
+
+function buildSkillPerformance(
+  questoes: Questao[],
+  respostas: Record<number, string>,
+  diaInfo?: typeof DIAS_INFO[number],
+): SkillPerformance[] {
+  const grouped = new Map<string, Omit<SkillPerformance, "pct" | "focus">>();
+
+  const add = (kind: SkillPerformance["kind"], label: string, q: Questao, metadataSource: SkillPerformance["metadataSource"]) => {
+    const key = `${kind}:${label}`;
+    const current = grouped.get(key) ?? {
+      key,
+      label,
+      kind,
+      total: 0,
+      acertos: 0,
+      erros: 0,
+      metadataSource,
+    };
+    current.total += 1;
+    if (respostas[q.numero] === q.gabarito) current.acertos += 1;
+    else current.erros += 1;
+    grouped.set(key, current);
+  };
+
+  for (const q of questoes) {
+    add("area", getQuestionArea(q, diaInfo), q, normalizeOptional(q.area) || normalizeOptional(q.areaConhecimento) ? "question-bank" : "fallback");
+
+    const competency = getQuestionCompetency(q);
+    if (competency) add("competencia", competency, q, "question-bank");
+
+    const skill = getQuestionSkill(q);
+    if (skill) add("habilidade", skill, q, "question-bank");
+  }
+
+  return Array.from(grouped.values())
+    .map(item => {
+      const pct = item.total ? Math.round((item.acertos / item.total) * 100) : 0;
+      return {
+        ...item,
+        pct,
+        focus: getSkillFocus(pct, item.erros),
+      };
+    })
+    .sort((a, b) => {
+      const kindOrder = { area: 0, competencia: 1, habilidade: 2 };
+      return kindOrder[a.kind] - kindOrder[b.kind] || b.erros - a.erros || a.pct - b.pct;
+    });
+}
+
+function getProbableCause(q: Questao, selected?: string) {
+  if (!selected) {
+    return {
+      key: "sem_resposta",
+      label: "Questões sem resposta",
+      insight: "o problema pode estar no ritmo de prova, gerenciamento do tempo ou travamento no comando.",
+      action: "treinar blocos cronometrados e pular questões longas na primeira passagem.",
+    };
+  }
+  if (q.dificuldade === "facil") {
+    return {
+      key: "base_atencao",
+      label: "Erro em questão fácil",
+      insight: "sinal de atenção, leitura apressada ou conceito básico instável.",
+      action: "refazer sem pressa, destacando comando, dados e alternativa eliminada.",
+    };
+  }
+  if (q.dificuldade === "dificil") {
+    return {
+      key: "encadeamento_avancado",
+      label: "Encadeamento avançado",
+      insight: "a questão exige combinar repertório, interpretação e escolha de estratégia.",
+      action: "quebrar a resolução em passos e resolver uma questão similar com consulta.",
+    };
+  }
+  return {
+    key: "interpretacao_lacuna",
+    label: "Interpretação ou lacuna conceitual",
+    insight: "há indício de conceito parcialmente conhecido ou comando mal interpretado.",
+    action: "revisar a habilidade associada e explicar por que a alternativa correta vence.",
+  };
+}
+
+function buildErrorPatterns(erros: Questao[], respostas: Record<number, string>): ErrorPattern[] {
+  const grouped = new Map<string, ErrorPattern>();
+
+  for (const q of erros) {
+    const cause = getProbableCause(q, respostas[q.numero]);
+    const current: ErrorPattern = grouped.get(cause.key) ?? {
+      key: cause.key,
+      label: cause.label,
+      count: 0,
+      severity: "baixa",
+      insight: cause.insight,
+      action: cause.action,
+    };
+    current.count += 1;
+    grouped.set(cause.key, current);
+  }
+
+  return Array.from(grouped.values())
+    .map<ErrorPattern>(pattern => {
+      const severity: ErrorPattern["severity"] = pattern.count >= 3 ? "alta" : pattern.count === 2 ? "media" : "baixa";
+      return { ...pattern, severity };
+    })
+    .sort((a, b) => b.count - a.count);
+}
+
+function buildRecoveryMission(args: {
+  erros: Questao[];
+  subjects: SubjectAnalysis[];
+  skillPerformance: SkillPerformance[];
+  errorPatterns: ErrorPattern[];
+  pct: number;
+}): RecoveryMission {
+  const weakestSkill = args.skillPerformance.find(item => item.metadataSource === "question-bank" && item.erros > 0)
+    ?? args.skillPerformance.find(item => item.erros > 0);
+  const weakestSubject = args.subjects.find(subject => subject.erros > 0);
+  const mainPattern = args.errorPatterns[0];
+  const focus = weakestSkill?.label ?? weakestSubject?.materia ?? "manutenção dos acertos";
+  const estimatedTime = args.erros.length >= 8 ? "35 min" : args.erros.length >= 4 ? "25 min" : "15 min";
+
+  if (!args.erros.length) {
+    return {
+      title: "Missão de consolidação",
+      estimatedTime: "15 min",
+      objective: "transformar os acertos em repertório estável antes de subir o nível.",
+      evidence: `${args.pct}% de acerto no simulado.`,
+      steps: [
+        "Escolha 2 questões que pareciam difíceis e explique a lógica em voz alta.",
+        "Revise rapidamente a área para não perder retenção em 48 horas.",
+        "No próximo simulado, aumente a quantidade ou a dificuldade.",
+      ],
+      check: "Você consegue justificar a alternativa correta sem olhar a explicação.",
+    };
+  }
+
+  return {
+    title: `Missão de recuperação: ${focus}`,
+    estimatedTime,
+    objective: `corrigir o padrão dominante (${mainPattern?.label ?? "erro de simulado"}) antes de fazer outro bloco.`,
+    evidence: `${args.erros.length} erro(s); ${weakestSubject ? `${weakestSubject.materia} concentra ${weakestSubject.erros}` : "prioridade definida pelo resultado"} erro(s).`,
+    steps: [
+      "Refaça até 3 erros sem consultar o gabarito, começando pelo comando da questão.",
+      `Revise ${focus} com uma explicação curta e um exemplo resolvido.`,
+      "Resolva uma questão parecida cronometrada para confirmar que a lacuna foi reparada.",
+    ],
+    check: "A missão termina quando você acerta a questão parecida e consegue explicar o erro anterior.",
+  };
+}
+
+function buildSimuladoRecommendation(args: {
+  pct: number;
+  erros: Questao[];
+  subjects: SubjectAnalysis[];
+  skillPerformance: SkillPerformance[];
+  errorPatterns: ErrorPattern[];
+  recoveryMission: RecoveryMission;
+}) {
+  const weakest = args.skillPerformance.find(item => item.erros > 0) ?? args.subjects.find(item => item.erros > 0);
+  return {
+    area: "simulado_enem",
+    targetSurface: "resultado_simulado",
+    observedState: args.erros.length
+      ? `${args.erros.length} erro(s), padrão principal: ${args.errorPatterns[0]?.label ?? "não classificado"}.`
+      : "Sem erros nesta tentativa.",
+    problemOpportunity: "Resultado de simulado precisa virar decisão de estudo imediata, não apenas gabarito.",
+    recommendedChange: args.recoveryMission.title,
+    expectedImpact: "Aumentar conclusão de missões de recuperação antes do próximo simulado.",
+    confidence: "medium",
+    successMetric: "simulado_missao_recuperacao_iniciada",
+    weakestFocus: weakest ? {
+      label: "label" in weakest ? weakest.label : weakest.materia,
+      errors: weakest.erros,
+      accuracy: weakest.pct,
+    } : null,
+    patterns: args.errorPatterns.map(pattern => ({
+      key: pattern.key,
+      count: pattern.count,
+      severity: pattern.severity,
+    })),
+  };
 }
 
 function estimatePedagogicalTri(pct: number, questoes: Questao[], erros: Questao[]) {
@@ -310,6 +561,12 @@ export default function SimuladoEnemPage() {
     if (timerRef.current) clearInterval(timerRef.current);
     const total = questoes.length;
     const erros = questoes.filter(q => respostas[q.numero] !== q.gabarito);
+    const accuracy = total ? Math.round(((total - erros.length) / total) * 100) : 0;
+    const diaInfo = DIAS_INFO.find(d => d.dia === diaSelecionado);
+    const subjects = buildSubjectAnalysis(questoes, respostas);
+    const skillPerformance = buildSkillPerformance(questoes, respostas, diaInfo);
+    const errorPatterns = buildErrorPatterns(erros, respostas);
+    const recoveryMission = buildRecoveryMission({ erros, subjects, skillPerformance, errorPatterns, pct: accuracy });
     emitHermesLearningSignal({
       surface: "simulado_enem",
       event: "simulado_finalizado",
@@ -317,8 +574,22 @@ export default function SimuladoEnemPage() {
       total,
       answered: Object.keys(respostas).length,
       errors: erros.length,
-      accuracy: total ? Math.round(((total - erros.length) / total) * 100) : 0,
+      accuracy,
       primarySubject: erros[0]?.materia ?? null,
+      primaryPattern: errorPatterns[0]?.key ?? null,
+      recoveryMission: {
+        title: recoveryMission.title,
+        estimatedTime: recoveryMission.estimatedTime,
+        objective: recoveryMission.objective,
+      },
+      recommendation: buildSimuladoRecommendation({
+        pct: accuracy,
+        erros,
+        subjects,
+        skillPerformance,
+        errorPatterns,
+        recoveryMission,
+      }),
     });
     setFase("resultado");
   }, [diaSelecionado, questoes, respostas]);
@@ -713,6 +984,10 @@ export default function SimuladoEnemPage() {
     const { acertos, erros, pct, total } = calcularResultado();
     const diaInfo = DIAS_INFO.find(d => d.dia === diaSelecionado)!;
     const subjects = buildSubjectAnalysis(questoes, respostas);
+    const skillPerformance = buildSkillPerformance(questoes, respostas, diaInfo);
+    const explicitSkillPerformance = skillPerformance.filter(item => item.metadataSource === "question-bank");
+    const errorPatterns = buildErrorPatterns(erros, respostas);
+    const recoveryMission = buildRecoveryMission({ erros, subjects, skillPerformance, errorPatterns, pct });
     const tri = estimatePedagogicalTri(pct, questoes, erros);
     const actionPlan = buildActionPlan(erros, subjects);
     const nivel = pct >= 80 ? { label: "Excelente! 🏆", cor: "text-emerald-700", bg: "bg-emerald-50" }
@@ -769,6 +1044,127 @@ export default function SimuladoEnemPage() {
                 Próxima ação
               </div>
               <p className="text-sm text-slate-700 leading-relaxed">{actionPlan.nextBestAction}</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mb-6 overflow-hidden">
+            <div className="p-4 border-b border-slate-100">
+              <h2 className="font-black text-slate-800 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-violet-500" />
+                Radiografia ENEM premium
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Desempenho por área e, quando o banco traz metadados, por competência e habilidade.
+              </p>
+            </div>
+            <div className="p-4 space-y-4">
+              <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wide text-slate-500">Área do dia</p>
+                    <p className="font-black text-slate-800">{diaInfo.areaOficial}</p>
+                  </div>
+                  <span className={cn(
+                    "text-xs font-black px-2 py-1 rounded-lg",
+                    pct >= 80 ? "bg-emerald-100 text-emerald-700" :
+                      pct >= 60 ? "bg-violet-100 text-violet-700" :
+                      "bg-rose-100 text-rose-700"
+                  )}>
+                    {pct}% na área
+                  </span>
+                </div>
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  {acertos}/{total} acertos. Use este diagnóstico para decidir se o próximo passo é consolidar a área ou reparar uma habilidade específica.
+                </p>
+              </div>
+
+              {explicitSkillPerformance.length > 0 ? (
+                <div className="grid md:grid-cols-2 gap-3">
+                  {explicitSkillPerformance.slice(0, 6).map(item => (
+                    <div key={item.key} className="rounded-xl border border-violet-100 bg-violet-50/50 p-3">
+                      <div className="flex items-center justify-between gap-3 mb-1">
+                        <span className="text-[11px] font-black uppercase tracking-wide text-violet-700">
+                          {item.kind === "competencia" ? "Competência" : item.kind === "habilidade" ? "Habilidade" : "Área"}
+                        </span>
+                        <span className="text-xs font-black text-slate-700">{item.pct}%</span>
+                      </div>
+                      <p className="text-sm font-bold text-slate-800 leading-snug">{item.label}</p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {item.acertos}/{item.total} acertos · {item.focus}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-amber-100 bg-amber-50 p-3">
+                  <p className="text-sm font-bold text-amber-800">Banco sem competência/habilidade explícita nesta tentativa.</p>
+                  <p className="text-xs text-amber-700 leading-relaxed mt-1">
+                    Mantive a análise por matéria e área. Quando as questões vierem com campos de competência ou habilidade, esta seção passa a detalhar esses cortes automaticamente.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-[0.95fr_1.05fr] gap-4 mb-6">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+              <h2 className="font-black text-slate-800 flex items-center gap-2 mb-3">
+                <AlertCircle className="w-4 h-4 text-amber-500" />
+                Padrões de erro
+              </h2>
+              {errorPatterns.length ? (
+                <div className="space-y-3">
+                  {errorPatterns.map(pattern => (
+                    <div key={pattern.key} className="rounded-xl bg-slate-50 border border-slate-100 p-3">
+                      <div className="flex items-center justify-between gap-3 mb-1">
+                        <p className="font-bold text-sm text-slate-800">{pattern.label}</p>
+                        <span className={cn(
+                          "text-[11px] font-black px-2 py-1 rounded-lg uppercase",
+                          pattern.severity === "alta" ? "bg-rose-100 text-rose-700" :
+                            pattern.severity === "media" ? "bg-amber-100 text-amber-700" :
+                            "bg-violet-100 text-violet-700"
+                        )}>
+                          {pattern.count}x · {pattern.severity}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 leading-relaxed">{pattern.insight}</p>
+                      <p className="text-xs font-semibold text-slate-700 mt-2">{pattern.action}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  Nenhum erro detectado. O padrão agora é manter consistência e aumentar a dificuldade no próximo bloco.
+                </p>
+              )}
+            </div>
+
+            <div className="bg-gradient-to-br from-violet-600 to-fuchsia-600 rounded-2xl shadow-xl shadow-violet-100 p-5 text-white">
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-wide text-white/70 mb-1">O que fazer agora</p>
+                  <h2 className="text-xl font-black leading-tight">{recoveryMission.title}</h2>
+                </div>
+                <span className="px-2.5 py-1 rounded-lg bg-white/15 text-xs font-black whitespace-nowrap">
+                  {recoveryMission.estimatedTime}
+                </span>
+              </div>
+              <p className="text-sm text-white/85 leading-relaxed mb-3">{recoveryMission.objective}</p>
+              <p className="text-xs text-white/70 mb-4">Evidência: {recoveryMission.evidence}</p>
+              <ol className="space-y-2 mb-4">
+                {recoveryMission.steps.map((step, index) => (
+                  <li key={step} className="flex gap-2 text-sm leading-relaxed">
+                    <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[11px] font-black flex-shrink-0 mt-0.5">
+                      {index + 1}
+                    </span>
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ol>
+              <div className="rounded-xl bg-white/10 border border-white/15 p-3">
+                <p className="text-xs font-black uppercase tracking-wide text-white/70 mb-1">Critério de conclusão</p>
+                <p className="text-sm text-white/90 leading-relaxed">{recoveryMission.check}</p>
+              </div>
             </div>
           </div>
 

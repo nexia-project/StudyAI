@@ -13,7 +13,8 @@
     "ingest:enem-db": "tsx scripts/ingest-enem-to-db.ts",
     "ingest:postulados": "tsx scripts/ingest-postulados.ts",
     "ingest:concursos": "tsx scripts/ingest-concursos.ts",
-    "reclassify:concursos": "tsx scripts/reclassify-concursos-areas.ts"
+    "reclassify:concursos": "tsx scripts/reclassify-concursos-areas.ts",
+    "smoke:notebook-fallbacks": "node scripts/smoke-notebook-fallbacks.mjs"
   },
   "dependencies": {
     "@clerk/express": "^2.1.9",

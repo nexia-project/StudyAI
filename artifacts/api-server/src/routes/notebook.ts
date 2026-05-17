@@ -21,6 +21,10 @@ import { trackEvent } from "../lib/trackEvent";
 import { injectHermes } from "../lib/hermes/buildHermesContext";
 import { persistDescoberta } from "../lib/hermes/persist";
 import { formatHermesRecommendation, type HermesRecommendation } from "../lib/hermes/recommendationStandard";
+import {
+  normalizeMindMap as normalizeMindMapFallback,
+  normalizeSlides as normalizeSlidesFallback,
+} from "../lib/notebook-fallbacks";
 
 const _require = createRequire(import.meta.url);
 const router: IRouter = Router();
@@ -2133,7 +2137,7 @@ ${buildMaterialInstruction(materialPreferences)}
       8000,
     );
     const parsed = parseNotebookJson(raw);
-    const mapa = await enrichMaterialPayload("mapa-mental", row.title, row.content_text, normalizeMindMap(parsed, row.title, row.content_text), materialPreferences);
+    const mapa = await enrichMaterialPayload("mapa-mental", row.title, row.content_text, normalizeMindMapFallback(parsed, row.title, row.content_text), materialPreferences);
     await saveArtifact(req.userId, docId, "mapa-mental", mapa.subject ?? row.title, mapa);
     trackNotebookMaterialEvent({ userId: req.userId, docId, kind: "mapa-mental", title: row.title, prefs: materialPreferences, payload: mapa, source: { content: row.content_text } });
     res.json(mapa);
@@ -4053,7 +4057,7 @@ ${buildMaterialInstruction(materialPreferences)}
       9000,
     );
 
-    let apresentacao: any = normalizeSlides(parseNotebookJson(slidesRaw), row.title, row.content_text);
+    let apresentacao: any = normalizeSlidesFallback(parseNotebookJson(slidesRaw), row.title, row.content_text);
 
     if (!apresentacao.generatedByFallback) {
       // Cover image is nice-to-have. Never let image generation break the deck.

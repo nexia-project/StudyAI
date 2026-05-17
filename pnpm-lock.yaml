@@ -167,6 +167,9 @@ importers:
         specifier: 1.0.0
         version: 1.0.0(stripe@20.0.0(@types/node@25.3.5))
     devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.3.5
       prettier:
         specifier: ^3.8.1
         version: 3.8.1
@@ -965,7 +968,14 @@ importers:
         specifier: ^7.1.1
         version: 7.1.1
 
-  lib/integrations-openai-ai-react: {}
+  lib/integrations-openai-ai-react:
+    devDependencies:
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.14
+      react:
+        specifier: 'catalog:'
+        version: 19.1.0
 
   lib/integrations-openai-ai-server:
     dependencies:

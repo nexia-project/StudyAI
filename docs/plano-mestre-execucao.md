@@ -242,6 +242,15 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [x] Typecheck raiz restaurado no commit `65e9e836`; `pnpm run typecheck` volta a ser gate obrigatorio do lote.
 - [ ] QA manual Notebook/RAG apresentacoes continua pendente; smoke automatizado cobre fallbacks e serializacao de preview/export, mas nao substitui validacao visual no navegador.
 
+### Auditoria de rollout premium - 2026-05-17 18:30
+
+- [x] Lote Notebook QA + coaching publicado em `8c7b1c3e` e verificado em producao por `/api/healthz`.
+- [x] Lote Caderno loop v2 + exports B2B publicado em `caa10127`; Railway concluiu deploy e respondeu `status=ok`.
+- [x] Lote Hermes QA B2B publicado em `cb20f465`; auto-deploy respondeu `commit=cb20f46` antes do deploy manual local.
+- [x] Gate raiz executado apos os lotes: `pnpm run typecheck`.
+- [x] Gate Notebook executado apos os lotes: `pnpm --filter @workspace/api-server run smoke:notebook-preview-export`.
+- [ ] Observacao: `railway up --detach` faz upload local e pode sobrescrever `/api/healthz.commit` como `local`; para validacao por SHA, preferir auto-deploy a partir do `git push`.
+
 ### Bloqueador atual - Notebook RAG apresentacoes
 
 - [x] Confirmar que producao esta em commit `01857b24` ou mais novo: health atual retornou `44daf83`.

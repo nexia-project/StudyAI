@@ -6,9 +6,13 @@ import {
   BookMarked, Lightbulb, Brain, HelpCircle, List, Loader2, X,
   Search, StickyNote, GraduationCap,
 } from "lucide-react";
+import {
+  SIMULADO_ERROR_REVIEW_DRAFT_KEY,
+  emitHermesLearningSignal,
+  type ErrorReviewDraft,
+} from "@/lib/error-review";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
-const SIMULADO_ERROR_REVIEW_DRAFT_KEY = "studyai:simulado-enem:error-review-draft:v1";
 
 const MATERIAS = [
   "Matemática", "Português", "Redação", "História", "Geografia",
@@ -45,12 +49,6 @@ interface Note {
   updatedAt: string;
 }
 
-interface ErrorReviewDraft {
-  title?: string;
-  content?: string;
-  materia?: string;
-}
-
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
   const now = new Date();
@@ -73,6 +71,7 @@ export default function Caderno() {
   const [search, setSearch] = useState("");
   const [filterMateria, setFilterMateria] = useState<string>("Todas");
   const [showEditor, setShowEditor] = useState(false);
+  const [importedErrorReview, setImportedErrorReview] = useState<ErrorReviewDraft | null>(null);
 
   // Editor state
   const [editTitle, setEditTitle] = useState("");
@@ -118,9 +117,19 @@ export default function Caderno() {
       setEditTitle(draft.title);
       setEditContent(draft.content);
       setEditMateria(draft.materia ?? "");
+      setImportedErrorReview(draft);
       setIsCreating(true);
       setDirty(false);
       setShowEditor(true);
+      emitHermesLearningSignal({
+        surface: "caderno",
+        event: "error_review_draft_loaded",
+        source: draft.source ?? "simulado-enem",
+        errorType: draft.errorType ?? null,
+        errors: draft.errors?.length ?? null,
+        primarySubject: draft.materia ?? null,
+        recommendation: draft.recommendation ?? null,
+      });
     } catch {
       localStorage.removeItem(SIMULADO_ERROR_REVIEW_DRAFT_KEY);
     }
@@ -137,6 +146,7 @@ export default function Caderno() {
     setShowEditor(true);
     setFlipCard(null);
     setSelectedAnswer({});
+    setImportedErrorReview(null);
   }, []);
 
   // New note
@@ -148,6 +158,7 @@ export default function Caderno() {
     setIsCreating(true);
     setDirty(false);
     setShowEditor(true);
+    setImportedErrorReview(null);
   }, []);
 
   // Auto-save on edit (2s debounce)
@@ -188,6 +199,18 @@ export default function Caderno() {
         setSelectedId(note.id);
         setIsCreating(false);
         setDirty(false);
+        if (importedErrorReview) {
+          emitHermesLearningSignal({
+            surface: "caderno",
+            event: "error_review_note_created",
+            source: importedErrorReview.source ?? "simulado-enem",
+            errorType: importedErrorReview.errorType ?? null,
+            errors: importedErrorReview.errors?.length ?? null,
+            primarySubject: importedErrorReview.materia ?? null,
+            recommendation: importedErrorReview.recommendation ?? null,
+          });
+          setImportedErrorReview(null);
+        }
       } else if (selectedId) {
         await fetch(`${BASE_URL}/api/student/caderno/${selectedId}`, {
           method: "PUT",
@@ -203,7 +226,7 @@ export default function Caderno() {
       setSavedOk(true);
       setTimeout(() => setSavedOk(false), 2000);
     } finally { setSaving(false); }
-  }, [isCreating, selectedId, editTitle, editContent, editMateria]);
+  }, [isCreating, selectedId, editTitle, editContent, editMateria, importedErrorReview]);
 
   // Delete note
   const handleDelete = useCallback(async (id: string) => {
@@ -438,6 +461,41 @@ export default function Caderno() {
                     <button onClick={() => setAiError(null)} className="ml-auto p-0.5 hover:bg-red-100 rounded">
                       <X className="w-3 h-3" />
                     </button>
+                  </div>
+                )}
+
+                {importedErrorReview && (
+                  <div className="mx-4 mt-3 rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-fuchsia-50 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-violet-600">
+                          Caderno de erros premium
+                        </p>
+                        <h2 className="mt-1 text-sm font-black text-slate-900">
+                          Tiagão organizou seus erros por causa provável e próxima revisão.
+                        </h2>
+                        <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                          Salve esta nota para manter o histórico e use o botão do Tiagão IA para transformar a revisão em flashcards e questões.
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-black text-violet-700 shadow-sm">
+                        {importedErrorReview.errors?.length ?? 0} erro{(importedErrorReview.errors?.length ?? 0) !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                      <div className="rounded-xl bg-white/80 p-3">
+                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Tipo</p>
+                        <p className="mt-1 text-xs font-bold text-slate-800">{importedErrorReview.errorType ?? "revisão ENEM"}</p>
+                      </div>
+                      <div className="rounded-xl bg-white/80 p-3">
+                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Causa provável</p>
+                        <p className="mt-1 text-xs font-bold text-slate-800">{importedErrorReview.probableCause ?? "lacuna a revisar"}</p>
+                      </div>
+                      <div className="rounded-xl bg-white/80 p-3">
+                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Próxima missão</p>
+                        <p className="mt-1 text-xs font-bold text-slate-800">{importedErrorReview.nextMission ?? "refazer erro comentado"}</p>
+                      </div>
+                    </div>
                   </div>
                 )}
 

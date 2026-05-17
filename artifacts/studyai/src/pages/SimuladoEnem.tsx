@@ -8,8 +8,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSubscription, startCheckout } from "@/hooks/useSubscription";
-
-const SIMULADO_ERROR_REVIEW_DRAFT_KEY = "studyai:simulado-enem:error-review-draft:v1";
+import {
+  SIMULADO_ERROR_REVIEW_DRAFT_KEY,
+  buildTiagaoErrorReviewPrompt,
+  emitHermesLearningSignal,
+  saveErrorReviewMission,
+  type ErrorReviewDraft,
+} from "@/lib/error-review";
 
 const DIAS_INFO = [
   { dia: 1, nome: "Linguagens", cor: "from-violet-500 to-violet-600", bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-200", emoji: "📝", materias: "Língua Portuguesa, Literatura, Inglês, Arte, Educação Física" },
@@ -138,8 +143,9 @@ function buildErrorReviewDraft(args: {
   erros: Questao[];
   respostas: Record<number, string>;
   subjects: SubjectAnalysis[];
+  actionPlan: ReturnType<typeof buildActionPlan>;
   nextBestAction: string;
-}) {
+}): ErrorReviewDraft {
   const linhasErro = args.erros.slice(0, 8).map((q) => {
     const minha = args.respostas[q.numero] || "sem resposta";
     return [
@@ -155,9 +161,39 @@ function buildErrorReviewDraft(args: {
     .slice(0, 3)
     .map(s => `- ${s.materia}: ${s.erros} erro(s), foco em ${s.habilidade}.`);
 
+  const primarySubject = args.subjects.find(s => s.erros > 0) ?? args.subjects[0];
+  const errorType = args.erros.some(q => q.dificuldade === "facil")
+    ? "atenção/conceito base"
+    : args.erros.some(q => q.dificuldade === "dificil")
+      ? "encadeamento avançado"
+      : args.erros.length
+        ? "interpretação ou lacuna conceitual"
+        : "manutenção de acertos";
+  const subject = primarySubject?.materia ?? args.erros[0]?.materia ?? "revisão ENEM";
+  const now = new Date();
+  const nextReviewAt = new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString();
+  const reason = args.erros.length
+    ? `${args.erros.length} erro(s) em ${subject}; padrão principal: ${errorType}.`
+    : "Nenhum erro registrado; manter revisão espaçada e subir dificuldade.";
+  const errors = args.erros.slice(0, 8).map((q) => ({
+    questionNumber: q.numero,
+    materia: q.materia,
+    difficulty: difficultyLabel(q.dificuldade),
+    selectedAnswer: args.respostas[q.numero] || "sem resposta",
+    correctAnswer: q.gabarito,
+    probableCause: q.dificuldade === "facil"
+      ? "atenção/conceito base"
+      : q.dificuldade === "dificil"
+        ? "encadeamento avançado"
+        : "interpretação ou lacuna conceitual",
+    correction: q.explicacao,
+    skill: HABILIDADES_POR_MATERIA[q.materia] ?? "habilidade ENEM associada ao tema",
+    reviewAction: "Refazer a questão explicando o comando antes de olhar o gabarito.",
+  }));
+
   return {
     title: `Caderno de erros - ENEM ${args.diaNome}`,
-    materia: args.subjects[0]?.materia ?? "Outro",
+    materia: subject,
     content: [
       `Resultado: ${args.acertos}/${args.total} (${args.pct}%).`,
       `Próxima melhor ação: ${args.nextBestAction}`,
@@ -168,13 +204,48 @@ function buildErrorReviewDraft(args: {
       "Erros comentados:",
       ...(linhasErro.length ? linhasErro : ["Nenhum erro registrado. Use este espaço para consolidar os acertos difíceis."]),
     ].join("\n"),
-    createdAt: new Date().toISOString(),
+    createdAt: now.toISOString(),
     source: "simulado-enem",
+    errorType,
+    probableCause: args.actionPlan.cause,
+    nextMission: args.nextBestAction,
+    errors,
+    subjectFocus: args.subjects
+      .filter(s => s.erros > 0)
+      .slice(0, 4)
+      .map(s => ({
+        materia: s.materia,
+        errors: s.erros,
+        accuracy: s.pct,
+        skill: s.habilidade,
+        focus: s.foco,
+      })),
+    telemetry: {
+      surface: "simulado_enem",
+      event: "error_review_draft_created",
+      source: "simulado-enem",
+      accuracy: args.pct,
+      errors: args.erros.length,
+      total: args.total,
+      primarySubject: subject,
+      nextReviewAt,
+    },
+    recommendation: {
+      area: "sucesso_aluno",
+      targetSurface: "caderno_erros",
+      observedState: reason,
+      problemOpportunity: "Erros de simulado precisam virar revisão curta e acionável, não apenas gabarito consultado uma vez.",
+      recommendedChange: "Priorizar uma missão de reparo no Caderno e na Home com causa provável, habilidade e checagem.",
+      expectedImpact: "Aumentar retorno ao caderno de erros e reduzir repetição do mesmo padrão de erro.",
+      confidence: "medium",
+      successMetric: "missao_revisao_erro_iniciada e revisao_erro_concluida",
+      acceptanceCriteria: [
+        "Caderno mostra tipo de erro e causa provável",
+        "Home oferece revisão como próxima melhor ação",
+        "Tiagão recebe prompt de revisão com matéria e padrão de erro",
+      ],
+    },
   };
-}
-
-function emitHermesLearningSignal(detail: Record<string, unknown>) {
-  window.dispatchEvent(new CustomEvent("studyai:hermes-learning-signal", { detail }));
 }
 
 function formatTime(seconds: number) {
@@ -753,9 +824,36 @@ export default function SimuladoEnemPage() {
                       erros,
                       respostas,
                       subjects,
+                      actionPlan,
                       nextBestAction: actionPlan.nextBestAction,
                     });
+                    const primarySubject = draft.materia || subjects.find(s => s.erros > 0)?.materia || diaInfo.nome;
+                    const mission = {
+                      title: `Revisar erros de ${primarySubject}`,
+                      subject: primarySubject,
+                      estimate: erros.length > 4 ? "25 min" : "15 min",
+                      reason: draft.probableCause || actionPlan.cause,
+                      primaryLabel: "Abrir caderno de erros",
+                      tiagaoPrompt: buildTiagaoErrorReviewPrompt({
+                        subject: primarySubject,
+                        errorsCount: erros.length,
+                        errorType: draft.errorType || "revisão ENEM",
+                        reason: draft.probableCause || actionPlan.cause,
+                      }),
+                      source: "simulado-enem" as const,
+                      createdAt: draft.createdAt || new Date().toISOString(),
+                      errorsCount: erros.length,
+                      accuracy: pct,
+                      errorType: draft.errorType || "revisão ENEM",
+                      nextReviewAt: String(draft.telemetry?.nextReviewAt || new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()),
+                    };
                     localStorage.setItem(SIMULADO_ERROR_REVIEW_DRAFT_KEY, JSON.stringify(draft));
+                    saveErrorReviewMission(mission);
+                    emitHermesLearningSignal({
+                      ...draft.telemetry,
+                      event: "error_review_sent_to_caderno",
+                      recommendation: draft.recommendation,
+                    });
                     navigate("/caderno");
                   }}
                   className="w-full py-3 rounded-xl bg-violet-600 text-white font-black text-sm hover:bg-violet-700 transition-all"

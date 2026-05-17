@@ -66,6 +66,7 @@ import {
 import { useStudentProfile } from "@/hooks/useStudentProfile";
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 import { triggerProfessorAction } from "@/lib/professor-events";
+import { readErrorReviewMission, type ErrorReviewMission } from "@/lib/error-review";
 
 // Reconstrói o texto-conteúdo do plano (mesma rotina de HomeLegacy/History) —
 // usada pra alimentar o passo "result" quando reabrimos um plano salvo.
@@ -325,6 +326,7 @@ type StudyMission = {
   reason: string;
   primaryLabel: string;
   tiagaoPrompt: string;
+  sourceLabel?: string;
 };
 
 // ─── Página ───────────────────────────────────────────────────────────────────
@@ -335,6 +337,7 @@ export default function Home() {
 
   const [draft, setDraft] = useState("");
   const [recentPlans, setRecentPlans] = useState<RecentPlan[]>([]);
+  const [errorReviewMission, setErrorReviewMission] = useState<ErrorReviewMission | null>(null);
   const [stats, setStats] = useState<Stats>({ streak: null, xp: null });
   const [tiagaoSize, setTiagaoSize] = useState<number>(160);
 
@@ -367,6 +370,17 @@ export default function Home() {
     searchAbortRef.current?.abort();
     fileAbortRef.current?.abort();
     videosAbortRef.current?.abort();
+  }, []);
+
+  useEffect(() => {
+    const refreshErrorReviewMission = () => setErrorReviewMission(readErrorReviewMission());
+    refreshErrorReviewMission();
+    window.addEventListener("storage", refreshErrorReviewMission);
+    window.addEventListener("focus", refreshErrorReviewMission);
+    return () => {
+      window.removeEventListener("storage", refreshErrorReviewMission);
+      window.removeEventListener("focus", refreshErrorReviewMission);
+    };
   }, []);
 
   // Mobile: avatar do Tiagão menor para não dominar a tela.
@@ -444,6 +458,19 @@ export default function Home() {
     const concurso = profile?.concursoAlvo?.trim();
     const focus = concurso || objetivo || "seu objetivo principal";
 
+    if (errorReviewMission) {
+      return {
+        eyebrow: "Revisão recomendada",
+        title: errorReviewMission.title,
+        subject: errorReviewMission.subject,
+        estimate: errorReviewMission.estimate,
+        reason: `${errorReviewMission.reason} Revisão sugerida: ${new Date(errorReviewMission.nextReviewAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}.`,
+        primaryLabel: errorReviewMission.primaryLabel,
+        tiagaoPrompt: errorReviewMission.tiagaoPrompt,
+        sourceLabel: "caderno de erros",
+      };
+    }
+
     if (resumeTarget) {
       const dias = Array.isArray(resumeTarget.plan?.dias) ? resumeTarget.plan.dias.length : 0;
       const subject = resumeTarget.materia || resumeTarget.plan?.materia || focus;
@@ -457,6 +484,7 @@ export default function Home() {
           : "Você tem um plano salvo. Retomar evita recomeçar do zero e mantém o estudo em movimento.",
         primaryLabel: "Começar missão",
         tiagaoPrompt: `Tiagão, quero continuar minha missão de estudo em ${subject}. Me guia pelo próximo passo sem enrolar?`,
+        sourceLabel: "plano recente",
       };
     }
 
@@ -468,8 +496,9 @@ export default function Home() {
       reason: "Ainda não há um plano recente por aqui. Comece com uma missão curta: foco, explicação simples e um exercício para checar se entendeu.",
       primaryLabel: "Montar missão",
       tiagaoPrompt: `Tiagão, monta uma missão de estudo de 15 minutos para ${focus}. Quero um passo claro, uma explicação curta e uma checagem no final.`,
+      sourceLabel: "Tiagão guia",
     };
-  }, [profile?.concursoAlvo, profile?.objetivo, resumeTarget]);
+  }, [profile?.concursoAlvo, profile?.objetivo, resumeTarget, errorReviewMission]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   // Send / Enter → BUSCA INLINE. Não abre Tiagão. O aluno pode encaminhar
@@ -689,12 +718,16 @@ export default function Home() {
   };
 
   const startStudyMission = useCallback(() => {
+    if (errorReviewMission) {
+      navigate("/caderno");
+      return;
+    }
     if (resumeTarget) {
       handleResume(resumeTarget.plan);
       return;
     }
     askTiagao(studyMission.tiagaoPrompt);
-  }, [resumeTarget, studyMission.tiagaoPrompt]);
+  }, [errorReviewMission, navigate, resumeTarget, studyMission.tiagaoPrompt]);
 
   return (
     <div className="relative min-h-[100dvh] overflow-hidden bg-gradient-to-b from-violet-50/70 via-white to-fuchsia-50/40">
@@ -1065,7 +1098,7 @@ function StudyMissionCard({
     },
     {
       label: "Fonte",
-      value: hasRecentPlan ? "plano recente" : "Tiagão guia",
+      value: mission.sourceLabel ?? (hasRecentPlan ? "plano recente" : "Tiagão guia"),
       icon: BookOpen,
     },
   ];

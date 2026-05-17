@@ -6,7 +6,7 @@ import {
   Shield, Plus, Mail, TrendingUp, Target, Zap, FileText, Settings,
   CheckCircle, XCircle, Copy, Check, Palette, Link2, Clock, AlertTriangle,
   ChevronRight, Trash2, UserCheck, UserX, Send, Lock, Eye, EyeOff,
-  Brain, Sparkles, BookOpen, Mic, Wand2, Layers,
+  Brain, Sparkles, BookOpen, Mic, Wand2, Layers, Download,
 } from "lucide-react";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -57,6 +57,23 @@ function buildInstitutionRecommendation(args: {
   if (args.report.avgSimAccuracy < 60) return "Priorize revisão institucional nas turmas com menor XP/acerto antes de ampliar conteúdo.";
   if (args.avgXp < 150) return "Faça campanha de reativação com tarefa curta e acompanhamento de professor.";
   return "Mantenha cadência semanal: relatório, ação nas turmas com menor sinal e revisão de adesão.";
+}
+
+function csvCell(value: unknown) {
+  const text = String(value ?? "").replace(/\r?\n/g, " ").trim();
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function downloadTextFile(filename: string, content: string, type = "text/csv;charset=utf-8") {
+  const blob = new Blob(["\uFEFF", content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 // ─── Invite acceptance page ───────────────────────────────────────────────────
@@ -623,6 +640,37 @@ export default function InstituicaoPage() {
     report,
   });
 
+  function exportInstitutionReportCsv() {
+    if (!report) return;
+    const generatedAt = report.generatedAt || new Date().toISOString();
+    const rows = [
+      ["secao", "instituicao", "gerado_em", "metrica", "valor", "turma", "serie", "materia", "alunos", "xp_medio", "sinal", "acao_recomendada"],
+      ["resumo", institution.name, generatedAt, "total_alunos", report.totalStudents, "", "", "", "", "", "", institutionRecommendation],
+      ["resumo", institution.name, generatedAt, "total_turmas", report.totalTurmas, "", "", "", "", "", "", institutionRecommendation],
+      ["resumo", institution.name, generatedAt, "simulados_feitos", report.simCompleted, "", "", "", "", "", "", institutionRecommendation],
+      ["resumo", institution.name, generatedAt, "acerto_medio", `${report.avgSimAccuracy}%`, "", "", "", "", "", "", institutionRecommendation],
+      ["resumo", institution.name, generatedAt, "flashcards_feitos", report.flashcardsCompleted, "", "", "", "", "", "", institutionRecommendation],
+      ...report.turmaBreakdown.map(t => [
+        "turma",
+        institution.name,
+        generatedAt,
+        "diagnostico_turma",
+        "",
+        t.name,
+        t.serie ?? "",
+        t.subject ?? "",
+        t.studentCount,
+        t.avgXp,
+        t.studentCount === 0 ? "sem alunos" : t.avgXp < 150 ? "baixa tracao por XP medio" : "tracao estavel pelos dados atuais",
+        institutionRecommendation,
+      ]),
+    ];
+    downloadTextFile(
+      `studyai-instituicao-${institution.name.replace(/[^\w-]+/g, "-").toLowerCase()}-relatorio.csv`,
+      rows.map(row => row.map(csvCell).join(",")).join("\n"),
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900">
       <div className="max-w-5xl mx-auto px-4 py-8">
@@ -1019,12 +1067,12 @@ export default function InstituicaoPage() {
                     </div>
                     <button
                       type="button"
-                      disabled
-                      title="Exportação institucional detalhada será ligada quando o endpoint devolver linhas por aluno/turma."
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2 text-xs font-bold text-slate-500 disabled:cursor-not-allowed"
+                      onClick={exportInstitutionReportCsv}
+                      title="Baixar CSV com resumo institucional, turmas e ação recomendada usando os dados do relatório atual."
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-xs font-bold text-violet-200 hover:bg-violet-500/20"
                     >
-                      <FileText className="w-3.5 h-3.5" />
-                      Exportar em breve
+                      <Download className="w-3.5 h-3.5" />
+                      Exportar CSV
                     </button>
                   </div>
 

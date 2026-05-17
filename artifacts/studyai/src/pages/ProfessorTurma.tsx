@@ -60,6 +60,23 @@ function formatRelative(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
 }
 
+function csvCell(value: unknown) {
+  const text = String(value ?? "").replace(/\r?\n/g, " ").trim();
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function downloadTextFile(filename: string, content: string, type = "text/csv;charset=utf-8") {
+  const blob = new Blob(["\uFEFF", content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 function AnimatedNumber({ value }: { value: number }) {
   const [display, setDisplay] = useState(0);
   useEffect(() => {
@@ -439,6 +456,47 @@ export default function ProfessorTurmaPage() {
     finally { setAiActionLoading(false); }
   }
 
+  function exportClassDiagnosticCsv() {
+    if (!turma) return;
+    const generatedAt = new Date().toISOString();
+    const rows = [
+      [
+        "turma",
+        "serie",
+        "materia",
+        "gerado_em",
+        "aluno",
+        "email",
+        "status",
+        "sinais",
+        "xp",
+        "simulados",
+        "acerto_medio",
+        "dias_ativos_semana",
+        "recomendacao_turma",
+      ],
+      ...students.map(student => [
+        turma.name,
+        turma.serie ?? "",
+        turma.subject ?? "",
+        generatedAt,
+        student.name,
+        student.email ?? "",
+        STATUS_CFG[student.status].label,
+        getStudentSignals(student).join(" | ") || "sem sinal critico pelos dados atuais",
+        student.xp,
+        student.simCount,
+        `${student.avgAccuracy}%`,
+        student.activeDays,
+        premiumDiagnostic.recommendation,
+      ]),
+    ];
+    downloadTextFile(
+      `studyai-turma-${turma.name.replace(/[^\w-]+/g, "-").toLowerCase()}-diagnostico.csv`,
+      rows.map(row => row.map(csvCell).join(",")).join("\n"),
+    );
+  }
+
   const atRiskStudents = students.filter(s => s.status === "risco");
 
   return (
@@ -566,12 +624,13 @@ export default function ProfessorTurmaPage() {
                     </div>
                     <button
                       type="button"
-                      disabled
-                      title="Exportação detalhada depende do endpoint de relatório por aluno."
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-400 disabled:cursor-not-allowed"
+                      onClick={exportClassDiagnosticCsv}
+                      disabled={students.length === 0}
+                      title={students.length === 0 ? "Convide alunos antes de exportar o diagnóstico." : "Baixar CSV com diagnóstico e sinais disponíveis por aluno."}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-violet-100 bg-violet-50 px-3 py-2 text-xs font-bold text-violet-700 hover:bg-violet-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400"
                     >
                       <Download className="w-3.5 h-3.5" />
-                      Exportar em breve
+                      Exportar CSV
                     </button>
                   </div>
 

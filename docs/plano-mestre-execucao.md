@@ -25,6 +25,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - **Home next-best-action premium:** corte em andamento conecta Caderno de Erros, Simulado premium, Notebook RAG, curadoria de conteudo e plano recente em uma missao priorizada com evidencia, tempo, criterio de sucesso, CTA direto e sinal Hermes local.
 - **Hermes premium quality loop:** `qa_sintetico` agora monitora Landing, Home, Notebook RAG, Simulado, Tiagao e Caderno de Erros com recomendacoes contendo modulo, evidencia, problema, mudanca sugerida, metrica e criterios de aceite; sem autofix destrutivo.
 - **Workflow premium v2:** curadoria ganhou status manual local de revisao/aprovacao/ajustes; Home agora encaminha a proxima melhor acao ao Tiagao com modo pedagogico coerente; Caderno limpa missoes locais de simulado/erro quando a nota de revisao e salva.
+- **Relatorios B2B v2:** professor e gestor deixam de exibir exportacao apenas como placeholder e passam a baixar CSV util com diagnostico, sinais disponiveis e proxima acao sem inventar linhas por aluno fora dos dados atuais.
 
 ## Tickets em execucao
 
@@ -128,7 +129,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 
 ### F2-02 B2B premium diagnostico professor/gestor
 
-**Status:** primeira fatia implementada; pendente QA manual e rollout.
+**Status:** v2 implementado com diagnostico e exportacao CSV; pendente QA manual e rollout.
 
 **Objetivo:** acelerar percepcao premium no modulo B2B sem redesenhar rotas: professor ve risco/baixa atividade por turma e gestor ve adocao/cobertura institucional com proxima acao clara.
 
@@ -139,7 +140,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - Dashboard da turma destaca alunos em risco ou com sinais de baixa atividade quando os dados existem.
 - Turma mostra resumo de usuarios, XP, simulados, acerto e dias ativos ja disponiveis no endpoint atual.
 - Gestor institucional recebe diagnostico de cobertura, tracao e relatorio com recomendacao operacional.
-- Exportacao detalhada aparece como placeholder honesto quando falta endpoint por linha/aluno.
+- Exportacao CSV usa os dados ja carregados no painel e mantem lacunas explicitas quando faltam linhas detalhadas.
 - Lacunas de dados ficam explicitas: tempo real por sessao, ultimo login bruto, entregas atrasadas e intervencoes registradas.
 
 **Criterios de aceite:**
@@ -147,6 +148,8 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - Rotas `/professor`, `/professor/turma/:id`, `/instituicao` e auth atual permanecem preservadas.
 - Nao ha numeros inventados para risco individual no agregado institucional.
 - Estados sem alunos, sem relatorio e sem dados suficientes orientam o proximo setup.
+- Professor baixa CSV por turma com status, sinais disponiveis, XP, simulados, acerto e recomendacao.
+- Gestor baixa CSV institucional com resumo, turmas, sinal de tracao por XP medio e acao recomendada.
 - Typecheck do app passa antes de commit/deploy.
 
 ### F2-03 Curadoria premium de materiais

@@ -35,6 +35,11 @@ import {
   appendHermesToSystemPrompt,
   roleToHermesAudience,
 } from "../lib/hermes/buildHermesContext";
+import {
+  appendTiagaoPedagogicalModePrompt,
+  getTiagaoPedagogicalModeLabel,
+  normalizeTiagaoPedagogicalMode,
+} from "../lib/pedagogical-modes";
 
 /**
  * Qwen Math (PR-7) — modelo especializado em exatas via OpenRouter.
@@ -301,6 +306,7 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
       messages,
       contexto = {},
       variant,
+      pedagogicalMode,
     }: {
       messages: { role: "user" | "assistant"; content: string }[];
       contexto?: {
@@ -309,6 +315,7 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
         topicosCompletos?: number; totalTopicos?: number;
       };
       variant?: string;
+      pedagogicalMode?: string;
     } = req.body;
 
     if (!messages) {
@@ -400,9 +407,20 @@ router.post("/chat", checkFreeUsage, async (req, res) => {
               : null,
         })
       : { prompt: baseSystemPrompt, method: pickedMethod, sentimentTone: "" };
-    const systemPrompt = await appendHermesToSystemPrompt(composed.prompt, {
+    const requestedPedagogicalMode = isLanding
+      ? null
+      : normalizeTiagaoPedagogicalMode(pedagogicalMode);
+    const modeAwarePrompt = appendTiagaoPedagogicalModePrompt(
+      composed.prompt,
+      requestedPedagogicalMode,
+    );
+    const hermesTopic = requestedPedagogicalMode
+      ? `${lastUserMsg}\nModo pedagógico premium: ${getTiagaoPedagogicalModeLabel(requestedPedagogicalMode)}`
+      : lastUserMsg;
+    const systemPrompt = await appendHermesToSystemPrompt(modeAwarePrompt, {
       kind: isLanding ? "landing" : "chat",
       audience: isLanding ? "aluno" : roleToHermesAudience(userProfile.role),
+      topic: hermesTopic,
     });
     const finalMethod = composed.method;
 

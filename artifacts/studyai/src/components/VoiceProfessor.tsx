@@ -433,6 +433,23 @@ const QUICK_COMMANDS = [
   { label: "📚 Abrir notebook",       text: "Abre o notebook pra mim." },
 ];
 
+type TiagaoPedagogicalMode =
+  | "auto"
+  | "professor"
+  | "treinador"
+  | "socratico"
+  | "corretor"
+  | "simulador_banca";
+
+const PEDAGOGICAL_MODES: Array<{ key: TiagaoPedagogicalMode; label: string; hint: string }> = [
+  { key: "auto", label: "Padrão", hint: "comportamento atual do Tiagão" },
+  { key: "professor", label: "Professor", hint: "explica com clareza" },
+  { key: "treinador", label: "Treinador", hint: "dá próxima missão" },
+  { key: "socratico", label: "Socrático", hint: "pergunta e guia" },
+  { key: "corretor", label: "Corretor", hint: "avalia sua resposta" },
+  { key: "simulador_banca", label: "Banca", hint: "desafio estilo prova" },
+];
+
 // ─── Volume visualizer component ──────────────────────────────────────────────
 function VolumeBar({ level }: { level: number }) {
   const bars = 9;
@@ -529,6 +546,15 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
   const [planIngestBusy, setPlanIngestBusy] = useState(false);
   const [retrying, setRetrying]   = useState(false);
   const [sessionMsgs, setSessionMsgs] = useState(0);
+  const [pedagogicalMode, setPedagogicalMode] = useState<TiagaoPedagogicalMode>(() => {
+    if (typeof window === "undefined") return "auto";
+    const saved = localStorage.getItem("tiagao_pedagogical_mode");
+    return PEDAGOGICAL_MODES.some((m) => m.key === saved) ? (saved as TiagaoPedagogicalMode) : "auto";
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem("tiagao_pedagogical_mode", pedagogicalMode); } catch { /* ignore */ }
+  }, [pedagogicalMode]);
 
   const mutedRef        = useRef(false);
   const abortRef        = useRef<AbortController | null>(null);
@@ -1092,6 +1118,7 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
         body: JSON.stringify({
           messages: historyRef.current.slice(-20),
           context: collectStudentContext(),
+          pedagogicalMode: pedagogicalMode === "auto" ? undefined : pedagogicalMode,
         }),
         credentials: "include",
         signal: abortRef.current.signal,
@@ -1130,7 +1157,7 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
         setRetrying(true);
       }
     }
-  }, [speak, handleAgentActions, voicePure, variant]);
+  }, [speak, handleAgentActions, voicePure, variant, pedagogicalMode]);
 
   /**
    * Ingest plano: envia arquivos para extração leve no servidor e empurra para o voice-chat.
@@ -1328,11 +1355,14 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
       setOpen(true);
     };
     const onAsk = (e: Event) => {
-      const detail = (e as CustomEvent<{ text?: string; tab?: Tab }>).detail || {};
+      const detail = (e as CustomEvent<{ text?: string; tab?: Tab; pedagogicalMode?: TiagaoPedagogicalMode }>).detail || {};
       setShowHint(false);
       unlockAudioSync();
       setOpen(true);
       if (detail.tab) setTab(detail.tab);
+      if (detail.pedagogicalMode && PEDAGOGICAL_MODES.some((m) => m.key === detail.pedagogicalMode)) {
+        setPedagogicalMode(detail.pedagogicalMode);
+      }
       const text = (detail.text || "").trim();
       if (text) {
         // Defer to next tick so the panel is mounted before sending.
@@ -2119,6 +2149,39 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
 
             {/* ── CONTROLS — glassy footer ── */}
             <div className="px-3 pb-3 flex-shrink-0 bg-white/55 backdrop-blur-md border-t border-violet-100/60 pt-2.5">
+              {variant !== "landing" && (
+                <div className="mb-2">
+                  <div className="mb-1 flex items-center justify-between px-1">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-violet-600/80">
+                      Modo pedagógico
+                    </span>
+                    <span className="text-[10px] font-semibold text-slate-400">
+                      premium
+                    </span>
+                  </div>
+                  <div className="flex gap-1 overflow-x-auto pb-1 [scrollbar-width:none]">
+                    {PEDAGOGICAL_MODES.map((mode) => {
+                      const active = pedagogicalMode === mode.key;
+                      return (
+                        <button
+                          key={mode.key}
+                          type="button"
+                          title={mode.hint}
+                          onClick={() => setPedagogicalMode(mode.key)}
+                          className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black transition ${
+                            active
+                              ? "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-sm shadow-violet-300/50"
+                              : "bg-white/70 text-violet-700 ring-1 ring-violet-200 hover:bg-violet-50"
+                          }`}
+                        >
+                          {mode.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Volume bar while listening */}
               {phase === "listening" && (
                 <div className="mb-2 px-2">

@@ -35,6 +35,15 @@ import { isMathQuestion } from "../lib/math-detection";
 import { TIAGAO_LANDING_SYSTEM_PROMPT } from "../lib/tiagao-landing-prompt";
 import { humanizeMathForTTS } from "../lib/math-narration";
 import { estimateTokensFromMessages, estimateTokensFromText, logAiUsage as logAiTelemetry, logTextUsage } from "../lib/aiUsageTelemetry";
+import {
+  appendHermesToSystemPrompt,
+  roleToHermesAudience,
+} from "../lib/hermes/buildHermesContext";
+import {
+  appendTiagaoPedagogicalModePrompt,
+  getTiagaoPedagogicalModeLabel,
+  normalizeTiagaoPedagogicalMode,
+} from "../lib/pedagogical-modes";
 
 /**
  * Qwen Math (PR-7) — modelo especializado em exatas via OpenRouter.
@@ -727,10 +736,11 @@ const TIAGAO_CREATIVITY_BLOCK = `
 // ─── Voice Chat — Tiagão Agente com Memória + Function Calling ─────────────────
 router.post("/voice-chat", async (req, res) => {
   try {
-    const { messages, context, variant } = req.body as {
+    const { messages, context, variant, pedagogicalMode } = req.body as {
       messages: Array<{ role: string; content: string }>;
       context?: FrontendContext;
       variant?: string;
+      pedagogicalMode?: string;
     };
 
     if (!messages || !Array.isArray(messages)) {
@@ -928,7 +938,23 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.
               : null,
         })
       : { prompt: baseSystemContent, method: pickedMethod, sentimentTone: "" };
-    const systemContent = composed.prompt;
+    const requestedPedagogicalMode = isLanding
+      ? null
+      : normalizeTiagaoPedagogicalMode(pedagogicalMode);
+    const modeAwarePrompt = appendTiagaoPedagogicalModePrompt(
+      composed.prompt,
+      requestedPedagogicalMode,
+    );
+    const hermesTopic = requestedPedagogicalMode
+      ? `${lastUserMsg}\nModo pedagógico premium: ${getTiagaoPedagogicalModeLabel(requestedPedagogicalMode)}`
+      : lastUserMsg;
+    const systemContent = isLanding
+      ? modeAwarePrompt
+      : await appendHermesToSystemPrompt(modeAwarePrompt, {
+          kind: "chat",
+          topic: hermesTopic,
+          audience: roleToHermesAudience(userProfile.role),
+        });
     const finalMethod = composed.method;
 
     // ── Primeira chamada com tools ───────────────────────────────────────────

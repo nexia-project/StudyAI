@@ -108,6 +108,23 @@ export interface TiagaoMeta {
   sentiment: TiagaoSentiment;
 }
 
+type TiagaoPedagogicalMode =
+  | "auto"
+  | "professor"
+  | "treinador"
+  | "socratico"
+  | "corretor"
+  | "simulador_banca";
+
+const PEDAGOGICAL_MODES: Array<{ key: TiagaoPedagogicalMode; label: string; hint: string }> = [
+  { key: "auto", label: "Padrão", hint: "mantém o comportamento atual" },
+  { key: "professor", label: "Professor", hint: "explicação clara" },
+  { key: "treinador", label: "Treinador", hint: "missão e próxima ação" },
+  { key: "socratico", label: "Socrático", hint: "perguntas guiadas" },
+  { key: "corretor", label: "Corretor", hint: "correção da sua resposta" },
+  { key: "simulador_banca", label: "Banca", hint: "desafio estilo prova" },
+];
+
 /** PR-7 — payload do tool `resolver_calculo` anexado à última mensagem. */
 export interface MathResultPayload {
   engine: "wolfram" | "free" | "none";
@@ -436,6 +453,11 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [actionNotif, setActionNotif] = useState<ActionNotif | null>(null);
   const [input, setInput] = useState("");
+  const [pedagogicalMode, setPedagogicalMode] = useState<TiagaoPedagogicalMode>(() => {
+    if (typeof window === "undefined") return "auto";
+    const saved = localStorage.getItem("tiagao_chat_pedagogical_mode");
+    return PEDAGOGICAL_MODES.some((m) => m.key === saved) ? (saved as TiagaoPedagogicalMode) : "auto";
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -504,6 +526,10 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
     setHasUnread(false);
     setTimeout(() => inputRef.current?.focus(), 300);
   }, [isOpen]);
+
+  useEffect(() => {
+    try { localStorage.setItem("tiagao_chat_pedagogical_mode", pedagogicalMode); } catch { /* ignore */ }
+  }, [pedagogicalMode]);
 
   useEffect(() => {
     if (!isOpen || !chatHydrated) return;
@@ -1095,6 +1121,7 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
         signal: abortRef.current.signal,
         body: JSON.stringify({
           messages: updated,
+          pedagogicalMode: pedagogicalMode === "auto" ? undefined : pedagogicalMode,
           contexto: {
             aluno: plan.aluno,
             serie,
@@ -1373,6 +1400,37 @@ export function TutorChat({ plan, serie, diaAtual, topicosCompletos, totalTopico
 
             {/* Input */}
             <div className="px-4 pb-4 pt-2 bg-white border-t border-border">
+              <div className="mb-2">
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-violet-600">
+                    Modo pedagógico
+                  </span>
+                  <span className="text-[10px] font-semibold text-muted-foreground">
+                    premium
+                  </span>
+                </div>
+                <div className="flex gap-1 overflow-x-auto pb-1 [scrollbar-width:none]">
+                  {PEDAGOGICAL_MODES.map((mode) => {
+                    const active = pedagogicalMode === mode.key;
+                    return (
+                      <button
+                        key={mode.key}
+                        type="button"
+                        title={mode.hint}
+                        onClick={() => setPedagogicalMode(mode.key)}
+                        className={cn(
+                          "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black transition",
+                          active
+                            ? "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-sm shadow-violet-200"
+                            : "bg-secondary text-violet-700 hover:bg-violet-50 border border-violet-100",
+                        )}
+                      >
+                        {mode.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               <div className="flex items-end gap-2 bg-secondary rounded-2xl px-4 py-2">
                 <textarea
                   ref={inputRef}

@@ -22,7 +22,7 @@ export const HERMES_RECOMMENDATION_JSON_FIELD =
 export const HERMES_RECOMMENDATION_STANDARD_PT = `PADRAO HERMES PARA RECOMENDACOES (obrigatorio para qualquer sugestao, acao, descoberta ou recomendacao):
 - Seja especifico e auditavel; nao recomende mudancas genericas.
 - Toda recomendacao deve preservar: agente/area; modulo premium quando houver; superficie, rota ou componente analisado; estado atual observado/evidencia; problema ou oportunidade; mudanca especifica; impacto esperado; confianca; metrica/como medir sucesso; notas de implementacao ou criterios de aceite quando aplicavel.
-- Para o loop premium, module deve ser um destes quando aplicavel: Landing, Home, Notebook RAG, Simulado, Tiagao ou Caderno de Erros.
+- Para o loop premium, module deve ser um destes quando aplicavel: Landing, Home, Notebook RAG, Simulado, Tiagao, Caderno de Erros ou Relatorios B2B.
 - Para Notebook RAG, inspecione explicitamente qualidade de display/exportacao: preview formatado, PDF/print, preservacao de HTML/Markdown, imagens, tabelas, cores, quebras de pagina, objetivos pedagogicos, exemplos, exercicios/gabarito e metricas de qualidade do material.
 - Para Notebook RAG multimodal, qualquer recomendacao deve citar: tipo de material, preferencias selecionadas, evidencia/fonte, problema de qualidade (generico, sem visual, fonte fraca, fallback, erro de export), mudanca concreta, impacto esperado, metrica e criterios de aceite.
 - Se responder JSON, inclua o campo ${HERMES_RECOMMENDATION_JSON_FIELD}.`;

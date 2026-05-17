@@ -28,7 +28,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - **Relatorios B2B v2:** professor e gestor deixam de exibir exportacao apenas como placeholder e passam a baixar CSV util com diagnostico, sinais disponiveis e proxima acao sem inventar linhas por aluno fora dos dados atuais.
 - **Analytics aluno + fechamento de recuperacao:** Home ganhou painel leve de aprendizagem com dominio por area, streak, habilidades fracas, marcos e lacunas transparentes; Caderno registra historico local de revisoes concluidas; Simulado permite marcar a missao de recuperacao como feita.
 - **Gates Notebook + coaching Tiagao:** producao foi confirmada no commit `65e9e83`/`65e9e836`; smoke Notebook agora cobre serializacao de preview/export de apresentacoes e mapas; Home usa analytics local para oferecer coaching proativo do Tiagao sem inventar metrica nova.
-- **Caderno loop v2 + exports B2B:** Caderno agora mostra streak local, proxima revisao e fechamento manual de missao pendente; relatorio professor/gestor ganhou CSV com sinais, acao recomendada e lacunas explicitas, alem de bloco imprimivel de criterios.
+- **Caderno loop v2 + exports B2B:** Caderno agora mostra streak local, proxima revisao e fechamento manual de missao pendente; relatorio professor/gestor ganhou CSV com sinais, acao recomendada e lacunas explicitas, alem de bloco imprimivel de criterios; Hermes inclui Relatorios B2B no loop premium.
 
 ## Tickets em execucao
 
@@ -211,7 +211,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 
 ### F0-04 Hermes premium quality loop
 
-**Status:** primeira versao implementada em QA sintetico e docs; pendente execucao manual da auditoria em producao/staging.
+**Status:** v2 implementada em QA sintetico e docs; pendente execucao manual da auditoria em producao/staging.
 
 **Objetivo:** acelerar a transformacao premium com um loop continuo de qualidade que monitora os modulos ja tocados sem executar correcao automatica destrutiva.
 
@@ -221,7 +221,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 
 - Catalogo/snapshot Hermes expoe `premiumQualityLoop` com modulos, evidencias, checklists diario/semanal, metricas e criterios de aceite.
 - Recomendacoes premium exibem `module` no Admin.
-- Landing, Home, Notebook RAG, Simulado, Tiagao e Caderno de Erros ficam no mesmo ciclo de QA sintetico.
+- Landing, Home, Notebook RAG, Simulado, Tiagao, Caderno de Erros e Relatorios B2B ficam no mesmo ciclo de QA sintetico.
 - Daily-learn usa o loop como contexto; checklist semanal continua manual/pre-release.
 
 **Criterios de aceite:**
@@ -229,7 +229,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - Toda recomendacao premium contem modulo, superficie, evidencia, problema/oportunidade, mudanca sugerida, metrica e criterios de aceite.
 - Hermes cria descoberta/inbox/tarefa de triagem, mas nao altera conteudo, dados de aluno, planos, assinaturas ou producao automaticamente.
 - Modulos sem telemetria suficiente viram lacuna de observabilidade, nao metrica inventada.
-- Checklist manual cobre jornada ponta a ponta: Landing -> Home -> Notebook RAG -> Simulado -> Caderno -> Tiagao.
+- Checklist manual cobre jornada ponta a ponta: Landing -> Home -> Notebook RAG -> Simulado -> Caderno -> Tiagao, mais exports B2B.
 
 ## Checklist de validacao
 
@@ -302,8 +302,9 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 
 ### Hermes premium quality gates
 
-- [x] `qa_sintetico` cobre Landing, Home, Notebook RAG, Simulado, Tiagao e Caderno de Erros no snapshot `premiumQualityLoop`.
+- [x] `qa_sintetico` cobre Landing, Home, Notebook RAG, Simulado, Tiagao, Caderno de Erros e Relatorios B2B no snapshot `premiumQualityLoop`.
 - [x] Padrao de recomendacao Hermes inclui `module` para recomendacoes premium.
+- [x] Padrao de recomendacao Hermes reconhece `Relatorios B2B` como modulo premium monitorado.
 - [x] Admin exibe modulo junto com superficie, evidencia, problema, mudanca, metrica e aceite.
 - [ ] Executar `POST /api/agents/qa_sintetico/executar-auditoria` em ambiente autenticado de admin.
 - [ ] Conferir que achados persistidos aparecem em Descobertas/Inbox Hermes sem tarefa destrutiva.
@@ -317,6 +318,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [ ] Simulado: executar simulado curto com erro proposital, conferir analise premium e envio ao Caderno.
 - [ ] Caderno de Erros: importar rascunho, salvar nota, voltar para Home e conferir missao de revisao.
 - [ ] Tiagao: pedir revisao do erro, duvida rapida e estudar material; confirmar linguagem adequada e acao explicita.
+- [ ] Relatorios B2B: baixar CSV geral/turma e imprimir PDF, validando sinais, lacunas e revisao humana.
 
 ### Home next-best-action premium
 
@@ -409,5 +411,6 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [x] Adicionar analytics leve do aluno, historico local de revisoes concluidas e fechamento manual de recuperacao do Simulado.
 - [x] Automatizar parte do QA Notebook/RAG com smoke de serializacao preview/export e adicionar coaching proativo do Tiagao no analytics local.
 - [x] Evoluir Caderno com streak local/fechamento manual e melhorar export institucional com sinais/lacunas.
+- [x] Incluir Relatorios B2B no loop Hermes premium e no padrao de recomendacao.
 - [ ] Proximo lote de Caderno de Erros: persistir historico estruturado no backend quando houver schema/API definido.
 - [ ] Depois do lote de erros: evoluir modos pedagogicos do Tiagao com taxonomia oficial e metricas por modo.

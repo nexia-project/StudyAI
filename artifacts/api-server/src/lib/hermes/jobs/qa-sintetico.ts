@@ -44,7 +44,7 @@ export type PremiumQualityCadence = "daily" | "weekly";
 
 export interface PremiumQualityLoopModule {
   id: string;
-  module: "Landing" | "Home" | "Notebook RAG" | "Simulado" | "Tiagao" | "Caderno de Erros";
+  module: "Landing" | "Home" | "Notebook RAG" | "Simulado" | "Tiagao" | "Caderno de Erros" | "Relatorios B2B";
   cadence: PremiumQualityCadence;
   ownerAgent: "qa_sintetico";
   surfaces: string[];
@@ -303,6 +303,35 @@ export const PREMIUM_QUALITY_LOOP_MODULES: PremiumQualityLoopModule[] = [
       "Nada é alterado automaticamente sem ação do aluno/admin",
     ],
   },
+  {
+    id: "relatorios_b2b_premium",
+    module: "Relatorios B2B",
+    cadence: "weekly",
+    ownerAgent: "qa_sintetico",
+    surfaces: [
+      "artifacts/studyai/src/pages/Professor.tsx",
+      "artifacts/studyai/src/pages/ProfessorTurma.tsx",
+      "/professor",
+      "/professor/turma/:id",
+    ],
+    evidenceSources: ["teacher dashboard/report", "CSV export", "print/PDF report", "class diagnostic CSV"],
+    dailyChecklist: [
+      "Relatório não inventa último login, tempo real por sessão ou intervenção inexistente",
+      "CSV preserva sinais disponíveis e lacunas por aluno/turma",
+      "Ação recomendada exige revisão humana antes de contato institucional",
+    ],
+    weeklyChecklist: [
+      "Baixar CSV geral e CSV de turma com dados reais ou amostra controlada",
+      "Imprimir/salvar PDF e conferir bloco de critérios de revisão humana",
+      "Validar que professor/gestor entendem o que é dado observado versus lacuna",
+    ],
+    metrics: ["exports CSV", "prints/PDF", "sinais disponíveis por linha", "lacunas explícitas no relatório"],
+    acceptanceCriteria: [
+      "Export não cria risco individual fora dos dados carregados",
+      "Cada linha exportada tem sinal, ação recomendada e lacunas",
+      "Relatório impresso explicita revisão humana e limites de dados",
+    ],
+  },
 ];
 
 export const SYNTHETIC_QA_JOURNEYS: SyntheticQaJourney[] = [
@@ -318,11 +347,12 @@ export const SYNTHETIC_QA_JOURNEYS: SyntheticQaJourney[] = [
       "Simulado",
       "Tiagao",
       "Caderno de Erros",
+      "Relatorios B2B",
     ],
     checklist: [
       "Cada recomendação identifica módulo, evidência, problema, mudança, métrica e critérios de aceite",
       "Checklist diário cobre módulos de uso recorrente sem acionar correção destrutiva",
-      "Checklist semanal exige QA manual das jornadas premium ponta a ponta",
+      "Checklist semanal exige QA manual das jornadas premium ponta a ponta e dos exports B2B",
       "Módulos sem telemetria suficiente viram lacuna de observabilidade, não métrica inventada",
     ],
     metricas: [

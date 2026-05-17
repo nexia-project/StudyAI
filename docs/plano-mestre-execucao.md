@@ -24,6 +24,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - **Curadoria premium de materiais:** primeira fatia adiciona checklist heuristico no historico de conteudos para sinalizar prontidao, lacunas e proxima acao sem depender de backend novo.
 - **Home next-best-action premium:** corte em andamento conecta Caderno de Erros, Simulado premium, Notebook RAG, curadoria de conteudo e plano recente em uma missao priorizada com evidencia, tempo, criterio de sucesso, CTA direto e sinal Hermes local.
 - **Hermes premium quality loop:** `qa_sintetico` agora monitora Landing, Home, Notebook RAG, Simulado, Tiagao e Caderno de Erros com recomendacoes contendo modulo, evidencia, problema, mudanca sugerida, metrica e criterios de aceite; sem autofix destrutivo.
+- **Workflow premium v2:** curadoria ganhou status manual local de revisao/aprovacao/ajustes; Home agora encaminha a proxima melhor acao ao Tiagao com modo pedagogico coerente; Caderno limpa missoes locais de simulado/erro quando a nota de revisao e salva.
 
 ## Tickets em execucao
 
@@ -150,7 +151,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 
 ### F2-03 Curadoria premium de materiais
 
-**Status:** primeira fatia implementada; pendente QA manual com conteudos reais.
+**Status:** v2 implementado com checklist e workflow manual local; pendente QA manual com conteudos reais.
 
 **Objetivo:** transformar o padrao pedagogico em workflow visivel para professor/aluno, mostrando se um conteudo gerado esta pronto para uso, precisa revisao ou precisa curadoria.
 
@@ -162,6 +163,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - Modal de leitura mostra sinais presentes, lacunas e proxima acao.
 - Checklist usa dados ja existentes no payload: objetivo, fonte/evidencia, pratica, gabarito, rubrica, checkpoint ou erros comuns.
 - A fatia nao inventa qualidade pedagogica; quando faltar dado, registra lacuna e recomenda revisao humana.
+- Professor/aluno consegue marcar status manual: em revisao, aprovado para uso ou precisa ajustes.
 
 **Criterios de aceite:**
 
@@ -169,6 +171,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - `material_premium` que abre HTML externo continua preservado.
 - Checklist funciona para resumos, slides, planos de aula, provas/pacotes e fallback generico.
 - Typecheck do app passa antes de commit/deploy.
+- Status manual e persistido localmente por item sem criar metrica falsa de qualidade.
 
 ### F0-04 Hermes premium quality loop
 
@@ -214,6 +217,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [x] Mostrar no Caderno tipo/causa de erro, quantidade e proxima missao.
 - [x] Priorizar revisao de erro recente na Home como proxima melhor acao.
 - [x] Emitir sinal local Hermes com evento, metrica e recomendacao.
+- [x] Fechar missao local ao salvar a nota importada no Caderno, removendo recuperacao pendente da Home.
 - [x] Rodar typecheck focado do app sem erro.
 - [x] Confirmar deploy via `/api/healthz` no commit `bb2ea8f`.
 - [ ] QA manual: simulado curto com erro -> enviar ao caderno -> salvar nota -> voltar para Home e conferir missao de revisao.
@@ -276,6 +280,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [x] Fallback seguro e deterministico fica identificado quando nao ha dados suficientes.
 - [x] Hermes recebe evento local quando a next-best-action e exibida, clicada ou enviada ao Tiagao.
 - [x] Simulado premium persiste missao de recuperacao local para a Home mesmo antes do envio ao Caderno.
+- [x] Missao enviada ao Tiagao seleciona modo pedagogico coerente (`treinador` ou `corretor`) conforme fonte da proxima acao.
 - [x] Typecheck focado do app concluido sem erro.
 - [ ] QA manual: simulado com erro -> Home deve sugerir recuperacao; material recente no Notebook -> Home deve sugerir abrir material; conteudo com curadoria baixa -> Home deve sugerir revisar conteudo.
 
@@ -335,5 +340,6 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [x] Adicionar Hermes premium quality loop para Landing, Home, Notebook RAG, Simulado, Tiagao e Caderno de Erros.
 - [x] Adicionar primeira fatia de curadoria premium no historico de conteudos.
 - [x] Conectar sinais premium na Home para next-best-action priorizada com evento Hermes local.
+- [x] Adicionar workflow manual local de curadoria e fechamento local da missao Simulado -> Caderno.
 - [ ] Proximo lote de Caderno de Erros: persistir historico estruturado no backend quando houver schema/API definido.
 - [ ] Depois do lote de erros: evoluir modos pedagogicos do Tiagao com taxonomia oficial e metricas por modo.

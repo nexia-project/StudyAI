@@ -8,9 +8,11 @@ import {
 } from "lucide-react";
 import {
   SIMULADO_ERROR_REVIEW_DRAFT_KEY,
+  clearErrorReviewMission,
   emitHermesLearningSignal,
   type ErrorReviewDraft,
 } from "@/lib/error-review";
+import { clearSimuladoRecoveryMission } from "@/lib/next-best-action";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -200,6 +202,8 @@ export default function Caderno() {
         setIsCreating(false);
         setDirty(false);
         if (importedErrorReview) {
+          clearErrorReviewMission();
+          clearSimuladoRecoveryMission();
           emitHermesLearningSignal({
             surface: "caderno",
             event: "error_review_note_created",
@@ -208,6 +212,14 @@ export default function Caderno() {
             errors: importedErrorReview.errors?.length ?? null,
             primarySubject: importedErrorReview.materia ?? null,
             recommendation: importedErrorReview.recommendation ?? null,
+          });
+          emitHermesLearningSignal({
+            surface: "caderno",
+            event: "error_review_mission_completed",
+            source: importedErrorReview.source ?? "simulado-enem",
+            primarySubject: importedErrorReview.materia ?? null,
+            savedNoteId: note?.id ?? null,
+            completion: "saved_review_note",
           });
           setImportedErrorReview(null);
         }

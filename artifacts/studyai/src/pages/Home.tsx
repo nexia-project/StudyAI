@@ -121,10 +121,12 @@ function openTiagao() {
   window.dispatchEvent(new CustomEvent("studyai:open-voice"));
 }
 
-function askTiagao(text: string) {
+type TiagaoPedagogicalMode = "treinador" | "corretor" | "professor" | "socratico" | "simulador_banca";
+
+function askTiagao(text: string, pedagogicalMode?: TiagaoPedagogicalMode) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(
-    new CustomEvent("studyai:ask-tiagao", { detail: { text } }),
+    new CustomEvent("studyai:ask-tiagao", { detail: { text, pedagogicalMode } }),
   );
 }
 
@@ -749,12 +751,12 @@ export default function Home() {
       navigate(studyMission.action.route);
       return;
     }
-    askTiagao(studyMission.tiagaoPrompt);
+    askTiagao(studyMission.tiagaoPrompt, studyMission.tiagaoMode);
   }, [navigate, resumeTarget, studyMission, trackNextActionEvent]);
 
   const askTiagaoForMission = useCallback(() => {
     trackNextActionEvent("tiagao_clicked", studyMission);
-    askTiagao(studyMission.tiagaoPrompt);
+    askTiagao(studyMission.tiagaoPrompt, studyMission.tiagaoMode);
   }, [studyMission, trackNextActionEvent]);
 
   return (

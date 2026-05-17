@@ -59,6 +59,11 @@ export function saveErrorReviewMission(mission: ErrorReviewMission) {
   localStorage.setItem(ERROR_REVIEW_MISSION_KEY, JSON.stringify(mission));
 }
 
+export function clearErrorReviewMission() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(ERROR_REVIEW_MISSION_KEY);
+}
+
 export function readErrorReviewMission(maxAgeDays = 14): ErrorReviewMission | null {
   if (typeof window === "undefined") return null;
   try {

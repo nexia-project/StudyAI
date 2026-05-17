@@ -5,7 +5,7 @@ import {
   ArrowLeft, Loader2, Search, Trash2, Eye, FileText,
   Presentation, Brain, Image as ImageIcon, BookOpen, Microscope,
   ClipboardList, Sparkles, AlertCircle, Layers,
-  ShieldCheck,
+  ShieldCheck, CheckCircle2,
 } from "lucide-react";
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 import { AppNav } from "@/components/AppNav";
@@ -39,6 +39,7 @@ const KIND_META: Record<Kind, { label: string; icon: any; color: string; group: 
 };
 
 type QualityTone = "strong" | "attention" | "setup";
+type ReviewStatus = "unreviewed" | "reviewing" | "approved" | "needs_changes";
 
 interface QualityAudit {
   score: number;
@@ -48,6 +49,8 @@ interface QualityAudit {
   gaps: string[];
   nextAction: string;
 }
+
+type ReviewStatusMap = Record<string, ReviewStatus>;
 
 const QUALITY_TONE_CLASSES: Record<QualityTone, { badge: string; panel: string; title: string }> = {
   strong: {
@@ -64,6 +67,31 @@ const QUALITY_TONE_CLASSES: Record<QualityTone, { badge: string; panel: string; 
     badge: "text-slate-700 bg-slate-50 border-slate-200",
     panel: "border-slate-200 bg-slate-50",
     title: "text-slate-800",
+  },
+};
+
+const REVIEW_STATUS_KEY = "studyai:content-review-status:v1";
+
+const REVIEW_STATUS_META: Record<ReviewStatus, { label: string; hint: string; className: string }> = {
+  unreviewed: {
+    label: "Sem revisão humana",
+    hint: "Ainda precisa de triagem antes de virar material oficial.",
+    className: "border-slate-200 bg-slate-50 text-slate-700",
+  },
+  reviewing: {
+    label: "Em revisão",
+    hint: "Professor ou aluno está conferindo fonte, prática e clareza.",
+    className: "border-amber-200 bg-amber-50 text-amber-700",
+  },
+  approved: {
+    label: "Aprovado para uso",
+    hint: "Revisão humana concluiu que o material pode ser usado nesta turma/rotina.",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  },
+  needs_changes: {
+    label: "Precisa ajustes",
+    hint: "Há lacunas que devem ser corrigidas antes de usar como material premium.",
+    className: "border-rose-200 bg-rose-50 text-rose-700",
   },
 };
 
@@ -130,6 +158,25 @@ function assessContentQuality(item: Item): QualityAudit {
   };
 }
 
+function reviewKey(item: Pick<Item, "id" | "source" | "kind">): string {
+  return `${item.source ?? "generated_content"}:${item.kind}:${item.id}`;
+}
+
+function readReviewStatuses(): ReviewStatusMap {
+  if (typeof window === "undefined") return {};
+  try {
+    const parsed = JSON.parse(localStorage.getItem(REVIEW_STATUS_KEY) || "{}");
+    return parsed && typeof parsed === "object" ? parsed as ReviewStatusMap : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeReviewStatuses(statuses: ReviewStatusMap) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(REVIEW_STATUS_KEY, JSON.stringify(statuses));
+}
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
@@ -145,6 +192,15 @@ export default function MeusConteudosPage() {
   const [roleFilter, setRoleFilter] = useState<"" | "student" | "teacher">("");
   const [search, setSearch] = useState("");
   const [viewing, setViewing] = useState<Item | null>(null);
+  const [reviewStatuses, setReviewStatuses] = useState<ReviewStatusMap>(() => readReviewStatuses());
+
+  const setReviewStatus = (item: Item, status: ReviewStatus) => {
+    setReviewStatuses(prev => {
+      const next = { ...prev, [reviewKey(item)]: status };
+      writeReviewStatuses(next);
+      return next;
+    });
+  };
 
   async function load() {
     setLoading(true);
@@ -310,6 +366,8 @@ export default function MeusConteudosPage() {
                 const meta = KIND_META[item.kind] ?? KIND_META.content_package;
                 const Icon = meta.icon;
                 const quality = assessContentQuality(item);
+                const reviewStatus = reviewStatuses[reviewKey(item)] ?? "unreviewed";
+                const reviewMeta = REVIEW_STATUS_META[reviewStatus];
                 return (
                   <motion.div key={item.id}
                     initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
@@ -326,9 +384,24 @@ export default function MeusConteudosPage() {
                           <ShieldCheck className="w-3 h-3" />
                           {quality.score}% curadoria
                         </span>
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${reviewMeta.className}`}>
+                          <CheckCircle2 className="w-3 h-3" />
+                          {reviewMeta.label}
+                        </span>
                       </div>
                       <h3 className="font-bold text-gray-900 text-sm truncate">{item.title}</h3>
-                      <p className="text-gray-500 text-xs mt-0.5">{formatDate(item.created_at)} · {quality.label}</p>
+                      <p className="text-gray-500 text-xs mt-0.5">{formatDate(item.created_at)} · {quality.label} · {reviewMeta.hint}</p>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        <button onClick={() => setReviewStatus(item, "reviewing")} className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-amber-700 hover:bg-amber-100">
+                          Revisar
+                        </button>
+                        <button onClick={() => setReviewStatus(item, "approved")} className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-700 hover:bg-emerald-100">
+                          Aprovar
+                        </button>
+                        <button onClick={() => setReviewStatus(item, "needs_changes")} className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-rose-700 hover:bg-rose-100">
+                          Ajustes
+                        </button>
+                      </div>
                     </div>
                     <div className="flex gap-2 lg:flex-shrink-0">
                       <button onClick={() => open(item)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-colors">
@@ -358,7 +431,11 @@ export default function MeusConteudosPage() {
               <button onClick={() => setViewing(null)} className="text-gray-400 hover:text-gray-900 text-2xl leading-none px-3">×</button>
             </div>
             <div className="flex-1 overflow-y-auto p-6">
-              <QualityAuditCard audit={assessContentQuality(viewing)} />
+              <QualityAuditCard
+                audit={assessContentQuality(viewing)}
+                reviewStatus={reviewStatuses[reviewKey(viewing)] ?? "unreviewed"}
+                onReviewStatusChange={(status) => setReviewStatus(viewing, status)}
+              />
               <ContentRenderer item={viewing} />
             </div>
           </div>
@@ -368,8 +445,17 @@ export default function MeusConteudosPage() {
   );
 }
 
-function QualityAuditCard({ audit }: { audit: QualityAudit }) {
+function QualityAuditCard({
+  audit,
+  reviewStatus,
+  onReviewStatusChange,
+}: {
+  audit: QualityAudit;
+  reviewStatus: ReviewStatus;
+  onReviewStatusChange: (status: ReviewStatus) => void;
+}) {
   const tone = QUALITY_TONE_CLASSES[audit.tone];
+  const reviewMeta = REVIEW_STATUS_META[reviewStatus];
   return (
     <div className={`mb-5 rounded-2xl border p-4 ${tone.panel}`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -381,6 +467,26 @@ function QualityAuditCard({ audit }: { audit: QualityAudit }) {
         <div className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black ${tone.badge}`}>
           <ShieldCheck className="w-3.5 h-3.5" />
           Checklist
+        </div>
+      </div>
+      <div className={`mt-3 rounded-xl border p-3 ${reviewMeta.className}`}>
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-wider">Workflow de revisão</p>
+            <p className="mt-1 text-xs font-bold">{reviewMeta.label}</p>
+            <p className="mt-0.5 text-xs opacity-80">{reviewMeta.hint}</p>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <button onClick={() => onReviewStatusChange("reviewing")} className="rounded-lg border border-current/20 bg-white/60 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider hover:bg-white">
+              Em revisão
+            </button>
+            <button onClick={() => onReviewStatusChange("approved")} className="rounded-lg border border-current/20 bg-white/60 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider hover:bg-white">
+              Aprovar
+            </button>
+            <button onClick={() => onReviewStatusChange("needs_changes")} className="rounded-lg border border-current/20 bg-white/60 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider hover:bg-white">
+              Pedir ajustes
+            </button>
+          </div>
         </div>
       </div>
       <div className="mt-3 grid gap-3 md:grid-cols-2">

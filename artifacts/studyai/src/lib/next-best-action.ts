@@ -32,6 +32,7 @@ export type NextBestActionMission = {
   successCriterion: string;
   primaryLabel: string;
   tiagaoPrompt: string;
+  tiagaoMode: "treinador" | "corretor" | "professor" | "socratico" | "simulador_banca";
   action: {
     kind: NextBestActionKind;
     route?: string;
@@ -152,6 +153,11 @@ export function saveSimuladoRecoveryMission(mission: SimuladoRecoveryMission) {
   localStorage.setItem(SIMULADO_RECOVERY_MISSION_KEY, JSON.stringify(mission));
 }
 
+export function clearSimuladoRecoveryMission() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(SIMULADO_RECOVERY_MISSION_KEY);
+}
+
 export function readSimuladoRecoveryMission(maxAgeDays = 14): SimuladoRecoveryMission | null {
   if (typeof window === "undefined") return null;
   try {
@@ -200,6 +206,7 @@ export function buildNextBestAction(args: {
       successCriterion: "Concluir quando você refizer ao menos 1 erro e explicar por que a alternativa correta vence.",
       primaryLabel: m.primaryLabel,
       tiagaoPrompt: m.tiagaoPrompt,
+      tiagaoMode: "corretor",
       action: { kind: "open_caderno", route: "/caderno" },
     });
   }
@@ -224,6 +231,7 @@ export function buildNextBestAction(args: {
       successCriterion: m.successCriterion,
       primaryLabel: m.primaryLabel,
       tiagaoPrompt: m.tiagaoPrompt,
+      tiagaoMode: "treinador",
       action: { kind: "ask_tiagao" },
     });
   }
@@ -250,6 +258,7 @@ export function buildNextBestAction(args: {
       successCriterion: "Concluir quando você gerar resumo ou perguntas e responder uma checagem sem consultar o texto.",
       primaryLabel: "Abrir material",
       tiagaoPrompt: `Tiagão, entre no modo treinador e me guia pelo material "${recentNotebookDoc.title}" do meu Notebook. Quero uma explicação curta, 3 perguntas e uma checagem final.`,
+      tiagaoMode: "treinador",
       action: { kind: "open_notebook", route: "/notebook" },
     });
   }
@@ -279,6 +288,7 @@ export function buildNextBestAction(args: {
       successCriterion: "Concluir quando a lacuna principal virar uma pergunta, exercício ou fonte rastreável.",
       primaryLabel: "Abrir conteúdo",
       tiagaoPrompt: `Tiagão, entra no modo corretor e me ajuda a melhorar o conteúdo "${item.title}". A lacuna principal é: ${audit.firstGap}. Quero uma ação objetiva para deixar esse material pronto para estudo.`,
+      tiagaoMode: "corretor",
       action: { kind: "open_conteudos", route: "/meus-conteudos" },
     });
   }
@@ -305,6 +315,7 @@ export function buildNextBestAction(args: {
       successCriterion: "Concluir quando você finalizar o próximo bloco do plano e registrar uma dúvida ou acerto.",
       primaryLabel: "Começar missão",
       tiagaoPrompt: `Tiagão, quero continuar minha missão de estudo em ${subject}. Me guia pelo próximo passo sem enrolar?`,
+      tiagaoMode: "treinador",
       action: { kind: "resume_plan" },
     });
   }
@@ -327,6 +338,7 @@ export function buildNextBestAction(args: {
     successCriterion: "Concluir quando você responder uma pergunta de checagem sem ajuda.",
     primaryLabel: "Montar missão",
     tiagaoPrompt: `Tiagão, entra no modo treinador e monta uma missão de estudo de 15 minutos para ${args.focus}. Quero um passo claro, uma explicação curta e uma checagem no final.`,
+    tiagaoMode: "treinador",
     action: { kind: "ask_tiagao" },
   });
 

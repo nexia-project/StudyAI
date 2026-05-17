@@ -26,6 +26,16 @@ Correcoes aplicadas:
 
 Observacao operacional: em Windows, comandos `pnpm add` precisaram de `--ignore-scripts` porque o `preinstall` raiz chama `sh`.
 
+## Deploy/producao
+
+Status: aprovado para o commit `65e9e836` ou equivalente.
+
+Evidencia em 2026-05-17:
+
+- `https://api.study.ia.br/api/healthz` respondeu `status=ok`.
+- Commit publicado: `65e9e83`, equivalente ao commit `65e9e836` usado para restaurar o typecheck raiz.
+- Chaves OpenAI, OpenRouter, Clerk e DB reportadas como ativas pelo healthcheck.
+
 ## Notebook RAG QA
 
 Status geral: parcialmente validado.
@@ -35,17 +45,19 @@ Automatizado:
 - `pnpm --filter @workspace/api-server run smoke:notebook-fallbacks`
 - Valida, sem provider real, que entradas fracas/vazias geram apresentacao fallback com pelo menos 8 slides, planos visuais, checkpoints e objetivos.
 - Valida, sem provider real, que mapa mental fallback gera ramos principais, topicos achatados e conexoes cruzadas.
+- `pnpm --filter @workspace/api-server run smoke:notebook-preview-export`
+- Valida serializacao JSON de apresentacao e mapa mental para reabertura/exportacao, incluindo layout, visual/caption, evidencia, notas do professor, exemplos/checkpoints, metadados achatados do mapa e conexoes cruzadas.
 
 Manual pendente:
 
 - Upload de texto curto em `/notebook`, gerar chat RAG e confirmar citacoes `[Fonte N]`.
-- Gerar `Mapa Mental` a partir de fonte curta e confirmar aviso/indicador de fallback estruturado.
-- Gerar `Apresentação` a partir de fonte curta e confirmar renderizacao dos slides, navegacao e exportacao/impressao.
+- Gerar `Mapa Mental` a partir de fonte curta e confirmar aviso/indicador visual de fallback estruturado no navegador.
+- Gerar `Apresentação` a partir de fonte curta e confirmar renderizacao dos slides, navegacao, tela cheia e exportacao/impressao no navegador.
 - Confirmar que visual enrichment indisponivel nao quebra material nem PDF.
 - Confirmar que rate limit/401 continuam amigaveis para usuario anonimo ou sem sessao valida.
 
 Aceite minimo para liberar continuidade premium:
 
 - Gate raiz `pnpm run typecheck` verde.
-- Smoke fallback verde.
+- Smoke fallback e preview/export verde.
 - Manual Notebook/RAG acima executado antes de marcar QA como completo.

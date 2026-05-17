@@ -343,6 +343,13 @@ type LearningAnalytics = {
   weakSkills: string[];
   milestones: string[];
   gaps: string[];
+  coaching: {
+    title: string;
+    summary: string;
+    evidence: string[];
+    prompt: string;
+    mode: TiagaoPedagogicalMode;
+  } | null;
 };
 
 function buildLearningAnalytics(args: {
@@ -405,7 +412,29 @@ function buildLearningAnalytics(args: {
     typeof args.stats.xp !== "number" ? "XP não disponível no ranking atual." : null,
   ].filter((item): item is string => Boolean(item));
 
-  return { mastery, weakSkills: [...new Set(weakSkills)].slice(0, 3), milestones, gaps };
+  const uniqueWeakSkills = [...new Set(weakSkills)].slice(0, 3);
+  const weakestArea = mastery[0] ?? null;
+  const coachingFocus = uniqueWeakSkills[0] ?? (weakestArea ? `${weakestArea.subject}: ${weakestArea.accuracy}% de domínio estimado` : null);
+  const coaching = coachingFocus ? {
+    title: "Treino guiado pelo Tiagão",
+    summary: weakestArea && weakestArea.accuracy < 70
+      ? `Prioridade: recuperar ${weakestArea.subject} antes de abrir outro tema.`
+      : "Use o padrão fraco mais recente para uma intervenção curta e acompanhada.",
+    evidence: [
+      coachingFocus,
+      weakestArea ? `Evidência: ${weakestArea.evidence}` : "Sinal local de revisão/simulado",
+      milestones[0] ?? "Missão curta com checagem final",
+    ],
+    prompt: [
+      "Tiagão, entra no modo treinador e usa meu analytics local para uma intervenção curta.",
+      `Foco principal: ${coachingFocus}.`,
+      weakestArea ? `Domínio estimado: ${weakestArea.accuracy}% em ${weakestArea.subject} (${weakestArea.evidence}).` : "",
+      "Quero: diagnóstico em 2 frases, microaula, 2 perguntas de checagem e critério claro de conclusão.",
+    ].filter(Boolean).join("\n"),
+    mode: "treinador" as const,
+  } : null;
+
+  return { mastery, weakSkills: uniqueWeakSkills, milestones, gaps, coaching };
 }
 
 // ─── Página ───────────────────────────────────────────────────────────────────
@@ -853,6 +882,18 @@ export default function Home() {
     askTiagao(studyMission.tiagaoPrompt, studyMission.tiagaoMode);
   }, [studyMission, trackNextActionEvent]);
 
+  const askTiagaoFromAnalytics = useCallback(() => {
+    if (!learningAnalytics.coaching) return;
+    emitHermesLearningSignal({
+      surface: "home",
+      event: "learning_analytics_coach_clicked",
+      title: learningAnalytics.coaching.title,
+      evidence: learningAnalytics.coaching.evidence,
+      mode: learningAnalytics.coaching.mode,
+    });
+    askTiagao(learningAnalytics.coaching.prompt, learningAnalytics.coaching.mode);
+  }, [learningAnalytics.coaching]);
+
   return (
     <div className="relative min-h-[100dvh] overflow-hidden bg-gradient-to-b from-violet-50/70 via-white to-fuchsia-50/40">
       {/* ── Background decorativo ─────────────────────────────────────────── */}
@@ -1082,7 +1123,7 @@ export default function Home() {
           onOpenNotebook={() => navigate("/notebook")}
         />
 
-        <LearningAnalyticsCard analytics={learningAnalytics} stats={stats} />
+        <LearningAnalyticsCard analytics={learningAnalytics} stats={stats} onAskCoach={askTiagaoFromAnalytics} />
 
         {/* ── Secondary rail ────────────────────────────────────────────── */}
         <section>
@@ -1342,7 +1383,15 @@ function StudyMissionCard({
   );
 }
 
-function LearningAnalyticsCard({ analytics, stats }: { analytics: LearningAnalytics; stats: Stats }) {
+function LearningAnalyticsCard({
+  analytics,
+  stats,
+  onAskCoach,
+}: {
+  analytics: LearningAnalytics;
+  stats: Stats;
+  onAskCoach: () => void;
+}) {
   return (
     <section aria-label="Painel de aprendizagem">
       <div className="rounded-[1.5rem] border border-slate-200/80 bg-white/75 p-4 shadow-lg shadow-violet-100/30 backdrop-blur-xl sm:p-5">
@@ -1433,6 +1482,35 @@ function LearningAnalyticsCard({ analytics, stats }: { analytics: LearningAnalyt
           <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-2">
             <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Lacunas transparentes</p>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">{analytics.gaps.join(" ")}</p>
+          </div>
+        )}
+
+        {analytics.coaching && (
+          <div className="mt-3 rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-fuchsia-50 p-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-wide text-violet-600">
+                  Coaching proativo
+                </p>
+                <h3 className="mt-1 text-sm font-black text-slate-900">{analytics.coaching.title}</h3>
+                <p className="mt-1 text-xs leading-relaxed text-slate-600">{analytics.coaching.summary}</p>
+              </div>
+              <button
+                type="button"
+                onClick={onAskCoach}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-violet-600 px-4 py-2.5 text-xs font-black text-white shadow-lg shadow-violet-300/40 transition hover:bg-violet-700 active:scale-[0.98]"
+              >
+                <MessageCircle className="h-3.5 w-3.5" />
+                Treinar com Tiagão
+              </button>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              {analytics.coaching.evidence.slice(0, 3).map((item) => (
+                <div key={item} className="rounded-xl bg-white/75 px-3 py-2 text-[11px] font-semibold leading-relaxed text-slate-600">
+                  {item}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

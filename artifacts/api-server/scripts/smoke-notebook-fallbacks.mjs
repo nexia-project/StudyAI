@@ -43,24 +43,88 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function roundTrip(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function assertSerializablePreview(label, value) {
+  const serialized = JSON.stringify(value);
+  assert(serialized.length > 500, `${label} should serialize to a non-empty preview/export payload`);
+  assert(!serialized.includes("[object Object]"), `${label} should not collapse nested objects`);
+  return JSON.parse(serialized);
+}
+
+function assertSlideExportContract(deck) {
+  const copy = assertSerializablePreview("slide deck", {
+    kind: "slides",
+    titulo: deck.titulo,
+    apresentacao: deck,
+  });
+  const slides = copy.apresentacao.slides ?? [];
+  const contentSlides = slides.filter((slide) => !["capa", "agenda", "encerramento"].includes(slide.tipo));
+  assert(contentSlides.length >= 5, "slide preview should include at least five development slides");
+
+  for (const slide of contentSlides.slice(0, 5)) {
+    assert(slide.layout, `slide "${slide.titulo}" should keep layout for preview`);
+    assert(slide.visual?.descricao || slide.visual?.caption, `slide "${slide.titulo}" should keep visual placeholder/caption`);
+    assert(slide.evidencia, `slide "${slide.titulo}" should keep source evidence`);
+    assert(slide.comoExplicar, `slide "${slide.titulo}" should keep teacher notes`);
+    assert(slide.exemplo || slide.checkpoint, `slide "${slide.titulo}" should keep example or checkpoint`);
+  }
+
+  const exportText = slides.map((slide) => [
+    slide.titulo,
+    slide.subtitulo,
+    ...(slide.bullets ?? []),
+    slide.visual?.titulo,
+    slide.visual?.descricao,
+    slide.visual?.caption,
+    slide.visual?.credito,
+    slide.evidencia,
+    slide.comoExplicar,
+    slide.exemplo,
+    slide.checkpoint,
+  ].filter(Boolean).join("\n")).join("\n---\n");
+  assert(exportText.includes("Checkpoint"), "slide export should preserve checkpoints");
+  assert(/Visual estruturado|Cards|Imagem|Evidencia|evidencia/i.test(exportText), "slide export should preserve visual/evidence copy");
+}
+
+function assertMindMapPreviewContract(map) {
+  const copy = assertSerializablePreview("mind map", {
+    kind: "mapa-mental",
+    payload: map,
+  });
+  assert(copy.payload.categories.every((cat) => cat.cor && cat.icone), "mind map preview should preserve branch colors/icons");
+  assert(copy.payload.topics.every((topic) => topic.category && topic.color), "flattened mind map topics should keep category metadata");
+  assert((copy.payload.conexoesCruzadas ?? []).length >= 3, "mind map export should keep cross-connections");
+}
+
 const deck = normalizeSlides({}, title, content);
 assert(deck.generatedByFallback === true, "slides should mark weak input as fallback");
 assert(deck.slides.length >= 8, "fallback deck should include at least 8 slides");
 assert(deck.slides.some((slide) => slide.visual), "fallback deck should include visual plans");
 assert(deck.slides.some((slide) => slide.checkpoint), "fallback deck should include checkpoints");
 assert((deck.objetivos?.length ?? 0) >= 3, "fallback deck should include learning objectives");
+assertSlideExportContract(deck);
 
 const map = normalizeMindMap({}, title, content);
 assert(map.generatedByFallback === true, "mind map should mark weak input as fallback");
 assert(map.categories.length >= 6, "fallback mind map should include major branches");
 assert(map.topics.length >= 18, "fallback mind map should include flattened topics");
 assert((map.conexoesCruzadas?.length ?? 0) >= 3, "fallback mind map should include cross-connections");
+assertMindMapPreviewContract(map);
+
+const strongDeck = roundTrip(normalizeSlides(deck, title, content));
+assert(strongDeck.generatedByFallback === false, "strong normalized deck should survive JSON roundtrip without fallback");
+assertSlideExportContract(strongDeck);
 
 console.log(JSON.stringify({
   ok: true,
   slides: deck.slides.length,
   slideFallback: deck.generatedByFallback,
+  slideContentSlides: deck.slides.filter((slide) => !["capa", "agenda", "encerramento"].includes(slide.tipo)).length,
   mindMapBranches: map.categories.length,
   mindMapTopics: map.topics.length,
   mindMapFallback: map.generatedByFallback,
+  serialization: "preview-export-contract-ok",
 }, null, 2));

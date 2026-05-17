@@ -15,7 +15,7 @@ import {
   saveErrorReviewMission,
   type ErrorReviewDraft,
 } from "@/lib/error-review";
-import { saveSimuladoRecoveryMission } from "@/lib/next-best-action";
+import { completeSimuladoRecoveryMission, saveSimuladoRecoveryMission, type SimuladoRecoveryMission } from "@/lib/next-best-action";
 
 const DIAS_INFO = [
   { dia: 1, nome: "Linguagens", areaOficial: "Linguagens, Códigos e suas Tecnologias", cor: "from-violet-500 to-violet-600", bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-200", emoji: "📝", materias: "Língua Portuguesa, Literatura, Inglês, Arte, Educação Física" },
@@ -520,6 +520,7 @@ export default function SimuladoEnemPage() {
   const [tempoRestante, setTempoRestante] = useState(0);
   const [mostrarGabarito, setMostrarGabarito] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [recoveryMarkedDone, setRecoveryMarkedDone] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -543,6 +544,7 @@ export default function SimuladoEnemPage() {
       setRespostas({});
       setAtual(0);
       setMostrarGabarito(false);
+      setRecoveryMarkedDone(false);
       // Timer: qtd * 3.5 min por questão (ENEM tem ~7.3min/questão mas usamos menos por ser simulado)
       setTempoRestante(Math.round(qtd * 4 * 60));
       setFase("respondendo");
@@ -1013,6 +1015,28 @@ export default function SimuladoEnemPage() {
     const explicitSkillPerformance = skillPerformance.filter(item => item.metadataSource === "question-bank");
     const errorPatterns = buildErrorPatterns(erros, respostas);
     const recoveryMission = buildRecoveryMission({ erros, subjects, skillPerformance, errorPatterns, pct });
+    const weakestSubject = subjects.find(subject => subject.erros > 0);
+    const weakestSkill = skillPerformance.find(item => item.erros > 0);
+    const currentRecoverySignal: SimuladoRecoveryMission = {
+      title: recoveryMission.title,
+      subject: weakestSkill?.label ?? weakestSubject?.materia ?? diaInfo.nome,
+      estimate: recoveryMission.estimatedTime,
+      reason: recoveryMission.objective,
+      evidence: recoveryMission.evidence,
+      successCriterion: recoveryMission.check,
+      primaryLabel: erros.length ? "Treinar recuperação" : "Consolidar acertos",
+      tiagaoPrompt: [
+        `Tiagão, entra no modo treinador e me ajuda com a recuperação do meu último simulado ENEM.`,
+        `Resultado: ${pct}% de acerto, ${erros.length} erro(s).`,
+        `Foco: ${weakestSkill?.label ?? weakestSubject?.materia ?? diaInfo.nome}.`,
+        `Missão: ${recoveryMission.title}.`,
+        `Critério de sucesso: ${recoveryMission.check}`,
+      ].join("\n"),
+      createdAt: new Date().toISOString(),
+      errorsCount: erros.length,
+      accuracy: pct,
+      weakArea: weakestSubject?.materia ?? weakestSkill?.label ?? null,
+    };
     const tri = estimatePedagogicalTri(pct, questoes, erros);
     const actionPlan = buildActionPlan(erros, subjects);
     const nivel = pct >= 80 ? { label: "Excelente! 🏆", cor: "text-emerald-700", bg: "bg-emerald-50" }
@@ -1190,6 +1214,26 @@ export default function SimuladoEnemPage() {
                 <p className="text-xs font-black uppercase tracking-wide text-white/70 mb-1">Critério de conclusão</p>
                 <p className="text-sm text-white/90 leading-relaxed">{recoveryMission.check}</p>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  completeSimuladoRecoveryMission(currentRecoverySignal, "marked_done");
+                  setRecoveryMarkedDone(true);
+                  emitHermesLearningSignal({
+                    surface: "simulado_enem",
+                    event: "recovery_mission_marked_done",
+                    subject: currentRecoverySignal.subject,
+                    errors: currentRecoverySignal.errorsCount,
+                    accuracy: currentRecoverySignal.accuracy,
+                    successCriterion: currentRecoverySignal.successCriterion,
+                  });
+                }}
+                disabled={recoveryMarkedDone}
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-3 py-2.5 text-sm font-black text-violet-700 transition hover:bg-violet-50 disabled:cursor-not-allowed disabled:bg-white/20 disabled:text-white/70"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                {recoveryMarkedDone ? "Missão marcada como concluída" : "Marcar recuperação como feita"}
+              </button>
             </div>
           </div>
 

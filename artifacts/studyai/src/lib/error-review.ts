@@ -1,5 +1,6 @@
 export const SIMULADO_ERROR_REVIEW_DRAFT_KEY = "studyai:simulado-enem:error-review-draft:v1";
 export const ERROR_REVIEW_MISSION_KEY = "studyai:error-review:mission:v1";
+export const ERROR_REVIEW_HISTORY_KEY = "studyai:error-review:history:v1";
 
 export type ErrorReviewItem = {
   questionNumber: number;
@@ -26,6 +27,12 @@ export type ErrorReviewMission = {
   accuracy: number;
   errorType: string;
   nextReviewAt: string;
+};
+
+export type ErrorReviewCompletion = ErrorReviewMission & {
+  completedAt: string;
+  savedNoteId?: string | number | null;
+  completion: "saved_review_note" | "manual_close";
 };
 
 export type ErrorReviewDraft = {
@@ -62,6 +69,46 @@ export function saveErrorReviewMission(mission: ErrorReviewMission) {
 export function clearErrorReviewMission() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(ERROR_REVIEW_MISSION_KEY);
+}
+
+function readHistoryStorage<T>(key: string): T[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(key);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    localStorage.removeItem(key);
+    return [];
+  }
+}
+
+function writeHistoryStorage<T>(key: string, items: T[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(key, JSON.stringify(items.slice(0, 20)));
+}
+
+export function readErrorReviewHistory(): ErrorReviewCompletion[] {
+  return readHistoryStorage<ErrorReviewCompletion>(ERROR_REVIEW_HISTORY_KEY)
+    .filter(item => item?.title && item?.createdAt && item?.completedAt);
+}
+
+export function completeErrorReviewMission(args: {
+  mission: ErrorReviewMission;
+  savedNoteId?: string | number | null;
+  completion?: ErrorReviewCompletion["completion"];
+}) {
+  if (typeof window === "undefined") return;
+  const completed: ErrorReviewCompletion = {
+    ...args.mission,
+    completedAt: new Date().toISOString(),
+    savedNoteId: args.savedNoteId ?? null,
+    completion: args.completion ?? "saved_review_note",
+  };
+  const history = readErrorReviewHistory()
+    .filter(item => !(item.createdAt === completed.createdAt && item.subject === completed.subject));
+  writeHistoryStorage(ERROR_REVIEW_HISTORY_KEY, [completed, ...history]);
+  clearErrorReviewMission();
 }
 
 export function readErrorReviewMission(maxAgeDays = 14): ErrorReviewMission | null {

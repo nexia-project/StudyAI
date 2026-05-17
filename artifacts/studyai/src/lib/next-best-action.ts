@@ -1,6 +1,7 @@
 import type { ErrorReviewMission } from "./error-review";
 
 export const SIMULADO_RECOVERY_MISSION_KEY = "studyai:simulado-enem:recovery-mission:v1";
+export const SIMULADO_RECOVERY_HISTORY_KEY = "studyai:simulado-enem:recovery-history:v1";
 
 export type NextBestActionSource =
   | "caderno_erros"
@@ -52,6 +53,11 @@ export type SimuladoRecoveryMission = {
   errorsCount: number;
   accuracy: number;
   weakArea?: string | null;
+};
+
+export type SimuladoRecoveryCompletion = SimuladoRecoveryMission & {
+  completedAt: string;
+  completion: "marked_done" | "sent_to_caderno";
 };
 
 export type NotebookSignal = {
@@ -156,6 +162,44 @@ export function saveSimuladoRecoveryMission(mission: SimuladoRecoveryMission) {
 export function clearSimuladoRecoveryMission() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(SIMULADO_RECOVERY_MISSION_KEY);
+}
+
+function readHistoryStorage<T>(key: string): T[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(key);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    localStorage.removeItem(key);
+    return [];
+  }
+}
+
+function writeHistoryStorage<T>(key: string, items: T[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(key, JSON.stringify(items.slice(0, 20)));
+}
+
+export function readSimuladoRecoveryHistory(): SimuladoRecoveryCompletion[] {
+  return readHistoryStorage<SimuladoRecoveryCompletion>(SIMULADO_RECOVERY_HISTORY_KEY)
+    .filter(item => item?.title && item?.createdAt && item?.completedAt);
+}
+
+export function completeSimuladoRecoveryMission(
+  mission: SimuladoRecoveryMission,
+  completion: SimuladoRecoveryCompletion["completion"] = "marked_done",
+) {
+  if (typeof window === "undefined") return;
+  const completed: SimuladoRecoveryCompletion = {
+    ...mission,
+    completedAt: new Date().toISOString(),
+    completion,
+  };
+  const history = readSimuladoRecoveryHistory()
+    .filter(item => !(item.createdAt === completed.createdAt && item.subject === completed.subject));
+  writeHistoryStorage(SIMULADO_RECOVERY_HISTORY_KEY, [completed, ...history]);
+  clearSimuladoRecoveryMission();
 }
 
 export function readSimuladoRecoveryMission(maxAgeDays = 14): SimuladoRecoveryMission | null {

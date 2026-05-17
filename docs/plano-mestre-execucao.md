@@ -26,6 +26,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - **Hermes premium quality loop:** `qa_sintetico` agora monitora Landing, Home, Notebook RAG, Simulado, Tiagao e Caderno de Erros com recomendacoes contendo modulo, evidencia, problema, mudanca sugerida, metrica e criterios de aceite; sem autofix destrutivo.
 - **Workflow premium v2:** curadoria ganhou status manual local de revisao/aprovacao/ajustes; Home agora encaminha a proxima melhor acao ao Tiagao com modo pedagogico coerente; Caderno limpa missoes locais de simulado/erro quando a nota de revisao e salva.
 - **Relatorios B2B v2:** professor e gestor deixam de exibir exportacao apenas como placeholder e passam a baixar CSV util com diagnostico, sinais disponiveis e proxima acao sem inventar linhas por aluno fora dos dados atuais.
+- **Analytics aluno + fechamento de recuperacao:** Home ganhou painel leve de aprendizagem com dominio por area, streak, habilidades fracas, marcos e lacunas transparentes; Caderno registra historico local de revisoes concluidas; Simulado permite marcar a missao de recuperacao como feita.
 
 ## Tickets em execucao
 
@@ -176,6 +177,29 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - Typecheck do app passa antes de commit/deploy.
 - Status manual e persistido localmente por item sem criar metrica falsa de qualidade.
 
+### F2-04 Analytics premium do aluno e fechamento de missoes
+
+**Status:** primeira fatia implementada; pendente QA manual e rollout.
+
+**Objetivo:** transformar sinais ja existentes em progresso acionavel para o aluno sem criar dashboard pesado nem inventar telemetria ausente.
+
+**Superficies previstas:** `artifacts/studyai/src/pages/Home.tsx`, `artifacts/studyai/src/pages/Caderno.tsx`, `artifacts/studyai/src/pages/SimuladoEnem.tsx`, helpers locais de proxima acao e revisao de erros.
+
+**Resultado esperado:**
+
+- Home mostra dominio por area apenas quando ha evidencia local de simulado/revisao.
+- Home destaca streak, habilidades fracas, proximos marcos e lacunas de dados explicitamente.
+- Caderno de Erros registra historico local de revisoes concluidas ao salvar nota importada do simulado.
+- Simulado permite marcar o plano de recuperacao como concluido e remove a missao pendente da Home.
+- Eventos Hermes locais registram exibicao/click/conclusao sem depender de backend novo.
+
+**Criterios de aceite:**
+
+- Nao ha metricas globais inventadas quando faltam dados; estados vazios orientam o proximo passo.
+- O historico local limita quantidade de registros e nao altera schema/API do Caderno.
+- Marcar recuperacao como feita fecha a proxima acao local do Simulado.
+- Typecheck focado do app passa antes de commit/deploy.
+
 ### F0-04 Hermes premium quality loop
 
 **Status:** primeira versao implementada em QA sintetico e docs; pendente execucao manual da auditoria em producao/staging.
@@ -199,6 +223,15 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - Checklist manual cobre jornada ponta a ponta: Landing -> Home -> Notebook RAG -> Simulado -> Caderno -> Tiagao.
 
 ## Checklist de validacao
+
+### Auditoria de bloqueadores - 2026-05-17 17:10
+
+- [x] Git local auditado: `main` esta alinhada com `origin/main`; havia apenas o lote local de analytics/fechamento premium ainda nao commitado.
+- [x] Producao auditada antes do novo lote: `/api/healthz` em `https://api.study.ia.br/api/healthz` respondeu `status=ok`, `commit=22c13d7`, chaves OpenAI/OpenRouter/Clerk/DB ativas.
+- [x] Railway CLI autenticado e ligado ao projeto `lucky-appreciation`, ambiente `production`, servico `StudyAI`; deploy recente `68666a1e-3cff-4d59-9251-47bc96f9cd6b` em `SUCCESS`.
+- [x] Typecheck focado do app passou: `pnpm --filter "./artifacts/studyai" run typecheck`.
+- [ ] Typecheck raiz ainda falha fora do lote premium: `tsc --build` acusa tipagens/deps ausentes em libs compartilhadas (`@types/node`, `react`) e uso de `pRetry.AbortError` em integrações Gemini/OpenAI. Nao bloqueia este corte do app, mas bloqueia usar `pnpm run typecheck` raiz como gate.
+- [ ] QA manual Notebook/RAG apresentacoes continua pendente; e validacao manual de produto, nao bloqueio de build/deploy.
 
 ### Bloqueador atual - Notebook RAG apresentacoes
 
@@ -285,7 +318,16 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [x] Simulado premium persiste missao de recuperacao local para a Home mesmo antes do envio ao Caderno.
 - [x] Missao enviada ao Tiagao seleciona modo pedagogico coerente (`treinador` ou `corretor`) conforme fonte da proxima acao.
 - [x] Typecheck focado do app concluido sem erro.
+- [x] Home mostra analytics leve do aluno com dominio por area, habilidades fracas, streak, proximos marcos e lacunas transparentes.
 - [ ] QA manual: simulado com erro -> Home deve sugerir recuperacao; material recente no Notebook -> Home deve sugerir abrir material; conteudo com curadoria baixa -> Home deve sugerir revisar conteudo.
+
+### Caderno/Simulado premium v2
+
+- [x] Caderno registra historico local de revisoes de erro concluidas ao salvar nota importada.
+- [x] Caderno mostra estado resumido de revisoes concluidas sem depender de backend novo.
+- [x] Simulado permite marcar missao de recuperacao como feita e limpa a missao pendente local.
+- [ ] QA manual: simulado com erro -> concluir recuperacao -> Home deve deixar de priorizar a missao de recuperacao.
+- [ ] QA manual: simulado com erro -> enviar ao Caderno -> salvar nota -> historico de revisoes deve ganhar novo item.
 
 ### Metricas
 
@@ -344,5 +386,6 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [x] Adicionar primeira fatia de curadoria premium no historico de conteudos.
 - [x] Conectar sinais premium na Home para next-best-action priorizada com evento Hermes local.
 - [x] Adicionar workflow manual local de curadoria e fechamento local da missao Simulado -> Caderno.
+- [x] Adicionar analytics leve do aluno, historico local de revisoes concluidas e fechamento manual de recuperacao do Simulado.
 - [ ] Proximo lote de Caderno de Erros: persistir historico estruturado no backend quando houver schema/API definido.
 - [ ] Depois do lote de erros: evoluir modos pedagogicos do Tiagao com taxonomia oficial e metricas por modo.

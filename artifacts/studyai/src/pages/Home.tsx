@@ -51,6 +51,8 @@ import {
   AlertCircle,
   Send,
   Save,
+  BarChart3,
+  Target,
 } from "lucide-react";
 import { TiagaoCharacter } from "@/components/TiagaoCharacter";
 import { UserMenu } from "@/components/UserMenu";
@@ -66,12 +68,20 @@ import {
 import { useStudentProfile } from "@/hooks/useStudentProfile";
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 import { triggerProfessorAction } from "@/lib/professor-events";
-import { emitHermesLearningSignal, readErrorReviewMission, type ErrorReviewMission } from "@/lib/error-review";
+import {
+  emitHermesLearningSignal,
+  readErrorReviewHistory,
+  readErrorReviewMission,
+  type ErrorReviewCompletion,
+  type ErrorReviewMission,
+} from "@/lib/error-review";
 import {
   buildNextBestAction,
+  readSimuladoRecoveryHistory,
   readSimuladoRecoveryMission,
   type ContentSignal,
   type NextBestActionMission,
+  type SimuladoRecoveryCompletion,
   type NotebookSignal,
   type SimuladoRecoveryMission,
 } from "@/lib/next-best-action";
@@ -328,6 +338,76 @@ type Stats = {
   xp: number | null;
 };
 
+type LearningAnalytics = {
+  mastery: Array<{ subject: string; accuracy: number; evidence: string }>;
+  weakSkills: string[];
+  milestones: string[];
+  gaps: string[];
+};
+
+function buildLearningAnalytics(args: {
+  stats: Stats;
+  errorReviewMission: ErrorReviewMission | null;
+  simuladoRecoveryMission: SimuladoRecoveryMission | null;
+  errorReviewHistory: ErrorReviewCompletion[];
+  simuladoRecoveryHistory: SimuladoRecoveryCompletion[];
+  notebookDocs: NotebookSignal[];
+  contentSignals: ContentSignal[];
+}): LearningAnalytics {
+  const masteryBySubject = new Map<string, { total: number; count: number; evidence: string }>();
+  const addMastery = (subject: string | null | undefined, accuracy: number | null | undefined, evidence: string) => {
+    if (!subject || typeof accuracy !== "number") return;
+    const current = masteryBySubject.get(subject) ?? { total: 0, count: 0, evidence };
+    current.total += accuracy;
+    current.count += 1;
+    current.evidence = evidence;
+    masteryBySubject.set(subject, current);
+  };
+
+  for (const item of args.errorReviewHistory) {
+    addMastery(item.subject, item.accuracy, "revisão concluída no Caderno");
+  }
+  for (const item of args.simuladoRecoveryHistory) {
+    addMastery(item.subject, item.accuracy, "recuperação marcada como feita");
+  }
+  addMastery(args.errorReviewMission?.subject, args.errorReviewMission?.accuracy, "missão pendente do Caderno");
+  addMastery(args.simuladoRecoveryMission?.subject, args.simuladoRecoveryMission?.accuracy, "último simulado");
+
+  const mastery = Array.from(masteryBySubject.entries())
+    .map(([subject, value]) => ({
+      subject,
+      accuracy: Math.round(value.total / Math.max(value.count, 1)),
+      evidence: value.evidence,
+    }))
+    .sort((a, b) => a.accuracy - b.accuracy)
+    .slice(0, 3);
+
+  const weakSkills = [
+    args.errorReviewMission?.errorType ? `${args.errorReviewMission.subject}: ${args.errorReviewMission.errorType}` : null,
+    args.simuladoRecoveryMission?.weakArea ? `${args.simuladoRecoveryMission.weakArea}: recuperar simulado` : null,
+    ...args.errorReviewHistory
+      .filter(item => item.accuracy < 70)
+      .slice(0, 2)
+      .map(item => `${item.subject}: ${item.errorType}`),
+  ].filter((item): item is string => Boolean(item));
+
+  const milestones = [
+    args.errorReviewMission ? "Concluir a revisão pendente no Caderno de Erros" : null,
+    args.simuladoRecoveryMission ? "Fechar o plano de recuperação do último simulado" : null,
+    args.notebookDocs.length > 0 ? "Transformar um material recente do Notebook em perguntas" : null,
+    args.contentSignals.length > 0 ? "Revisar a curadoria de um conteúdo salvo" : null,
+    typeof args.stats.streak === "number" && args.stats.streak > 0 ? `Manter streak de ${args.stats.streak} dia${args.stats.streak !== 1 ? "s" : ""}` : "Criar a primeira sequência de estudo",
+  ].filter((item): item is string => Boolean(item)).slice(0, 4);
+
+  const gaps = [
+    mastery.length === 0 ? "Ainda faltam simulados/revisões para calcular domínio por área." : null,
+    args.errorReviewHistory.length === 0 ? "Histórico de fechamento do Caderno ainda é local e recente." : null,
+    typeof args.stats.xp !== "number" ? "XP não disponível no ranking atual." : null,
+  ].filter((item): item is string => Boolean(item));
+
+  return { mastery, weakSkills: [...new Set(weakSkills)].slice(0, 3), milestones, gaps };
+}
+
 // ─── Página ───────────────────────────────────────────────────────────────────
 export default function Home() {
   const [, navigate] = useLocation();
@@ -338,6 +418,8 @@ export default function Home() {
   const [recentPlans, setRecentPlans] = useState<RecentPlan[]>([]);
   const [errorReviewMission, setErrorReviewMission] = useState<ErrorReviewMission | null>(null);
   const [simuladoRecoveryMission, setSimuladoRecoveryMission] = useState<SimuladoRecoveryMission | null>(null);
+  const [errorReviewHistory, setErrorReviewHistory] = useState<ErrorReviewCompletion[]>([]);
+  const [simuladoRecoveryHistory, setSimuladoRecoveryHistory] = useState<SimuladoRecoveryCompletion[]>([]);
   const [notebookDocs, setNotebookDocs] = useState<NotebookSignal[]>([]);
   const [contentSignals, setContentSignals] = useState<ContentSignal[]>([]);
   const [stats, setStats] = useState<Stats>({ streak: null, xp: null });
@@ -379,6 +461,8 @@ export default function Home() {
     const refreshStoredMissions = () => {
       setErrorReviewMission(readErrorReviewMission());
       setSimuladoRecoveryMission(readSimuladoRecoveryMission());
+      setErrorReviewHistory(readErrorReviewHistory());
+      setSimuladoRecoveryHistory(readSimuladoRecoveryHistory());
     };
     refreshStoredMissions();
     window.addEventListener("storage", refreshStoredMissions);
@@ -503,6 +587,16 @@ export default function Home() {
       focus,
     });
   }, [contentSignals, errorReviewMission, notebookDocs, profile?.concursoAlvo, profile?.objetivo, resumeTarget, simuladoRecoveryMission]);
+
+  const learningAnalytics = useMemo(() => buildLearningAnalytics({
+    stats,
+    errorReviewMission,
+    simuladoRecoveryMission,
+    errorReviewHistory,
+    simuladoRecoveryHistory,
+    notebookDocs,
+    contentSignals,
+  }), [contentSignals, errorReviewHistory, errorReviewMission, notebookDocs, simuladoRecoveryHistory, simuladoRecoveryMission, stats]);
 
   const trackNextActionEvent = useCallback((event: "shown" | "clicked" | "tiagao_clicked", mission: NextBestActionMission) => {
     emitHermesLearningSignal({
@@ -988,6 +1082,8 @@ export default function Home() {
           onOpenNotebook={() => navigate("/notebook")}
         />
 
+        <LearningAnalyticsCard analytics={learningAnalytics} stats={stats} />
+
         {/* ── Secondary rail ────────────────────────────────────────────── */}
         <section>
           <div className="mb-4 flex items-end justify-between">
@@ -1242,6 +1338,104 @@ function StudyMissionCard({
           </div>
         </div>
       </motion.article>
+    </section>
+  );
+}
+
+function LearningAnalyticsCard({ analytics, stats }: { analytics: LearningAnalytics; stats: Stats }) {
+  return (
+    <section aria-label="Painel de aprendizagem">
+      <div className="rounded-[1.5rem] border border-slate-200/80 bg-white/75 p-4 shadow-lg shadow-violet-100/30 backdrop-blur-xl sm:p-5">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-500">
+              Analytics de aprendizagem
+            </p>
+            <h2 className="text-lg font-black text-slate-900">
+              Domínio, lacunas e próximos marcos
+            </h2>
+          </div>
+          <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-500">
+            <BarChart3 className="h-3.5 w-3.5" />
+            Dados locais e endpoints atuais
+          </span>
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-3">
+          <div className="rounded-2xl border border-violet-100 bg-violet-50/50 p-3">
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-black uppercase tracking-wide text-violet-700">
+              <Target className="h-3.5 w-3.5" />
+              Domínio por área
+            </p>
+            {analytics.mastery.length > 0 ? (
+              <div className="space-y-2">
+                {analytics.mastery.map(item => (
+                  <div key={item.subject}>
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <span className="truncate text-xs font-bold text-slate-700">{item.subject}</span>
+                      <span className="text-xs font-black text-violet-700">{item.accuracy}%</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-white">
+                      <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500" style={{ width: `${Math.max(4, Math.min(100, item.accuracy))}%` }} />
+                    </div>
+                    <p className="mt-1 text-[11px] text-slate-500">{item.evidence}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs leading-relaxed text-slate-600">
+                Ainda não há histórico suficiente. Faça um simulado ou conclua uma revisão para aparecer aqui.
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-3">
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-black uppercase tracking-wide text-amber-700">
+              <AlertCircle className="h-3.5 w-3.5" />
+              Habilidades fracas
+            </p>
+            {analytics.weakSkills.length > 0 ? (
+              <ul className="space-y-2">
+                {analytics.weakSkills.map(item => (
+                  <li key={item} className="rounded-xl bg-white/75 px-3 py-2 text-xs font-semibold leading-relaxed text-slate-700">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs leading-relaxed text-slate-600">
+                Nenhum padrão fraco fechado ainda. O próximo erro revisado vira sinal, não chute.
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-3">
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-black uppercase tracking-wide text-emerald-700">
+              <ListChecks className="h-3.5 w-3.5" />
+              Próximos marcos
+            </p>
+            <ul className="space-y-2">
+              {analytics.milestones.map(item => (
+                <li key={item} className="flex gap-2 text-xs leading-relaxed text-slate-700">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-[11px] font-semibold text-slate-500">
+              Ritmo: {typeof stats.streak === "number" && stats.streak > 0 ? `${stats.streak} dia${stats.streak !== 1 ? "s" : ""}` : "sem streak ativo"}
+              {typeof stats.xp === "number" ? ` · ${stats.xp.toLocaleString("pt-BR")} XP` : ""}
+            </p>
+          </div>
+        </div>
+
+        {analytics.gaps.length > 0 && (
+          <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-2">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Lacunas transparentes</p>
+            <p className="mt-1 text-xs leading-relaxed text-slate-500">{analytics.gaps.join(" ")}</p>
+          </div>
+        )}
+      </div>
     </section>
   );
 }

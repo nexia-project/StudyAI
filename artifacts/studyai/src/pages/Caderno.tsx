@@ -8,11 +8,15 @@ import {
 } from "lucide-react";
 import {
   SIMULADO_ERROR_REVIEW_DRAFT_KEY,
+  completeErrorReviewMission,
   clearErrorReviewMission,
   emitHermesLearningSignal,
+  readErrorReviewHistory,
+  readErrorReviewMission,
+  type ErrorReviewCompletion,
   type ErrorReviewDraft,
 } from "@/lib/error-review";
-import { clearSimuladoRecoveryMission } from "@/lib/next-best-action";
+import { clearSimuladoRecoveryMission, completeSimuladoRecoveryMission, readSimuladoRecoveryMission } from "@/lib/next-best-action";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -74,6 +78,7 @@ export default function Caderno() {
   const [filterMateria, setFilterMateria] = useState<string>("Todas");
   const [showEditor, setShowEditor] = useState(false);
   const [importedErrorReview, setImportedErrorReview] = useState<ErrorReviewDraft | null>(null);
+  const [reviewHistory, setReviewHistory] = useState<ErrorReviewCompletion[]>([]);
 
   // Editor state
   const [editTitle, setEditTitle] = useState("");
@@ -107,6 +112,20 @@ export default function Caderno() {
   }, []);
 
   useEffect(() => { loadNotes(); }, [loadNotes]);
+
+  const refreshReviewHistory = useCallback(() => {
+    setReviewHistory(readErrorReviewHistory());
+  }, []);
+
+  useEffect(() => {
+    refreshReviewHistory();
+    window.addEventListener("storage", refreshReviewHistory);
+    window.addEventListener("focus", refreshReviewHistory);
+    return () => {
+      window.removeEventListener("storage", refreshReviewHistory);
+      window.removeEventListener("focus", refreshReviewHistory);
+    };
+  }, [refreshReviewHistory]);
 
   useEffect(() => {
     try {
@@ -202,8 +221,23 @@ export default function Caderno() {
         setIsCreating(false);
         setDirty(false);
         if (importedErrorReview) {
-          clearErrorReviewMission();
-          clearSimuladoRecoveryMission();
+          const currentMission = readErrorReviewMission();
+          if (currentMission) {
+            completeErrorReviewMission({
+              mission: currentMission,
+              savedNoteId: note?.id ?? null,
+              completion: "saved_review_note",
+            });
+          } else {
+            clearErrorReviewMission();
+          }
+          const recoveryMission = readSimuladoRecoveryMission();
+          if (recoveryMission) {
+            completeSimuladoRecoveryMission(recoveryMission, "sent_to_caderno");
+          } else {
+            clearSimuladoRecoveryMission();
+          }
+          refreshReviewHistory();
           emitHermesLearningSignal({
             surface: "caderno",
             event: "error_review_note_created",
@@ -238,7 +272,7 @@ export default function Caderno() {
       setSavedOk(true);
       setTimeout(() => setSavedOk(false), 2000);
     } finally { setSaving(false); }
-  }, [isCreating, selectedId, editTitle, editContent, editMateria, importedErrorReview]);
+  }, [isCreating, selectedId, editTitle, editContent, editMateria, importedErrorReview, refreshReviewHistory]);
 
   // Delete note
   const handleDelete = useCallback(async (id: string) => {
@@ -343,6 +377,38 @@ export default function Caderno() {
             <option>Todas</option>
             {MATERIAS.map(m => <option key={m}>{m}</option>)}
           </select>
+
+          <div className="rounded-2xl border border-violet-100 bg-white/85 p-3 shadow-sm">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-500">
+                  Revisões concluídas
+                </p>
+                <p className="text-xs text-gray-500">
+                  Histórico local do Caderno de Erros
+                </p>
+              </div>
+              <span className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-black text-violet-700">
+                {reviewHistory.length}
+              </span>
+            </div>
+            {reviewHistory.length > 0 ? (
+              <div className="mt-3 space-y-2">
+                {reviewHistory.slice(0, 3).map(item => (
+                  <div key={`${item.createdAt}-${item.completedAt}`} className="rounded-xl bg-violet-50/60 px-3 py-2">
+                    <p className="truncate text-xs font-black text-slate-800">{item.subject}</p>
+                    <p className="text-[11px] text-slate-500">
+                      {item.errorsCount} erro{item.errorsCount !== 1 ? "s" : ""} · {item.accuracy}% · {formatDate(item.completedAt)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-3 text-xs leading-relaxed text-gray-500">
+                Ao salvar uma revisão importada do simulado, ela aparece aqui como concluída sem inventar progresso global.
+              </p>
+            )}
+          </div>
 
           {/* Notes list */}
           <div className="flex-1 overflow-y-auto flex flex-col gap-2 pr-1">

@@ -5,6 +5,7 @@ import {
   ArrowLeft, Loader2, Search, Trash2, Eye, FileText,
   Presentation, Brain, Image as ImageIcon, BookOpen, Microscope,
   ClipboardList, Sparkles, AlertCircle, Layers,
+  ShieldCheck,
 } from "lucide-react";
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 import { AppNav } from "@/components/AppNav";
@@ -36,6 +37,98 @@ const KIND_META: Record<Kind, { label: string; icon: any; color: string; group: 
   research:         { label: "Pesquisa",            icon: Microscope,    color: "text-cyan-600 bg-cyan-50 border-cyan-200",          group: "teacher" },
   content_package:  { label: "Pacote Completo",     icon: Layers,        color: "text-fuchsia-600 bg-fuchsia-50 border-fuchsia-200", group: "teacher" },
 };
+
+type QualityTone = "strong" | "attention" | "setup";
+
+interface QualityAudit {
+  score: number;
+  tone: QualityTone;
+  label: string;
+  strengths: string[];
+  gaps: string[];
+  nextAction: string;
+}
+
+const QUALITY_TONE_CLASSES: Record<QualityTone, { badge: string; panel: string; title: string }> = {
+  strong: {
+    badge: "text-emerald-700 bg-emerald-50 border-emerald-200",
+    panel: "border-emerald-200 bg-emerald-50/70",
+    title: "text-emerald-800",
+  },
+  attention: {
+    badge: "text-amber-700 bg-amber-50 border-amber-200",
+    panel: "border-amber-200 bg-amber-50/70",
+    title: "text-amber-800",
+  },
+  setup: {
+    badge: "text-slate-700 bg-slate-50 border-slate-200",
+    panel: "border-slate-200 bg-slate-50",
+    title: "text-slate-800",
+  },
+};
+
+function hasText(value: unknown): boolean {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function hasArray(value: unknown): boolean {
+  return Array.isArray(value) && value.length > 0;
+}
+
+function assessContentQuality(item: Item): QualityAudit {
+  const p = item.payload || {};
+  const checks: Array<{ label: string; ok: boolean; nextAction: string }> = [];
+  const add = (label: string, ok: boolean, nextAction: string) => checks.push({ label, ok, nextAction });
+
+  const titleReady = hasText(item.title) || hasText(p.titulo) || hasText(p.title);
+  const subjectReady = hasText(item.materia) || hasText(p.materia) || hasText(p.disciplina) || hasText(p.subject);
+
+  if (item.kind === "slides") {
+    const slides = Array.isArray(p.slides) ? p.slides : [];
+    add("objetivo claro", titleReady && (hasArray(p.objetivos) || hasText(p.subtitulo) || slides.length >= 3), "Defina objetivo, publico e recorte antes de apresentar.");
+    add("evidencia/fonte", hasArray(p.indicadoresQualidade) || slides.some((s: any) => hasText(s.evidencia) || hasText(s.visual?.credito)), "Adicione evidencia da fonte ou credito visual nos slides centrais.");
+    add("checkpoint de aprendizagem", slides.some((s: any) => hasText(s.checkpoint) || hasText(s.pergunta)), "Inclua uma pergunta de checagem para validar entendimento.");
+    add("visual explicavel", slides.some((s: any) => hasText(s.visual?.descricao) || hasText(s.comoExplicar)), "Planeje o visual ou a fala do professor em pelo menos um slide.");
+  } else if (item.kind === "resumao") {
+    const r = p.resumao || {};
+    add("visao geral", hasText(r.visaoGeral), "Abra com uma visao geral curta do assunto.");
+    add("conceitos-chave", hasArray(r.conceitosChave), "Liste conceitos-chave com explicacao propria.");
+    add("erros comuns", hasArray(r.armadilhas), "Inclua armadilhas ou erros comuns para orientar revisao.");
+    add("proxima acao", hasText(r.dicaFinal), "Finalize com uma acao objetiva para o aluno praticar.");
+  } else if (item.kind === "lesson_plan") {
+    const plano = p.plano || p;
+    add("objetivo de aula", hasText(p.objetivo) || hasArray(plano.objetivos), "Declare objetivo geral e objetivos especificos.");
+    add("sequencia didatica", Boolean(plano.abertura || plano.desenvolvimento || hasArray(plano.desenvolvimento)), "Organize abertura, desenvolvimento e fechamento.");
+    add("avaliacao/rubrica", Boolean(plano.avaliacao || hasArray(plano.rubrica)), "Adicione criterio de avaliacao ou rubrica simples.");
+    add("materiais e tarefa", hasArray(plano.materiais) || hasText(plano.tarefa_casa), "Informe material necessario e continuidade em casa.");
+  } else if (item.kind === "exam" || item.kind === "content_package" || item.kind === "research") {
+    const data = p.exam || p.content || p;
+    const questions = Array.isArray(data.questions) ? data.questions : [];
+    add("tema e contexto", titleReady && (subjectReady || hasText(data.resumo)), "Especifique materia, tema e contexto de uso.");
+    add("itens praticaveis", questions.length > 0 || hasArray(data.atividades), "Inclua questoes ou atividades que o aluno consiga executar.");
+    add("gabarito explicado", questions.some((q: any) => hasText(q.explanation) || hasText(q.explicacao)), "Explique o gabarito e os distratores.");
+    add("criterio de revisao", hasArray(data.rubrica) || hasArray(data.criterios), "Inclua criterio de correcao ou revisao humana.");
+  } else {
+    add("titulo e materia", titleReady && subjectReady, "Complete titulo e materia para facilitar busca e contexto.");
+    add("fonte rastreavel", Boolean(item.html_url || p.html_url || p.source || p.fontes || p.referencias), "Registre fonte, URL, referencia ou evidencia usada.");
+    add("explicacao propria", hasText(p.explicacao) || hasText(p.summary) || hasText(p.resumo), "Inclua uma explicacao propria, nao apenas o arquivo bruto.");
+    add("acao de estudo", hasArray(p.exercicios) || hasArray(p.questions) || hasText(p.dicaFinal), "Adicione exercicio, pergunta ou proxima missao.");
+  }
+
+  const strengths = checks.filter(c => c.ok).map(c => c.label);
+  const missing = checks.filter(c => !c.ok);
+  const score = checks.length > 0 ? Math.round((strengths.length / checks.length) * 100) : 0;
+  const tone: QualityTone = score >= 75 ? "strong" : score >= 50 ? "attention" : "setup";
+
+  return {
+    score,
+    tone,
+    label: tone === "strong" ? "Pronto para uso" : tone === "attention" ? "Revisar antes de usar" : "Precisa curadoria",
+    strengths,
+    gaps: missing.map(c => c.label),
+    nextAction: missing[0]?.nextAction ?? "Use em aula/estudo e registre feedback real para melhorar a proxima versao.",
+  };
+}
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -216,6 +309,7 @@ export default function MeusConteudosPage() {
               {filtered.map(item => {
                 const meta = KIND_META[item.kind] ?? KIND_META.content_package;
                 const Icon = meta.icon;
+                const quality = assessContentQuality(item);
                 return (
                   <motion.div key={item.id}
                     initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
@@ -228,9 +322,13 @@ export default function MeusConteudosPage() {
                         <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${meta.color}`}>{meta.label}</span>
                         {item.materia && <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{item.materia}</span>}
                         <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">{item.owner_role === "teacher" ? "👨‍🏫 Professor" : "🎓 Aluno"}</span>
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${QUALITY_TONE_CLASSES[quality.tone].badge}`}>
+                          <ShieldCheck className="w-3 h-3" />
+                          {quality.score}% curadoria
+                        </span>
                       </div>
                       <h3 className="font-bold text-gray-900 text-sm truncate">{item.title}</h3>
-                      <p className="text-gray-500 text-xs mt-0.5">{formatDate(item.created_at)}</p>
+                      <p className="text-gray-500 text-xs mt-0.5">{formatDate(item.created_at)} · {quality.label}</p>
                     </div>
                     <div className="flex gap-2 lg:flex-shrink-0">
                       <button onClick={() => open(item)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-colors">
@@ -260,11 +358,41 @@ export default function MeusConteudosPage() {
               <button onClick={() => setViewing(null)} className="text-gray-400 hover:text-gray-900 text-2xl leading-none px-3">×</button>
             </div>
             <div className="flex-1 overflow-y-auto p-6">
+              <QualityAuditCard audit={assessContentQuality(viewing)} />
               <ContentRenderer item={viewing} />
             </div>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function QualityAuditCard({ audit }: { audit: QualityAudit }) {
+  const tone = QUALITY_TONE_CLASSES[audit.tone];
+  return (
+    <div className={`mb-5 rounded-2xl border p-4 ${tone.panel}`}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-violet-600">Curadoria premium</p>
+          <h3 className={`mt-1 text-sm font-black ${tone.title}`}>{audit.label} · {audit.score}%</h3>
+          <p className="mt-1 text-xs leading-relaxed text-slate-600">{audit.nextAction}</p>
+        </div>
+        <div className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black ${tone.badge}`}>
+          <ShieldCheck className="w-3.5 h-3.5" />
+          Checklist
+        </div>
+      </div>
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Sinais presentes</p>
+          <p className="mt-1 text-xs text-slate-700">{audit.strengths.length ? audit.strengths.join(" · ") : "Nenhum sinal suficiente ainda."}</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Lacunas</p>
+          <p className="mt-1 text-xs text-slate-700">{audit.gaps.length ? audit.gaps.join(" · ") : "Sem lacuna principal detectada."}</p>
+        </div>
+      </div>
     </div>
   );
 }

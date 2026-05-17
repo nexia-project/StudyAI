@@ -18,8 +18,10 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - **Notebook/RAG multimodal:** primeira passada de UX, exportacao e telemetria de qualidade Hermes foi concluida no commit `01857b24`; producao ja respondeu `/api/healthz` no commit `44daf83`, portanto `01857b24` ou mais novo esta publicado.
 - **Notebook apresentacoes premium:** correcao de apresentacoes publicada; producao respondeu `/api/healthz` com `d1270af`, equivalente ao commit `d1270af2` de apresentacoes premium.
 - **Simulado ENEM premium:** existe um corte inicial em `44daf83`; apos confirmacao do deploy `d1270af2`, o fluxo pode alimentar o Caderno de Erros premium em fatias pequenas.
+- **Simulado ENEM premium results:** fatia independente adicionada ao resultado com radiografia por area/competencia/habilidade quando houver metadados, padroes de erro, missao de recuperacao e recomendacao Hermes local.
 - **Caderno de Erros premium:** corte inicial publicado em producao no commit `bb2ea8f`: simulado gera rascunho estruturado com tipo/causa de erro, Caderno organiza o rascunho e Home prioriza a revisao como proxima acao.
 - **B2B premium diagnostico:** corte inicial implementado para professor/gestor com risco por turma, baixa atividade, resumo acionavel, acao recomendada e lacunas de dados explicitadas sem inventar numeros.
+- **Curadoria premium de materiais:** primeira fatia adiciona checklist heuristico no historico de conteudos para sinalizar prontidao, lacunas e proxima acao sem depender de backend novo.
 - **Hermes premium quality loop:** `qa_sintetico` agora monitora Landing, Home, Notebook RAG, Simulado, Tiagao e Caderno de Erros com recomendacoes contendo modulo, evidencia, problema, mudanca sugerida, metrica e criterios de aceite; sem autofix destrutivo.
 
 ## Tickets em execucao
@@ -145,6 +147,28 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - Estados sem alunos, sem relatorio e sem dados suficientes orientam o proximo setup.
 - Typecheck do app passa antes de commit/deploy.
 
+### F2-03 Curadoria premium de materiais
+
+**Status:** primeira fatia implementada; pendente QA manual com conteudos reais.
+
+**Objetivo:** transformar o padrao pedagogico em workflow visivel para professor/aluno, mostrando se um conteudo gerado esta pronto para uso, precisa revisao ou precisa curadoria.
+
+**Superficie prevista:** `artifacts/studyai/src/pages/MeusConteudos.tsx`.
+
+**Resultado esperado:**
+
+- Historico de conteudos mostra pontuacao de curadoria por item.
+- Modal de leitura mostra sinais presentes, lacunas e proxima acao.
+- Checklist usa dados ja existentes no payload: objetivo, fonte/evidencia, pratica, gabarito, rubrica, checkpoint ou erros comuns.
+- A fatia nao inventa qualidade pedagogica; quando faltar dado, registra lacuna e recomenda revisao humana.
+
+**Criterios de aceite:**
+
+- Conteudos antigos continuam abrindo e podendo ser excluidos.
+- `material_premium` que abre HTML externo continua preservado.
+- Checklist funciona para resumos, slides, planos de aula, provas/pacotes e fallback generico.
+- Typecheck do app passa antes de commit/deploy.
+
 ### F0-04 Hermes premium quality loop
 
 **Status:** primeira versao implementada em QA sintetico e docs; pendente execucao manual da auditoria em producao/staging.
@@ -193,6 +217,14 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [x] Confirmar deploy via `/api/healthz` no commit `bb2ea8f`.
 - [ ] QA manual: simulado curto com erro -> enviar ao caderno -> salvar nota -> voltar para Home e conferir missao de revisao.
 
+### Simulado ENEM premium
+
+- [x] Resultado mostra desempenho por area e usa metadados de competencia/habilidade quando o banco de questoes fornecer esses campos.
+- [x] Resultado classifica padroes de erro em categorias acionaveis.
+- [x] Resultado mostra missao de recuperacao com tempo, passos e criterio de conclusao.
+- [x] Sinal Hermes local inclui recomendacao de proxima acao do simulado.
+- [ ] QA manual: fazer simulado curto, errar ao menos uma questao e confirmar radiografia, padroes de erro, missao e gabarito.
+
 ### Produto e UX
 
 - [ ] Tiagao continua visivel, confiavel e reconhecivel.
@@ -203,8 +235,8 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 
 ### Pedagogia
 
-- [ ] Mudancas melhoram diagnostico, treino, revisao ou qualidade de explicacao.
-- [ ] Materiais seguem o padrao minimo definido no plano mestre.
+- [x] Mudancas melhoram diagnostico, treino, revisao ou qualidade de explicacao.
+- [x] Materiais seguem o padrao minimo definido no plano mestre.
 - [ ] Fontes aparecem quando a resposta depende de RAG, banco oficial ou documento.
 - [ ] Nao ha promessa de resultado garantido.
 - [ ] Conteudo sensivel ou institucional preserva revisao humana.
@@ -234,7 +266,6 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [ ] Simulado: executar simulado curto com erro proposital, conferir analise premium e envio ao Caderno.
 - [ ] Caderno de Erros: importar rascunho, salvar nota, voltar para Home e conferir missao de revisao.
 - [ ] Tiagao: pedir revisao do erro, duvida rapida e estudar material; confirmar linguagem adequada e acao explicita.
-
 
 ### Metricas
 
@@ -288,7 +319,8 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [x] Deployar a correcao de apresentacoes e confirmar `/api/healthz` no novo commit (`d1270af`).
 - [ ] QA manual obrigatorio: gerar apresentacao real no `/notebook`, revisar preview, tela cheia e PDF.
 - [x] Somente apos deploy do Notebook: retomar Caderno de Erros premium como proxima fase.
-- [x] Adicionar Hermes premium quality loop para Landing, Home, Notebook RAG, Simulado, Tiagao e Caderno de Erros.
 - [x] Proximo lote de Caderno de Erros: consumir rascunho do simulado na home como "proxima melhor acao" e no Tiagao como modo "revisar erro".
+- [x] Adicionar Hermes premium quality loop para Landing, Home, Notebook RAG, Simulado, Tiagao e Caderno de Erros.
+- [x] Adicionar primeira fatia de curadoria premium no historico de conteudos.
 - [ ] Proximo lote de Caderno de Erros: persistir historico estruturado no backend quando houver schema/API definido.
 - [ ] Depois do lote de erros: evoluir modos pedagogicos do Tiagao com taxonomia oficial e metricas por modo.

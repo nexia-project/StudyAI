@@ -75,6 +75,41 @@ function AnimatedNumber({ value }: { value: number }) {
   return <>{display.toLocaleString("pt-BR")}</>;
 }
 
+function getStudentSignals(student: Student) {
+  const signals: string[] = [];
+  if (student.status === "risco") signals.push("marcado como risco");
+  if (student.xp < 50) signals.push("menos de 50 XP");
+  if (student.simCount === 0) signals.push("sem simulado registrado");
+  if (student.activeDays <= 1) signals.push("0-1 dia ativo/semana");
+  if (student.simCount > 0 && student.avgAccuracy < 50) signals.push("acerto abaixo de 50%");
+  return signals;
+}
+
+function buildProfessorRecommendation(args: {
+  hasStudents: boolean;
+  atRiskCount: number;
+  lowActivityCount: number;
+  noSimCount: number;
+  avgAccuracy: number | null;
+}) {
+  if (!args.hasStudents) {
+    return "Convide alunos para a turma e publique uma primeira atividade diagnóstica curta.";
+  }
+  if (args.atRiskCount > 0) {
+    return "Priorize contato com os alunos em risco e envie uma atividade de reparo curta para esta semana.";
+  }
+  if (args.lowActivityCount > 0) {
+    return "Reative baixa atividade com uma mensagem objetiva e uma tarefa de 10 minutos com prazo próximo.";
+  }
+  if (args.noSimCount > 0) {
+    return "Aplique um simulado ou quiz diagnóstico para trocar suposição por evidência de aprendizagem.";
+  }
+  if (args.avgAccuracy !== null && args.avgAccuracy < 65) {
+    return "Monte revisão guiada dos tópicos de menor acerto antes de avançar conteúdo novo.";
+  }
+  return "Turma estável: mantenha revisão espaçada e acompanhe variações por aluno.";
+}
+
 interface StudentDetailProps { student: Student; onClose: () => void; }
 function StudentDetail({ student, onClose }: StudentDetailProps) {
   const cfg = STATUS_CFG[student.status];
@@ -299,6 +334,40 @@ export default function ProfessorTurmaPage() {
       .map(s => ({ name: s.name.split(" ")[0], accuracy: s.avgAccuracy, xp: s.xp }));
   }, [students]);
 
+  const premiumDiagnostic = useMemo(() => {
+    const lowActivityStudents = students
+      .map(student => ({ student, signals: getStudentSignals(student) }))
+      .filter(item => item.signals.length > 0)
+      .sort((a, b) => b.signals.length - a.signals.length || a.student.name.localeCompare(b.student.name));
+    const noSimCount = students.filter(s => s.simCount === 0).length;
+    const activeDaysAvg = students.length
+      ? Math.round((students.reduce((sum, s) => sum + s.activeDays, 0) / students.length) * 10) / 10
+      : null;
+    const avgAccuracy = students.some(s => s.simCount > 0)
+      ? Math.round(students.filter(s => s.simCount > 0).reduce((sum, s) => sum + s.avgAccuracy, 0) / students.filter(s => s.simCount > 0).length)
+      : null;
+
+    return {
+      lowActivityStudents,
+      noSimCount,
+      activeDaysAvg,
+      avgAccuracy,
+      recommendation: buildProfessorRecommendation({
+        hasStudents: students.length > 0,
+        atRiskCount: students.filter(s => s.status === "risco").length,
+        lowActivityCount: lowActivityStudents.length,
+        noSimCount,
+        avgAccuracy,
+      }),
+      missingSignals: [
+        "tempo real por sessão",
+        "entregas atrasadas por atividade",
+        "último login bruto",
+        "intervenções já feitas pelo professor",
+      ],
+    };
+  }, [students]);
+
   // Lazy-load insights when switching to the AI tab
   // IMPORTANT: keep all hooks ABOVE early returns to avoid React error #310
   useEffect(() => {
@@ -482,6 +551,102 @@ export default function ProfessorTurmaPage() {
                     <p className="text-xs text-slate-400">{s.sub}</p>
                   </motion.div>
                 ))}
+              </div>
+
+              {/* Diagnóstico premium B2B */}
+              <div className="grid grid-cols-1 lg:grid-cols-[1.3fr,0.7fr] gap-4">
+                <div className="bg-white rounded-2xl border border-violet-100 shadow-sm p-5">
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-violet-500">Diagnóstico premium da turma</p>
+                      <h3 className="font-black text-slate-900 text-lg mt-1">Risco e baixa atividade</h3>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Baseado em status, XP, simulados, acerto médio e dias ativos disponíveis nesta turma.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled
+                      title="Exportação detalhada depende do endpoint de relatório por aluno."
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-400 disabled:cursor-not-allowed"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Exportar em breve
+                    </button>
+                  </div>
+
+                  {students.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-5 text-center">
+                      <Users className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <p className="font-bold text-slate-700">Sem alunos para diagnosticar</p>
+                      <p className="text-xs text-slate-500 mt-1">Compartilhe o código da turma e publique uma atividade diagnóstica inicial.</p>
+                    </div>
+                  ) : premiumDiagnostic.lowActivityStudents.length > 0 ? (
+                    <div className="space-y-2">
+                      {premiumDiagnostic.lowActivityStudents.slice(0, 5).map(({ student, signals }) => (
+                        <div key={student.id} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
+                          <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm", STATUS_CFG[student.status].bg, STATUS_CFG[student.status].color)}>
+                            {student.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-black text-slate-800 text-sm truncate">{student.name}</p>
+                            <p className="text-[11px] text-slate-500 truncate">{signals.join(" · ")}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab("desempenho")}
+                            className="rounded-xl bg-violet-50 px-3 py-2 text-[11px] font-bold text-violet-700 hover:bg-violet-100"
+                          >
+                            Ver ação
+                          </button>
+                        </div>
+                      ))}
+                      {premiumDiagnostic.lowActivityStudents.length > 5 && (
+                        <button onClick={() => setActiveTab("alunos")} className="text-xs font-bold text-violet-600 hover:text-violet-700">
+                          Ver mais {premiumDiagnostic.lowActivityStudents.length - 5} aluno(s)
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-5">
+                      <CheckCircle2 className="w-6 h-6 text-emerald-500 mb-2" />
+                      <p className="font-bold text-emerald-800">Sem sinal crítico nos dados atuais</p>
+                      <p className="text-xs text-emerald-700 mt-1">Continue monitorando após novas atividades e simulados.</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                    <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">Resumo acionável</p>
+                    <div className="grid grid-cols-2 gap-2 mt-3">
+                      {[
+                        { label: "Baixa atividade", value: premiumDiagnostic.lowActivityStudents.length },
+                        { label: "Sem simulado", value: premiumDiagnostic.noSimCount },
+                        { label: "Dias ativos", value: premiumDiagnostic.activeDaysAvg === null ? "—" : `${premiumDiagnostic.activeDaysAvg}/sem` },
+                        { label: "Acerto médio", value: premiumDiagnostic.avgAccuracy === null ? "—" : `${premiumDiagnostic.avgAccuracy}%` },
+                      ].map(item => (
+                        <div key={item.label} className="rounded-xl bg-slate-50 px-3 py-2">
+                          <p className="text-lg font-black text-slate-900">{item.value}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{item.label}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-violet-600 to-fuchsia-600 rounded-2xl p-5 text-white shadow-lg shadow-violet-400/25">
+                    <Target className="w-5 h-5 text-white/80 mb-2" />
+                    <p className="text-[11px] font-black uppercase tracking-[0.16em] text-white/70">Ação recomendada</p>
+                    <p className="mt-1 text-sm font-bold leading-relaxed">{premiumDiagnostic.recommendation}</p>
+                  </div>
+
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                    <p className="text-[11px] font-black uppercase tracking-[0.16em] text-amber-700">Dados ainda não rastreados</p>
+                    <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                      Falta instrumentar {premiumDiagnostic.missingSignals.join(", ")}. O painel não inventa esses números.
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {/* Charts Row */}

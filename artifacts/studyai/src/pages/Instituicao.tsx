@@ -42,6 +42,23 @@ interface Report {
   generatedAt: string;
 }
 
+function buildInstitutionRecommendation(args: {
+  studentCount: number;
+  teacherCount: number;
+  turmaCount: number;
+  avgXp: number;
+  report: Report | null;
+}) {
+  if (args.studentCount === 0) return "Comece pelo convite de alunos e uma turma piloto com atividade diagnóstica curta.";
+  if (args.teacherCount === 0) return "Convide professores/gestores antes de escalar alunos para manter acompanhamento humano.";
+  if (args.turmaCount === 0) return "Crie turmas para transformar os usuários em grupos acompanháveis.";
+  if (!args.report) return "Abra Relatórios para carregar desempenho por turma e validar onde agir primeiro.";
+  if (args.report.simCompleted === 0) return "Aplique um simulado ou quiz diagnóstico por turma para criar linha de base.";
+  if (args.report.avgSimAccuracy < 60) return "Priorize revisão institucional nas turmas com menor XP/acerto antes de ampliar conteúdo.";
+  if (args.avgXp < 150) return "Faça campanha de reativação com tarefa curta e acompanhamento de professor.";
+  return "Mantenha cadência semanal: relatório, ação nas turmas com menor sinal e revisão de adesão.";
+}
+
 // ─── Invite acceptance page ───────────────────────────────────────────────────
 export function InstituicaoConvitePage() {
   const params = useParams<{ token: string }>();
@@ -595,6 +612,16 @@ export default function InstituicaoPage() {
   ] as const;
 
   const planLabels: Record<string, string> = { trial: "Trial", basic: "Básico", standard: "Standard", premium: "Premium", enterprise: "Enterprise" };
+  const lowSignalTurmas = (report?.turmaBreakdown ?? [])
+    .filter(t => t.studentCount > 0 && t.avgXp < 150)
+    .sort((a, b) => a.avgXp - b.avgXp);
+  const institutionRecommendation = buildInstitutionRecommendation({
+    studentCount: stats.studentCount,
+    teacherCount: stats.teacherCount,
+    turmaCount: stats.turmaCount,
+    avgXp: stats.avgXp,
+    report,
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900">
@@ -676,6 +703,61 @@ export default function InstituicaoPage() {
                   <p className="text-slate-400 text-sm">{s.label}</p>
                 </motion.div>
               ))}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-[1.35fr,0.65fr] gap-4">
+              <div className="bg-slate-800/60 border border-violet-500/30 rounded-2xl p-5">
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-violet-300">Diagnóstico premium do gestor</p>
+                    <h3 className="text-white font-bold text-lg mt-1">Adoção, cobertura e próximos sinais</h3>
+                    <p className="text-slate-400 text-xs mt-1">
+                      Usa dados agregados da instituição. Risco individual só aparece no painel da turma/professor quando o backend retorna alunos.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab("relatorios"); if (!report) loadReport(); }}
+                    className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-bold text-white hover:bg-violet-500"
+                  >
+                    Ver relatório
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { label: "Cobertura alunos", value: stats.studentCount > 0 ? "ativa" : "sem alunos", tone: stats.studentCount > 0 ? "text-emerald-300" : "text-amber-300" },
+                    { label: "Professores", value: stats.teacherCount, tone: stats.teacherCount > 0 ? "text-emerald-300" : "text-amber-300" },
+                    { label: "XP médio", value: stats.avgXp.toLocaleString("pt-BR"), tone: stats.avgXp >= 150 ? "text-emerald-300" : "text-amber-300" },
+                    { label: "Relatório", value: report ? "carregado" : "pendente", tone: report ? "text-emerald-300" : "text-amber-300" },
+                  ].map(item => (
+                    <div key={item.label} className="rounded-xl bg-slate-900/50 border border-slate-700 p-3">
+                      <p className={`text-lg font-black ${item.tone}`}>{item.value}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{item.label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-amber-300">Dados ausentes no agregado</p>
+                  <p className="text-xs text-amber-100/90 mt-1 leading-relaxed">
+                    Ainda faltam no endpoint institucional: alunos em risco por turma, último login por usuário, entregas atrasadas e intervenção registrada pelo professor.
+                    Este painel não cria números falsos para esses campos.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-violet-600 to-fuchsia-600 rounded-2xl p-5 text-white shadow-lg shadow-violet-950/30">
+                <Sparkles className="w-5 h-5 text-white/80 mb-2" />
+                <p className="text-[11px] font-black uppercase tracking-[0.16em] text-white/70">Ação recomendada</p>
+                <p className="mt-1 text-sm font-bold leading-relaxed">{institutionRecommendation}</p>
+                <div className="mt-4 rounded-xl bg-white/10 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-wide text-white/60">Resumo executivo</p>
+                  <p className="text-xs text-white/85 mt-1">
+                    {stats.studentCount} aluno(s), {stats.teacherCount} professor(es), {stats.turmaCount} turma(s).
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Contract info */}
@@ -924,6 +1006,58 @@ export default function InstituicaoPage() {
                       <p className="text-slate-400 text-sm">{s.label}</p>
                     </div>
                   ))}
+                </div>
+
+                <div className="bg-slate-800/60 border border-violet-500/30 rounded-2xl p-5">
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-violet-300">Diagnóstico de relatório</p>
+                      <h3 className="text-white font-semibold">Turmas que precisam de atenção</h3>
+                      <p className="text-slate-400 text-xs mt-1">
+                        Sinal calculado com XP médio, volume de simulados e flashcards do relatório atual.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled
+                      title="Exportação institucional detalhada será ligada quando o endpoint devolver linhas por aluno/turma."
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2 text-xs font-bold text-slate-500 disabled:cursor-not-allowed"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      Exportar em breve
+                    </button>
+                  </div>
+
+                  {report.totalStudents === 0 ? (
+                    <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/50 p-4 text-center">
+                      <p className="font-semibold text-slate-300">Sem alunos no relatório</p>
+                      <p className="text-xs text-slate-500 mt-1">Convide alunos e gere uma atividade diagnóstica para habilitar comparações.</p>
+                    </div>
+                  ) : lowSignalTurmas.length > 0 ? (
+                    <div className="space-y-2">
+                      {lowSignalTurmas.slice(0, 4).map(t => (
+                        <div key={t.id} className="flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-900/50 p-3">
+                          <AlertTriangle className="w-4 h-4 text-amber-300 flex-shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-white text-sm font-semibold truncate">{t.name}</p>
+                            <p className="text-xs text-slate-400">{t.studentCount} aluno(s) · XP médio {t.avgXp.toLocaleString("pt-BR")}</p>
+                          </div>
+                          <span className="text-[10px] font-bold uppercase tracking-wide text-amber-300">baixa tração</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                      <CheckCircle className="w-5 h-5 text-emerald-300 mb-2" />
+                      <p className="font-semibold text-emerald-100">Nenhuma turma com baixa tração por XP médio</p>
+                      <p className="text-xs text-emerald-100/80 mt-1">Ainda assim, risco individual depende de dados por aluno no painel da turma.</p>
+                    </div>
+                  )}
+
+                  <div className="mt-4 rounded-xl bg-violet-500/10 border border-violet-500/20 p-4">
+                    <p className="text-[11px] font-black uppercase tracking-[0.16em] text-violet-300">Próxima ação do gestor</p>
+                    <p className="text-sm text-slate-200 mt-1 leading-relaxed">{institutionRecommendation}</p>
+                  </div>
                 </div>
 
                 {report.turmaBreakdown.length > 0 && (

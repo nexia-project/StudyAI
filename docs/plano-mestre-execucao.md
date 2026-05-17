@@ -19,6 +19,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - **Notebook apresentacoes premium:** correcao de apresentacoes publicada; producao respondeu `/api/healthz` com `d1270af`, equivalente ao commit `d1270af2` de apresentacoes premium.
 - **Simulado ENEM premium:** existe um corte inicial em `44daf83`; apos confirmacao do deploy `d1270af2`, o fluxo pode alimentar o Caderno de Erros premium em fatias pequenas.
 - **Caderno de Erros premium:** corte inicial publicado em producao no commit `bb2ea8f`: simulado gera rascunho estruturado com tipo/causa de erro, Caderno organiza o rascunho e Home prioriza a revisao como proxima acao.
+- **B2B premium diagnostico:** corte inicial implementado para professor/gestor com risco por turma, baixa atividade, resumo acionavel, acao recomendada e lacunas de dados explicitadas sem inventar numeros.
 - **Hermes premium quality loop:** `qa_sintetico` agora monitora Landing, Home, Notebook RAG, Simulado, Tiagao e Caderno de Erros com recomendacoes contendo modulo, evidencia, problema, mudanca sugerida, metrica e criterios de aceite; sem autofix destrutivo.
 
 ## Tickets em execucao
@@ -120,6 +121,29 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - A revisao mostra causa/tipo de erro, habilidade ou materia e proximo passo.
 - O sinal Hermes contem superficie, evento, erros, acuracia e recomendacao acionavel.
 - O corte continua pequeno o bastante para ser validado manualmente em um simulado curto.
+
+### F2-02 B2B premium diagnostico professor/gestor
+
+**Status:** primeira fatia implementada; pendente QA manual e rollout.
+
+**Objetivo:** acelerar percepcao premium no modulo B2B sem redesenhar rotas: professor ve risco/baixa atividade por turma e gestor ve adocao/cobertura institucional com proxima acao clara.
+
+**Superficies previstas:** `artifacts/studyai/src/pages/ProfessorTurma.tsx`, `artifacts/studyai/src/pages/Instituicao.tsx`.
+
+**Resultado esperado:**
+
+- Dashboard da turma destaca alunos em risco ou com sinais de baixa atividade quando os dados existem.
+- Turma mostra resumo de usuarios, XP, simulados, acerto e dias ativos ja disponiveis no endpoint atual.
+- Gestor institucional recebe diagnostico de cobertura, tracao e relatorio com recomendacao operacional.
+- Exportacao detalhada aparece como placeholder honesto quando falta endpoint por linha/aluno.
+- Lacunas de dados ficam explicitas: tempo real por sessao, ultimo login bruto, entregas atrasadas e intervencoes registradas.
+
+**Criterios de aceite:**
+
+- Rotas `/professor`, `/professor/turma/:id`, `/instituicao` e auth atual permanecem preservadas.
+- Nao ha numeros inventados para risco individual no agregado institucional.
+- Estados sem alunos, sem relatorio e sem dados suficientes orientam o proximo setup.
+- Typecheck do app passa antes de commit/deploy.
 
 ### F0-04 Hermes premium quality loop
 

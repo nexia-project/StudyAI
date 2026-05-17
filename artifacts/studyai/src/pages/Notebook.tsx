@@ -73,15 +73,31 @@ interface Slides {
   indicadoresQualidade?: string[];
   generatedByFallback?: boolean;
   slides: Array<
-    | { tipo: "capa"; titulo: string; subtitulo?: string }
-    | { tipo: "agenda"; titulo: string; itens: string[] }
-    | { tipo: "conteudo"; titulo: string; subtitulo?: string; bullets: string[]; destaque?: string }
-    | { tipo: "comparacao"; titulo: string; esquerda: { titulo: string; itens: string[] }; direita: { titulo: string; itens: string[] } }
-    | { tipo: "citacao"; texto: string; autor?: string }
-    | { tipo: "encerramento"; titulo: string; mensagem: string; dicaEnem?: string }
-    | { tipo: "destaque_numerico"; titulo: string; numeros: Array<{ valor: string; descricao: string }> }
-    | { tipo: "timeline"; titulo: string; etapas: Array<{ ano: string; evento: string }> }
+    | ({ tipo: "capa"; titulo: string; subtitulo?: string } & SlidePedagogy)
+    | ({ tipo: "agenda"; titulo: string; itens: string[] } & SlidePedagogy)
+    | ({ tipo: "conteudo"; titulo: string; subtitulo?: string; bullets: string[]; destaque?: string } & SlidePedagogy)
+    | ({ tipo: "comparacao"; titulo: string; esquerda: { titulo: string; itens: string[] }; direita: { titulo: string; itens: string[] } } & SlidePedagogy)
+    | ({ tipo: "citacao"; texto: string; autor?: string } & SlidePedagogy)
+    | ({ tipo: "encerramento"; titulo: string; mensagem: string; dicaEnem?: string } & SlidePedagogy)
+    | ({ tipo: "destaque_numerico"; titulo: string; numeros: Array<{ valor: string; label?: string; descricao?: string }> } & SlidePedagogy)
+    | ({ tipo: "timeline"; titulo: string; etapas: Array<{ numero?: string; ano?: string; titulo?: string; evento?: string; descricao?: string }> } & SlidePedagogy)
   >;
+}
+interface SlideVisualPlan {
+  tipo?: string;
+  titulo?: string;
+  descricao?: string;
+  caption?: string;
+  credito?: string;
+  url?: string;
+}
+interface SlidePedagogy {
+  layout?: string;
+  visual?: SlideVisualPlan;
+  evidencia?: string;
+  comoExplicar?: string;
+  exemplo?: string;
+  checkpoint?: string;
 }
 interface Overview {
   summary?: string;
@@ -595,7 +611,9 @@ function renderSlidesForPrint(deck: Slides): string {
     const comparison = slide.esquerda || slide.direita
       ? `<div class="studyai-card-grid">${[slide.esquerda, slide.direita].filter(Boolean).map((col: any) => `<article class="studyai-card"><h3>${escapeHtml(col.titulo)}</h3>${renderPrimitiveList(col.itens ?? [])}</article>`).join("")}</div>`
       : "";
-    return `<section class="studyai-slide">${img}<div class="studyai-slide-content"><span class="badge">Slide ${index + 1} de ${slides.length}</span><h2>${escapeHtml(slide.titulo ?? deck.titulo)}</h2>${slide.subtitulo ? `<p>${escapeHtml(slide.subtitulo)}</p>` : ""}${items.length ? renderPrimitiveList(items) : ""}${nums.length ? renderPrimitiveList(nums) : ""}${comparison}${slide.texto ? `<blockquote>${escapeHtml(slide.texto)}</blockquote>` : ""}${slide.mensagem ? `<p>${escapeHtml(slide.mensagem)}</p>` : ""}${slide.destaque ? `<div class="studyai-callout">${escapeHtml(slide.destaque)}</div>` : ""}${slide.dicaEnem ? `<div class="studyai-callout success"><strong>Como cai:</strong> ${escapeHtml(slide.dicaEnem)}</div>` : ""}</div></section>`;
+    const visual = slide.visual ? `<article class="studyai-card"><span class="badge">${escapeHtml(slide.visual.tipo ?? "visual")}</span><h3>${escapeHtml(slide.visual.titulo ?? "Visual estruturado")}</h3><p>${escapeHtml(slide.visual.descricao ?? "Visual planejado a partir da fonte.")}</p>${slide.visual.caption ? `<p><strong>Legenda:</strong> ${escapeHtml(slide.visual.caption)}</p>` : ""}${slide.visual.credito ? `<p><strong>Credito:</strong> ${escapeHtml(slide.visual.credito)}</p>` : ""}</article>` : "";
+    const pedagogy = [slide.evidencia ? `<article class="studyai-card"><h3>Evidencia</h3><p>${escapeHtml(slide.evidencia)}</p></article>` : "", slide.comoExplicar ? `<article class="studyai-card"><h3>Como explicar</h3><p>${escapeHtml(slide.comoExplicar)}</p></article>` : "", slide.checkpoint ? `<article class="studyai-card"><h3>Checkpoint</h3><p>${escapeHtml(slide.checkpoint)}</p></article>` : ""].filter(Boolean).join("");
+    return `<section class="studyai-slide">${img}<div class="studyai-slide-content"><span class="badge">Slide ${index + 1} de ${slides.length} · ${escapeHtml(slide.layout ?? slide.tipo ?? "slide")}</span><h2>${escapeHtml(slide.titulo ?? deck.titulo)}</h2>${slide.subtitulo ? `<p>${escapeHtml(slide.subtitulo)}</p>` : ""}${items.length ? renderPrimitiveList(items) : ""}${nums.length ? renderPrimitiveList(nums) : ""}${comparison}${slide.texto ? `<blockquote>${escapeHtml(slide.texto)}</blockquote>` : ""}${slide.mensagem ? `<p>${escapeHtml(slide.mensagem)}</p>` : ""}${slide.destaque ? `<div class="studyai-callout">${escapeHtml(slide.destaque)}</div>` : ""}${slide.exemplo ? `<div class="studyai-callout"><strong>Exemplo:</strong> ${escapeHtml(slide.exemplo)}</div>` : ""}${slide.dicaEnem ? `<div class="studyai-callout success"><strong>Como cai:</strong> ${escapeHtml(slide.dicaEnem)}</div>` : ""}${visual || pedagogy ? `<div class="studyai-card-grid">${visual}${pedagogy}</div>` : ""}</div></section>`;
   }).join("");
 }
 
@@ -1332,6 +1350,83 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
     return () => window.removeEventListener("keydown", onKey);
   }, [fullscreen, idx, total, setIdx]);
 
+  const slideAny = slide as any;
+  const visualPlan: SlideVisualPlan = slideAny.visual ?? {
+    tipo: slide.tipo === "destaque_numerico" ? "chart" : slide.tipo === "timeline" ? "timeline" : slide.tipo === "comparacao" ? "comparison" : "card",
+    titulo: slide.tipo === "capa" ? "Imagem de abertura" : slide.tipo === "agenda" ? "Roteiro visual" : "Visual estruturado",
+    descricao: slide.tipo === "conteudo"
+      ? "Card visual com evidência, exemplo e pergunta de checagem."
+      : "Representação visual planejada a partir do documento.",
+    caption: slideAny.evidencia ? "Baseado no documento enviado." : "Placeholder visual intencional.",
+    credito: "StudyAI Notebook RAG",
+  };
+  const evidence = slideAny.evidencia || visualPlan.caption || "Baseado no documento selecionado.";
+  const speakerNote = slideAny.comoExplicar || "Explique conectando objetivo, evidência da fonte e aplicação prática.";
+  const checkpoint = slideAny.checkpoint || slideAny.exemplo || "Checkpoint: o aluno consegue explicar este slide com evidência?";
+
+  function SlideVisualCard({ large = false }: { large?: boolean }) {
+    const iconLabel = (visualPlan.tipo ?? "visual").slice(0, 14).toUpperCase();
+    if (visualPlan.url) {
+      return (
+        <div className="h-full rounded-2xl overflow-hidden bg-white/15 border border-white/20">
+          <img src={visualPlan.url} alt={visualPlan.titulo ?? "Visual do slide"} className="w-full h-full object-cover" />
+        </div>
+      );
+    }
+    return (
+      <div className={`h-full rounded-2xl bg-white/14 border border-white/25 backdrop-blur ${large ? "p-6" : "p-3"} flex flex-col justify-between`}>
+        <div>
+          <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/20 text-[9px] font-black tracking-wider">
+            <ImageIcon className={large ? "w-4 h-4" : "w-3 h-3"} />
+            {iconLabel}
+          </div>
+          <p className={`${large ? "text-3xl" : "text-sm"} font-black leading-tight mt-3`}>
+            {visualPlan.titulo ?? "Visual estruturado"}
+          </p>
+          <p className={`${large ? "text-lg" : "text-[11px]"} text-white/80 leading-snug mt-2`}>
+            {visualPlan.descricao ?? "Diagrama, card, tabela ou imagem planejada a partir da fonte."}
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2 mt-4">
+          {(slide.tipo === "destaque_numerico" && Array.isArray(slideAny.numeros)
+            ? slideAny.numeros.slice(0, 2).map((n: any) => `${n.valor} ${n.label ?? n.descricao ?? ""}`)
+            : slide.tipo === "timeline" && Array.isArray(slideAny.etapas)
+              ? slideAny.etapas.slice(0, 2).map((e: any) => e.titulo ?? e.evento ?? e.descricao)
+              : [evidence, checkpoint]
+          ).filter(Boolean).map((item: unknown, i: number) => (
+            <div key={i} className="rounded-xl bg-white/16 border border-white/15 p-2">
+              <p className={`${large ? "text-base" : "text-[10px]"} font-bold leading-snug text-white/90`}>{String(item)}</p>
+            </div>
+          ))}
+        </div>
+        {(visualPlan.caption || visualPlan.credito) && (
+          <p className={`${large ? "text-sm" : "text-[9px]"} text-white/65 mt-3`}>
+            {visualPlan.caption ?? ""}{visualPlan.credito ? ` · ${visualPlan.credito}` : ""}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  function SlidePedagogyFooter({ large = false }: { large?: boolean }) {
+    return (
+      <div className={`grid ${large ? "grid-cols-3 gap-4 text-base" : "grid-cols-3 gap-2 text-[9px]"} mt-2`}>
+        <div className="rounded-xl bg-white/12 border border-white/15 p-2">
+          <p className="font-black text-white/70 uppercase tracking-wider">Evidência</p>
+          <p className="font-semibold leading-snug line-clamp-2">{evidence}</p>
+        </div>
+        <div className="rounded-xl bg-white/12 border border-white/15 p-2">
+          <p className="font-black text-white/70 uppercase tracking-wider">Como explicar</p>
+          <p className="font-semibold leading-snug line-clamp-2">{speakerNote}</p>
+        </div>
+        <div className="rounded-xl bg-white/12 border border-white/15 p-2">
+          <p className="font-black text-white/70 uppercase tracking-wider">Checkpoint</p>
+          <p className="font-semibold leading-snug line-clamp-2">{checkpoint}</p>
+        </div>
+      </div>
+    );
+  }
+
   // Exporta para PDF (text-based, sem dependências externas além do jsPDF já instalado)
   async function exportPDF() {
     if (exporting) return;
@@ -1421,6 +1516,31 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
             doc.setFillColor(255, 255, 255, 0.15);
             doc.setFont("helvetica", "bold"); doc.setFontSize(16);
             doc.text(wrap(s.destaque, 800, 16), 80, Math.min(y + 20, 480));
+          }
+        }
+        if (s.tipo !== "capa") {
+          const visualTitle = s.visual?.titulo ?? "Visual estruturado";
+          const visualDesc = s.visual?.descricao ?? s.evidencia ?? "Card visual baseado no documento.";
+          const note = s.comoExplicar ?? "Como explicar: conecte objetivo, evidencia e exemplo.";
+          const check = s.checkpoint ?? s.exemplo ?? "Checkpoint: explique com suas palavras.";
+          const cards = [
+            ["VISUAL", `${visualTitle}: ${visualDesc}`],
+            ["EVIDENCIA", s.evidencia ?? "Baseado no documento selecionado."],
+            ["CHECKPOINT", check],
+          ];
+          cards.forEach(([label, value], cardIndex) => {
+            const x = 70 + cardIndex * 285;
+            doc.setFillColor(255, 255, 255, 0.12);
+            doc.roundedRect(x, 438, 260, 58, 8, 8, "F");
+            doc.setTextColor(255, 255, 255);
+            doc.setFont("helvetica", "bold"); doc.setFontSize(8);
+            doc.text(label, x + 10, 454);
+            doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+            doc.text(wrap(String(value), 235, 9).slice(0, 3), x + 10, 470);
+          });
+          if (note) {
+            doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+            doc.text(wrap(`Nota: ${note}`, 820, 8).slice(0, 2), 70, 515);
           }
         }
         // Footer page number
@@ -1533,7 +1653,8 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
             )}
 
             {slide.tipo === "agenda" && (
-              <div className="flex-1 flex flex-col">
+              <div className="relative flex-1 grid grid-cols-[1fr_0.9fr] gap-4">
+                <div className="flex flex-col min-w-0">
                 <p className={`text-[10px] font-black uppercase tracking-wider ${theme.accent} mb-1`}>Agenda</p>
                 <p className="text-base font-black mb-3">{slide.titulo}</p>
                 <div className="flex-1 space-y-1.5">
@@ -1544,31 +1665,39 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
                     </div>
                   ))}
                 </div>
+                </div>
+                <SlideVisualCard />
               </div>
             )}
 
             {slide.tipo === "conteudo" && (
-              <div className="flex-1 flex flex-col">
-                <p className="text-base font-black leading-tight">{slide.titulo}</p>
-                {slide.subtitulo && <p className={`text-[11px] ${theme.accent} mb-2`}>{slide.subtitulo}</p>}
-                <div className="flex-1 space-y-1.5 mt-2">
-                  {(slide.bullets ?? []).map((b, i) => (
-                    <div key={i} className="flex items-start gap-2">
-                      <span className={`w-1.5 h-1.5 rounded-full ${theme.chip} flex-shrink-0 mt-1.5`} />
-                      <p className="text-xs leading-snug">{b}</p>
+              <div className="relative flex-1 flex flex-col min-h-0">
+                <div className="grid grid-cols-[1.05fr_0.95fr] gap-4 flex-1 min-h-0">
+                  <div className="min-w-0 flex flex-col">
+                    <p className="text-base font-black leading-tight">{slide.titulo}</p>
+                    {slide.subtitulo && <p className={`text-[11px] ${theme.accent} mb-2`}>{slide.subtitulo}</p>}
+                    <div className="space-y-1.5 mt-2">
+                      {(slide.bullets ?? []).slice(0, 4).map((b, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <span className={`w-1.5 h-1.5 rounded-full ${theme.chip} flex-shrink-0 mt-1.5`} />
+                          <p className="text-xs leading-snug">{b}</p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                {slide.destaque && (
-                  <div className={`mt-3 px-3 py-2 rounded-lg bg-white/15 backdrop-blur border ${theme.border}`}>
-                    <p className="text-[11px] font-black">{slide.destaque}</p>
+                    {slide.destaque && (
+                      <div className={`mt-3 px-3 py-2 rounded-lg bg-white/15 backdrop-blur border ${theme.border}`}>
+                        <p className="text-[11px] font-black">{slide.destaque}</p>
+                      </div>
+                    )}
                   </div>
-                )}
+                  <SlideVisualCard />
+                </div>
+                <SlidePedagogyFooter />
               </div>
             )}
 
             {slide.tipo === "comparacao" && (
-              <div className="flex-1 flex flex-col">
+              <div className="relative flex-1 flex flex-col">
                 <p className="text-base font-black leading-tight mb-3">{slide.titulo}</p>
                 <div className="flex-1 grid grid-cols-2 gap-2">
                   {[slide.esquerda, slide.direita].filter(Boolean).map((col, ci) => (
@@ -1585,19 +1714,26 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
                     </div>
                   ))}
                 </div>
+                <SlidePedagogyFooter />
               </div>
             )}
 
             {slide.tipo === "citacao" && (
-              <div className="flex-1 flex flex-col justify-center">
-                <Quote className={`w-6 h-6 ${theme.accent} mb-2`} />
-                <p className="text-sm font-bold italic leading-snug">"{slide.texto}"</p>
-                {slide.autor && <p className={`text-[10px] ${theme.accent} mt-3`}>— {slide.autor}</p>}
+              <div className="relative flex-1 flex flex-col">
+                <div className="grid grid-cols-[1fr_0.9fr] gap-4 flex-1">
+                  <div className="flex flex-col justify-center">
+                    <Quote className={`w-6 h-6 ${theme.accent} mb-2`} />
+                    <p className="text-sm font-bold italic leading-snug">"{slide.texto}"</p>
+                    {slide.autor && <p className={`text-[10px] ${theme.accent} mt-3`}>— {slide.autor}</p>}
+                  </div>
+                  <SlideVisualCard />
+                </div>
+                <SlidePedagogyFooter />
               </div>
             )}
 
             {slide.tipo === "destaque_numerico" && (
-              <div className="flex-1 flex flex-col">
+              <div className="relative flex-1 flex flex-col">
                 <p className="text-base font-black leading-tight mb-3">{slide.titulo}</p>
                 <div className="flex-1 grid grid-cols-2 gap-2 content-center">
                   {(slide.numeros ?? []).map((n: any, i: number) => (
@@ -1607,11 +1743,12 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
                     </div>
                   ))}
                 </div>
+                <SlidePedagogyFooter />
               </div>
             )}
 
             {slide.tipo === "timeline" && (
-              <div className="flex-1 flex flex-col">
+              <div className="relative flex-1 flex flex-col">
                 <p className="text-base font-black leading-tight mb-3">{slide.titulo}</p>
                 <div className="flex-1 flex flex-col justify-center space-y-2">
                   {(slide.etapas ?? []).map((e: any, i: number) => (
@@ -1624,11 +1761,12 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
                     </div>
                   ))}
                 </div>
+                <SlidePedagogyFooter />
               </div>
             )}
 
             {slide.tipo === "encerramento" && (
-              <div className="flex-1 flex flex-col justify-center items-center text-center">
+              <div className="relative flex-1 flex flex-col justify-center items-center text-center">
                 <p className={`text-[10px] font-black uppercase tracking-wider ${theme.accent}`}>Conclusão</p>
                 <p className="text-base font-black mt-1 mb-2">{slide.titulo}</p>
                 <p className="text-xs leading-snug max-w-[90%]">{slide.mensagem}</p>
@@ -1637,6 +1775,9 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
                     <p className="text-[10px] font-bold"><span className="font-black">📝 ENEM:</span> {slide.dicaEnem}</p>
                   </div>
                 )}
+                <div className="w-full mt-3">
+                  <SlidePedagogyFooter />
+                </div>
               </div>
             )}
 
@@ -1756,21 +1897,27 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
                   )}
                   {slide.tipo === "conteudo" && (
                     <div className="relative flex-1 flex flex-col">
-                      <p className="text-5xl font-black leading-tight">{slide.titulo}</p>
-                      {slide.subtitulo && <p className={`text-2xl ${theme.accent} mt-2 mb-6`}>{slide.subtitulo}</p>}
-                      <div className="flex-1 space-y-4 mt-6">
-                        {(slide.bullets ?? []).map((b, i) => (
-                          <div key={i} className="flex items-start gap-4">
-                            <span className={`w-3 h-3 rounded-full ${theme.chip} flex-shrink-0 mt-3`} />
-                            <p className="text-2xl leading-snug">{b}</p>
+                      <div className="grid grid-cols-[1.05fr_0.95fr] gap-10 flex-1 min-h-0">
+                        <div className="min-w-0 flex flex-col">
+                          <p className="text-5xl font-black leading-tight">{slide.titulo}</p>
+                          {slide.subtitulo && <p className={`text-2xl ${theme.accent} mt-2 mb-6`}>{slide.subtitulo}</p>}
+                          <div className="space-y-4 mt-6">
+                            {(slide.bullets ?? []).slice(0, 4).map((b, i) => (
+                              <div key={i} className="flex items-start gap-4">
+                                <span className={`w-3 h-3 rounded-full ${theme.chip} flex-shrink-0 mt-3`} />
+                                <p className="text-2xl leading-snug">{b}</p>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                      {slide.destaque && (
-                        <div className={`mt-6 px-6 py-4 rounded-xl bg-white/15 backdrop-blur border-2 ${theme.border}`}>
-                          <p className="text-xl font-black">{slide.destaque}</p>
+                          {slide.destaque && (
+                            <div className={`mt-6 px-6 py-4 rounded-xl bg-white/15 backdrop-blur border-2 ${theme.border}`}>
+                              <p className="text-xl font-black">{slide.destaque}</p>
+                            </div>
+                          )}
                         </div>
-                      )}
+                        <SlideVisualCard large />
+                      </div>
+                      <SlidePedagogyFooter large />
                     </div>
                   )}
                   {slide.tipo === "comparacao" && (
@@ -1791,13 +1938,20 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
                           </div>
                         ))}
                       </div>
+                      <SlidePedagogyFooter large />
                     </div>
                   )}
                   {slide.tipo === "citacao" && (
-                    <div className="relative flex-1 flex flex-col justify-center">
-                      <Quote className={`w-16 h-16 ${theme.accent} mb-6`} />
-                      <p className="text-4xl font-bold italic leading-snug">"{slide.texto}"</p>
-                      {slide.autor && <p className={`text-xl ${theme.accent} mt-8`}>— {slide.autor}</p>}
+                    <div className="relative flex-1 flex flex-col">
+                      <div className="grid grid-cols-[1fr_0.9fr] gap-10 flex-1">
+                        <div className="flex flex-col justify-center">
+                          <Quote className={`w-16 h-16 ${theme.accent} mb-6`} />
+                          <p className="text-4xl font-bold italic leading-snug">"{slide.texto}"</p>
+                          {slide.autor && <p className={`text-xl ${theme.accent} mt-8`}>— {slide.autor}</p>}
+                        </div>
+                        <SlideVisualCard large />
+                      </div>
+                      <SlidePedagogyFooter large />
                     </div>
                   )}
                   {slide.tipo === "destaque_numerico" && (
@@ -1811,6 +1965,7 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
                           </div>
                         ))}
                       </div>
+                      <SlidePedagogyFooter large />
                     </div>
                   )}
 
@@ -1828,6 +1983,7 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
                           </div>
                         ))}
                       </div>
+                      <SlidePedagogyFooter large />
                     </div>
                   )}
 
@@ -1841,6 +1997,9 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
                           <p className="text-lg font-bold"><span className="font-black">📝 ENEM:</span> {slide.dicaEnem}</p>
                         </div>
                       )}
+                      <div className="w-full mt-8">
+                        <SlidePedagogyFooter large />
+                      </div>
                     </div>
                   )}
                   <div className="absolute bottom-4 right-6 text-sm font-bold opacity-60">{idx + 1} / {total}</div>

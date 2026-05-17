@@ -15,8 +15,9 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - **Home como centro de comando:** fluxo de proxima acao e continuidade do aluno ja recebeu primeira reorganizacao.
 - **Fundacao pedagogica:** padrao premium e QA sintetico Hermes foram documentados.
 - **Admin/Hermes:** diagnosticos de custo, billing e cobertura de provedores foram ampliados.
-- **Notebook/RAG multimodal:** primeira passada de UX, exportacao e telemetria de qualidade Hermes foi concluida no commit `01857b24`; deploy de producao ainda precisa de confirmacao externa quando nao houver acesso autenticado ao provedor.
-- **Simulado ENEM premium:** em andamento com analise pos-simulado, TRI pedagogico estimado, plano de reparo por habilidade e envio de erros para o caderno.
+- **Notebook/RAG multimodal:** primeira passada de UX, exportacao e telemetria de qualidade Hermes foi concluida no commit `01857b24`; producao ja respondeu `/api/healthz` no commit `44daf83`, portanto `01857b24` ou mais novo esta publicado.
+- **Notebook apresentacoes premium:** validacao visual bloqueou a entrega: slide gerado com fundo roxo, bullets genericos, vazio visual, sem citacao, sem nota de professor e sem checkpoint. A correcao atual reforca prompt/schema/fallback/renderizacao para exigir layout, visual estruturado, evidencia, como explicar, exemplo/checkpoint e preservacao em PDF/preview.
+- **Simulado ENEM premium:** existe um corte inicial em `44daf83`, mas nao deve avancar para Caderno de Erros enquanto o Notebook premium nao passar em QA visual real.
 
 ## Tickets em execucao
 
@@ -96,6 +97,18 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 
 ## Checklist de validacao
 
+### Bloqueador atual - Notebook RAG apresentacoes
+
+- [x] Confirmar que producao esta em commit `01857b24` ou mais novo: health atual retornou `44daf83`.
+- [x] Tratar screenshot de apresentacao ruim como falha bloqueante de premium.
+- [x] Backend exige schema rico de slides: `layout`, `visual`, `evidencia`, `comoExplicar`, `exemplo` e/ou `checkpoint`.
+- [x] Fallback deterministico reconstrói slides fracos com cards visuais, evidencia da fonte, nota do professor e pergunta de checagem.
+- [x] Renderer mostra visual estruturado/placeholder intencional em vez de fundo vazio com bullets.
+- [x] Export/print inclui visual, evidencia e checkpoints no material gerado.
+- [ ] QA manual em `/notebook`: gerar apresentacao com documento real e verificar 3 slides de desenvolvimento, PDF premium e modo tela cheia.
+- [ ] Validar que nenhum slide de conteudo fica apenas com titulo + bullets em fundo gradiente.
+- [ ] Validar que feedback negativo do material continua registrando telemetria Hermes.
+
 ### Produto e UX
 
 - [ ] Tiagao continua visivel, confiavel e reconhecivel.
@@ -167,8 +180,10 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 ## Proximos passos operacionais
 
 - [x] Registrar entregas recentes de landing, home, pedagogia, Admin/Hermes e Notebook/RAG.
-- [x] Assumir proximo corte de maior valor: Simulado ENEM premium conectado ao caderno de erros.
-- [ ] Confirmar deploy de producao do commit `01857b24` ou release mais novo pelo provedor autenticado.
-- [ ] Validar em UI real o fluxo: finalizar simulado, revisar analise premium, enviar erros para o caderno e salvar rascunho.
-- [ ] Proximo lote recomendado: consumir o rascunho do caderno de erros na home como "proxima melhor acao" e no Tiagao como modo "revisar erro".
+- [x] Confirmar deploy de producao do commit `01857b24` ou release mais novo via `/api/healthz` (`44daf83`).
+- [x] Corrigir bloqueador de apresentacoes Notebook RAG premium identificado por screenshot.
+- [ ] Deployar a correcao de apresentacoes e confirmar `/api/healthz` no novo commit.
+- [ ] QA manual obrigatorio: gerar apresentacao real no `/notebook`, revisar preview, tela cheia e PDF.
+- [ ] Somente apos QA do Notebook: retomar Caderno de Erros premium como proxima fase.
+- [ ] Proximo lote de Caderno de Erros: consumir rascunho do simulado na home como "proxima melhor acao" e no Tiagao como modo "revisar erro".
 - [ ] Depois do lote de erros: evoluir modos pedagogicos do Tiagao com taxonomia oficial e metricas por modo.

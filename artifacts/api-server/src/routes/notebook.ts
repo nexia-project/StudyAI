@@ -791,6 +791,25 @@ function buildFallbackSlides(title: string, content: string) {
   const sentences = splitStudySentences(content);
   const terms = extractKeyTerms(title, content, 12);
   const pick = (index: number, fallback: string) => sentences[index] ?? fallback;
+  const evidence = (index: number) => compactText(sentences[index] ?? sentences[0] ?? `Baseado no documento "${title}".`, 180);
+  const visual = (kind: string, label: string, description: string) => ({
+    tipo: kind,
+    titulo: label,
+    descricao: description,
+    caption: "Visual estruturado a partir da fonte; substitui slide vazio quando imagem real nao estiver disponivel.",
+    credito: "StudyAI Notebook RAG",
+  });
+  const enrich = (slide: any, index: number, layout: string, visualPlan: ReturnType<typeof visual>) => ({
+    layout,
+    visual: visualPlan,
+    evidencia: evidence(index),
+    comoExplicar: `Comece pelo objetivo do slide, leia a evidencia da fonte e peça ao aluno para conectar com ${terms[index % Math.max(terms.length, 1)] ?? "a ideia central"}.`,
+    exemplo: pick(index + 1, `Exemplo guiado: use "${compactText(title, 50)}" para mostrar causa, consequencia e aplicacao.`),
+    checkpoint: index % 2 === 0
+      ? "Checkpoint: qual evidencia da fonte sustenta essa ideia?"
+      : "Checkpoint: explique este ponto com suas palavras em uma frase.",
+    ...slide,
+  });
   const agenda = ["Objetivo da aula", "Conceitos essenciais", "Exemplo guiado", "Checkpoint", "Resumo para revisar"];
   return {
     titulo: compactText(title, 70) || "Apresentacao StudyAI",
@@ -805,31 +824,31 @@ function buildFallbackSlides(title: string, content: string) {
     prerequisitos: terms.slice(0, 3).map(t => `Noção previa de ${t}`),
     indicadoresQualidade: ["estrutura pedagogica", "exemplos da fonte", "checkpoint", "resumo imprimivel"],
     slides: [
-      { tipo: "capa", titulo: compactText(title, 70) || "Apresentacao StudyAI", subtitulo: "Roteiro de estudo gerado pelo Notebook RAG" },
-      { tipo: "agenda", titulo: "Roteiro", itens: agenda },
-      { tipo: "conteudo", titulo: "Objetivo", subtitulo: "O que dominar ao final", bullets: [
+      { tipo: "capa", layout: "capa_visual", titulo: compactText(title, 70) || "Apresentacao StudyAI", subtitulo: "Roteiro de estudo gerado pelo Notebook RAG", visual: visual("cover", "Imagem de abertura", `Representacao visual de ${compactText(title, 70)}`), evidencia: evidence(0), comoExplicar: "Apresente o objetivo e diga que os proximos slides seguem a fonte enviada." },
+      { tipo: "agenda", layout: "processo", titulo: "Roteiro", itens: agenda, visual: visual("process", "Sequencia da aula", "Trilha em cinco passos: objetivo, conceito, exemplo, pratica e revisao."), evidencia: evidence(0), comoExplicar: "Mostre que a apresentacao tem começo, desenvolvimento e verificacao.", checkpoint: "Checkpoint: em qual etapa voce acha que tera mais dificuldade?" },
+      enrich({ tipo: "conteudo", titulo: "Objetivo", subtitulo: "O que dominar ao final", bullets: [
         pick(0, `Compreender o tema central: ${title}.`),
         "Separar conceitos principais de detalhes secundarios.",
         "Usar exemplos da fonte para justificar respostas.",
-      ], destaque: "Checkpoint: explique o tema em 30 segundos." },
-      { tipo: "conteudo", titulo: "Conceitos essenciais", subtitulo: "Termos que organizam o assunto", bullets: terms.slice(0, 5).map(t => `${t}: termo recorrente no material`) },
-      { tipo: "conteudo", titulo: "Exemplo guiado", subtitulo: "Como aplicar a ideia", bullets: [
+      ], destaque: "Checkpoint: explique o tema em 30 segundos." }, 0, "split_visual_text", visual("target", "Objetivo + evidencia", "Card de objetivo conectado ao trecho-base da fonte.")),
+      enrich({ tipo: "conteudo", titulo: "Conceitos essenciais", subtitulo: "Termos que organizam o assunto", bullets: terms.slice(0, 5).map(t => `${t}: termo recorrente no material`) }, 1, "cards_conceito", visual("cards", "Cards de conceitos", "Cards com termos-chave, relacoes e exemplos curtos.")),
+      enrich({ tipo: "conteudo", titulo: "Exemplo guiado", subtitulo: "Como aplicar a ideia", bullets: [
         pick(1, "Localize um trecho da fonte que sustente a ideia central."),
         pick(2, "Transforme o trecho em explicacao com causa e consequencia."),
         "Conclua conectando o exemplo ao objetivo da aula.",
-      ], destaque: "Exemplo bom cita a fonte e explica por que ela importa." },
-      { tipo: "comparacao", titulo: "Compare e diferencie", esquerda: { titulo: "Ideia principal", itens: [pick(3, title), "Serve para orientar a revisao."] }, direita: { titulo: "Detalhes de apoio", itens: [pick(4, "Dados, exemplos e termos ajudam a provar a ideia."), "Use para enriquecer respostas."] } },
-      { tipo: "conteudo", titulo: "Erros comuns", subtitulo: "O que evitar", bullets: [
+      ], destaque: "Exemplo bom cita a fonte e explica por que ela importa." }, 2, "exemplo_com_evidencia", visual("example", "Exemplo resolvido", "Quadro com problema, evidencia, raciocinio e conclusao.")),
+      enrich({ tipo: "comparacao", titulo: "Compare e diferencie", esquerda: { titulo: "Ideia principal", itens: [pick(3, title), "Serve para orientar a revisao."] }, direita: { titulo: "Detalhes de apoio", itens: [pick(4, "Dados, exemplos e termos ajudam a provar a ideia."), "Use para enriquecer respostas."] } }, 3, "comparacao", visual("compare", "Comparacao lado a lado", "Duas colunas com criterio claro e evidencia da fonte.")),
+      enrich({ tipo: "conteudo", titulo: "Erros comuns", subtitulo: "O que evitar", bullets: [
         "Decorar termos sem explicar relacoes.",
         "Ignorar exemplos especificos da fonte.",
         "Responder sem objetivo, evidencia e conclusao.",
-      ], destaque: "Pegadinha: resumo util nao e lista solta; precisa de hierarquia." },
-      { tipo: "conteudo", titulo: "Checkpoint", subtitulo: "Teste rapido", bullets: [
+      ], destaque: "Pegadinha: resumo util nao e lista solta; precisa de hierarquia." }, 4, "erro_reparo", visual("warning", "Erro comum + reparo", "Card de pegadinha com causa provavel e como corrigir.")),
+      enrich({ tipo: "conteudo", titulo: "Checkpoint", subtitulo: "Teste rapido", bullets: [
         `Qual e a ideia central de "${compactText(title, 50)}"?`,
         `Quais tres termos aparecem como base: ${terms.slice(0, 3).join(", ") || "conceitos principais"}?`,
         "Que exemplo da fonte voce usaria numa resposta?",
-      ] },
-      { tipo: "encerramento", titulo: "Resumo final", mensagem: pick(5, "Revise objetivo, conceitos, exemplo e checkpoint antes de avançar."), dicaEnem: "Em provas, transforme o tema em causa, consequencia e exemplo concreto." },
+      ] }, 5, "exercicio", visual("question", "Checkpoint de aprendizagem", "Perguntas curtas para confirmar entendimento.")),
+      { tipo: "encerramento", layout: "sintese", titulo: "Resumo final", mensagem: pick(5, "Revise objetivo, conceitos, exemplo e checkpoint antes de avançar."), dicaEnem: "Em provas, transforme o tema em causa, consequencia e exemplo concreto.", visual: visual("summary", "Sintese visual", "Mapa de revisao: objetivo, conceitos, evidencia e acao."), evidencia: evidence(5), comoExplicar: "Feche retomando a fonte e indique o proximo exercicio.", checkpoint: "Checkpoint final: qual ponto voce revisaria amanha?" },
     ],
   };
 }
@@ -843,19 +862,36 @@ function normalizeSlides(input: any, title: string, content: string) {
       const tipo = ["capa", "agenda", "conteudo", "comparacao", "citacao", "encerramento", "destaque_numerico", "timeline"].includes(slide?.tipo)
         ? slide.tipo
         : "conteudo";
-      if (tipo === "agenda") return { tipo, titulo: compactText(slide.titulo, 70) || "Roteiro", itens: (Array.isArray(slide.itens) ? slide.itens : []).slice(0, 6).map((x: any) => compactText(x, 90)).filter(Boolean) };
+      const common = {
+        layout: compactText(slide?.layout, 40) || (tipo === "conteudo" ? "split_visual_text" : tipo),
+        visual: slide?.visual && typeof slide.visual === "object" ? {
+          tipo: compactText(slide.visual.tipo ?? slide.visual.kind, 32) || "structured-card",
+          titulo: compactText(slide.visual.titulo ?? slide.visual.title, 70) || "Visual estruturado",
+          descricao: compactText(slide.visual.descricao ?? slide.visual.description ?? slide.visual.prompt, 180) || "Card visual gerado a partir do documento.",
+          caption: compactText(slide.visual.caption, 160),
+          credito: compactText(slide.visual.credito ?? slide.visual.credit, 100),
+          url: typeof slide.visual.url === "string" ? slide.visual.url : undefined,
+        } : undefined,
+        evidencia: compactText(slide?.evidencia ?? slide?.fonte ?? slide?.citation, 180),
+        comoExplicar: compactText(slide?.comoExplicar ?? slide?.notasProfessor ?? slide?.speakerNotes, 220),
+        exemplo: compactText(slide?.exemplo, 180),
+        checkpoint: compactText(slide?.checkpoint ?? slide?.pergunta, 180),
+      };
+      if (tipo === "agenda") return { tipo, ...common, titulo: compactText(slide.titulo, 70) || "Roteiro", itens: (Array.isArray(slide.itens) ? slide.itens : []).slice(0, 6).map((x: any) => compactText(x, 90)).filter(Boolean) };
       if (tipo === "comparacao") return {
         tipo,
+        ...common,
         titulo: compactText(slide.titulo, 70) || "Comparacao",
         esquerda: { titulo: compactText(slide.esquerda?.titulo, 50) || "Lado A", itens: (Array.isArray(slide.esquerda?.itens) ? slide.esquerda.itens : []).slice(0, 5).map((x: any) => compactText(x, 120)).filter(Boolean) },
         direita: { titulo: compactText(slide.direita?.titulo, 50) || "Lado B", itens: (Array.isArray(slide.direita?.itens) ? slide.direita.itens : []).slice(0, 5).map((x: any) => compactText(x, 120)).filter(Boolean) },
       };
-      if (tipo === "encerramento") return { tipo, titulo: compactText(slide.titulo, 70) || "Conclusao", mensagem: compactText(slide.mensagem, 180) || "Revise os pontos principais.", dicaEnem: compactText(slide.dicaEnem, 160) };
-      if (tipo === "citacao") return { tipo, texto: compactText(slide.texto, 220) || compactText(title, 120), autor: compactText(slide.autor, 70) };
-      if (tipo === "destaque_numerico") return { tipo, titulo: compactText(slide.titulo, 70) || "Dados importantes", numeros: (Array.isArray(slide.numeros) ? slide.numeros : []).slice(0, 4).map((n: any) => ({ valor: compactText(n?.valor, 24), label: compactText(n?.label ?? n?.descricao, 80) })).filter((n: any) => n.valor) };
-      if (tipo === "timeline") return { tipo, titulo: compactText(slide.titulo, 70) || "Linha do tempo", etapas: (Array.isArray(slide.etapas) ? slide.etapas : []).slice(0, 5).map((e: any, i: number) => ({ numero: compactText(e?.numero ?? e?.ano ?? String(i + 1), 12), titulo: compactText(e?.titulo ?? e?.evento, 70), descricao: compactText(e?.descricao, 130) })) };
+      if (tipo === "encerramento") return { tipo, ...common, titulo: compactText(slide.titulo, 70) || "Conclusao", mensagem: compactText(slide.mensagem, 180) || "Revise os pontos principais.", dicaEnem: compactText(slide.dicaEnem, 160) };
+      if (tipo === "citacao") return { tipo, ...common, texto: compactText(slide.texto, 220) || compactText(title, 120), autor: compactText(slide.autor, 70) };
+      if (tipo === "destaque_numerico") return { tipo, ...common, titulo: compactText(slide.titulo, 70) || "Dados importantes", numeros: (Array.isArray(slide.numeros) ? slide.numeros : []).slice(0, 4).map((n: any) => ({ valor: compactText(n?.valor, 24), label: compactText(n?.label ?? n?.descricao, 80) })).filter((n: any) => n.valor) };
+      if (tipo === "timeline") return { tipo, ...common, titulo: compactText(slide.titulo, 70) || "Linha do tempo", etapas: (Array.isArray(slide.etapas) ? slide.etapas : []).slice(0, 5).map((e: any, i: number) => ({ numero: compactText(e?.numero ?? e?.ano ?? String(i + 1), 12), titulo: compactText(e?.titulo ?? e?.evento, 70), descricao: compactText(e?.descricao, 130) })) };
       return {
         tipo: index === 0 ? "capa" : tipo,
+        ...common,
         titulo: compactText(slide.titulo, 70) || (index === 0 ? fallback.titulo : `Slide ${index + 1}`),
         subtitulo: compactText(slide.subtitulo, 120),
         bullets: (Array.isArray(slide.bullets) ? slide.bullets : Array.isArray(slide.itens) ? slide.itens : []).slice(0, 6).map((x: any) => compactText(x, 150)).filter(Boolean),
@@ -864,7 +900,13 @@ function normalizeSlides(input: any, title: string, content: string) {
     })
     .filter((slide: any) => slide.titulo || slide.texto);
   const contentSlides = slides.filter((s: any) => s.tipo !== "capa" && s.tipo !== "agenda").length;
-  const weak = slides.length < 8 || contentSlides < 5;
+  const richSlides = slides.filter((s: any) =>
+    s.tipo === "capa" ||
+    s.tipo === "agenda" ||
+    s.tipo === "encerramento" ||
+    Boolean(s.visual || s.evidencia || s.comoExplicar || s.checkpoint || s.exemplo)
+  ).length;
+  const weak = slides.length < 8 || contentSlides < 5 || richSlides < Math.min(slides.length, 7);
   if (weak) return { ...fallback, generatedByFallback: true };
   return {
     titulo: compactText(parsed.titulo, 70) || fallback.titulo,
@@ -3977,14 +4019,14 @@ Retorne APENAS JSON válido:
   "prerequisitos": ["conceito prévio necessário 1", "conceito prévio necessário 2"],
   "indicadoresQualidade": ["usa dados da fonte", "tem exemplo resolvido", "tem checkpoint", "tem conexão ENEM"],
   "slides": [
-    { "tipo": "capa", "titulo": "string", "subtitulo": "string", "icone": "BookOpen" },
-    { "tipo": "agenda", "titulo": "Roteiro", "itens": ["tópico 1", "tópico 2", "tópico 3", "tópico 4", "tópico 5"] },
-    { "tipo": "conteudo", "titulo": "string (≤ 6 palavras)", "subtitulo": "contexto em 1 frase", "bullets": ["dado específico do documento", "outro dado com número/nome/data", "conceito-chave explicado", "aplicação prática"], "destaque": "INSIGHT: frase de impacto com dado do documento" },
-    { "tipo": "destaque_numerico", "titulo": "string", "numeros": [{"valor": "220,94%", "label": "Sobre o FOB"}, {"valor": "USD 8.986", "label": "Custo total"}] },
-    { "tipo": "comparacao", "titulo": "string", "esquerda": {"titulo": "string", "itens": ["..."]}, "direita": {"titulo": "string", "itens": ["..."]} },
-    { "tipo": "citacao", "texto": "citação direta do material", "autor": "string opcional" },
-    { "tipo": "timeline", "titulo": "string", "etapas": [{"numero": "01", "titulo": "Etapa", "descricao": "descrição curta"}] },
-    { "tipo": "encerramento", "titulo": "Conclusão", "mensagem": "frase final impactante baseada nos dados", "dicaEnem": "como esse tema cai no ENEM" }
+    { "tipo": "capa", "layout": "capa_visual", "titulo": "string", "subtitulo": "string", "visual": {"tipo":"cover","titulo":"imagem/diagrama de abertura","descricao":"visual concreto do tema","caption":"baseado no documento","credito":"StudyAI"}, "evidencia": "trecho/ideia do documento", "comoExplicar": "nota do professor" },
+    { "tipo": "agenda", "layout": "processo", "titulo": "Roteiro", "itens": ["tópico 1", "tópico 2", "tópico 3", "tópico 4", "tópico 5"], "visual": {"tipo":"process","titulo":"fluxo da aula","descricao":"5 etapas conectadas"}, "comoExplicar": "como guiar a aula", "checkpoint": "pergunta rápida" },
+    { "tipo": "conteudo", "layout": "split_visual_text" | "evidence_card" | "example_card" | "exercise_card" | "process_cards", "titulo": "string (≤ 6 palavras)", "subtitulo": "contexto em 1 frase", "bullets": ["dado específico do documento", "outro dado com número/nome/data", "conceito-chave explicado"], "destaque": "INSIGHT com dado do documento", "visual": {"tipo":"diagram|card|table|chart|image","titulo":"visual do slide","descricao":"o que deve aparecer visualmente","caption":"legenda","credito":"fonte/StudyAI"}, "evidencia": "citação ou síntese fiel da fonte", "comoExplicar": "fala do professor em 1-2 frases", "exemplo": "exemplo concreto baseado na fonte", "checkpoint": "pergunta de verificação" },
+    { "tipo": "destaque_numerico", "layout": "metric_cards", "titulo": "string", "numeros": [{"valor": "220,94%", "label": "Sobre o FOB"}, {"valor": "USD 8.986", "label": "Custo total"}], "visual": {"tipo":"chart","titulo":"cartões numéricos","descricao":"cards de métrica com legenda"}, "evidencia": "de onde vêm os números", "comoExplicar": "como interpretar", "checkpoint": "pergunta sobre o dado" },
+    { "tipo": "comparacao", "layout": "comparison", "titulo": "string", "esquerda": {"titulo": "string", "itens": ["..."]}, "direita": {"titulo": "string", "itens": ["..."]}, "visual": {"tipo":"comparison","titulo":"comparação lado a lado","descricao":"critério comparativo"}, "evidencia": "base documental", "comoExplicar": "como conduzir comparação", "checkpoint": "pergunta" },
+    { "tipo": "citacao", "layout": "quote_evidence", "texto": "citação direta do material", "autor": "string opcional", "visual": {"tipo":"quote","titulo":"citação da fonte","descricao":"card de evidência"}, "evidencia": "contexto da citação", "comoExplicar": "por que importa", "checkpoint": "pergunta" },
+    { "tipo": "timeline", "layout": "timeline", "titulo": "string", "etapas": [{"numero": "01", "titulo": "Etapa", "descricao": "descrição curta"}], "visual": {"tipo":"timeline","titulo":"linha do tempo/processo","descricao":"sequência visual"}, "evidencia": "base documental", "comoExplicar": "como explicar a sequência", "checkpoint": "pergunta" },
+    { "tipo": "encerramento", "layout": "sintese", "titulo": "Conclusão", "mensagem": "frase final impactante baseada nos dados", "dicaEnem": "como esse tema cai no ENEM", "visual": {"tipo":"summary","titulo":"mapa de revisão","descricao":"síntese em 4 blocos"}, "evidencia": "síntese da fonte", "comoExplicar": "fechamento", "checkpoint": "pergunta final" }
   ]
 }
 REGRAS:
@@ -3994,6 +4036,9 @@ REGRAS:
 - Use tipo "destaque_numerico" quando há dados quantitativos relevantes
 - Use tipo "comparacao" quando há dois lados/categorias para comparar
 - Inclua pelo menos 1 exemplo resolvido, 1 erro comum/pegadinha e 1 checkpoint de autoavaliação em slides de conteúdo ou destaque
+- Todo slide precisa ter layout, visual, evidencia/baseado no documento e comoExplicar; slides de aprendizagem precisam ter exemplo ou checkpoint.
+- Proibido criar slide vazio com apenas título + bullets em fundo roxo. Use sempre split visual/texto, card de evidência, exemplo, comparação, timeline, processo, citação ou exercício.
+- Se não houver imagem real, descreva um visual estruturado intencional em visual.descricao/caption; o frontend renderiza esse placeholder.
 - Inclua objetivo de aprendizagem, pré-requisitos e uma síntese final que o aluno consiga revisar sem abrir a fonte
 - Cada slide de conteúdo deve ter 3-5 bullets úteis; slide com só título é inválido
 - Escreva para impressão/exportação: textos curtos por slide, sem depender de animações, com títulos claros e contraste alto

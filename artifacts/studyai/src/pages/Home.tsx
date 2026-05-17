@@ -66,7 +66,15 @@ import {
 import { useStudentProfile } from "@/hooks/useStudentProfile";
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 import { triggerProfessorAction } from "@/lib/professor-events";
-import { readErrorReviewMission, type ErrorReviewMission } from "@/lib/error-review";
+import { emitHermesLearningSignal, readErrorReviewMission, type ErrorReviewMission } from "@/lib/error-review";
+import {
+  buildNextBestAction,
+  readSimuladoRecoveryMission,
+  type ContentSignal,
+  type NextBestActionMission,
+  type NotebookSignal,
+  type SimuladoRecoveryMission,
+} from "@/lib/next-best-action";
 
 // Reconstrói o texto-conteúdo do plano (mesma rotina de HomeLegacy/History) —
 // usada pra alimentar o passo "result" quando reabrimos um plano salvo.
@@ -318,17 +326,6 @@ type Stats = {
   xp: number | null;
 };
 
-type StudyMission = {
-  eyebrow: string;
-  title: string;
-  subject: string;
-  estimate: string;
-  reason: string;
-  primaryLabel: string;
-  tiagaoPrompt: string;
-  sourceLabel?: string;
-};
-
 // ─── Página ───────────────────────────────────────────────────────────────────
 export default function Home() {
   const [, navigate] = useLocation();
@@ -338,6 +335,9 @@ export default function Home() {
   const [draft, setDraft] = useState("");
   const [recentPlans, setRecentPlans] = useState<RecentPlan[]>([]);
   const [errorReviewMission, setErrorReviewMission] = useState<ErrorReviewMission | null>(null);
+  const [simuladoRecoveryMission, setSimuladoRecoveryMission] = useState<SimuladoRecoveryMission | null>(null);
+  const [notebookDocs, setNotebookDocs] = useState<NotebookSignal[]>([]);
+  const [contentSignals, setContentSignals] = useState<ContentSignal[]>([]);
   const [stats, setStats] = useState<Stats>({ streak: null, xp: null });
   const [tiagaoSize, setTiagaoSize] = useState<number>(160);
 
@@ -366,6 +366,7 @@ export default function Home() {
   const searchAbortRef = useRef<AbortController | null>(null);
   const fileAbortRef = useRef<AbortController | null>(null);
   const videosAbortRef = useRef<AbortController | null>(null);
+  const shownMissionRef = useRef<string | null>(null);
   useEffect(() => () => {
     searchAbortRef.current?.abort();
     fileAbortRef.current?.abort();
@@ -373,13 +374,16 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const refreshErrorReviewMission = () => setErrorReviewMission(readErrorReviewMission());
-    refreshErrorReviewMission();
-    window.addEventListener("storage", refreshErrorReviewMission);
-    window.addEventListener("focus", refreshErrorReviewMission);
+    const refreshStoredMissions = () => {
+      setErrorReviewMission(readErrorReviewMission());
+      setSimuladoRecoveryMission(readSimuladoRecoveryMission());
+    };
+    refreshStoredMissions();
+    window.addEventListener("storage", refreshStoredMissions);
+    window.addEventListener("focus", refreshStoredMissions);
     return () => {
-      window.removeEventListener("storage", refreshErrorReviewMission);
-      window.removeEventListener("focus", refreshErrorReviewMission);
+      window.removeEventListener("storage", refreshStoredMissions);
+      window.removeEventListener("focus", refreshStoredMissions);
     };
   }, []);
 
@@ -442,6 +446,37 @@ export default function Home() {
     return () => { aborted = true; };
   }, [isAuthenticated, authLoading]);
 
+  // ── Sinais premium leves para próxima melhor ação ──────────────────────────
+  useEffect(() => {
+    if (authLoading || !isAuthenticated) {
+      setNotebookDocs([]);
+      setContentSignals([]);
+      return;
+    }
+    let aborted = false;
+    (async () => {
+      try {
+        const [docsRes, contentRes] = await Promise.all([
+          fetch("/api/notebook/docs", { credentials: "include" }),
+          fetch("/api/content/history?role=student&limit=20", { credentials: "include" }),
+        ]);
+        const docsJson = docsRes.ok ? await docsRes.json().catch(() => null) : null;
+        const contentJson = contentRes.ok ? await contentRes.json().catch(() => null) : null;
+        if (aborted) return;
+        const docs = Array.isArray(docsJson) ? docsJson : Array.isArray(docsJson?.rows) ? docsJson.rows : [];
+        const items = Array.isArray(contentJson?.items) ? contentJson.items : [];
+        setNotebookDocs(docs as NotebookSignal[]);
+        setContentSignals(items as ContentSignal[]);
+      } catch {
+        if (!aborted) {
+          setNotebookDocs([]);
+          setContentSignals([]);
+        }
+      }
+    })();
+    return () => { aborted = true; };
+  }, [isAuthenticated, authLoading]);
+
   // ── Greeting ────────────────────────────────────────────────────────────────
   const firstName = useMemo(() => {
     const raw = profile?.nome?.trim();
@@ -453,52 +488,39 @@ export default function Home() {
 
   const resumeTarget = recentPlans[0] ?? null;
 
-  const studyMission = useMemo<StudyMission>(() => {
+  const studyMission = useMemo<NextBestActionMission>(() => {
     const objetivo = profile?.objetivo?.trim();
     const concurso = profile?.concursoAlvo?.trim();
     const focus = concurso || objetivo || "seu objetivo principal";
+    return buildNextBestAction({
+      errorReviewMission,
+      simuladoRecoveryMission,
+      notebookDocs,
+      contentItems: contentSignals,
+      recentPlan: resumeTarget,
+      focus,
+    });
+  }, [contentSignals, errorReviewMission, notebookDocs, profile?.concursoAlvo, profile?.objetivo, resumeTarget, simuladoRecoveryMission]);
 
-    if (errorReviewMission) {
-      return {
-        eyebrow: "Revisão recomendada",
-        title: errorReviewMission.title,
-        subject: errorReviewMission.subject,
-        estimate: errorReviewMission.estimate,
-        reason: `${errorReviewMission.reason} Revisão sugerida: ${new Date(errorReviewMission.nextReviewAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}.`,
-        primaryLabel: errorReviewMission.primaryLabel,
-        tiagaoPrompt: errorReviewMission.tiagaoPrompt,
-        sourceLabel: "caderno de erros",
-      };
-    }
+  const trackNextActionEvent = useCallback((event: "shown" | "clicked" | "tiagao_clicked", mission: NextBestActionMission) => {
+    emitHermesLearningSignal({
+      surface: "home",
+      event: `next_best_action_${event}`,
+      source: mission.source,
+      missionId: mission.id,
+      subject: mission.subject,
+      estimate: mission.estimate,
+      evidence: mission.evidence,
+      successCriterion: mission.successCriterion,
+      actionKind: mission.action.kind,
+    });
+  }, []);
 
-    if (resumeTarget) {
-      const dias = Array.isArray(resumeTarget.plan?.dias) ? resumeTarget.plan.dias.length : 0;
-      const subject = resumeTarget.materia || resumeTarget.plan?.materia || focus;
-      return {
-        eyebrow: "Próxima melhor ação",
-        title: `Continuar ${subject}`,
-        subject,
-        estimate: dias > 1 ? "25 min" : "15 min",
-        reason: dias > 0
-          ? `Você já tem um plano com ${dias} etapa${dias !== 1 ? "s" : ""}. O melhor agora é retomar antes de abrir outra frente.`
-          : "Você tem um plano salvo. Retomar evita recomeçar do zero e mantém o estudo em movimento.",
-        primaryLabel: "Começar missão",
-        tiagaoPrompt: `Tiagão, quero continuar minha missão de estudo em ${subject}. Me guia pelo próximo passo sem enrolar?`,
-        sourceLabel: "plano recente",
-      };
-    }
-
-    return {
-      eyebrow: "Missão de estudo",
-      title: "Definir foco e estudar 15 minutos",
-      subject: focus,
-      estimate: "15 min",
-      reason: "Ainda não há um plano recente por aqui. Comece com uma missão curta: foco, explicação simples e um exercício para checar se entendeu.",
-      primaryLabel: "Montar missão",
-      tiagaoPrompt: `Tiagão, monta uma missão de estudo de 15 minutos para ${focus}. Quero um passo claro, uma explicação curta e uma checagem no final.`,
-      sourceLabel: "Tiagão guia",
-    };
-  }, [profile?.concursoAlvo, profile?.objetivo, resumeTarget, errorReviewMission]);
+  useEffect(() => {
+    if (shownMissionRef.current === studyMission.id) return;
+    shownMissionRef.current = studyMission.id;
+    trackNextActionEvent("shown", studyMission);
+  }, [studyMission, trackNextActionEvent]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   // Send / Enter → BUSCA INLINE. Não abre Tiagão. O aluno pode encaminhar
@@ -718,16 +740,22 @@ export default function Home() {
   };
 
   const startStudyMission = useCallback(() => {
-    if (errorReviewMission) {
-      navigate("/caderno");
-      return;
-    }
-    if (resumeTarget) {
+    trackNextActionEvent("clicked", studyMission);
+    if (studyMission.action.kind === "resume_plan" && resumeTarget) {
       handleResume(resumeTarget.plan);
       return;
     }
+    if (studyMission.action.route) {
+      navigate(studyMission.action.route);
+      return;
+    }
     askTiagao(studyMission.tiagaoPrompt);
-  }, [errorReviewMission, navigate, resumeTarget, studyMission.tiagaoPrompt]);
+  }, [navigate, resumeTarget, studyMission, trackNextActionEvent]);
+
+  const askTiagaoForMission = useCallback(() => {
+    trackNextActionEvent("tiagao_clicked", studyMission);
+    askTiagao(studyMission.tiagaoPrompt);
+  }, [studyMission, trackNextActionEvent]);
 
   return (
     <div className="relative min-h-[100dvh] overflow-hidden bg-gradient-to-b from-violet-50/70 via-white to-fuchsia-50/40">
@@ -954,7 +982,7 @@ export default function Home() {
           stats={stats}
           hasRecentPlan={!!resumeTarget}
           onStart={startStudyMission}
-          onAskTiagao={() => askTiagao(studyMission.tiagaoPrompt)}
+          onAskTiagao={askTiagaoForMission}
           onOpenNotebook={() => navigate("/notebook")}
         />
 
@@ -1072,7 +1100,7 @@ function StudyMissionCard({
   onAskTiagao,
   onOpenNotebook,
 }: {
-  mission: StudyMission;
+  mission: NextBestActionMission;
   stats: Stats;
   hasRecentPlan: boolean;
   onStart: () => void;
@@ -1138,6 +1166,29 @@ function StudyMissionCard({
               <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600">
                 {mission.reason}
               </p>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <div className="rounded-2xl border border-violet-100 bg-white/70 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-500">
+                    Por que agora
+                  </p>
+                  <ul className="mt-2 space-y-1.5">
+                    {mission.evidence.slice(0, 3).map((item) => (
+                      <li key={item} className="flex gap-2 text-xs leading-relaxed text-slate-600">
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-400" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">
+                    Critério de sucesso
+                  </p>
+                  <p className="mt-2 text-xs leading-relaxed text-slate-700">
+                    {mission.successCriterion}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 

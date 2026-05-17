@@ -15,6 +15,7 @@ import {
   saveErrorReviewMission,
   type ErrorReviewDraft,
 } from "@/lib/error-review";
+import { saveSimuladoRecoveryMission } from "@/lib/next-best-action";
 
 const DIAS_INFO = [
   { dia: 1, nome: "Linguagens", areaOficial: "Linguagens, Códigos e suas Tecnologias", cor: "from-violet-500 to-violet-600", bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-200", emoji: "📝", materias: "Língua Portuguesa, Literatura, Inglês, Arte, Educação Física" },
@@ -567,6 +568,30 @@ export default function SimuladoEnemPage() {
     const skillPerformance = buildSkillPerformance(questoes, respostas, diaInfo);
     const errorPatterns = buildErrorPatterns(erros, respostas);
     const recoveryMission = buildRecoveryMission({ erros, subjects, skillPerformance, errorPatterns, pct: accuracy });
+    const weakestSubject = subjects.find(subject => subject.erros > 0);
+    const weakestSkill = skillPerformance.find(item => item.erros > 0);
+    if (total > 0) {
+      saveSimuladoRecoveryMission({
+        title: recoveryMission.title,
+        subject: weakestSkill?.label ?? weakestSubject?.materia ?? diaInfo?.nome ?? "ENEM",
+        estimate: recoveryMission.estimatedTime,
+        reason: recoveryMission.objective,
+        evidence: recoveryMission.evidence,
+        successCriterion: recoveryMission.check,
+        primaryLabel: erros.length ? "Treinar recuperação" : "Consolidar acertos",
+        tiagaoPrompt: [
+          `Tiagão, entra no modo treinador e me ajuda com a recuperação do meu último simulado ENEM.`,
+          `Resultado: ${accuracy}% de acerto, ${erros.length} erro(s).`,
+          `Foco: ${weakestSkill?.label ?? weakestSubject?.materia ?? diaInfo?.nome ?? "revisão ENEM"}.`,
+          `Missão: ${recoveryMission.title}.`,
+          `Critério de sucesso: ${recoveryMission.check}`,
+        ].join("\n"),
+        createdAt: new Date().toISOString(),
+        errorsCount: erros.length,
+        accuracy,
+        weakArea: weakestSubject?.materia ?? weakestSkill?.label ?? null,
+      });
+    }
     emitHermesLearningSignal({
       surface: "simulado_enem",
       event: "simulado_finalizado",

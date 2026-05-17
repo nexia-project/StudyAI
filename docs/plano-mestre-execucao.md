@@ -22,6 +22,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - **Caderno de Erros premium:** corte inicial publicado em producao no commit `bb2ea8f`: simulado gera rascunho estruturado com tipo/causa de erro, Caderno organiza o rascunho e Home prioriza a revisao como proxima acao.
 - **B2B premium diagnostico:** corte inicial implementado para professor/gestor com risco por turma, baixa atividade, resumo acionavel, acao recomendada e lacunas de dados explicitadas sem inventar numeros.
 - **Curadoria premium de materiais:** primeira fatia adiciona checklist heuristico no historico de conteudos para sinalizar prontidao, lacunas e proxima acao sem depender de backend novo.
+- **Home next-best-action premium:** corte em andamento conecta Caderno de Erros, Simulado premium, Notebook RAG, curadoria de conteudo e plano recente em uma missao priorizada com evidencia, tempo, criterio de sucesso, CTA direto e sinal Hermes local.
 - **Hermes premium quality loop:** `qa_sintetico` agora monitora Landing, Home, Notebook RAG, Simulado, Tiagao e Caderno de Erros com recomendacoes contendo modulo, evidencia, problema, mudanca sugerida, metrica e criterios de aceite; sem autofix destrutivo.
 
 ## Tickets em execucao
@@ -227,9 +228,9 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 
 ### Produto e UX
 
-- [ ] Tiagao continua visivel, confiavel e reconhecivel.
-- [ ] A jornada principal reduz friccao e nao adiciona dashboard pesado ao aluno.
-- [ ] Existe uma proxima acao clara nas superficies criticas.
+- [x] Tiagao continua visivel, confiavel e reconhecivel na Home com CTA de voz/chat preservado.
+- [x] A jornada principal reduz friccao na Home sem adicionar dashboard pesado ao aluno.
+- [x] Existe uma proxima acao clara na Home, com fonte, evidencia, tempo, criterio de sucesso e CTA direto.
 - [ ] CTA, estados vazios, loading, erro, sucesso e paywall estao claros.
 - [ ] Fluxos principais funcionam em mobile.
 
@@ -243,9 +244,9 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 
 ### Engenharia e QA
 
-- [ ] Workers de implementacao registram arquivos alterados e superficie impactada.
+- [x] Workers de implementacao registram arquivos alterados e superficie impactada para o corte de next-best-action da Home.
 - [ ] Nao ha duplicacao de trabalho entre landing, app e material pedagogico.
-- [ ] Rodar build/test/lint aplicavel antes de commit.
+- [x] Rodar build/test/lint aplicavel antes de commit: `pnpm --filter "./artifacts/studyai" run typecheck`.
 - [ ] Rodar QA sintetico nas jornadas impactadas quando disponivel.
 - [ ] Conferir regressao visual basica em desktop e mobile.
 
@@ -266,6 +267,17 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [ ] Simulado: executar simulado curto com erro proposital, conferir analise premium e envio ao Caderno.
 - [ ] Caderno de Erros: importar rascunho, salvar nota, voltar para Home e conferir missao de revisao.
 - [ ] Tiagao: pedir revisao do erro, duvida rapida e estudar material; confirmar linguagem adequada e acao explicita.
+
+### Home next-best-action premium
+
+- [x] Home combina sinais de Caderno de Erros, Simulado premium, Notebook RAG, curadoria de conteudo e plano recente em uma unica missao priorizada.
+- [x] Missao mostra por que e a proxima acao, com evidencias, tempo estimado e criterio de sucesso.
+- [x] CTA direto abre Caderno, Notebook, Meus Conteudos, plano recente ou Tiagao em modo treinador/corretor conforme a fonte.
+- [x] Fallback seguro e deterministico fica identificado quando nao ha dados suficientes.
+- [x] Hermes recebe evento local quando a next-best-action e exibida, clicada ou enviada ao Tiagao.
+- [x] Simulado premium persiste missao de recuperacao local para a Home mesmo antes do envio ao Caderno.
+- [x] Typecheck focado do app concluido sem erro.
+- [ ] QA manual: simulado com erro -> Home deve sugerir recuperacao; material recente no Notebook -> Home deve sugerir abrir material; conteudo com curadoria baixa -> Home deve sugerir revisar conteudo.
 
 ### Metricas
 
@@ -322,5 +334,6 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [x] Proximo lote de Caderno de Erros: consumir rascunho do simulado na home como "proxima melhor acao" e no Tiagao como modo "revisar erro".
 - [x] Adicionar Hermes premium quality loop para Landing, Home, Notebook RAG, Simulado, Tiagao e Caderno de Erros.
 - [x] Adicionar primeira fatia de curadoria premium no historico de conteudos.
+- [x] Conectar sinais premium na Home para next-best-action priorizada com evento Hermes local.
 - [ ] Proximo lote de Caderno de Erros: persistir historico estruturado no backend quando houver schema/API definido.
 - [ ] Depois do lote de erros: evoluir modos pedagogicos do Tiagao com taxonomia oficial e metricas por modo.

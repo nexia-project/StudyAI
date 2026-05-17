@@ -19,6 +19,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - **Notebook apresentacoes premium:** correcao de apresentacoes publicada; producao respondeu `/api/healthz` com `d1270af`, equivalente ao commit `d1270af2` de apresentacoes premium.
 - **Simulado ENEM premium:** existe um corte inicial em `44daf83`; apos confirmacao do deploy `d1270af2`, o fluxo pode alimentar o Caderno de Erros premium em fatias pequenas.
 - **Caderno de Erros premium:** corte inicial publicado em producao no commit `bb2ea8f`: simulado gera rascunho estruturado com tipo/causa de erro, Caderno organiza o rascunho e Home prioriza a revisao como proxima acao.
+- **Hermes premium quality loop:** `qa_sintetico` agora monitora Landing, Home, Notebook RAG, Simulado, Tiagao e Caderno de Erros com recomendacoes contendo modulo, evidencia, problema, mudanca sugerida, metrica e criterios de aceite; sem autofix destrutivo.
 
 ## Tickets em execucao
 
@@ -120,6 +121,28 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - O sinal Hermes contem superficie, evento, erros, acuracia e recomendacao acionavel.
 - O corte continua pequeno o bastante para ser validado manualmente em um simulado curto.
 
+### F0-04 Hermes premium quality loop
+
+**Status:** primeira versao implementada em QA sintetico e docs; pendente execucao manual da auditoria em producao/staging.
+
+**Objetivo:** acelerar a transformacao premium com um loop continuo de qualidade que monitora os modulos ja tocados sem executar correcao automatica destrutiva.
+
+**Superficies previstas:** `artifacts/api-server/src/lib/hermes/jobs/qa-sintetico.ts`, `artifacts/api-server/src/lib/hermes/recommendationStandard.ts`, `artifacts/studyai/src/pages/Admin.tsx`, docs Hermes e tracker.
+
+**Resultado esperado:**
+
+- Catalogo/snapshot Hermes expoe `premiumQualityLoop` com modulos, evidencias, checklists diario/semanal, metricas e criterios de aceite.
+- Recomendacoes premium exibem `module` no Admin.
+- Landing, Home, Notebook RAG, Simulado, Tiagao e Caderno de Erros ficam no mesmo ciclo de QA sintetico.
+- Daily-learn usa o loop como contexto; checklist semanal continua manual/pre-release.
+
+**Criterios de aceite:**
+
+- Toda recomendacao premium contem modulo, superficie, evidencia, problema/oportunidade, mudanca sugerida, metrica e criterios de aceite.
+- Hermes cria descoberta/inbox/tarefa de triagem, mas nao altera conteudo, dados de aluno, planos, assinaturas ou producao automaticamente.
+- Modulos sem telemetria suficiente viram lacuna de observabilidade, nao metrica inventada.
+- Checklist manual cobre jornada ponta a ponta: Landing -> Home -> Notebook RAG -> Simulado -> Caderno -> Tiagao.
+
 ## Checklist de validacao
 
 ### Bloqueador atual - Notebook RAG apresentacoes
@@ -169,6 +192,25 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [ ] Rodar build/test/lint aplicavel antes de commit.
 - [ ] Rodar QA sintetico nas jornadas impactadas quando disponivel.
 - [ ] Conferir regressao visual basica em desktop e mobile.
+
+### Hermes premium quality gates
+
+- [x] `qa_sintetico` cobre Landing, Home, Notebook RAG, Simulado, Tiagao e Caderno de Erros no snapshot `premiumQualityLoop`.
+- [x] Padrao de recomendacao Hermes inclui `module` para recomendacoes premium.
+- [x] Admin exibe modulo junto com superficie, evidencia, problema, mudanca, metrica e aceite.
+- [ ] Executar `POST /api/agents/qa_sintetico/executar-auditoria` em ambiente autenticado de admin.
+- [ ] Conferir que achados persistidos aparecem em Descobertas/Inbox Hermes sem tarefa destrutiva.
+- [ ] Rodar checklist manual semanal/pre-release abaixo.
+
+### Checklist manual semanal premium
+
+- [ ] Landing: validar primeira dobra mobile/desktop, CTA principal, CTA institucional, claims, preco e ausencia de promessa garantida.
+- [ ] Home: validar usuario sem historico e usuario com missao de erro recente; conferir proxima acao, busca/upload inline e Tiagao explicito.
+- [ ] Notebook RAG: gerar apresentacao/material com documento real, revisar 3 slides, preview, tela cheia, PDF/print e feedback negativo.
+- [ ] Simulado: executar simulado curto com erro proposital, conferir analise premium e envio ao Caderno.
+- [ ] Caderno de Erros: importar rascunho, salvar nota, voltar para Home e conferir missao de revisao.
+- [ ] Tiagao: pedir revisao do erro, duvida rapida e estudar material; confirmar linguagem adequada e acao explicita.
+
 
 ### Metricas
 
@@ -222,6 +264,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [x] Deployar a correcao de apresentacoes e confirmar `/api/healthz` no novo commit (`d1270af`).
 - [ ] QA manual obrigatorio: gerar apresentacao real no `/notebook`, revisar preview, tela cheia e PDF.
 - [x] Somente apos deploy do Notebook: retomar Caderno de Erros premium como proxima fase.
+- [x] Adicionar Hermes premium quality loop para Landing, Home, Notebook RAG, Simulado, Tiagao e Caderno de Erros.
 - [x] Proximo lote de Caderno de Erros: consumir rascunho do simulado na home como "proxima melhor acao" e no Tiagao como modo "revisar erro".
 - [ ] Proximo lote de Caderno de Erros: persistir historico estruturado no backend quando houver schema/API definido.
 - [ ] Depois do lote de erros: evoluir modos pedagogicos do Tiagao com taxonomia oficial e metricas por modo.

@@ -33,10 +33,26 @@ export interface SyntheticQaPersona {
 export interface SyntheticQaJourney {
   id: string;
   titulo: string;
+  module?: string;
   personas: SyntheticQaPersonaId[];
   superficies: string[];
   checklist: string[];
   metricas: string[];
+}
+
+export type PremiumQualityCadence = "daily" | "weekly";
+
+export interface PremiumQualityLoopModule {
+  id: string;
+  module: "Landing" | "Home" | "Notebook RAG" | "Simulado" | "Tiagao" | "Caderno de Erros";
+  cadence: PremiumQualityCadence;
+  ownerAgent: "qa_sintetico";
+  surfaces: string[];
+  evidenceSources: string[];
+  dailyChecklist: string[];
+  weeklyChecklist: string[];
+  metrics: string[];
+  acceptanceCriteria: string[];
 }
 
 export interface SyntheticQaFinding {
@@ -72,6 +88,14 @@ interface SyntheticQaSnapshot {
     routes: string[];
     personaHints: SyntheticQaPersonaId[];
   }>;
+  premiumQualityLoop: {
+    cadence: {
+      daily: string;
+      weekly: string;
+      guardrail: string;
+    };
+    modules: PremiumQualityLoopModule[];
+  };
   pedagogicalMaterialStandard: typeof PREMIUM_MATERIAL_STANDARD_SUMMARY;
   safetyRules: string[];
 }
@@ -134,10 +158,184 @@ export const SYNTHETIC_QA_PERSONAS: SyntheticQaPersona[] = [
   },
 ];
 
+export const PREMIUM_QUALITY_LOOP_MODULES: PremiumQualityLoopModule[] = [
+  {
+    id: "landing_premium",
+    module: "Landing",
+    cadence: "weekly",
+    ownerAgent: "qa_sintetico",
+    surfaces: ["artifacts/studyai/src/pages/Landing.tsx", "/", "/pricing"],
+    evidenceSources: ["landing audit", "CTA hierarchy", "mobile/desktop screenshot", "conversion/admin metrics"],
+    dailyChecklist: [
+      "Sem promessa de nota, aprovação ou resultado garantido",
+      "CTA principal e CTA institucional continuam distintos",
+      "Tiagão aparece como ponto de confiança, não como feature genérica",
+    ],
+    weeklyChecklist: [
+      "Revisar primeira dobra em mobile e desktop",
+      "Validar claims, preços, depoimentos e provas com evidência auditável",
+      "Conferir se módulos aparecem como prova de capacidade e não como lista concorrente",
+    ],
+    metrics: ["clique CTA principal", "clique CTA institucional", "cadastro iniciado", "bounce percebido no hero"],
+    acceptanceCriteria: [
+      "Proposta entendida em até 5 segundos",
+      "Nenhum claim sem fonte ou marcado como piloto",
+      "Mobile não exige scroll excessivo para CTA primário",
+    ],
+  },
+  {
+    id: "home_premium",
+    module: "Home",
+    cadence: "daily",
+    ownerAgent: "qa_sintetico",
+    surfaces: ["artifacts/studyai/src/pages/Home.tsx", "/app"],
+    evidenceSources: ["missão recomendada", "localStorage error review mission", "activity/user metrics"],
+    dailyChecklist: [
+      "Existe uma próxima ação clara acima da dobra",
+      "Busca/upload inline não abre o Tiagão sem ação explícita",
+      "Missão do Caderno de Erros tem prioridade quando recente",
+    ],
+    weeklyChecklist: [
+      "Validar estados vazio/loading/erro/sucesso em viewport mobile",
+      "Conferir se Home não virou dashboard pesado",
+      "Revisar continuidade entre Home, Notebook, Simulado e Caderno",
+    ],
+    metrics: ["missão iniciada", "cliques até próxima ação", "abandono da Home", "uso do Tiagão a partir da missão"],
+    acceptanceCriteria: [
+      "Aluno identifica a próxima ação sem abrir menu",
+      "Tiagão segue acessível por voz/texto",
+      "Cards secundários não competem com a missão principal",
+    ],
+  },
+  {
+    id: "notebook_rag_premium",
+    module: "Notebook RAG",
+    cadence: "daily",
+    ownerAgent: "qa_sintetico",
+    surfaces: ["artifacts/studyai/src/pages/Notebook.tsx", "/api/notebook", "/api/rag-multi"],
+    evidenceSources: ["notebook_material_generated", "notebook_feedback", "hermes_notebook_rag", "content gaps"],
+    dailyChecklist: [
+      "Material premium tem objetivo, fonte/evidência, exemplos e checkpoint",
+      "Preview e exportação preservam visual, imagens, tabelas e quebras",
+      "Feedback negativo ou fallback gera sinal Hermes auditável",
+    ],
+    weeklyChecklist: [
+      "Gerar apresentação real e revisar 3 slides de desenvolvimento",
+      "Exportar PDF/print e conferir visual estruturado",
+      "Comparar lacunas do índice com feedback negativo recente",
+    ],
+    metrics: ["notebook_material_generated", "notebook_feedback negativo", "visual slots resolvidos", "contentIndex.contentGaps"],
+    acceptanceCriteria: [
+      "Nenhum slide de conteúdo fica só em título + bullets em fundo vazio",
+      "Fonte aparece quando documento/RAG influencia o material",
+      "Critérios premium aparecem no payload Hermes quando há falha",
+    ],
+  },
+  {
+    id: "simulado_premium",
+    module: "Simulado",
+    cadence: "daily",
+    ownerAgent: "qa_sintetico",
+    surfaces: ["artifacts/studyai/src/pages/SimuladoEnem.tsx", "/api/simulado-enem", "/api/enem-bank"],
+    evidenceSources: ["simulado_results", "simulado_started/completed", "draft de revisão de erro"],
+    dailyChecklist: [
+      "Questões têm enunciado, alternativas, gabarito e explicação consistentes",
+      "Resultado vira análise por habilidade/erro e próxima missão",
+      "Fluxo para Caderno de Erros não exige copiar texto manualmente",
+    ],
+    weeklyChecklist: [
+      "Rodar simulado curto com erro proposital",
+      "Validar análise premium, envio ao Caderno e prompt de revisão do Tiagão",
+      "Conferir métricas de conclusão e abandono por etapa",
+    ],
+    metrics: ["simuladosPeriodo", "taxa de conclusão", "erros enviados ao Caderno", "acurácia por área"],
+    acceptanceCriteria: [
+      "Aluno recebe feedback explicativo ao finalizar",
+      "Rascunho de erro inclui tipo, causa provável, habilidade/matéria e próximo passo",
+      "Falha de banco não bloqueia toda a jornada",
+    ],
+  },
+  {
+    id: "tiagao_premium",
+    module: "Tiagao",
+    cadence: "daily",
+    ownerAgent: "qa_sintetico",
+    surfaces: ["artifacts/studyai/src/components/VoiceProfessor.tsx", "/api/chat", "/api/math", "/api/videos"],
+    evidenceSources: ["tiagao_sessions", "tiagao_actions_log", "modo revisar erro", "eventos de navegação"],
+    dailyChecklist: [
+      "Tiagão reconhece contexto antes de resolver",
+      "Modo revisar erro usa matéria, causa provável e próximo passo",
+      "Ações no app só acontecem por comando claro do aluno",
+    ],
+    weeklyChecklist: [
+      "Testar dúvida rápida, plano, revisar erro e estudar material",
+      "Validar voz/texto em mobile",
+      "Conferir se nenhum prompt interno Hermes vaza para o aluno",
+    ],
+    metrics: ["resolução da dúvida", "sessões Tiagão", "ações aceitas", "fallback/erro de voz"],
+    acceptanceCriteria: [
+      "Resposta é verificável e adequada ao nível",
+      "Tiagão permanece central, mas não sequestra busca/upload inline",
+      "A navegação proposta é reversível e explícita",
+    ],
+  },
+  {
+    id: "caderno_erros_premium",
+    module: "Caderno de Erros",
+    cadence: "daily",
+    ownerAgent: "qa_sintetico",
+    surfaces: ["artifacts/studyai/src/pages/Caderno.tsx", "artifacts/studyai/src/lib/error-review.ts", "/caderno"],
+    evidenceSources: ["caderno_notes", "studyai:hermes-learning-signal", "error review draft/mission"],
+    dailyChecklist: [
+      "Rascunho importado mostra erro, causa, quantidade e próxima missão",
+      "Salvar nota preserva histórico sem perder recomendação Hermes",
+      "Home consegue consumir missão recente como próxima ação",
+    ],
+    weeklyChecklist: [
+      "Executar Simulado -> Caderno -> salvar -> Home -> Tiagão revisar erro",
+      "Conferir linguagem de reparo sem culpa e com foco em treino",
+      "Validar persistência estruturada quando schema/API existir",
+    ],
+    metrics: ["notas de revisão criadas", "missões de erro iniciadas", "revisões concluídas", "erros recorrentes"],
+    acceptanceCriteria: [
+      "Aluno entende o que errou, por quê e qual treino fazer",
+      "Tiagão recebe prompt específico de revisão",
+      "Nada é alterado automaticamente sem ação do aluno/admin",
+    ],
+  },
+];
+
 export const SYNTHETIC_QA_JOURNEYS: SyntheticQaJourney[] = [
+  {
+    id: "premium_quality_loop",
+    titulo: "Hermes monitora qualidade premium multi-módulo",
+    module: "Premium quality loop",
+    personas: ["aluno_fundamental", "aluno_medio_enem", "vestibulando_concurseiro", "professor", "gestor_instituicao"],
+    superficies: [
+      "Landing",
+      "Home",
+      "Notebook RAG",
+      "Simulado",
+      "Tiagao",
+      "Caderno de Erros",
+    ],
+    checklist: [
+      "Cada recomendação identifica módulo, evidência, problema, mudança, métrica e critérios de aceite",
+      "Checklist diário cobre módulos de uso recorrente sem acionar correção destrutiva",
+      "Checklist semanal exige QA manual das jornadas premium ponta a ponta",
+      "Módulos sem telemetria suficiente viram lacuna de observabilidade, não métrica inventada",
+    ],
+    metricas: [
+      "recomendações com module preenchido",
+      "lacunas de observabilidade por módulo",
+      "QA manual diário/semanal concluído",
+      "regressões premium abertas/fechadas",
+    ],
+  },
   {
     id: "aluno_plano_estudo",
     titulo: "Aluno pede plano de estudo",
+    module: "Home",
     personas: ["aluno_fundamental", "aluno_medio_enem", "vestibulando_concurseiro"],
     superficies: ["/api/trilha", "/api/studyai", "/api/chat"],
     checklist: [
@@ -151,6 +349,7 @@ export const SYNTHETIC_QA_JOURNEYS: SyntheticQaJourney[] = [
   {
     id: "aluno_simulado_questao",
     titulo: "Aluno faz simulado ou questão ENEM",
+    module: "Simulado",
     personas: ["aluno_medio_enem", "vestibulando_concurseiro"],
     superficies: ["/api/simulado", "/api/simulado-enem", "/api/enem-bank"],
     checklist: [
@@ -165,6 +364,7 @@ export const SYNTHETIC_QA_JOURNEYS: SyntheticQaJourney[] = [
   {
     id: "tiagao_duvida_voz_texto",
     titulo: "Aluno usa Tiagão por voz/texto para tirar dúvida",
+    module: "Tiagao",
     personas: ["aluno_fundamental", "aluno_medio_enem", "vestibulando_concurseiro"],
     superficies: ["/api/chat", "/api/math", "/api/videos"],
     checklist: [
@@ -178,6 +378,7 @@ export const SYNTHETIC_QA_JOURNEYS: SyntheticQaJourney[] = [
   {
     id: "notebook_rag_lousa",
     titulo: "Aluno usa notebook/RAG ou lousa",
+    module: "Notebook RAG",
     personas: ["aluno_medio_enem", "vestibulando_concurseiro", "professor"],
     superficies: ["/api/notebook", "/api/rag-multi", "/api/board", "/api/aula-ia"],
     checklist: [
@@ -191,6 +392,20 @@ export const SYNTHETIC_QA_JOURNEYS: SyntheticQaJourney[] = [
       "Fallback é claro quando não há fonte suficiente",
     ],
     metricas: ["documentos indexados", "aulas pendentes", "erros de RAG", "notebook_material_generated", "notebook_feedback", "visual slots resolvidos"],
+  },
+  {
+    id: "caderno_erros_revisao",
+    titulo: "Aluno transforma erro em revisão no Caderno",
+    module: "Caderno de Erros",
+    personas: ["aluno_medio_enem", "vestibulando_concurseiro"],
+    superficies: ["/caderno", "artifacts/studyai/src/pages/Caderno.tsx", "artifacts/studyai/src/lib/error-review.ts"],
+    checklist: [
+      "Rascunho do simulado preserva tipo de erro, causa provável, matéria/habilidade e próxima missão",
+      "Caderno mostra contexto premium antes de salvar",
+      "Salvar nota emite sinal Hermes e mantém histórico do aluno",
+      "Home prioriza a missão recente sem esconder Tiagão",
+    ],
+    metricas: ["notas de revisão criadas", "missões de erro iniciadas", "revisões concluídas"],
   },
   {
     id: "professor_gestor_relatorios",
@@ -208,6 +423,7 @@ export const SYNTHETIC_QA_JOURNEYS: SyntheticQaJourney[] = [
   {
     id: "admin_hermes_review",
     titulo: "Admin revisa sugestões Hermes",
+    module: "Admin Hermes",
     personas: ["gestor_instituicao"],
     superficies: ["/api/agents/hermes/status", "/api/agents/inbox", "Admin Hermes"],
     checklist: [
@@ -229,13 +445,23 @@ const SAFETY_RULES = [
 
 const ROUTE_INVENTORY: SyntheticQaSnapshot["routeInventory"] = [
   {
+    surface: "Landing premium",
+    routes: ["/", "/pricing", "artifacts/studyai/src/pages/Landing.tsx"],
+    personaHints: ["aluno_fundamental", "aluno_medio_enem", "vestibulando_concurseiro", "gestor_instituicao"],
+  },
+  {
+    surface: "Home centro de comando",
+    routes: ["/app", "artifacts/studyai/src/pages/Home.tsx"],
+    personaHints: ["aluno_fundamental", "aluno_medio_enem", "vestibulando_concurseiro"],
+  },
+  {
     surface: "Aluno/Tiagão",
     routes: ["/api/chat", "/api/studyai", "/api/math", "/api/videos"],
     personaHints: ["aluno_fundamental", "aluno_medio_enem", "vestibulando_concurseiro"],
   },
   {
     surface: "Simulados e questões",
-    routes: ["/api/simulado", "/api/simulado-adaptativo", "/api/simulado-enem", "/api/enem-bank"],
+    routes: ["/api/simulado", "/api/simulado-adaptativo", "/api/simulado-enem", "/api/enem-bank", "artifacts/studyai/src/pages/SimuladoEnem.tsx"],
     personaHints: ["aluno_medio_enem", "vestibulando_concurseiro"],
   },
   {
@@ -247,6 +473,11 @@ const ROUTE_INVENTORY: SyntheticQaSnapshot["routeInventory"] = [
     surface: "Professor e instituição",
     routes: ["/api/professor", "/api/teacher", "/api/institution", "/api/analytics"],
     personaHints: ["professor", "gestor_instituicao"],
+  },
+  {
+    surface: "Caderno de Erros",
+    routes: ["/caderno", "artifacts/studyai/src/pages/Caderno.tsx", "artifacts/studyai/src/lib/error-review.ts"],
+    personaHints: ["aluno_medio_enem", "vestibulando_concurseiro"],
   },
   {
     surface: "Admin Hermes",
@@ -263,9 +494,16 @@ const TABLE_SIGNAL_CANDIDATES = [
   "hermes_acoes_proativas",
   "hermes_admin_inbox",
   "hermes_tarefas",
+  "activity_events",
+  "daily_metrics",
   "knowledge_documents",
   "board_lessons",
   "notebooks",
+  "caderno_notes",
+  "tiagao_sessions",
+  "tiagao_actions_log",
+  "generated_content",
+  "material_style_events",
   "teacher_content",
   "institution_classes",
 ] as const;
@@ -348,6 +586,17 @@ export async function buildSyntheticQaSnapshot(periodoDias = 7): Promise<Synthet
     contentIndex,
     tableSignals,
     routeInventory: ROUTE_INVENTORY,
+    premiumQualityLoop: {
+      cadence: {
+        daily:
+          "Rodar via daily-learn e revisar módulos de uso recorrente: Home, Notebook RAG, Simulado, Tiagão e Caderno de Erros.",
+        weekly:
+          "Executar checklist manual ponta a ponta em Landing, Home, Notebook RAG, Simulado, Tiagão e Caderno de Erros antes de release premium.",
+        guardrail:
+          "Hermes só recomenda, cria descoberta/inbox/tarefa de triagem; não aplica autofix nem mutação destrutiva em produção.",
+      },
+      modules: PREMIUM_QUALITY_LOOP_MODULES,
+    },
     pedagogicalMaterialStandard: PREMIUM_MATERIAL_STANDARD_SUMMARY,
     safetyRules: SAFETY_RULES,
   };
@@ -355,6 +604,17 @@ export async function buildSyntheticQaSnapshot(periodoDias = 7): Promise<Synthet
 
 function findJourney(journeyId: string): SyntheticQaJourney | undefined {
   return SYNTHETIC_QA_JOURNEYS.find((journey) => journey.id === journeyId);
+}
+
+function resolveRecommendationModule(journey: SyntheticQaJourney): string | undefined {
+  return (
+    journey.module ??
+    PREMIUM_QUALITY_LOOP_MODULES.find((module) =>
+      journey.superficies.some((surface) =>
+        module.surfaces.includes(surface) || module.module.toLowerCase() === surface.toLowerCase(),
+      ),
+    )?.module
+  );
 }
 
 function normalizeSeverity(value: unknown): SyntheticQaSeverity {
@@ -377,6 +637,7 @@ function fallbackRecommendationFor(
   return {
     agentId: "qa_sintetico",
     area: "qa_sintetico",
+    module: resolveRecommendationModule(journey),
     targetSurface: journey.superficies.join(", "),
     observedState: `Auditoria sintética ${journey.titulo} para ${personaId}; período ${snapshot.periodoDias}d.`,
     evidence: JSON.stringify({
@@ -385,6 +646,11 @@ function fallbackRecommendationFor(
       platformMetrics: snapshot.platformMetrics,
       contentGaps: snapshot.contentIndex.contentGaps.slice(0, 5),
       pedagogicalMaterialStandard: snapshot.pedagogicalMaterialStandard,
+      premiumQualityLoop: snapshot.premiumQualityLoop.modules.map((module) => ({
+        module: module.module,
+        cadence: module.cadence,
+        evidenceSources: module.evidenceSources,
+      })),
     }),
     problemOpportunity:
       "A jornada precisa de validação contínua por persona para detectar regressões de qualidade, usabilidade e conteúdo.",
@@ -543,6 +809,16 @@ async function persistSyntheticQaFinding(
         platformMetrics: snapshot.platformMetrics,
         contentGaps: snapshot.contentIndex.contentGaps.slice(0, 8),
         pedagogicalMaterialStandard: snapshot.pedagogicalMaterialStandard,
+        premiumQualityLoop: {
+          daily: snapshot.premiumQualityLoop.cadence.daily,
+          weekly: snapshot.premiumQualityLoop.cadence.weekly,
+          modules: snapshot.premiumQualityLoop.modules.map((module) => ({
+            module: module.module,
+            cadence: module.cadence,
+            metrics: module.metrics,
+            acceptanceCriteria: module.acceptanceCriteria,
+          })),
+        },
       },
     },
     finding.recommendation,
@@ -603,6 +879,10 @@ export async function runSyntheticQaAudit(opts: {
             "Você é o agente qa_sintetico do StudyAI.",
             "Simule especialistas e usuários reais a partir de personas, jornadas, métricas e snapshots estruturados.",
             "Avalie qualidade de produto, performance percebida, usabilidade, bugs prováveis e qualidade pedagógica/conteúdo.",
+            "Use premiumQualityLoop para monitorar Landing, Home, Notebook RAG, Simulado, Tiagao e Caderno de Erros já tocados nesta fase.",
+            "Cada finding precisa preencher recommendation.module quando a recomendação mirar um desses módulos.",
+            "Toda recomendação deve conter módulo, evidência, problema/oportunidade, mudança sugerida, métrica de sucesso e critérios de aceite.",
+            "Use a cadência diária/semanal apenas como contexto de triagem; não crie autofix nem ação destrutiva.",
             "Use o padrão premium de material pedagógico do snapshot como rubrica para conteúdo gerado, importado ou curado.",
             "Não use navegador. Não invente métricas. Não proponha mutação destrutiva de dados/conteúdo de produção.",
             "Retorne JSON estrito: { resumo: string, findings: [{ journeyId, personaId, severity: 'baixa'|'media'|'alta', summary, shouldCreateTask?: boolean, taskDescription?: string, recommendation }] }.",

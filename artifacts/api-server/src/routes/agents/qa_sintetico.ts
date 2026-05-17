@@ -4,6 +4,7 @@ import { hermesMemoriaInteracaoTable } from "@workspace/db/schema";
 import { requireAuth } from "../../middlewares/requireAuth";
 import { requireAdmin } from "../../lib/hermes/requireAdmin";
 import {
+  PREMIUM_QUALITY_LOOP_MODULES,
   SYNTHETIC_QA_JOURNEYS,
   SYNTHETIC_QA_PERSONAS,
   runSyntheticQaAudit,
@@ -22,6 +23,13 @@ router.get("/catalogo", requireAuth, requireAdmin, async (_req: Request, res: Re
     agent: "qa_sintetico",
     personas: SYNTHETIC_QA_PERSONAS,
     journeys: SYNTHETIC_QA_JOURNEYS,
+    premiumQualityLoop: {
+      modules: PREMIUM_QUALITY_LOOP_MODULES,
+      cadence: {
+        daily: "daily-learn revisa módulos recorrentes sem autofix destrutivo.",
+        weekly: "auditoria manual ponta a ponta antes de release premium.",
+      },
+    },
     pedagogicalMaterialStandard: PREMIUM_MATERIAL_STANDARD_SUMMARY,
     guardrails: [
       "Não altera dados ou conteúdo de produção automaticamente.",
@@ -92,6 +100,7 @@ router.post("/executar-auditoria", requireAuth, requireAdmin, async (req: Reques
         platformMetrics: result.snapshot.platformMetrics,
         contentGaps: result.snapshot.contentIndex.contentGaps,
         pedagogicalMaterialStandard: result.snapshot.pedagogicalMaterialStandard,
+        premiumQualityLoop: result.snapshot.premiumQualityLoop,
         tableSignals: result.snapshot.tableSignals,
       },
     });

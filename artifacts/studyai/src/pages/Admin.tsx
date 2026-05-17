@@ -189,7 +189,7 @@ type HermesInboxItem = {
   payload: Record<string, unknown> | null; lida: boolean; createdAt: string;
 };
 type HermesRecommendation = {
-  agentId?: string; area?: string; targetSurface?: string; observedState?: string;
+  agentId?: string; area?: string; module?: string; targetSurface?: string; observedState?: string;
   evidence?: unknown; problemOpportunity?: unknown; recommendedChange?: unknown;
   expectedImpact?: unknown; confidence?: unknown; successMetric?: unknown;
   implementationNotes?: unknown; acceptanceCriteria?: unknown;
@@ -370,6 +370,7 @@ function HermesRecommendationDetails({ recommendation }: { recommendation: Herme
   if (!recommendation) return null;
 
   const fields: Array<[string, unknown]> = [
+    ["Módulo", recommendation.module],
     ["Superfície", recommendation.targetSurface],
     ["Evidência", recommendation.observedState || recommendation.evidence],
     ["Problema/oportunidade", recommendation.problemOpportunity],

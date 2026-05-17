@@ -18,7 +18,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - **Notebook/RAG multimodal:** primeira passada de UX, exportacao e telemetria de qualidade Hermes foi concluida no commit `01857b24`; producao ja respondeu `/api/healthz` no commit `44daf83`, portanto `01857b24` ou mais novo esta publicado.
 - **Notebook apresentacoes premium:** correcao de apresentacoes publicada; producao respondeu `/api/healthz` com `d1270af`, equivalente ao commit `d1270af2` de apresentacoes premium.
 - **Simulado ENEM premium:** existe um corte inicial em `44daf83`; apos confirmacao do deploy `d1270af2`, o fluxo pode alimentar o Caderno de Erros premium em fatias pequenas.
-- **Caderno de Erros premium:** corte inicial em andamento: simulado gera rascunho estruturado com tipo/causa de erro, Caderno organiza o rascunho e Home prioriza a revisao como proxima acao.
+- **Caderno de Erros premium:** corte inicial publicado em producao no commit `bb2ea8f`: simulado gera rascunho estruturado com tipo/causa de erro, Caderno organiza o rascunho e Home prioriza a revisao como proxima acao.
 
 ## Tickets em execucao
 
@@ -98,7 +98,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 
 ### F2-01 Caderno de erros premium
 
-**Status:** primeira fatia implementada; typecheck focado concluido; pendente QA manual e rollout.
+**Status:** primeira fatia implementada, commitada e publicada; pendente QA manual.
 
 **Objetivo:** transformar erros do simulado em revisao acionavel, com causa provavel, habilidade, proxima missao e sinal Hermes.
 
@@ -143,6 +143,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [x] Priorizar revisao de erro recente na Home como proxima melhor acao.
 - [x] Emitir sinal local Hermes com evento, metrica e recomendacao.
 - [x] Rodar typecheck focado do app sem erro.
+- [x] Confirmar deploy via `/api/healthz` no commit `bb2ea8f`.
 - [ ] QA manual: simulado curto com erro -> enviar ao caderno -> salvar nota -> voltar para Home e conferir missao de revisao.
 
 ### Produto e UX

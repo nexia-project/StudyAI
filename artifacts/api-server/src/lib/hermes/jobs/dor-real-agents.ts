@@ -343,29 +343,91 @@ export const HERMES_DOR_REAL_AGENT_CATALOG: HermesDorRealAgentCatalogItem[] = [
     priority: 8,
     name: "UX/Product Auditor",
     productRole: "admin",
-    status: "existing",
-    responsibility: "Auditar friccao, clareza de CTA e jornadas por papel.",
-    observedSignals: ["hierarquia visual", "rotas duplicadas", "estados vazios"],
-    evidence: ["ux_layout", "qa_sintetico", "App Shell"],
-    metrics: ["cliques ate acao", "abandono", "tarefas concluidas"],
-    actions: ["abrir recomendacao UX", "pedir QA manual mobile"],
-    safetyBoundaries: ["nao remove rota funcional sem validacao"],
-    adminOutput: "Roadmap/TODO apos primeira leva.",
-    overlaps: ["ux_layout", "qa_sintetico"],
+    status: "new",
+    responsibility:
+      "Auditar friccao de produto, clareza de CTA, descoberta de funcionalidades e jornadas por papel sem repetir a auditoria landing-only.",
+    observedSignals: [
+      "telas/fluxos confusos",
+      "fluxos abandonados",
+      "botoes unused/hidden",
+      "menu/rotas duplicadas",
+      "texto excessivo",
+      "estados vazio/loading/erro fracos",
+      "risco de layout mobile",
+      "feedback negativo por modulo",
+    ],
+    evidence: ["qa_sintetico.premiumQualityLoop", "ux_layout.landing_only", "activity_events", "App Shell"],
+    metrics: [
+      "cliques ate acao",
+      "taxa de abandono por fluxo",
+      "uso de CTA por modulo",
+      "rotas/menu duplicados resolvidos",
+      "feedback negativo triado",
+      "QA mobile aprovado",
+    ],
+    actions: [
+      "abrir recomendacao UX estruturada",
+      "pedir QA manual mobile por modulo",
+      "priorizar simplificacao de menu/CTA",
+      "pedir instrumentacao quando faltar sinal",
+    ],
+    safetyBoundaries: [
+      "nao remove rota funcional sem validacao",
+      "nao esconde CTA principal sem experimento ou QA",
+      "nao inventa abandono quando activity_events esta ausente",
+      "nao executa autofix de layout em producao",
+    ],
+    adminOutput: "Descoberta/inbox Hermes com recomendacao estruturada de UX/produto por modulo.",
+    overlaps: ["qa_sintetico.premiumQualityLoop", "ux_layout.landing_only", "activity_events"],
   },
   {
     id: "content_gap_cqo_avancado",
     priority: 9,
     name: "Content Gap/CQO avancado",
     productRole: "admin",
-    status: "existing",
-    responsibility: "Priorizar lacunas de conteudo por demanda, risco e cobertura.",
-    observedSignals: ["contentGaps", "postulados", "demanda por materia"],
-    evidence: ["cqo_conteudo", "knowledge-index"],
-    metrics: ["coverage ratio", "lacunas fechadas", "qualidade por materia"],
-    actions: ["priorizar ingestao/curadoria", "abrir plano CQO"],
-    safetyBoundaries: ["nao publica conteudo sem revisao"],
-    adminOutput: "Roadmap/TODO apos primeira leva.",
+    status: "new",
+    responsibility:
+      "Priorizar lacunas de conteudo por demanda real, cobertura BNCC/ENEM, fonte, qualidade e revisao humana.",
+    observedSignals: [
+      "topicos com demanda e sem conteudo/postulados",
+      "cobertura BNCC/ENEM ausente ou fraca",
+      "material com qualidade baixa",
+      "conteudo sem fonte",
+      "topico popular com material fraco",
+      "exercicios/exemplos/checkpoints ausentes",
+      "material gerado antigo sem revisao",
+    ],
+    evidence: [
+      "cqo_conteudo",
+      "knowledge-index",
+      "generated_content.payload",
+      "knowledge_documents.metadata/tags/source_file",
+      "knowledge_base.quality_score/access_count",
+      "activity_events",
+      "user_profile_memory.topicos_frequentes",
+      "enem_questions",
+    ],
+    metrics: [
+      "postuladoCoverageRatio",
+      "lacunas priorizadas por demanda",
+      "materiais com fonte",
+      "materiais com exercicio/exemplo/checkpoint",
+      "materiais revisados/aprovados",
+      "cobertura BNCC/ENEM",
+    ],
+    actions: [
+      "gerar/curar conteudo com fonte",
+      "abrir tarefa de revisao humana",
+      "priorizar ingestao de postulados/BNCC/ENEM",
+      "alertar professor/admin",
+      "medir aceite por lacuna fechada",
+    ],
+    safetyBoundaries: [
+      "nao publica conteudo sem revisao",
+      "nao inventa fonte, habilidade BNCC/ENEM ou score",
+      "nao regenera material automaticamente",
+    ],
+    adminOutput: "Descoberta/inbox Hermes com lacunas priorizadas, acoes, metrica e criterios de aceite.",
     overlaps: ["cqo_conteudo", "knowledge-index"],
   },
   {
@@ -721,6 +783,411 @@ function providerBillingConfig(provider: string): { runtimeConfigured: boolean; 
     runtimeConfigured: false,
     billingConfigured: false,
     action: `Mapear runtime e billing do provider ${provider}.`,
+  };
+}
+
+type UxActivityFunnelSignal = {
+  flow: string;
+  started: number;
+  completed: number;
+  abandoned: number;
+  completionRate: number | null;
+  eventTypes: string[];
+};
+
+type UxDuplicateRouteSignal = {
+  route: string;
+  aliases: string[];
+  risk: string;
+  action: string;
+};
+
+type UxHiddenCtaSignal = {
+  surface: string;
+  signal: string;
+  risk: string;
+  action: string;
+};
+
+type UxNegativeFeedbackSignal = {
+  module: string;
+  negativeSignals: number;
+  eventTypes: string[];
+};
+
+const UX_STATIC_PRODUCT_SIGNALS = {
+  confusingScreensOrFlows: [
+    {
+      module: "Home",
+      signal: "Home concentra busca/upload, missao, Tiagao e cards secundarios; qa_sintetico exige proxima acao clara acima da dobra.",
+      action: "Validar em mobile se a missao principal aparece antes dos cards secundarios e se busca/upload nao sequestra o Tiagao.",
+    },
+    {
+      module: "Simulado",
+      signal: "Rotas legadas /simulado, /simulado-adaptativo e /simulado-enem coexistem com redirects/avisos.",
+      action: "Medir entrada por rota e manter uma CTA primaria para iniciar/concluir simulado.",
+    },
+    {
+      module: "Notebook RAG",
+      signal: "Notebook, Base de conhecimento, Aula com Professor, Lousa e Tutor IA aparecem próximos no acervo.",
+      action: "Explicitar quando usar cada ferramenta e medir clique ate material gerado.",
+    },
+  ],
+  hiddenOrUnusedButtons: [
+    {
+      surface: "AppNav.tsx",
+      signal: "ModeSwitcher e MobileModeSection existem, mas nao aparecem no JSX principal; modo professor depende de rota e pode ficar escondido no menu global.",
+      risk: "Professor pode cair em navegacao de aluno e nao descobrir Notebook do Professor, Historico docente ou Tiagao Professor.",
+      action: "Decidir se o seletor de modo volta ao nav ou se /professor deve forcar menu professor; validar antes de remover qualquer item.",
+    },
+    {
+      surface: "Mobile AppNav",
+      signal: "Mobile exibe hamburger, quick tabs horizontais e bottom nav para os mesmos atalhos principais.",
+      risk: "Aluno pode ver CTAs duplicados competindo por atencao em viewport pequeno.",
+      action: "Rodar QA mobile com 360px e reduzir duplicacao visual se a proxima acao ficar abaixo da dobra.",
+    },
+  ],
+  duplicateRoutes: [
+    {
+      route: "pricing",
+      aliases: ["/pricing", "/app/pricing"],
+      risk: "Duas entradas para preco podem fragmentar evento de conversao se a origem nao for marcada.",
+      action: "Manter alias apenas com tracking de origem ou consolidar CTA em um destino canonico.",
+    },
+    {
+      route: "simulado",
+      aliases: ["/simulado-enem", "/simulado", "/simulado-adaptativo"],
+      risk: "Aluno pode alternar entre simulado atual e rotas legadas sem entender qual fluxo e principal.",
+      action: "Medir origem e revisar copy dos redirects legados apos confirmar uso residual.",
+    },
+    {
+      route: "fazedores",
+      aliases: ["/aluno/fazedores", "/fazedores"],
+      risk: "Atalho legado precisa continuar rastreado para nao parecer funcionalidade duplicada.",
+      action: "Confirmar se /fazedores ainda recebe trafego antes de remover ou ocultar em menus.",
+    },
+  ],
+  excessiveTextRisks: [
+    {
+      module: "Home",
+      signal: "Checklist premium ja alerta para Home nao virar dashboard pesado.",
+      action: "Medir cliques ate a missao principal e revisar textos/cards acima da dobra.",
+    },
+    {
+      module: "Simulado",
+      signal: "Resultado premium agrega radiografia, padroes de erro, TRI pedagogico, Caderno e gabarito.",
+      action: "Validar hierarquia do resultado em mobile para manter CTA de recuperacao visivel.",
+    },
+    {
+      module: "Notebook RAG",
+      signal: "Materiais podem ter preview extenso, fontes, rubrica e exportacao no mesmo fluxo.",
+      action: "Separar leitura, export e feedback em blocos escaneaveis sem esconder feedback negativo.",
+    },
+  ],
+  weakStateRisks: [
+    {
+      module: "Home",
+      signal: "qa_sintetico exige validar estados vazio/loading/erro/sucesso em viewport mobile.",
+      action: "Confirmar Home sem historico, com erro recente e com missao vazia antes do release.",
+    },
+    {
+      module: "Admin Hermes",
+      signal: "Cronograma exige validar loading, falha de status, inbox vazia, descoberta e botoes lida/dispensar.",
+      action: "Rodar QA admin autenticado e manter AppEmpty/AppLoading/AppError como padrao visual.",
+    },
+  ],
+  mobileLayoutRisks: [
+    {
+      module: "App Shell",
+      signal: "Header sticky, nav top, menu lateral mobile e bottom nav dividem o viewport.",
+      action: "Validar sobreposicao em 360x740 nas rotas Home, Notebook, Simulado, Caderno, Professor e Admin.",
+    },
+  ],
+};
+
+function ratePercent(numerator: number, denominator: number): number | null {
+  return denominator > 0 ? Math.round((numerator / denominator) * 100) : null;
+}
+
+function buildUxStructuredActions(signals: Awaited<ReturnType<typeof fetchUxProductAuditorSignals>>) {
+  const topAbandoned = signals.abandonedFlows[0];
+  const topNegative = signals.negativeFeedbackByModule[0];
+  const hidden = signals.hiddenOrUnusedButtons[0];
+  const duplicate = signals.duplicateRoutes[0];
+  const weakState = signals.weakStateRisks[0];
+  const mobile = signals.mobileLayoutRisks[0];
+
+  return [
+    {
+      type: "confusing_flow",
+      target: topAbandoned?.flow ?? signals.confusingScreensOrFlows[0]?.module ?? "Home",
+      module: topAbandoned?.flow ?? signals.confusingScreensOrFlows[0]?.module ?? "Home",
+      evidence: topAbandoned ?? signals.confusingScreensOrFlows,
+      action: topAbandoned
+        ? `Revisar o fluxo ${topAbandoned.flow}: ${topAbandoned.abandoned} abandono(s) estimado(s) e conclusao ${topAbandoned.completionRate ?? 0}%.`
+        : signals.confusingScreensOrFlows[0]?.action,
+      metric: "completion_rate_por_fluxo_e_cliques_ate_cta",
+      acceptanceCriteria: [
+        "Fluxo tem uma CTA primaria visivel acima da dobra",
+        "Evento started/completed ou equivalente mede abandono sem inferencia manual",
+        "Texto secundario nao compete com a proxima acao",
+      ],
+      confidence: topAbandoned ? "alta" : "media",
+    },
+    {
+      type: "hidden_or_unused_cta",
+      target: hidden?.surface ?? "AppNav",
+      module: "App Shell",
+      evidence: signals.hiddenOrUnusedButtons,
+      action: hidden?.action,
+      metric: "uso_de_cta_por_papel_e_descoberta_de_funcionalidade",
+      acceptanceCriteria: [
+        "Professor ve menu coerente com rota/papel",
+        "Mobile nao apresenta tres navegacoes competindo pela mesma acao",
+        "Nenhum botao funcional e removido sem validar trafego e alternativa",
+      ],
+      confidence: "alta",
+    },
+    {
+      type: "duplicate_route_or_menu",
+      target: duplicate?.route ?? "rotas/menu",
+      module: "App Shell",
+      evidence: signals.duplicateRoutes,
+      action: duplicate?.action,
+      metric: "origem_de_rota_canonica_e_reducao_de_alias_confuso",
+      acceptanceCriteria: [
+        "Cada alias legado tem destino canonico e tracking de origem",
+        "Menu mostra um unico nome por tarefa principal",
+        "Redirect legado exibe copy clara quando ainda existir",
+      ],
+      confidence: signals.duplicateRoutes.length > 0 ? "media" : "baixa",
+    },
+    {
+      type: "weak_states_and_mobile",
+      target: weakState?.module ?? mobile?.module ?? "rotas premium",
+      module: weakState?.module ?? mobile?.module ?? "App Shell",
+      evidence: {
+        weakStateRisks: signals.weakStateRisks,
+        mobileLayoutRisks: signals.mobileLayoutRisks,
+      },
+      action: weakState?.action ?? mobile?.action,
+      metric: "qa_mobile_estado_vazio_loading_erro_aprovado",
+      acceptanceCriteria: [
+        "Estados vazio/loading/erro usam acao de recuperacao quando aplicavel",
+        "Header/nav/bottom nav nao cobrem CTA ou formulario em 360px",
+        "Admin Hermes valida inbox vazia, erro de status e detalhe de recomendacao",
+      ],
+      confidence: "media",
+    },
+    {
+      type: "negative_feedback_by_module",
+      target: topNegative?.module ?? "Notebook RAG/Simulado/Tiagao/Caderno",
+      module: topNegative?.module ?? "Notebook RAG",
+      evidence: signals.negativeFeedbackByModule,
+      action: topNegative
+        ? `Triar feedback negativo de ${topNegative.module}: ${topNegative.negativeSignals} sinal(is) em ${signals.periodoDias}d.`
+        : "Persistir feedback negativo por modulo antes de inferir satisfacao.",
+      metric: "feedback_negativo_triagem_por_modulo",
+      acceptanceCriteria: [
+        "Feedback negativo informa modulo, superficie e acao tomada",
+        "Achados viram descoberta/inbox, nao autofix",
+        "Modulo sem tabela/evento explicita lacuna de observabilidade",
+      ],
+      confidence: topNegative ? "media" : "baixa",
+    },
+  ];
+}
+
+async function fetchUxProductAuditorSignals(periodoDias = 14) {
+  const snapshot = await buildSyntheticQaSnapshot(periodoDias);
+  const sinceIso = new Date(Date.now() - periodoDias * 24 * 60 * 60 * 1000).toISOString();
+  const [hasActivityEvents, hasNotebookFeedback] = await Promise.all([
+    safeTableExists("activity_events"),
+    safeTableExists("notebook_feedback"),
+  ]);
+
+  let activityFunnels: UxActivityFunnelSignal[] = [];
+  let negativeFeedbackByModule: UxNegativeFeedbackSignal[] = [];
+
+  if (hasActivityEvents) {
+    try {
+      const res = await db.execute(sql`
+        WITH mapped AS (
+          SELECT
+            CASE
+              WHEN event_type ILIKE '%simulado%' THEN 'Simulado'
+              WHEN event_type ILIKE '%notebook%' OR event_type ILIKE '%rag%' THEN 'Notebook RAG'
+              WHEN event_type ILIKE '%caderno%' OR event_type ILIKE '%error_review%' THEN 'Caderno de Erros'
+              WHEN event_type ILIKE '%tiagao%' OR event_type ILIKE '%chat%' THEN 'Tiagao'
+              WHEN event_type ILIKE '%home%' OR event_type ILIKE '%mission%' THEN 'Home'
+              WHEN event_type ILIKE '%professor%' OR event_type ILIKE '%teacher%' THEN 'Relatorios B2B'
+              ELSE 'Outros'
+            END AS flow,
+            event_type
+          FROM activity_events
+          WHERE created_at >= ${sinceIso}
+        )
+        SELECT
+          flow,
+          COUNT(*) FILTER (
+            WHERE event_type ILIKE '%start%'
+              OR event_type ILIKE '%open%'
+              OR event_type ILIKE '%view%'
+              OR event_type ILIKE '%click%'
+          )::int AS started,
+          COUNT(*) FILTER (
+            WHERE event_type ILIKE '%complete%'
+              OR event_type ILIKE '%finish%'
+              OR event_type ILIKE '%save%'
+              OR event_type ILIKE '%sent%'
+              OR event_type ILIKE '%submit%'
+              OR event_type ILIKE '%generated%'
+          )::int AS completed,
+          ARRAY_AGG(DISTINCT event_type ORDER BY event_type) AS event_types
+        FROM mapped
+        WHERE flow <> 'Outros'
+        GROUP BY flow
+        ORDER BY started DESC, completed ASC
+        LIMIT 10
+      `);
+
+      activityFunnels = res.rows.map((row) => {
+        const started = Number((row as Record<string, unknown>).started ?? 0);
+        const completed = Number((row as Record<string, unknown>).completed ?? 0);
+        return {
+          flow: String((row as Record<string, unknown>).flow ?? "Fluxo"),
+          started,
+          completed,
+          abandoned: Math.max(started - completed, 0),
+          completionRate: ratePercent(completed, started),
+          eventTypes: Array.isArray((row as Record<string, unknown>).event_types)
+            ? ((row as Record<string, unknown>).event_types as unknown[]).map(String)
+            : [],
+        };
+      });
+    } catch {
+      activityFunnels = [];
+    }
+
+    try {
+      const res = await db.execute(sql`
+        WITH mapped AS (
+          SELECT
+            CASE
+              WHEN event_type ILIKE '%simulado%' THEN 'Simulado'
+              WHEN event_type ILIKE '%notebook%' OR event_type ILIKE '%rag%' THEN 'Notebook RAG'
+              WHEN event_type ILIKE '%caderno%' OR event_type ILIKE '%error_review%' THEN 'Caderno de Erros'
+              WHEN event_type ILIKE '%tiagao%' OR event_type ILIKE '%chat%' THEN 'Tiagao'
+              WHEN event_type ILIKE '%home%' OR event_type ILIKE '%mission%' THEN 'Home'
+              WHEN event_type ILIKE '%professor%' OR event_type ILIKE '%teacher%' THEN 'Relatorios B2B'
+              ELSE 'Outros'
+            END AS module,
+            event_type
+          FROM activity_events
+          WHERE created_at >= ${sinceIso}
+            AND (
+              event_type ILIKE '%negative%'
+              OR event_type ILIKE '%dislike%'
+              OR event_type ILIKE '%bad%'
+              OR event_type ILIKE '%fail%'
+              OR event_type ILIKE '%error%'
+              OR event_type ILIKE '%erro%'
+            )
+        )
+        SELECT
+          module,
+          COUNT(*)::int AS negative_signals,
+          ARRAY_AGG(DISTINCT event_type ORDER BY event_type) AS event_types
+        FROM mapped
+        WHERE module <> 'Outros'
+        GROUP BY module
+        ORDER BY negative_signals DESC
+        LIMIT 8
+      `);
+
+      negativeFeedbackByModule = res.rows.map((row) => ({
+        module: String((row as Record<string, unknown>).module ?? "Modulo"),
+        negativeSignals: Number((row as Record<string, unknown>).negative_signals ?? 0),
+        eventTypes: Array.isArray((row as Record<string, unknown>).event_types)
+          ? ((row as Record<string, unknown>).event_types as unknown[]).map(String)
+          : [],
+      }));
+    } catch {
+      negativeFeedbackByModule = [];
+    }
+  }
+
+  const abandonedFlows = activityFunnels
+    .filter((flow) => flow.abandoned > 0 || (flow.started >= 3 && flow.completionRate !== null && flow.completionRate < 70))
+    .sort((a, b) => b.abandoned - a.abandoned || (a.completionRate ?? 101) - (b.completionRate ?? 101));
+
+  const modulesWithoutFeedbackSignals = PREMIUM_QUALITY_LOOP_MODULES.filter((module) =>
+    ["Notebook RAG", "Simulado", "Tiagao", "Caderno de Erros", "Relatorios B2B"].includes(module.module),
+  ).map((module) => ({
+    module: module.module,
+    status:
+      negativeFeedbackByModule.some((feedback) => feedback.module === module.module) || hasNotebookFeedback
+        ? "observable"
+        : "missing_negative_feedback_signal",
+    evidenceSources: module.evidenceSources,
+  }));
+
+  const routeInventoryDuplicates: UxDuplicateRouteSignal[] = [];
+  const routeOwners = new Map<string, string[]>();
+  for (const surface of snapshot.routeInventory) {
+    for (const route of surface.routes) {
+      const owners = routeOwners.get(route) ?? [];
+      owners.push(surface.surface);
+      routeOwners.set(route, owners);
+    }
+  }
+  for (const [route, owners] of routeOwners.entries()) {
+    if (owners.length <= 1) continue;
+    routeInventoryDuplicates.push({
+      route,
+      aliases: owners,
+      risk: "Mesma rota aparece em mais de uma superficie do inventario QA.",
+      action: "Confirmar se e compartilhamento intencional ou duplicacao de menu/entrada.",
+    });
+  }
+
+  const duplicateRoutes = [...UX_STATIC_PRODUCT_SIGNALS.duplicateRoutes, ...routeInventoryDuplicates];
+  const missingInstrumentation = [
+    !hasActivityEvents ? "activity_events ausente: sem abandono, CTA click ou feedback negativo por modulo" : null,
+    !hasNotebookFeedback ? "notebook_feedback ausente: feedback negativo de Notebook depende de eventos alternativos" : null,
+    modulesWithoutFeedbackSignals.some((module) => module.status === "missing_negative_feedback_signal")
+      ? "feedback negativo por modulo incompleto: persistir module/surface/result para Home, Simulado, Tiagao, Caderno e B2B"
+      : null,
+  ].filter((value): value is string => Boolean(value));
+
+  return {
+    generatedAt: new Date().toISOString(),
+    periodoDias,
+    snapshotGeneratedAt: snapshot.generatedAt,
+    premiumModules: snapshot.premiumQualityLoop.modules.map((module) => ({
+      module: module.module,
+      surfaces: module.surfaces,
+      metrics: module.metrics,
+      acceptanceCriteria: module.acceptanceCriteria,
+    })),
+    routeInventory: snapshot.routeInventory,
+    tableSignals: {
+      activityEvents: hasActivityEvents,
+      notebookFeedback: hasNotebookFeedback,
+      hermesAdminInbox: tableSignal(snapshot, "hermes_admin_inbox")?.exists ?? false,
+      hermesDescobertas: tableSignal(snapshot, "hermes_descobertas_globais")?.exists ?? false,
+    },
+    activityFunnels,
+    abandonedFlows,
+    confusingScreensOrFlows: UX_STATIC_PRODUCT_SIGNALS.confusingScreensOrFlows,
+    hiddenOrUnusedButtons: UX_STATIC_PRODUCT_SIGNALS.hiddenOrUnusedButtons,
+    duplicateRoutes,
+    excessiveTextRisks: UX_STATIC_PRODUCT_SIGNALS.excessiveTextRisks,
+    weakStateRisks: UX_STATIC_PRODUCT_SIGNALS.weakStateRisks,
+    mobileLayoutRisks: UX_STATIC_PRODUCT_SIGNALS.mobileLayoutRisks,
+    negativeFeedbackByModule,
+    modulesWithoutFeedbackSignals,
+    missingInstrumentation,
   };
 }
 
@@ -1125,6 +1592,476 @@ async function fetchCustosIaOptimizerSignals(periodoDias = 14) {
         : null,
       !hasAiResponseCache ? "ai_response_cache ausente: sem taxa de cache/reuso/desperdicio" : null,
       !hasActivityEvents ? "activity_events ausente: sem falhas/retries/fallbacks de produto" : null,
+    ].filter((value): value is string => Boolean(value)),
+  };
+}
+
+type ContentDemandSignal = {
+  topic: string;
+  demandScore: number;
+  demandSources: string[];
+  generatedCount: number;
+  postuladoCount: number;
+  knowledgeDocCount: number;
+  hasBnccCoverage: boolean;
+  hasEnemCoverage: boolean;
+};
+
+type WeakMaterialSignal = {
+  id: number;
+  kind: string;
+  title: string;
+  materia: string;
+  createdAt: string | null;
+  qualityScore: number | null;
+  hasSource: boolean;
+  hasExercise: boolean;
+  hasExample: boolean;
+  hasCheckpoint: boolean;
+  humanReviewed: boolean;
+  staleUnreviewed: boolean;
+  reasons: string[];
+};
+
+type KnowledgeBaseQualitySignal = {
+  id: number;
+  title: string;
+  subject: string;
+  qualityScore: number;
+  accessCount: number;
+  source: string;
+};
+
+function normalizeTopicKey(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/\s+/g, " ");
+}
+
+function topicMatchesMateria(topic: string, materia: string): boolean {
+  const left = normalizeTopicKey(topic);
+  const right = normalizeTopicKey(materia);
+  if (!left || !right || right === "sem_materia" || right === "sem matéria") return false;
+  return left === right || left.includes(right) || right.includes(left);
+}
+
+function toNumberOrNull(value: unknown): number | null {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : null;
+}
+
+function addDemandSignal(
+  map: Map<string, { topic: string; demandScore: number; demandSources: Set<string> }>,
+  rawTopic: string | null | undefined,
+  score: number,
+  source: string,
+): void {
+  const topic = rawTopic?.trim();
+  if (!topic || topic === "sem_matéria" || topic === "sem_materia" || score <= 0) return;
+  const key = normalizeTopicKey(topic);
+  const current = map.get(key) ?? { topic, demandScore: 0, demandSources: new Set<string>() };
+  current.demandScore += score;
+  current.demandSources.add(source);
+  map.set(key, current);
+}
+
+async function fetchGeneratedContentWeakSignals(): Promise<WeakMaterialSignal[]> {
+  if (!(await safeTableExists("generated_content"))) return [];
+
+  try {
+    const res = await db.execute(sql`
+      SELECT
+        id,
+        kind,
+        title,
+        COALESCE(NULLIF(TRIM(materia), ''), 'sem_materia') AS materia,
+        created_at::text AS created_at,
+        COALESCE(
+          CASE WHEN payload #>> '{metadata,quality,total}' ~ '^[0-9]+(\\.[0-9]+)?$'
+            THEN (payload #>> '{metadata,quality,total}')::numeric END,
+          CASE WHEN payload #>> '{premiumMetadata,quality,total}' ~ '^[0-9]+(\\.[0-9]+)?$'
+            THEN (payload #>> '{premiumMetadata,quality,total}')::numeric END,
+          CASE WHEN payload #>> '{quality,total}' ~ '^[0-9]+(\\.[0-9]+)?$'
+            THEN (payload #>> '{quality,total}')::numeric END,
+          CASE WHEN payload #>> '{qualityScore}' ~ '^[0-9]+(\\.[0-9]+)?$'
+            THEN (payload #>> '{qualityScore}')::numeric END
+        )::float AS quality_score,
+        (
+          COALESCE(payload #>> '{metadata,humanReviewed}', 'false') = 'true'
+          OR COALESCE(payload #>> '{premiumMetadata,humanReviewed}', 'false') = 'true'
+          OR COALESCE(payload #>> '{humanReviewed}', 'false') = 'true'
+          OR COALESCE(payload #>> '{review,status}', '') IN ('approved', 'aprovado', 'aprovado_premium')
+        ) AS human_reviewed,
+        (
+          payload::text ILIKE '%source%'
+          OR payload::text ILIKE '%fonte%'
+          OR payload::text ILIKE '%citation%'
+          OR payload::text ILIKE '%referenc%'
+        ) AS has_source,
+        (
+          payload::text ILIKE '%exercise%'
+          OR payload::text ILIKE '%exercicio%'
+          OR payload::text ILIKE '%exercício%'
+          OR payload::text ILIKE '%questao%'
+          OR payload::text ILIKE '%questão%'
+          OR payload::text ILIKE '%pratica%'
+          OR payload::text ILIKE '%prática%'
+        ) AS has_exercise,
+        (
+          payload::text ILIKE '%example%'
+          OR payload::text ILIKE '%exemplo%'
+        ) AS has_example,
+        (
+          payload::text ILIKE '%checkpoint%'
+          OR payload::text ILIKE '%verificacao%'
+          OR payload::text ILIKE '%verificação%'
+          OR payload::text ILIKE '%checagem%'
+        ) AS has_checkpoint,
+        created_at < NOW() - INTERVAL '14 days' AS stale
+      FROM generated_content
+      WHERE deleted_at IS NULL
+      ORDER BY created_at DESC
+      LIMIT 250
+    `);
+
+    return res.rows
+      .map((row) => {
+        const item = row as Record<string, unknown>;
+        const qualityScore = toNumberOrNull(item.quality_score);
+        const hasSource = Boolean(item.has_source);
+        const hasExercise = Boolean(item.has_exercise);
+        const hasExample = Boolean(item.has_example);
+        const hasCheckpoint = Boolean(item.has_checkpoint);
+        const humanReviewed = Boolean(item.human_reviewed);
+        const staleUnreviewed = Boolean(item.stale) && !humanReviewed;
+        const reasons = [
+          qualityScore !== null && qualityScore < 60 ? "low_material_quality_score" : null,
+          !hasSource ? "content_without_source" : null,
+          !hasExercise ? "missing_exercises" : null,
+          !hasExample ? "missing_examples" : null,
+          !hasCheckpoint ? "missing_checkpoints" : null,
+          staleUnreviewed ? "stale_unreviewed_generated_material" : null,
+        ].filter((value): value is string => Boolean(value));
+
+        return {
+          id: Number(item.id ?? 0),
+          kind: String(item.kind ?? "material"),
+          title: String(item.title ?? "Sem titulo").slice(0, 160),
+          materia: String(item.materia ?? "sem_materia"),
+          createdAt: (item.created_at as string | null) ?? null,
+          qualityScore,
+          hasSource,
+          hasExercise,
+          hasExample,
+          hasCheckpoint,
+          humanReviewed,
+          staleUnreviewed,
+          reasons,
+        };
+      })
+      .filter((item) => item.reasons.length > 0)
+      .slice(0, 25);
+  } catch {
+    return [];
+  }
+}
+
+async function fetchKnowledgeBaseQualitySignals(): Promise<KnowledgeBaseQualitySignal[]> {
+  if (!(await safeTableExists("knowledge_base"))) return [];
+
+  try {
+    const res = await db.execute(sql`
+      SELECT
+        id,
+        COALESCE(NULLIF(TRIM(title), ''), 'Sem titulo') AS title,
+        COALESCE(NULLIF(TRIM(subject), ''), 'sem_materia') AS subject,
+        COALESCE(quality_score::numeric, 0)::float AS quality_score,
+        COALESCE(access_count, 0)::int AS access_count,
+        source
+      FROM knowledge_base
+      WHERE COALESCE(quality_score::numeric, 0) < 0.6
+         OR COALESCE(access_count, 0) >= 5
+      ORDER BY access_count DESC, quality_score ASC, created_at DESC
+      LIMIT 20
+    `);
+
+    return res.rows.map((row) => {
+      const item = row as Record<string, unknown>;
+      return {
+        id: Number(item.id ?? 0),
+        title: String(item.title ?? "Sem titulo").slice(0, 160),
+        subject: String(item.subject ?? "sem_materia"),
+        qualityScore: Number(item.quality_score ?? 0),
+        accessCount: Number(item.access_count ?? 0),
+        source: String(item.source ?? "nao_informado"),
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+async function fetchPostuladoCoverageByMateria(): Promise<Array<{ materia: string; count: number }>> {
+  if (!(await safeTableExists("knowledge_documents"))) return [];
+
+  try {
+    const res = await db.execute(sql`
+      SELECT
+        COALESCE(NULLIF(TRIM(subject), ''), NULLIF(metadata->>'materia', ''), 'sem_materia') AS materia,
+        COUNT(*)::int AS count
+      FROM knowledge_documents
+      WHERE (is_chunk = false OR is_chunk IS NULL)
+        AND (
+          metadata->>'source' = 'postulado'
+          OR 'postulado' = ANY(COALESCE(tags, '{}'))
+          OR source_file LIKE 'postulado:%'
+        )
+      GROUP BY 1
+      ORDER BY count DESC
+      LIMIT 40
+    `);
+    return res.rows.map((row) => ({
+      materia: String((row as Record<string, unknown>).materia ?? "sem_materia"),
+      count: Number((row as Record<string, unknown>).count ?? 0),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+async function fetchDemandSignalsFromRuntime(): Promise<Map<string, { topic: string; demandScore: number; demandSources: Set<string> }>> {
+  const demand = new Map<string, { topic: string; demandScore: number; demandSources: Set<string> }>();
+
+  if (await safeTableExists("user_profile_memory")) {
+    try {
+      const res = await db.execute(sql`
+        SELECT
+          COALESCE(topic->>'topico', topic->>'topic', topic->>'tema', topic->>'materia') AS topic,
+          SUM(
+            CASE WHEN COALESCE(topic->>'count', topic->>'contador', '1') ~ '^[0-9]+$'
+              THEN COALESCE(topic->>'count', topic->>'contador', '1')::int
+              ELSE 1
+            END
+          )::int AS demand
+        FROM user_profile_memory,
+          LATERAL jsonb_array_elements(COALESCE(topicos_frequentes, '[]'::jsonb)) AS topic
+        GROUP BY 1
+        ORDER BY demand DESC
+        LIMIT 20
+      `);
+      for (const row of res.rows) {
+        const item = row as Record<string, unknown>;
+        addDemandSignal(demand, String(item.topic ?? ""), Number(item.demand ?? 0), "user_profile_memory");
+      }
+    } catch {
+      // Topicos frequentes sao uma fonte oportunistica; se a estrutura divergir, seguimos com outras fontes.
+    }
+  }
+
+  if (await safeTableExists("activity_events")) {
+    try {
+      const res = await db.execute(sql`
+        SELECT
+          COALESCE(
+            NULLIF(metadata->>'query', ''),
+            NULLIF(metadata->>'search', ''),
+            NULLIF(metadata->>'topic', ''),
+            NULLIF(metadata->>'topico', ''),
+            NULLIF(metadata->>'materia', ''),
+            NULLIF(entity_type, '')
+          ) AS topic,
+          COUNT(*)::int AS demand
+        FROM activity_events
+        WHERE created_at >= NOW() - INTERVAL '30 days'
+          AND (
+            event_type ILIKE '%search%'
+            OR event_type ILIKE '%chat%'
+            OR event_type ILIKE '%notebook%'
+            OR event_type ILIKE '%simulado%'
+            OR metadata ? 'query'
+            OR metadata ? 'search'
+            OR metadata ? 'topic'
+            OR metadata ? 'topico'
+            OR metadata ? 'materia'
+          )
+        GROUP BY 1
+        ORDER BY demand DESC
+        LIMIT 30
+      `);
+      for (const row of res.rows) {
+        const item = row as Record<string, unknown>;
+        addDemandSignal(demand, String(item.topic ?? ""), Number(item.demand ?? 0), "activity_events");
+      }
+    } catch {
+      // Ambientes antigos podem nao ter activity_events.
+    }
+  }
+
+  return demand;
+}
+
+async function fetchContentGapCqoAvancadoSignals(periodoDias = 30) {
+  const [contentIndex, runtimeDemand, weakGeneratedMaterials, weakKnowledgeBase, postuladoByMateria, hasEnemQuestions] =
+    await Promise.all([
+      analyzeContentDatabases(),
+      fetchDemandSignalsFromRuntime(),
+      fetchGeneratedContentWeakSignals(),
+      fetchKnowledgeBaseQualitySignals(),
+      fetchPostuladoCoverageByMateria(),
+      safeTableExists("enem_questions"),
+    ]);
+
+  const demand = runtimeDemand;
+  for (const item of contentIndex.keywordStats.topMaterias) {
+    addDemandSignal(demand, item.materia, item.count, "contentIndex.keywordStats");
+  }
+  for (const gap of contentIndex.contentGaps) {
+    addDemandSignal(demand, gap.replace(/\s+\(.+\)$/, ""), 8, "contentIndex.contentGaps");
+  }
+  for (const item of contentIndex.knowledgeBase.bySubject) {
+    addDemandSignal(demand, item.materia, item.count, "knowledge_base.subject");
+  }
+  for (const item of contentIndex.boardLessons.bySubject) {
+    addDemandSignal(demand, item.materia, item.count + contentIndex.boardLessons.ready, "board_lessons.subject");
+  }
+  for (const item of weakKnowledgeBase) {
+    addDemandSignal(demand, item.subject, Math.max(item.accessCount, 1), "knowledge_base.weak_or_popular");
+  }
+
+  const generatedByMateria = contentIndex.generatedContent.byMateria;
+
+  const hasBnccCoverage =
+    contentIndex.knowledgeDocuments.byMateria.some((item) => normalizeTopicKey(item.materia).includes("bncc")) ||
+    weakGeneratedMaterials.some((item) => normalizeTopicKey(`${item.title} ${item.materia}`).includes("bncc"));
+  const enemQuestionsCoverage = { total: 0, byDisciplina: [] as Array<{ disciplina: string; count: number }> };
+  if (hasEnemQuestions) {
+    try {
+      const total = await db.execute(sql`SELECT COUNT(*)::int AS count FROM enem_questions`);
+      const byDisciplina = await db.execute(sql`
+        SELECT COALESCE(NULLIF(TRIM(disciplina), ''), area, 'sem_disciplina') AS disciplina, COUNT(*)::int AS count
+        FROM enem_questions
+        GROUP BY 1
+        ORDER BY count DESC
+        LIMIT 12
+      `);
+      enemQuestionsCoverage.total = Number((total.rows[0] as Record<string, unknown> | undefined)?.count ?? 0);
+      enemQuestionsCoverage.byDisciplina = byDisciplina.rows.map((row) => ({
+        disciplina: String((row as Record<string, unknown>).disciplina ?? "sem_disciplina"),
+        count: Number((row as Record<string, unknown>).count ?? 0),
+      }));
+    } catch {
+      enemQuestionsCoverage.total = 0;
+      enemQuestionsCoverage.byDisciplina = [];
+    }
+  }
+
+  const demandSignals: ContentDemandSignal[] = [...demand.values()]
+    .map((item) => {
+      const generatedCount = generatedByMateria
+        .filter((materia) => topicMatchesMateria(item.topic, materia.materia))
+        .reduce((sum, materia) => sum + materia.count, 0);
+      const postuladoCount = postuladoByMateria
+        .filter((materia) => topicMatchesMateria(item.topic, materia.materia))
+        .reduce((sum, materia) => sum + materia.count, 0);
+      const knowledgeDocCount = contentIndex.knowledgeDocuments.byMateria
+        .filter((materia) => topicMatchesMateria(item.topic, materia.materia))
+        .reduce((sum, materia) => sum + materia.count, 0);
+      const normalized = normalizeTopicKey(item.topic);
+      return {
+        topic: item.topic,
+        demandScore: item.demandScore,
+        demandSources: [...item.demandSources],
+        generatedCount,
+        postuladoCount,
+        knowledgeDocCount,
+        hasBnccCoverage: hasBnccCoverage || normalized.includes("bncc"),
+        hasEnemCoverage:
+          enemQuestionsCoverage.total > 0 &&
+          (normalized.includes("enem") ||
+            enemQuestionsCoverage.byDisciplina.some((disciplina) => topicMatchesMateria(item.topic, disciplina.disciplina))),
+      };
+    })
+    .sort((a, b) => b.demandScore - a.demandScore)
+    .slice(0, 25);
+
+  const topicsWithDemandNoContent = demandSignals.filter(
+    (item) => item.demandScore >= 5 && item.generatedCount === 0 && item.postuladoCount === 0,
+  );
+  const missingBnccCoverage =
+    !hasBnccCoverage ||
+    demandSignals.filter((item) => item.demandScore >= 5 && !item.hasBnccCoverage).slice(0, 8);
+  const missingEnemCoverage =
+    enemQuestionsCoverage.total === 0 ||
+    demandSignals.filter((item) => item.demandScore >= 5 && !item.hasEnemCoverage).slice(0, 8);
+  const lowMaterialQuality = weakGeneratedMaterials.filter((item) =>
+    item.reasons.includes("low_material_quality_score"),
+  );
+  const contentWithoutSource = weakGeneratedMaterials.filter((item) => item.reasons.includes("content_without_source"));
+  const missingPedagogicalBlocks = weakGeneratedMaterials.filter(
+    (item) =>
+      item.reasons.includes("missing_exercises") ||
+      item.reasons.includes("missing_examples") ||
+      item.reasons.includes("missing_checkpoints"),
+  );
+  const staleUnreviewedGeneratedMaterial = weakGeneratedMaterials.filter((item) =>
+    item.reasons.includes("stale_unreviewed_generated_material"),
+  );
+  const popularTopicWithWeakMaterial = demandSignals
+    .filter((topic) => topic.demandScore >= 5)
+    .map((topic) => ({
+      topic,
+      weakMaterials: weakGeneratedMaterials
+        .filter((material) => topicMatchesMateria(topic.topic, material.materia) || topicMatchesMateria(topic.topic, material.title))
+        .slice(0, 3),
+      weakKnowledgeBase: weakKnowledgeBase
+        .filter((item) => topicMatchesMateria(topic.topic, item.subject) || topicMatchesMateria(topic.topic, item.title))
+        .slice(0, 3),
+    }))
+    .filter((item) => item.weakMaterials.length > 0 || item.weakKnowledgeBase.length > 0)
+    .slice(0, 8);
+
+  return {
+    generatedAt: new Date().toISOString(),
+    periodoDias,
+    contentIndex,
+    demandSignals,
+    topicsWithDemandNoContent,
+    missingBnccCoverage,
+    missingEnemCoverage,
+    lowMaterialQuality,
+    contentWithoutSource,
+    popularTopicWithWeakMaterial,
+    missingPedagogicalBlocks,
+    staleUnreviewedGeneratedMaterial,
+    weakGeneratedMaterials,
+    weakKnowledgeBase,
+    enemQuestionsCoverage,
+    tableSignals: {
+      generatedContent: await safeTableExists("generated_content"),
+      knowledgeDocuments: await safeTableExists("knowledge_documents"),
+      knowledgeBase: await safeTableExists("knowledge_base"),
+      activityEvents: await safeTableExists("activity_events"),
+      userProfileMemory: await safeTableExists("user_profile_memory"),
+      enemQuestions: hasEnemQuestions,
+    },
+    missingInstrumentation: [
+      !(await safeTableExists("activity_events"))
+        ? "activity_events ausente: sem busca popular/uso recente por topico"
+        : null,
+      !(await safeTableExists("user_profile_memory"))
+        ? "user_profile_memory ausente: sem topicos frequentes por aluno"
+        : null,
+      !(await safeTableExists("generated_content"))
+        ? "generated_content ausente: sem score/fonte/blocos/revisao de materiais"
+        : null,
+      !(await safeTableExists("knowledge_base"))
+        ? "knowledge_base ausente: sem quality_score/access_count para conteudo curado"
+        : null,
+      enemQuestionsCoverage.total === 0 ? "enem_questions vazio/ausente: cobertura ENEM nao mensuravel por disciplina" : null,
+      !hasBnccCoverage ? "cobertura BNCC nao detectada em knowledge_documents/generated_content" : null,
     ].filter((value): value is string => Boolean(value)),
   };
 }
@@ -2063,6 +3000,353 @@ export async function custosIaOptimizerDailyLearn(): Promise<void> {
       ? {
           tipo: "custos_ia_optimizer",
           titulo: "Custos IA Optimizer encontrou oportunidade de eficiencia",
+          corpo: recommendation.observedState,
+        }
+      : undefined,
+  );
+}
+
+export async function uxProductAuditorDailyLearn(): Promise<void> {
+  const signals = await fetchUxProductAuditorSignals(14);
+  const structuredActions = buildUxStructuredActions(signals);
+  const topAbandoned = signals.abandonedFlows[0];
+  const topNegative = signals.negativeFeedbackByModule[0];
+  const topHidden = signals.hiddenOrUnusedButtons[0];
+  const hasUxRisk =
+    signals.missingInstrumentation.length > 0 ||
+    signals.abandonedFlows.length > 0 ||
+    signals.negativeFeedbackByModule.length > 0 ||
+    signals.hiddenOrUnusedButtons.length > 0 ||
+    signals.duplicateRoutes.length > 0 ||
+    signals.mobileLayoutRisks.length > 0;
+
+  const target =
+    topAbandoned?.flow ??
+    topNegative?.module ??
+    topHidden?.surface ??
+    signals.duplicateRoutes[0]?.route ??
+    "App Shell";
+
+  const observedState = [
+    `${signals.activityFunnels.length} funil(is) de atividade observados em ${signals.periodoDias}d`,
+    topAbandoned
+      ? `${topAbandoned.flow}: ${topAbandoned.abandoned} abandono(s), conclusao ${topAbandoned.completionRate ?? 0}%`
+      : "sem abandono mensuravel ou sem evento started/completed suficiente",
+    `${signals.duplicateRoutes.length} duplicacao(oes) de rota/menu catalogadas`,
+    `${signals.hiddenOrUnusedButtons.length} risco(s) de botao/CTA escondido ou unused`,
+    `${signals.negativeFeedbackByModule.reduce((sum, item) => sum + item.negativeSignals, 0)} feedback(s) negativo(s) por modulo`,
+    `${signals.missingInstrumentation.length} lacuna(s) de observabilidade`,
+  ].join("; ");
+
+  const recommendedChange = topAbandoned
+    ? `Priorizar UX do fluxo ${topAbandoned.flow}: reduzir passos ate a CTA primaria e instrumentar conclusao/abandono com evento claro.`
+    : topHidden
+      ? topHidden.action
+      : signals.duplicateRoutes[0]
+        ? signals.duplicateRoutes[0].action
+        : topNegative
+          ? `Triar feedback negativo de ${topNegative.module} e abrir criterio de aceite por superficie antes de alterar copy/layout.`
+          : "Rodar QA manual mobile das rotas premium e completar eventos de CTA/feedback por modulo antes de inferir conversao.";
+
+  const recommendation: HermesRecommendation = {
+    agentId: "ux_product_auditor",
+    area: "ux/product",
+    module: "App Shell",
+    targetSurface: String(target),
+    observedState,
+    evidence: JSON.stringify({
+      premiumModules: signals.premiumModules,
+      activityFunnels: signals.activityFunnels,
+      abandonedFlows: signals.abandonedFlows,
+      confusingScreensOrFlows: signals.confusingScreensOrFlows,
+      hiddenOrUnusedButtons: signals.hiddenOrUnusedButtons,
+      duplicateRoutes: signals.duplicateRoutes,
+      excessiveTextRisks: signals.excessiveTextRisks,
+      weakStateRisks: signals.weakStateRisks,
+      mobileLayoutRisks: signals.mobileLayoutRisks,
+      negativeFeedbackByModule: signals.negativeFeedbackByModule,
+      modulesWithoutFeedbackSignals: signals.modulesWithoutFeedbackSignals,
+      missingInstrumentation: signals.missingInstrumentation,
+      tableSignals: signals.tableSignals,
+    }),
+    problemOpportunity: hasUxRisk
+      ? "A experiencia premium ja tem shell e estados compartilhados, mas ainda pode perder usuarios por menu/CTA duplicado, modo escondido, fluxo abandonado, excesso de texto ou falta de feedback negativo por modulo."
+      : "A auditoria UX/Product esta observavel no periodo, mas precisa continuar validando mobile, CTA e estados por papel.",
+    recommendedChange,
+    expectedImpact:
+      "Aumentar descoberta de funcionalidades premium, reduzir abandono de fluxo e tornar recomendacoes UX auditaveis por modulo.",
+    confidence:
+      signals.abandonedFlows.length > 0 || signals.hiddenOrUnusedButtons.length > 0
+        ? "alta"
+        : hasUxRisk
+          ? "media"
+          : "baixa",
+    successMetric:
+      "Taxa de conclusao por fluxo, cliques ate CTA primaria, feedback negativo triado por modulo e QA mobile aprovado sem sobreposicao.",
+    implementationNotes:
+      "Este agente compoe qa_sintetico, App Shell e activity_events; ux_layout continua restrito a landing e nao e duplicado aqui.",
+    acceptanceCriteria: [
+      "Recomendacao inclui sinais de telas confusas, abandono, CTA hidden/unused, duplicidade, texto, estados, mobile e feedback por modulo",
+      "Fluxo sem activity_events vira lacuna de instrumentacao, nao taxa inventada",
+      "Mudanca de rota/menu exige QA manual e preserva alias funcional enquanto houver trafego",
+      "Admin recebe descoberta/inbox com evidencia, acao, metrica, aceite, confianca e alvo/modulo",
+    ],
+  };
+
+  await persistPainAgentRecommendation(
+    recommendation,
+    {
+      kind: "dor_real_agent",
+      agentCatalog: "ux_product_auditor",
+      snapshotGeneratedAt: signals.snapshotGeneratedAt,
+      overlaps: ["qa_sintetico.premiumQualityLoop", "ux_layout.landing_only", "activity_events"],
+      structuredRecommendation: {
+        evidence: recommendation.evidence,
+        impact: recommendation.expectedImpact,
+        suggestedAction: recommendation.recommendedChange,
+        action: recommendation.recommendedChange,
+        metric: recommendation.successMetric,
+        acceptanceCriteria: recommendation.acceptanceCriteria,
+        confidence: recommendation.confidence,
+        target: recommendation.targetSurface,
+        module: recommendation.module,
+      },
+      observedSignals: {
+        confusingScreensOrFlows: signals.confusingScreensOrFlows,
+        abandonedFlows: signals.abandonedFlows,
+        unusedHiddenButtons: signals.hiddenOrUnusedButtons,
+        duplicateMenuRoutes: signals.duplicateRoutes,
+        excessiveText: signals.excessiveTextRisks,
+        weakEmptyLoadingErrorStates: signals.weakStateRisks,
+        mobileLayoutRisk: signals.mobileLayoutRisks,
+        negativeFeedbackByModule: signals.negativeFeedbackByModule,
+      },
+      structuredActions,
+      missingInstrumentation: signals.missingInstrumentation,
+      tableSignals: signals.tableSignals,
+    },
+    hasUxRisk ? 4 : 2,
+    hasUxRisk
+      ? {
+          tipo: "ux_product_auditor",
+          titulo: "UX/Product Auditor encontrou friccao de jornada",
+          corpo: recommendation.observedState,
+        }
+      : undefined,
+  );
+}
+
+export async function contentGapCqoAvancadoDailyLearn(): Promise<void> {
+  const signals = await fetchContentGapCqoAvancadoSignals(30);
+  const missingBnccItems = Array.isArray(signals.missingBnccCoverage) ? signals.missingBnccCoverage : [];
+  const missingEnemItems = Array.isArray(signals.missingEnemCoverage) ? signals.missingEnemCoverage : [];
+  const hasCoverageRisk =
+    signals.topicsWithDemandNoContent.length > 0 ||
+    signals.contentIndex.contentGaps.length > 0 ||
+    signals.missingBnccCoverage === true ||
+    signals.missingEnemCoverage === true ||
+    missingBnccItems.length > 0 ||
+    missingEnemItems.length > 0 ||
+    signals.lowMaterialQuality.length > 0 ||
+    signals.contentWithoutSource.length > 0 ||
+    signals.popularTopicWithWeakMaterial.length > 0 ||
+    signals.missingPedagogicalBlocks.length > 0 ||
+    signals.staleUnreviewedGeneratedMaterial.length > 0 ||
+    signals.missingInstrumentation.length > 0;
+
+  const topGap =
+    signals.topicsWithDemandNoContent[0] ??
+    signals.demandSignals[0] ??
+    (signals.contentIndex.contentGaps[0]
+      ? {
+          topic: signals.contentIndex.contentGaps[0],
+          demandScore: 0,
+          demandSources: ["contentIndex.contentGaps"],
+          generatedCount: 0,
+          postuladoCount: 0,
+          knowledgeDocCount: 0,
+          hasBnccCoverage: false,
+          hasEnemCoverage: false,
+        }
+      : null);
+  const topWeakMaterial =
+    signals.popularTopicWithWeakMaterial[0]?.weakMaterials[0] ??
+    signals.lowMaterialQuality[0] ??
+    signals.contentWithoutSource[0] ??
+    signals.missingPedagogicalBlocks[0] ??
+    signals.staleUnreviewedGeneratedMaterial[0];
+
+  const target = topGap?.topic ?? topWeakMaterial?.materia ?? "Indice de conhecimento/CQO";
+  const observedState = [
+    `${signals.contentIndex.contentGaps.length} lacuna(s) no contentIndex`,
+    `${signals.topicsWithDemandNoContent.length} topico(s) com demanda e sem conteudo/postulado`,
+    `${signals.lowMaterialQuality.length} material(is) com score baixo`,
+    `${signals.contentWithoutSource.length} material(is) sem fonte`,
+    `${signals.missingPedagogicalBlocks.length} material(is) sem exercicio/exemplo/checkpoint`,
+    `${signals.staleUnreviewedGeneratedMaterial.length} material(is) antigo(s) sem revisao`,
+    `BNCC=${signals.missingBnccCoverage === true ? "sem cobertura detectada" : `${missingBnccItems.length} lacuna(s)`}`,
+    `ENEM=${signals.missingEnemCoverage === true ? "sem cobertura detectada" : `${missingEnemItems.length} lacuna(s)`}`,
+  ].join("; ");
+
+  const recommendedChange = signals.topicsWithDemandNoContent[0]
+    ? `Priorizar ingestao/curadoria de ${signals.topicsWithDemandNoContent[0].topic}: demanda ${signals.topicsWithDemandNoContent[0].demandScore}, sem material gerado nem postulado vinculado.`
+    : signals.popularTopicWithWeakMaterial[0]
+      ? `Revisar material de ${signals.popularTopicWithWeakMaterial[0].topic.topic}: topico popular com material/base fraca antes de ampliar geracao.`
+      : signals.missingEnemCoverage === true || missingEnemItems.length > 0
+        ? "Completar cobertura ENEM por disciplina/habilidade antes de tratar simulados e materiais como base premium."
+        : signals.missingBnccCoverage === true || missingBnccItems.length > 0
+          ? "Completar cobertura BNCC nos metadados/source dos documentos e materiais antes de prometer alinhamento curricular."
+          : topWeakMaterial
+            ? `Abrir revisao humana para "${topWeakMaterial.title}" (${topWeakMaterial.reasons.join(", ")}).`
+            : "Manter monitoramento diario de cobertura, fonte, qualidade e revisao humana.";
+
+  const structuredActions = [
+    {
+      type: "generate_or_curate_content",
+      target: topGap?.topic ?? target,
+      module: "CQO Conteudo",
+      action:
+        topGap && topGap.generatedCount === 0 && topGap.postuladoCount === 0
+          ? `Criar ou curar material base para ${topGap.topic} com fonte verificavel, habilidade quando aplicavel e revisao humana.`
+          : "Gerar/curar conteudo somente para lacunas com demanda real e fonte disponivel.",
+      metric: "lacunas_priorizadas_fechadas_com_fonte",
+      acceptanceCriteria: [
+        "conteudo novo possui fonte/citacao ou documento de origem",
+        "habilidade BNCC/ENEM aparece quando aplicavel e nao e inventada",
+        "material passa por revisao humana antes de ser tratado como premium",
+      ],
+      confidence: topGap ? "alta" : "media",
+    },
+    {
+      type: "open_review_task",
+      target: topWeakMaterial?.title ?? "materiais fracos",
+      module: "Curadoria Premium",
+      action:
+        topWeakMaterial
+          ? `Abrir revisao de ${topWeakMaterial.title} por ${topWeakMaterial.reasons.join(", ")}.`
+          : "Abrir revisao quando score/fonte/exercicio/exemplo/checkpoint ou revisao estiverem ausentes.",
+      metric: "materiais_revisados_com_score_fonte_pratica",
+      acceptanceCriteria: [
+        "revisor ve motivo, evidencia e campos ausentes",
+        "material revisado registra fonte, pratica/checkpoint e status",
+        "nenhum material e aprovado automaticamente pelo Hermes",
+      ],
+      confidence: topWeakMaterial ? "alta" : "media",
+    },
+    {
+      type: "prioritize_ingestion",
+      target: signals.contentIndex.contentGaps[0] ?? topGap?.topic ?? "postulados/BNCC/ENEM",
+      module: "Knowledge Index",
+      action: "Priorizar ingestao de postulados, BNCC e/ou ENEM nos topicos com maior demanda e menor cobertura.",
+      metric: "postuladoCoverageRatio_e_cobertura_bncc_enem",
+      acceptanceCriteria: [
+        "documentos ingeridos tem metadata source/tags coerentes",
+        "contentIndex reduz lacunas sem duplicar topicos",
+        "ratio postulado/demanda melhora no proximo daily-learn",
+      ],
+      confidence: signals.contentIndex.contentGaps.length > 0 ? "alta" : "media",
+    },
+    {
+      type: "alert_teacher_admin",
+      target,
+      module: "Admin Hermes / Professor",
+      action:
+        "Alertar admin/professor para revisar lacuna curricular/material fraco antes de usar em turma ou resposta premium.",
+      metric: "alertas_de_curadoria_revisados",
+      acceptanceCriteria: [
+        "alerta explica impacto pedagogico e evidencia",
+        "professor/admin pode aceitar, dispensar ou pedir ingestao",
+        "sem contato automatico com aluno/familia",
+      ],
+      confidence: hasCoverageRisk ? "media" : "baixa",
+    },
+  ];
+
+  const recommendation: HermesRecommendation = {
+    agentId: "content_gap_cqo_avancado",
+    area: "conteudo/cqo_avancado",
+    module: "CQO Conteudo",
+    targetSurface: String(target),
+    observedState,
+    evidence: JSON.stringify({
+      contentGaps: signals.contentIndex.contentGaps,
+      demandSignals: signals.demandSignals.slice(0, 12),
+      topicsWithDemandNoContent: signals.topicsWithDemandNoContent,
+      missingBnccCoverage: signals.missingBnccCoverage,
+      missingEnemCoverage: signals.missingEnemCoverage,
+      lowMaterialQuality: signals.lowMaterialQuality,
+      contentWithoutSource: signals.contentWithoutSource,
+      popularTopicWithWeakMaterial: signals.popularTopicWithWeakMaterial,
+      missingPedagogicalBlocks: signals.missingPedagogicalBlocks,
+      staleUnreviewedGeneratedMaterial: signals.staleUnreviewedGeneratedMaterial,
+      weakKnowledgeBase: signals.weakKnowledgeBase,
+      tableSignals: signals.tableSignals,
+      missingInstrumentation: signals.missingInstrumentation,
+    }),
+    problemOpportunity: hasCoverageRisk
+      ? "O CQO ja enxerga cobertura basica, mas precisa priorizar lacunas por demanda real, fonte, BNCC/ENEM, qualidade e revisao para evitar material premium fraco."
+      : "A cobertura atual nao mostra lacuna critica no snapshot, mas deve continuar auditada por demanda, fonte e qualidade pedagogica.",
+    recommendedChange,
+    expectedImpact:
+      "Aumentar confiabilidade pedagogica, reduzir respostas sem base e direcionar curadoria/ingestao para o que alunos e professores realmente procuram.",
+    confidence:
+      signals.topicsWithDemandNoContent.length > 0 ||
+      signals.popularTopicWithWeakMaterial.length > 0 ||
+      signals.contentWithoutSource.length > 0
+        ? "alta"
+        : hasCoverageRisk
+          ? "media"
+          : "baixa",
+    successMetric:
+      "Lacunas priorizadas fechadas, postuladoCoverageRatio, cobertura BNCC/ENEM, materiais com fonte, score >=60, exercicio/exemplo/checkpoint e revisao humana.",
+    implementationNotes:
+      "O agente observa e abre recomendacao/inbox; nao publica, regenera, aprova material ou inventa habilidade/fonte automaticamente.",
+    acceptanceCriteria: [
+      "Topico com demanda e sem conteudo/postulado aparece no payload com fonte de demanda",
+      "BNCC/ENEM ausentes viram lacuna de cobertura, nao promessa curricular",
+      "Material fraco informa score/fonte/blocos/revisao ausentes",
+      "Payload inclui acoes de curadoria, revisao, ingestao, alerta, metrica e criterios de aceite",
+    ],
+  };
+
+  await persistPainAgentRecommendation(
+    recommendation,
+    {
+      kind: "dor_real_agent",
+      agentCatalog: "content_gap_cqo_avancado",
+      snapshotGeneratedAt: signals.generatedAt,
+      overlaps: ["cqo_conteudo", "knowledge-index", "auditor_pedagogico"],
+      structuredRecommendation: {
+        evidence: recommendation.evidence,
+        impact: recommendation.expectedImpact,
+        suggestedAction: recommendation.recommendedChange,
+        action: recommendation.recommendedChange,
+        metric: recommendation.successMetric,
+        acceptanceCriteria: recommendation.acceptanceCriteria,
+        confidence: recommendation.confidence,
+        target: recommendation.targetSurface,
+        module: recommendation.module,
+      },
+      observedSignals: {
+        topicsWithDemandNoContent: signals.topicsWithDemandNoContent,
+        missingBnccCoverage: signals.missingBnccCoverage,
+        missingEnemCoverage: signals.missingEnemCoverage,
+        lowMaterialQuality: signals.lowMaterialQuality,
+        contentWithoutSource: signals.contentWithoutSource,
+        popularSearchedTopicWithWeakMaterial: signals.popularTopicWithWeakMaterial,
+        missingExercisesExamplesCheckpoints: signals.missingPedagogicalBlocks,
+        staleUnreviewedGeneratedMaterial: signals.staleUnreviewedGeneratedMaterial,
+      },
+      structuredActions,
+      missingInstrumentation: signals.missingInstrumentation,
+      tableSignals: signals.tableSignals,
+      contentIndex: signals.contentIndex,
+    },
+    hasCoverageRisk ? 4 : 2,
+    hasCoverageRisk
+      ? {
+          tipo: "content_gap_cqo_avancado",
+          titulo: "CQO avancado encontrou lacuna de conteudo",
           corpo: recommendation.observedState,
         }
       : undefined,

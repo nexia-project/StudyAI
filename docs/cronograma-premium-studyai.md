@@ -23,6 +23,8 @@ Este documento marca o que ja foi entregue, o que esta em validacao e a ordem co
 | 10 | Hermes quality loop + real-pain agents primeira leva | Concluido/deployado | plano mestre | `auditor_pedagogico`, `notebook_rag_quality`, `professor_success` no catalogo/status. |
 | 12 | Hermes Caderno de Erros Intelligence | Implementado/aguarda deploy | lote atual | `caderno_erros_intelligence` no `daily-learn`, catalogo/status e recomendacao estruturada com lacunas de instrumentacao. |
 | 13 | Hermes Custos IA Optimizer | Implementado/aguarda deploy | lote atual | `custos_ia_optimizer` monitora custo por feature/aluno/material, prompts, cache, retries e billing sem trocar provider automaticamente. |
+| 14 | Hermes Content Gap/CQO avancado | Implementado/aguarda deploy | lote atual | `content_gap_cqo_avancado` prioriza lacunas por demanda, BNCC/ENEM, fonte, qualidade, revisao e ingestao sem publicar automaticamente. |
+| 15 | Hermes UX/Product Auditor | Implementado/aguarda deploy | lote atual | `ux_product_auditor` compoe `qa_sintetico`, `ux_layout` landing-only e `activity_events` para friccao, abandono, CTAs, rotas, estados, mobile e feedback por modulo. |
 | 11 | Comunicacao institutional WhatsApp foundation | Concluido/deployado | plano mestre | Fundacao institucional pronta, sem envio real indevido. |
 
 ## Em validacao manual
@@ -37,9 +39,7 @@ Este documento marca o que ja foi entregue, o que esta em validacao e a ordem co
 ## Proximas entregas por ordem
 
 1. **Student Success / `sucesso_aluno`**: consolidar sinais de aluno travado, acao segura e metrica no Hermes. Aceite: observa sem estudo, sem dias, erro repetido, simulado abandonado, chat sem pratica e falta de missao; gera recomendacao estruturada sem envio real.
-2. **UX/Product Auditor**: priorizar friccao real por papel, mobile e CTA. Aceite: recomenda mudanca pequena com criterio de QA manual.
-3. **Content Gap/CQO avancado**: priorizar lacunas por demanda/risco/cobertura. Aceite: plano de curadoria/ingestao com revisao humana.
-4. **Institution Success / B2B ROI**: medir adocao, risco e valor institucional agregado. Aceite: sem ranking sensivel indevido e com revisao humana obrigatoria.
+2. **Institution Success / B2B ROI**: medir adocao, risco e valor institucional agregado. Aceite: sem ranking sensivel indevido e com revisao humana obrigatoria.
 
 ## Hermes agents roadmap
 
@@ -52,8 +52,8 @@ Este documento marca o que ja foi entregue, o que esta em validacao e a ordem co
 | 5 | `simulado_intelligence` | Implementado/aguarda deploy | Validar daily-learn, descoberta/inbox e persistencia granular do resultado ENEM | Simulado premium, Caderno, `activity_events` |
 | 6 | `caderno_erros_intelligence` | Implementado/aguarda deploy | Validar descoberta/inbox no Admin e persistir missoes locais no backend em lote futuro | Caderno premium, Home NBA, `simulado_results` |
 | 7 | `custos_ia_optimizer` | Implementado/aguarda deploy | Validar descoberta/inbox, custo por entrega util e billing reconciliado | Admin IA & Custos, `ai_cost_log`, `ai_response_cache` |
-| 8 | `ux_product_auditor` | Parcial | Consolidar auditoria de friccao mobile/CTA | QA sintetico, manual QA |
-| 9 | `content_gap_cqo_avancado` | Parcial | Priorizar lacunas por demanda | CQO, knowledge-index |
+| 8 | `ux_product_auditor` | Implementado/aguarda deploy | Validar descoberta/inbox, mobile 360px, menu por papel, eventos de abandono e feedback por modulo | `qa_sintetico`, `ux_layout` landing-only, `activity_events`, App Shell |
+| 9 | `content_gap_cqo_avancado` | Implementado/aguarda deploy | Validar descoberta/inbox, lacunas priorizadas e payload de curadoria/revisao/ingestao | CQO, knowledge-index, `generated_content`, `knowledge_base`, `enem_questions` |
 | 10 | `institution_success_b2b_roi` | Parcial/TODO | ROI/adocao institucional agregado | Professor Success, Relatorios B2B |
 
 ## QA checklist

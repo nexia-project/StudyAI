@@ -36,7 +36,7 @@ Toda saida de agente Hermes deve seguir o padrao em `artifacts/api-server/src/li
 | 6 | Caderno de Erros Intelligence | Aluno | Implementado neste lote | Caderno premium, Home next-best-action, Simulado |
 | 7 | Custos IA Optimizer | Admin | Implementado neste lote | Admin IA & Custos, `gestao`, `monitor` |
 | 8 | UX/Product Auditor | Admin | Existente/parcial | `ux_layout`, `qa_sintetico` |
-| 9 | Content Gap/CQO avancado | Admin | Existente/parcial | `cqo_conteudo`, `knowledge-index` |
+| 9 | Content Gap/CQO avancado | Admin | Implementado neste lote | `cqo_conteudo`, `knowledge-index`, Auditor Pedagogico |
 | 10 | Institution Success / B2B ROI | Instituicao | Parcial/TODO | Relatorios B2B, `professor_success` |
 
 O catalogo operacional fica em `artifacts/api-server/src/lib/hermes/jobs/dor-real-agents.ts` e e exposto no Admin por `GET /api/agents/hermes/status` em `dorRealAgents`.
@@ -122,25 +122,25 @@ O catalogo operacional fica em `artifacts/api-server/src/lib/hermes/jobs/dor-rea
 
 ### 8. UX/Product Auditor
 
-- **Responsabilidade:** auditar friccao, clareza de CTA e jornadas por papel.
-- **Sinais observados:** hierarquia visual; estados vazios; duplicacao de rotas; mobile.
-- **Evidencias:** `ux_layout`, `qa_sintetico`, QA manual.
-- **Metricas:** cliques ate acao; abandono; tarefa concluida.
-- **Acoes:** abrir recomendacao UX e checklist de QA.
-- **Limites de seguranca:** nao remove rota funcional sem validacao.
-- **Saida Admin:** continuar via `ux_layout` e `qa_sintetico`.
-- **Status:** existente/parcial.
+- **Responsabilidade:** auditar friccao de produto, clareza de CTA, descoberta de funcionalidades e jornadas por papel sem duplicar a auditoria landing-only do `ux_layout`.
+- **Sinais observados:** telas/fluxos confusos; fluxos abandonados; botoes unused/hidden; menu/rotas duplicadas; texto excessivo; estados vazio/loading/erro fracos; risco de layout mobile; feedback negativo por modulo.
+- **Evidencias:** `qa_sintetico.premiumQualityLoop`, `ux_layout.landing_only`, `activity_events`, App Shell, inventario de rotas e QA manual.
+- **Metricas:** taxa de conclusao por fluxo; cliques ate CTA primaria; uso de CTA por papel/modulo; rotas/menu duplicados resolvidos; feedback negativo triado; QA mobile aprovado.
+- **Acoes:** abrir recomendacao UX estruturada; pedir QA manual mobile por modulo; priorizar simplificacao de menu/CTA; pedir instrumentacao quando faltar sinal.
+- **Limites de seguranca:** nao remove rota funcional sem validacao; nao esconde CTA principal sem experimento ou QA; nao inventa abandono quando `activity_events` esta ausente; nao executa autofix de layout em producao.
+- **Saida Admin:** descoberta/inbox Hermes com recomendacao estruturada de UX/produto por modulo.
+- **Status:** implementado como `ux_product_auditor` no `daily-learn`.
 
 ### 9. Content Gap/CQO avancado
 
-- **Responsabilidade:** priorizar lacunas por demanda, risco e cobertura.
-- **Sinais observados:** `contentGaps`, postulados, demanda por materia, aulas em geracao.
-- **Evidencias:** `cqo_conteudo`, `knowledge-index`.
-- **Metricas:** coverage ratio; lacunas fechadas; qualidade por materia.
-- **Acoes:** priorizar ingestao/curadoria; abrir plano CQO.
-- **Limites de seguranca:** nao publica conteudo sem revisao.
-- **Saida Admin:** descoberta de conteudo e status Hermes.
-- **Status:** existente/parcial.
+- **Responsabilidade:** priorizar lacunas por demanda real, cobertura BNCC/ENEM, fonte, qualidade e revisao humana.
+- **Sinais observados:** topicos com demanda e sem conteudo/postulados; BNCC/ENEM ausente; score baixo; material sem fonte; topico popular com material fraco; falta de exercicio/exemplo/checkpoint; material gerado antigo sem revisao.
+- **Evidencias:** `cqo_conteudo`, `knowledge-index`, `generated_content.payload`, `knowledge_documents.metadata/tags/source_file`, `knowledge_base.quality_score/access_count`, `activity_events`, `user_profile_memory.topicos_frequentes`, `enem_questions`.
+- **Metricas:** `postuladoCoverageRatio`; lacunas priorizadas fechadas; cobertura BNCC/ENEM; materiais com fonte; materiais com exercicio/exemplo/checkpoint; materiais revisados/aprovados.
+- **Acoes:** gerar/curar conteudo com fonte; abrir tarefa de revisao humana; priorizar ingestao de postulados/BNCC/ENEM; alertar professor/admin; medir aceite por lacuna fechada.
+- **Limites de seguranca:** nao publica conteudo sem revisao; nao inventa fonte, habilidade BNCC/ENEM ou score; nao regenera material automaticamente.
+- **Saida Admin:** descoberta/inbox Hermes com lacunas priorizadas, acoes, metrica e criterios de aceite.
+- **Status:** implementado como `content_gap_cqo_avancado` no `daily-learn`.
 
 ### 10. Institution Success / B2B ROI
 
@@ -158,11 +158,11 @@ O catalogo operacional fica em `artifacts/api-server/src/lib/hermes/jobs/dor-rea
 1. **Primeira leva segura:** `auditor_pedagogico`, `notebook_rag_quality`, `professor_success`; todos registrados no `daily-learn`, expostos no catalogo e persistindo recomendacoes padronizadas.
 2. **Consolidar Student Success:** manter `sucesso_aluno` como implementacao atual, enriquecendo sinais estruturados antes de decidir alias publico `student_success`.
 3. **Proxima leva:** Simulado Intelligence deve fechar resultado/abandono/recuperacao com persistencia backend; Caderno de Erros Intelligence ja roda no `daily-learn`.
-4. **Depois:** UX/Product Auditor, Content Gap/CQO avancado e Institution Success/B2B ROI.
+4. **Depois:** Institution Success/B2B ROI.
 
 ## Criterios de aceite
 
-- `POST /internal/hermes/daily-learn` inclui os agentes de dor real implementados (`auditor_pedagogico`, `notebook_rag_quality`, `professor_success`, `caderno_erros_intelligence`, `custos_ia_optimizer`) no array `ran`.
+- `POST /internal/hermes/daily-learn` inclui os agentes de dor real implementados (`auditor_pedagogico`, `notebook_rag_quality`, `professor_success`, `caderno_erros_intelligence`, `custos_ia_optimizer`, `ux_product_auditor`, `content_gap_cqo_avancado`) no array `ran`.
 - `GET /api/agents/hermes/status` expõe `dorRealAgents` com prioridades, status, sinais, metricas, limites e sobreposicoes.
 - Toda descoberta da primeira leva persiste `payload.recommendation` com evidencia, impacto, recomendacao, acao/metrica, criterios de aceite, confianca e target/modulo.
 - Lacuna de observabilidade vira recomendacao de instrumentacao, nao metrica inventada.

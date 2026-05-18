@@ -40,3 +40,9 @@ Adicionar ao portal institucional uma aba "Gestao Escolar" com:
 - Responsaveis por aluno, telefone validado e consentimento por finalidade.
 - Financeiro, cobrancas, contratos, inadimplencia e regras de folha.
 - Armazenamento de cenarios de grade, indicadores de qualidade e auditoria de reprocessamento.
+
+## Hermes CQO avancado
+
+- `content_gap_cqo_avancado` entrou no `daily-learn` para priorizar lacunas de conteudo antes de uso institucional: demanda sem conteudo/postulado, BNCC/ENEM ausente, material fraco, falta de fonte, falta de exercicio/exemplo/checkpoint e material antigo sem revisao.
+- A acao segura para instituicoes e alertar professor/admin e priorizar ingestao/curadoria; Hermes nao publica, aprova ou regenera material automaticamente.
+- Criterio de aceite institucional: materiais usados em turma precisam ter fonte, habilidade quando aplicavel, pratica/checkpoint e revisao humana rastreavel.

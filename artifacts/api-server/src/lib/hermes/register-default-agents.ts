@@ -11,10 +11,12 @@ import { qaSinteticoDailyLearn } from "./jobs/qa-sintetico";
 import {
   auditorPedagogicoDailyLearn,
   cadernoErrosIntelligenceDailyLearn,
+  contentGapCqoAvancadoDailyLearn,
   custosIaOptimizerDailyLearn,
   notebookRagQualityDailyLearn,
   professorSuccessDailyLearn,
   simuladoIntelligenceDailyLearn,
+  uxProductAuditorDailyLearn,
 } from "./jobs/dor-real-agents";
 
 let registered = false;
@@ -204,6 +206,32 @@ export function registerDefaultAgents(): void {
         "Agente de dor real registrado no catálogo Hermes; roda no daily-learn e persiste recomendações estruturadas.",
     }),
     dailyLearn: custosIaOptimizerDailyLearn,
+  });
+
+  agentRegistry.register({
+    id: "ux_product_auditor",
+    description:
+      "UX/Product Auditor — fricção de jornada, CTAs, abandono, menu/rotas, estados, mobile e feedback por módulo",
+    role: "system",
+    handler: async () => ({
+      ok: true,
+      message:
+        "Agente de dor real registrado no catálogo Hermes; roda no daily-learn e persiste recomendações estruturadas.",
+    }),
+    dailyLearn: uxProductAuditorDailyLearn,
+  });
+
+  agentRegistry.register({
+    id: "content_gap_cqo_avancado",
+    description:
+      "Content Gap/CQO avançado — demanda, BNCC/ENEM, fonte, qualidade, revisão e ingestão",
+    role: "system",
+    handler: async () => ({
+      ok: true,
+      message:
+        "Agente de dor real registrado no catálogo Hermes; roda no daily-learn e prioriza lacunas de conteúdo com revisão humana.",
+    }),
+    dailyLearn: contentGapCqoAvancadoDailyLearn,
   });
 
   registered = true;

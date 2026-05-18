@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { TiagaoCharacter } from "@/components/TiagaoCharacter";
 import { AppNav } from "@/components/AppNav";
+import { AppMissionPanel, AppStatusBadge, PageHeader } from "@/components/Layout";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -6574,30 +6575,37 @@ export default function Notebook() {
         >
           <div className="max-w-6xl mx-auto px-4 pt-8 pb-16">
 
-            {/* Header */}
-            <div className="flex items-start justify-between mb-8 gap-4">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <button onClick={() => navigate("/app")} className="text-slate-400 hover:text-slate-700 p-1.5 rounded-xl hover:bg-white/60 transition-colors">
-                    <ArrowLeft className="w-4 h-4" />
+            <div className="mb-5 overflow-hidden rounded-3xl border border-violet-100 bg-white/75 shadow-sm shadow-violet-100/60">
+              <PageHeader
+                icon={<BookOpen />}
+                title="Notebook RAG"
+                subtitle="Estudo com IA contextual baseado nas suas fontes."
+                sticky={false}
+                meta={
+                  <>
+                    <AppStatusBadge tone="violet">{cadernos.length} caderno{cadernos.length !== 1 ? "s" : ""}</AppStatusBadge>
+                    <AppStatusBadge tone="slate">PDF, vídeo, site, áudio e imagem</AppStatusBadge>
+                  </>
+                }
+                actions={
+                  <button
+                    onClick={openNewCaderno}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-600 text-white text-sm font-bold shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 hover:scale-[1.02] active:scale-[0.98] transition-all flex-shrink-0"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Novo Caderno
                   </button>
-                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-violet-500/25">
-                    <BookOpen className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <h1 className="font-display font-bold text-slate-900 text-xl leading-tight tracking-tight">Meus Cadernos</h1>
-                    <p className="text-sm text-slate-500 font-medium">Estudo com IA contextual baseado nas suas fontes</p>
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={openNewCaderno}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-600 text-white text-sm font-bold shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 hover:scale-[1.02] active:scale-[0.98] transition-all flex-shrink-0"
-              >
-                <Plus className="w-4 h-4" />
-                Novo Caderno
-              </button>
+                }
+              />
             </div>
+
+            <AppMissionPanel
+              className="mb-6"
+              title="Escolha uma fonte e transforme material bruto em estudo acionável."
+              description="Abra um caderno recente, envie um novo material ou use a busca para retomar exatamente onde parou."
+              evidence="as respostas, slides, flashcards e guias usam as fontes selecionadas no caderno."
+              status={<AppStatusBadge tone="emerald" className="border-white/25 bg-white/15 text-white">RAG ativo</AppStatusBadge>}
+            />
 
             {/* Search */}
             <div className="relative mb-6">

@@ -2,11 +2,12 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import {
-  ArrowLeft, Clock, CheckCircle2, XCircle, ChevronRight, ChevronLeft,
+  Clock, CheckCircle2, XCircle, ChevronRight, ChevronLeft,
   Trophy, BookOpen, AlertCircle, Loader2, RefreshCw, Share2, Lock,
-  Target, Brain, CalendarCheck, BarChart3,
+  Target, Brain, CalendarCheck, BarChart3, GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AppMissionPanel, AppStatusBadge, ContentArea, Layout, PageHeader } from "@/components/Layout";
 import { useSubscription, startCheckout } from "@/hooks/useSubscription";
 import {
   SIMULADO_ERROR_REVIEW_DRAFT_KEY,
@@ -638,18 +639,20 @@ export default function SimuladoEnemPage() {
 
   if (!isPremium) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50/40 to-violet-50/40">
-        {/* Header */}
-        <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-slate-100">
-          <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
-            <button onClick={() => navigate("/app")} className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-100 text-slate-600 font-semibold text-sm transition-colors">
-              <ArrowLeft className="w-4 h-4" />
-              Voltar
+      <Layout className="pt-0">
+        <PageHeader
+          icon={<GraduationCap />}
+          title="Simulado ENEM Completo"
+          subtitle="Fluxo premium com prova, diagnóstico e missão de recuperação."
+          meta={<AppStatusBadge tone="amber">Recurso Premium</AppStatusBadge>}
+          actions={
+            <button onClick={() => navigate("/pricing")} className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-black text-white hover:bg-violet-700">
+              Ver planos
             </button>
-          </div>
-        </div>
+          }
+        />
 
-        <div className="max-w-5xl mx-auto px-4 py-12">
+        <ContentArea maxWidth="6xl" className="py-8 lg:py-10">
           {/* Hero */}
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 bg-violet-100 text-violet-700 text-xs font-bold px-3 py-1.5 rounded-full mb-6 uppercase tracking-wider">
@@ -744,27 +747,33 @@ export default function SimuladoEnemPage() {
               </p>
             </div>
           </div>
-        </div>
-      </div>
+        </ContentArea>
+      </Layout>
     );
   }
 
   // ── SELEÇÃO DE DIA ────────────────────────────────────────────────────────
   if (fase === "selecionar") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50/30 to-purple-50/40">
-        <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-slate-100">
-          <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
-            <button onClick={() => navigate("/app")} className="flex items-center gap-2 px-3 py-2 rounded-2xl hover:bg-slate-100 text-slate-600 font-bold text-sm">
-              <ArrowLeft className="w-4 h-4" />
-              Voltar
-            </button>
-            <div className="flex-1 text-center">
-              <span className="font-black text-slate-800">📝 Simulado ENEM Completo</span>
-            </div>
-          </div>
-        </div>
-        <div className="max-w-3xl mx-auto px-4 py-8">
+      <Layout className="pt-0">
+        <PageHeader
+          icon={<GraduationCap />}
+          title="Simulado ENEM Completo"
+          subtitle="Escolha a área, defina o tamanho e comece com critério claro."
+          meta={
+            <>
+              <AppStatusBadge tone="violet">4 dias oficiais</AppStatusBadge>
+              <AppStatusBadge tone="slate">{qtd} questões</AppStatusBadge>
+            </>
+          }
+        />
+        <ContentArea maxWidth="2xl" className="py-8">
+          <AppMissionPanel
+            title="Sua missão é simular uma área e sair com um plano de reparo."
+            description="Ao finalizar, o resultado mostra status, padrões de erro, próxima ação e envio seguro para o Caderno."
+            evidence="a tela de prova fica focada; o shell volta no resultado para orientar continuidade."
+            status={<AppStatusBadge tone="emerald" className="border-white/25 bg-white/15 text-white">Fluxo guiado</AppStatusBadge>}
+          />
           <div className="text-center mb-8">
             <h1 className="text-3xl font-black text-slate-800 mb-2">Escolha o Dia do ENEM</h1>
             <p className="text-slate-500">Selecione a área de conhecimento e simule o dia do exame</p>
@@ -831,8 +840,8 @@ export default function SimuladoEnemPage() {
           >
             🚀 Iniciar Simulado
           </button>
-        </div>
-      </div>
+        </ContentArea>
+      </Layout>
     );
   }
 
@@ -1045,18 +1054,26 @@ export default function SimuladoEnemPage() {
       : { label: "Precisa Melhorar 💪", cor: "text-rose-700", bg: "bg-rose-50" };
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-violet-50">
-        <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-slate-100">
-          <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
-            <button onClick={() => setFase("selecionar")} className="flex items-center gap-2 px-3 py-2 rounded-2xl hover:bg-slate-100 text-slate-600 font-bold text-sm">
-              <RefreshCw className="w-4 h-4" />
+      <Layout className="pt-0">
+        <PageHeader
+          icon={<BarChart3 />}
+          title="Resultado do Simulado"
+          subtitle={`Dia ${diaSelecionado} — ${diaInfo.nome}. Diagnóstico, missão e continuidade.`}
+          meta={
+            <>
+              <AppStatusBadge tone={pct >= 60 ? "emerald" : "amber"}>{pct}% de acerto</AppStatusBadge>
+              <AppStatusBadge tone="rose">{erros.length} erro{erros.length !== 1 ? "s" : ""}</AppStatusBadge>
+            </>
+          }
+          actions={
+            <button onClick={() => setFase("selecionar")} className="flex items-center gap-2 rounded-xl bg-violet-600 px-3 py-2 text-xs font-black text-white hover:bg-violet-700">
+              <RefreshCw className="w-3.5 h-3.5" />
               Novo Simulado
             </button>
-            <span className="flex-1 text-center font-black text-slate-800">Resultado</span>
-          </div>
-        </div>
+          }
+        />
 
-        <div className="max-w-3xl mx-auto px-4 py-6">
+        <ContentArea maxWidth="2xl" className="py-6">
           {/* Score card */}
           <div className={cn("rounded-3xl p-8 mb-6 text-center bg-gradient-to-br shadow-xl", diaInfo.cor)}>
             <div className="text-6xl font-black text-white mb-2">{pct}%</div>
@@ -1400,8 +1417,8 @@ export default function SimuladoEnemPage() {
               <Share2 className="w-4 h-4" />
             </button>
           </div>
-        </div>
-      </div>
+        </ContentArea>
+      </Layout>
     );
   }
 

@@ -29,6 +29,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - **Analytics aluno + fechamento de recuperacao:** Home ganhou painel leve de aprendizagem com dominio por area, streak, habilidades fracas, marcos e lacunas transparentes; Caderno registra historico local de revisoes concluidas; Simulado permite marcar a missao de recuperacao como feita.
 - **Gates Notebook + coaching Tiagao:** producao foi confirmada no commit `65e9e83`/`65e9e836`; smoke Notebook agora cobre serializacao de preview/export de apresentacoes e mapas; Home usa analytics local para oferecer coaching proativo do Tiagao sem inventar metrica nova.
 - **Caderno loop v2 + exports B2B:** Caderno agora mostra streak local, proxima revisao e fechamento manual de missao pendente; relatorio professor/gestor ganhou CSV com sinais, acao recomendada e lacunas explicitas, alem de bloco imprimivel de criterios; Hermes inclui Relatorios B2B no loop premium.
+- **App Shell Premium + Design System Interno:** primeira fatia alinha shell, cabecalho, missao, estados e badges em Caderno, Notebook RAG, Simulado ENEM e Meus Conteudos sem reescrever fluxos de dados.
 
 ## Tickets em execucao
 
@@ -360,6 +361,22 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [x] Relatorio imprimivel/PDF inclui criterio de revisao humana e explicita que nao inventa ultimo login, tempo real por sessao ou intervencoes.
 - [ ] QA manual: baixar CSV do relatorio geral e imprimir/salvar PDF validando colunas novas e bloco de criterios.
 
+### App Shell Premium + Design System Interno
+
+**Status:** primeira fatia implementada; foco em coerencia interna e continuidade, nao em redesign cosmetico.
+
+**Superficies desta fatia:** `artifacts/studyai/src/components/Layout.tsx`, `artifacts/studyai/src/pages/Caderno.tsx`, `artifacts/studyai/src/pages/Notebook.tsx`, `artifacts/studyai/src/pages/SimuladoEnem.tsx`, `artifacts/studyai/src/pages/MeusConteudos.tsx`.
+
+**Criterios de aceite desta fatia:**
+
+- [x] Existe vocabulario compartilhado para cabecalho, painel de missao, badge de status, secao, acao, vazio, loading e erro.
+- [x] Caderno usa o shell interno com status de notas, missoes pendentes e revisoes sem alterar autosave/processamento IA.
+- [x] Notebook RAG mostra contexto, missao e status antes da busca/criacao de cadernos.
+- [x] Simulado mantem a tela cronometrada focada, mas entrada e resultado usam shell, missao e status de continuidade.
+- [x] Meus Conteudos explicita onde estou, como filtrar/priorizar, estados vazio/loading/erro e acao primaria.
+- [ ] QA manual mobile/desktop: validar navegacao interna, sticky headers, bottom nav e ausencia de sobreposicao em Caderno/Simulado/Notebook.
+- [ ] Proxima fatia: aplicar o mesmo vocabulario em Professor, ProfessorTurma, Instituicao e Admin sem mexer em regra de negocio.
+
 ### Metricas
 
 - [ ] Definir metrica primaria por ticket antes do merge.
@@ -421,5 +438,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [x] Automatizar parte do QA Notebook/RAG com smoke de serializacao preview/export e adicionar coaching proativo do Tiagao no analytics local.
 - [x] Evoluir Caderno com streak local/fechamento manual e melhorar export institucional com sinais/lacunas.
 - [x] Incluir Relatorios B2B no loop Hermes premium e no padrao de recomendacao.
+- [x] Implementar primeira fatia de App Shell Premium + Design System Interno nas telas internas de maior impacto.
 - [ ] Proximo lote de Caderno de Erros: persistir historico estruturado no backend quando houver schema/API definido.
+- [ ] Proxima fatia de layout interno: Professor/Gestor/Instituicao/Admin com os mesmos primitivos e QA visual mobile.
 - [ ] Depois do lote de erros: evoluir modos pedagogicos do Tiagao com taxonomia oficial e metricas por modo.

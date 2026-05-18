@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Plus, BookOpen, Trash2, Sparkles, ChevronLeft, Save, Tag,
+  Plus, BookOpen, Trash2, Sparkles, ChevronLeft, Save,
   BookMarked, Lightbulb, Brain, HelpCircle, List, Loader2, X,
   Search, StickyNote, GraduationCap, Flame, CalendarCheck, CheckCircle2,
 } from "lucide-react";
+import { AppEmptyState, AppStatusBadge, Layout, PageHeader } from "@/components/Layout";
 import {
   SIMULADO_ERROR_REVIEW_DRAFT_KEY,
   completeErrorReviewMission,
@@ -71,7 +71,6 @@ function formatDate(dateStr: string) {
 type AITab = "resumo" | "pontos" | "flashcards" | "questoes";
 
 export default function Caderno() {
-  const [, navigate] = useLocation();
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -348,24 +347,21 @@ export default function Caderno() {
   const processed = selectedNote?.processedContent;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-orange-50">
-      {/* Header */}
-      <div className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-amber-100">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate("/app")} className="p-2 rounded-xl hover:bg-amber-50 text-amber-700 transition-colors">
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-sm">
-                <BookOpen className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-base font-black text-gray-900 leading-none">Caderno Digital</h1>
-                <p className="text-xs text-amber-600 font-medium">{notes.length} nota{notes.length !== 1 ? "s" : ""}</p>
-              </div>
-            </div>
-          </div>
+    <Layout className="pt-0 pb-0 md:pb-0 md:pt-0">
+      <PageHeader
+        icon={<BookOpen />}
+        title="Caderno Digital"
+        subtitle="Notas, revisão de erros e geração de estudo com Tiagão IA."
+        meta={
+          <>
+            <AppStatusBadge tone="amber">{notes.length} nota{notes.length !== 1 ? "s" : ""}</AppStatusBadge>
+            <AppStatusBadge tone={pendingReviewMission ? "violet" : "slate"}>
+              {pendingReviewMission ? "Missão pendente" : "Sem missão pendente"}
+            </AppStatusBadge>
+            <AppStatusBadge tone="emerald">{reviewStats.totalCompleted} revisões</AppStatusBadge>
+          </>
+        }
+        actions={
           <button
             onClick={startNewNote}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold text-sm shadow-sm hover:shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
@@ -373,10 +369,10 @@ export default function Caderno() {
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Nova Nota</span>
           </button>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="max-w-7xl mx-auto px-4 py-4 flex gap-4 h-[calc(100vh-65px)]">
+      <div className="max-w-7xl mx-auto px-4 py-4 flex gap-4 h-[calc(100vh-121px)]">
         {/* Sidebar */}
         <div className={`flex-shrink-0 w-72 flex flex-col gap-3 ${showEditor ? "hidden md:flex" : "flex"}`}>
           {/* Search */}
@@ -496,13 +492,19 @@ export default function Caderno() {
                 ))}
               </div>
             ) : filteredNotes.length === 0 ? (
-              <div className="text-center py-12">
-                <StickyNote className="w-10 h-10 text-amber-200 mx-auto mb-3" />
-                <p className="text-sm text-gray-400">Nenhuma nota encontrada</p>
-                <button onClick={startNewNote} className="mt-3 text-sm text-amber-600 font-semibold hover:underline">
-                  Criar primeira nota
-                </button>
-              </div>
+              <AppEmptyState
+                icon={<StickyNote />}
+                title={search || filterMateria !== "Todas" ? "Nenhuma nota encontrada" : "Crie sua primeira nota"}
+                description={search || filterMateria !== "Todas"
+                  ? "Ajuste busca ou matéria para reencontrar uma anotação existente."
+                  : "Registre dúvidas, fórmulas ou erros do simulado. Depois, o Tiagão transforma isso em resumo, flashcards e questões."}
+                action={
+                  <button onClick={startNewNote} className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-black text-white hover:bg-amber-600">
+                    Criar nota
+                  </button>
+                }
+                className="p-5"
+              />
             ) : (
               filteredNotes.map(note => (
                 <motion.button
@@ -839,6 +841,6 @@ export default function Caderno() {
           )}
         </AnimatePresence>
       </div>
-    </div>
+    </Layout>
   );
 }

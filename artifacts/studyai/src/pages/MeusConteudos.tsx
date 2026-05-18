@@ -2,13 +2,23 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft, Loader2, Search, Trash2, Eye, FileText,
+  Search, Trash2, Eye, FileText,
   Presentation, Brain, Image as ImageIcon, BookOpen, Microscope,
-  ClipboardList, Sparkles, AlertCircle, Layers,
+  ClipboardList, Sparkles, Layers,
   ShieldCheck, CheckCircle2,
 } from "lucide-react";
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
-import { AppNav } from "@/components/AppNav";
+import {
+  AppEmptyState,
+  AppErrorState,
+  AppLoadingState,
+  AppMissionPanel,
+  AppSectionShell,
+  AppStatusBadge,
+  ContentArea,
+  Layout,
+  PageHeader,
+} from "@/components/Layout";
 
 type Kind =
   | "resumao" | "slides" | "mapa_mental" | "infografico"
@@ -305,20 +315,41 @@ export default function MeusConteudosPage() {
   }, [items, search]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50/40 studyai-with-sidebar pt-14 md:pt-0">
-      <AppNav />
-      <div className="max-w-6xl mx-auto px-4 py-6 lg:py-10">
-        <button onClick={() => navigate(-1 as any)} className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-6 text-sm font-semibold transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Voltar
-        </button>
-
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <h1 className="text-3xl lg:text-4xl font-black text-gray-900 tracking-tight">Meus Conteúdos</h1>
-          <p className="text-gray-500 mt-2">Histórico universal de tudo que você gerou — resumos, slides, mapas, provas e mais.</p>
+    <Layout className="pt-0">
+      <PageHeader
+        icon={<FileText />}
+        title="Meus Conteúdos"
+        subtitle="Histórico universal de resumos, slides, mapas, provas e materiais de aula."
+        meta={
+          <>
+            <AppStatusBadge tone="violet">{total} {total === 1 ? "item" : "itens"}</AppStatusBadge>
+            <AppStatusBadge tone="slate">Aluno + Professor</AppStatusBadge>
+          </>
+        }
+        actions={
+          <button onClick={() => navigate("/notebook")} className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-black text-white shadow-sm transition hover:bg-violet-700">
+            Criar no Notebook
+          </button>
+        }
+      />
+      <ContentArea maxWidth="6xl" className="pb-8">
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+          <AppMissionPanel
+            title="Revise o que já foi criado antes de gerar mais conteúdo."
+            description="Use busca, filtros e status de revisão para entender o que está pronto, o que precisa de curadoria e qual material deve virar próxima ação."
+            evidence="cada card mostra tipo, autoria, curadoria heurística e revisão humana local."
+            status={<AppStatusBadge tone="emerald" className="border-white/25 bg-white/15 text-white">Acervo interno</AppStatusBadge>}
+          />
         </motion.div>
 
         {/* Filtros */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 mb-6 flex flex-col lg:flex-row gap-3">
+        <AppSectionShell
+          eyebrow="Encontrar e priorizar"
+          title="Filtros do acervo"
+          description="Comece pelo tipo, papel e busca textual. O resultado abaixo mantém a ação primária em abrir ou revisar."
+          className="mb-0"
+        >
+        <div className="flex flex-col gap-3 lg:flex-row">
           <div className="flex-1 relative">
             <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
@@ -342,22 +373,27 @@ export default function MeusConteudosPage() {
             <option value="teacher">Como Professor</option>
           </select>
         </div>
+        </AppSectionShell>
 
         {loading ? (
-          <div className="text-center py-20">
-            <Loader2 className="w-8 h-8 text-violet-600 animate-spin mx-auto" />
-            <p className="text-gray-500 mt-3 text-sm">Carregando seu histórico...</p>
-          </div>
+          <AppLoadingState title="Carregando seu histórico" description="Buscando conteúdos gerados e planos de aula salvos." />
         ) : error ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-6 flex items-center gap-3 text-red-700">
-            <AlertCircle className="w-5 h-5" /> {error}
-          </div>
+          <AppErrorState description={error} action={
+            <button onClick={() => void load()} className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-black text-white hover:bg-rose-700">
+              Tentar novamente
+            </button>
+          } />
         ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center">
-            <FileText className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-700 font-bold">Nada por aqui ainda</p>
-            <p className="text-gray-500 text-sm mt-1">Conforme você gera conteúdos no app, eles aparecem nesta tela.</p>
-          </div>
+          <AppEmptyState
+            icon={<FileText />}
+            title="Nada por aqui ainda"
+            description="Conforme você gera conteúdos no Notebook, no Professor ou nos fluxos de estudo, eles aparecem aqui com curadoria e status."
+            action={
+              <button onClick={() => navigate("/notebook")} className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-black text-white hover:bg-violet-700">
+                Gerar primeiro conteúdo
+              </button>
+            }
+          />
         ) : (
           <>
             <p className="text-xs text-gray-500 font-semibold mb-3">{total} {total === 1 ? "item" : "itens"}</p>
@@ -417,7 +453,7 @@ export default function MeusConteudosPage() {
             </div>
           </>
         )}
-      </div>
+      </ContentArea>
 
       {/* Viewer modal genérico (JSON pretty) */}
       {viewing && (
@@ -441,7 +477,7 @@ export default function MeusConteudosPage() {
           </div>
         </div>
       )}
-    </div>
+    </Layout>
   );
 }
 

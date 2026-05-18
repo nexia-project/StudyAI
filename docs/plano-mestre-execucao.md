@@ -492,6 +492,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [x] Incluir Relatorios B2B no loop Hermes premium e no padrao de recomendacao.
 - [x] Implementar primeira fatia de App Shell Premium + Design System Interno nas telas internas de maior impacto.
 - [x] Aplicar fatia conservadora do App Shell Premium no Admin para IA & Custos e Hermes sem alterar backend/regra de negocio.
+- [x] Criar primeira fundacao segura da Comunicacao Institucional/WhatsApp com intent layer, preview, guardrails LGPD, audit log e Hermes best-effort.
 - [x] Criar doutrina Hermes sistema nervoso e primeira leva de agentes de dor real.
 - [ ] Validar, publicar e auditar producao da segunda fatia App Shell Premium B2B.
 - [ ] Executar e auditar daily-learn Hermes com `auditor_pedagogico`, `notebook_rag_quality` e `professor_success`.

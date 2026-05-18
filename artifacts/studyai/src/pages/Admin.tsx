@@ -383,17 +383,31 @@ function HermesRecommendationDetails({ recommendation }: { recommendation: Herme
     ["Métricas", recommendation.metrics],
     ["Ações", recommendation.actions],
   ];
+  const visibleFields = fields
+    .map(([label, value]) => [label, textValue(value)] as const)
+    .filter(([, value]) => value);
+  const confidenceText = textValue(recommendation.confidence);
+
+  if (visibleFields.length === 0) return null;
 
   return (
-    <div className="mt-2 rounded-lg border border-cyan-500/10 bg-cyan-500/[0.03] p-2 text-[11px] text-white/55 space-y-1">
-      {fields
-        .map(([label, value]) => [label, textValue(value)] as const)
-        .filter(([, value]) => value)
-        .map(([label, value]) => (
-          <p key={label}>
-            <span className="text-cyan-300/80 font-semibold">{label}:</span> {String(value)}
-          </p>
+    <div className="mt-3 rounded-xl border border-cyan-500/15 bg-cyan-500/[0.04] p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300/80">Detalhe da recomendação</p>
+        {confidenceText && (
+          <span className="rounded-full bg-white/10 px-2 py-0.5 text-[9px] font-black text-white/55">
+            confiança {String(confidenceText)}
+          </span>
+        )}
+      </div>
+      <div className="grid gap-2 text-[11px] text-white/60">
+        {visibleFields.map(([label, value]) => (
+          <div key={label} className="rounded-lg border border-white/[0.05] bg-white/[0.025] px-2.5 py-2">
+            <p className="text-[9px] font-black uppercase tracking-wide text-cyan-300/70">{label}</p>
+            <p className="mt-0.5 leading-relaxed">{String(value)}</p>
+          </div>
         ))}
+      </div>
     </div>
   );
 }
@@ -434,6 +448,38 @@ function Card({ title, icon: Icon, iconColor, children, action }: {
         {action}
       </div>
       {children}
+    </div>
+  );
+}
+
+function AdminSectionHeader({
+  icon: Icon,
+  title,
+  description,
+  actions,
+  accent = "text-violet-400",
+}: {
+  icon: React.ElementType;
+  title: string;
+  description: string;
+  actions?: React.ReactNode;
+  accent?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/[0.07] bg-[#12121a] p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.04]">
+            <Icon className={`h-5 w-5 ${accent}`} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/35">Admin premium</p>
+            <h2 className="mt-1 text-lg font-black tracking-tight text-white">{title}</h2>
+            <p className="mt-1 max-w-3xl text-xs leading-relaxed text-white/45">{description}</p>
+          </div>
+        </div>
+        {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+      </div>
     </div>
   );
 }
@@ -1706,9 +1752,27 @@ export default function AdminPage() {
             };
             return (
             <div className="space-y-5">
-              <h2 className="text-lg font-black flex items-center gap-2"><Bot className="w-5 h-5 text-violet-400" /> IA & Custos Registrados</h2>
+              <AdminSectionHeader
+                icon={Bot}
+                title="IA & Custos Registrados"
+                description="Leitura operacional de custos, cobertura e provedores. Os valores seguem exatamente o payload do backend e o filtro de período atual."
+                actions={
+                  <>
+                    <span className="rounded-full bg-violet-500/15 px-2.5 py-1 text-[10px] font-black text-violet-200">
+                      Base: {costBasisLabel}
+                    </span>
+                    <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-black text-white/55">
+                      {periodLabel}
+                    </span>
+                  </>
+                }
+              />
 
               <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-4">
+                <div className="mb-3">
+                  <p className="text-sm font-bold text-white/70">Filtro de período</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Mantém os mesmos parâmetros usados nas métricas administrativas.</p>
+                </div>
                 <DateRangeFilter value={dateRange} onChange={r => setDateRange(r)} loading={statsLoading} />
               </div>
 
@@ -1772,8 +1836,9 @@ export default function AdminPage() {
                     );
                   })}
                   {providerBilling.length === 0 && (
-                    <div className="col-span-2 text-xs text-white/30 py-4 text-center">
-                      Backend ainda não retornou providerBilling. Atualize a página após o deploy.
+                    <div className="col-span-2 rounded-xl border border-dashed border-white/[0.08] bg-white/[0.02] px-4 py-8 text-center">
+                      <p className="text-sm font-bold text-white/60">Billing real ainda sem retorno</p>
+                      <p className="mt-1 text-xs text-white/35">Backend ainda não retornou providerBilling. Atualize a página após o deploy.</p>
                     </div>
                   )}
                 </div>
@@ -1811,9 +1876,14 @@ export default function AdminPage() {
                     <p className="text-sm font-bold text-white/70">Cobertura dos Dados</p>
                     <p className="text-[10px] text-white/40 mt-0.5">Diagnóstico compacto da coleta que alimenta IA & Custos</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[10px] text-white/35 uppercase font-bold">Último log de custo</p>
-                    <p className="text-xs font-mono text-white/70">{lastEventAt ? new Date(lastEventAt).toLocaleString("pt-BR") : "sem registro"}</p>
+                  <div className="flex flex-col items-start gap-1 sm:items-end">
+                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-black ${missingTables.length || missingSources.length ? "bg-amber-500/15 text-amber-300" : "bg-emerald-500/15 text-emerald-300"}`}>
+                      {missingTables.length || missingSources.length ? "cobertura parcial" : "cobertura sem lacunas"}
+                    </span>
+                    <div className="text-left sm:text-right">
+                      <p className="text-[10px] text-white/35 uppercase font-bold">Último log de custo</p>
+                      <p className="text-xs font-mono text-white/70">{lastEventAt ? new Date(lastEventAt).toLocaleString("pt-BR") : "sem registro"}</p>
+                    </div>
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
@@ -1908,7 +1978,10 @@ export default function AdminPage() {
                   </p>
                 )}
                 {(ac?.perDay?.length ?? 0) === 0 ? (
-                  <div className="h-[140px] flex items-center justify-center text-xs text-white/30">Sem dados ainda — os custos aparecerão aqui após as primeiras chamadas de IA</div>
+                  <div className="h-[140px] flex flex-col items-center justify-center rounded-xl border border-dashed border-white/[0.08] bg-white/[0.02] px-4 text-center">
+                    <p className="text-sm font-bold text-white/50">Sem custos registrados no período</p>
+                    <p className="mt-1 text-xs text-white/30">Os custos aparecerão aqui após as primeiras chamadas de IA.</p>
+                  </div>
                 ) : (
                   <ResponsiveContainer width="100%" height={140}>
                     <AreaChart data={ac!.perDay} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
@@ -1935,7 +2008,10 @@ export default function AdminPage() {
                   <p className="text-sm font-bold text-white/70 mb-1">Custo Registrado por Feature</p>
                   <p className="text-[10px] text-white/40 mb-3">Soma deve bater com o custo registrado no período</p>
                   {noData ? (
-                    <p className="text-xs text-white/30 py-4 text-center">Sem dados ainda</p>
+                    <div className="rounded-xl border border-dashed border-white/[0.08] bg-white/[0.02] px-4 py-8 text-center">
+                      <p className="text-sm font-bold text-white/50">Sem feature registrada</p>
+                      <p className="mt-1 text-xs text-white/30">A lista aparece quando houver chamadas no período selecionado.</p>
+                    </div>
                   ) : (
                     <div className="space-y-2.5">
                       {ac!.byFeature.map(f => {
@@ -1961,7 +2037,10 @@ export default function AdminPage() {
                   <p className="text-sm font-bold text-white/70 mb-1">Custo Registrado por Modelo</p>
                   <p className="text-[10px] text-white/40 mb-3">Agrupado por provedor/modelo no mesmo período</p>
                   {(ac?.byModel?.length ?? 0) === 0 ? (
-                    <p className="text-xs text-white/30 py-4 text-center">Sem dados ainda</p>
+                    <div className="rounded-xl border border-dashed border-white/[0.08] bg-white/[0.02] px-4 py-8 text-center">
+                      <p className="text-sm font-bold text-white/50">Sem modelo registrado</p>
+                      <p className="mt-1 text-xs text-white/30">A lista aparece quando o backend agrupar chamadas por provedor/modelo.</p>
+                    </div>
                   ) : (
                     <div className="space-y-2">
                       {ac!.byModel.map((m, i) => {
@@ -2000,8 +2079,9 @@ export default function AdminPage() {
                 </div>
 
                 {fonteLoading && !fonteConsumo ? (
-                  <div className="flex items-center justify-center h-32 text-white/30 text-xs gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Carregando fontes…
+                  <div className="flex h-32 flex-col items-center justify-center gap-2 rounded-xl border border-white/[0.05] bg-white/[0.02] text-center text-xs text-white/35">
+                    <Loader2 className="w-4 h-4 animate-spin text-violet-300" />
+                    Carregando consumo por fonte…
                   </div>
                 ) : fonteConsumo ? (() => {
                   const fc = fonteConsumo;
@@ -2084,16 +2164,24 @@ export default function AdminPage() {
                     </div>
                   );
                 })() : (
-                  <div className="flex items-center justify-center h-20 text-white/30 text-xs">
-                    Clique em "Atualizar" para carregar os dados de fontes
+                  <div className="flex h-24 flex-col items-center justify-center rounded-xl border border-dashed border-white/[0.08] bg-white/[0.02] px-4 text-center">
+                    <p className="text-sm font-bold text-white/50">Consumo por fonte não carregado</p>
+                    <p className="mt-1 text-xs text-white/30">Clique em "Atualizar" para carregar os dados de fontes.</p>
                   </div>
                 )}
               </div>
 
               {/* Status dos provedores de IA */}
               <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
-                <p className="text-sm font-bold text-white/70 mb-1">Provedores de IA</p>
-                <p className="text-[10px] text-white/40 mb-4">Status de configuração e coleta local; billing real continua separado</p>
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-white/70">Provedores de IA</p>
+                    <p className="text-[10px] text-white/40 mt-0.5">Status de configuração e coleta local; billing real continua separado</p>
+                  </div>
+                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[9px] font-black text-white/50">
+                    {aiProviders.filter(p => p.ok).length}/{aiProviders.length} runtime ok
+                  </span>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   {aiProviders.map(p => (
                     <div key={p.name} className="flex items-center gap-3 p-3 rounded-xl border border-white/[0.05] bg-white/[0.02]">
@@ -2500,26 +2588,50 @@ export default function AdminPage() {
           {/* ══ HERMES (monitoramento) ══ */}
           {activeSection === "hermes" && (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
-              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
-                <h2 className="text-lg font-black flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-cyan-400" /> Hermes — Monitoramento
-                </h2>
-                <button
-                  onClick={fetchHermesStatus}
-                  className="flex items-center gap-1.5 text-white/40 hover:text-white text-sm"
-                >
-                  <RefreshCw className={`w-4 h-4 ${hermesLoading ? "animate-spin" : ""}`} /> Atualizar
-                </button>
-              </motion.div>
+              <AdminSectionHeader
+                icon={Sparkles}
+                title="Hermes — Monitoramento"
+                description="Fila operacional do Hermes, recomendações e índice de conteúdo. Esta tela só apresenta o status recebido das APIs existentes."
+                accent="text-cyan-400"
+                actions={
+                  <>
+                    {hermesStatus && (
+                      <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${hermesStatus.ok ? "bg-emerald-500/15 text-emerald-300" : "bg-red-500/15 text-red-300"}`}>
+                        {hermesStatus.ok ? "Hermes ok" : "Hermes com alerta"}
+                      </span>
+                    )}
+                    {hermesStatus && (
+                      <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-black text-white/55">
+                        {hermesStatus.inbox.unreadCount} não lidas
+                      </span>
+                    )}
+                    <button
+                      onClick={fetchHermesStatus}
+                      className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-black text-white/55 transition-colors hover:bg-white/[0.14] hover:text-white"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${hermesLoading ? "animate-spin" : ""}`} /> Atualizar
+                    </button>
+                  </>
+                }
+              />
 
               {hermesLoading && !hermesStatus ? (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center py-16">
-                  <RefreshCw className="w-8 h-8 text-cyan-400 animate-spin" />
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-2xl border border-white/[0.07] bg-[#12121a] px-5 py-14 text-center">
+                  <RefreshCw className="mx-auto h-8 w-8 animate-spin text-cyan-400" />
+                  <p className="mt-4 text-sm font-bold text-white/60">Carregando status Hermes</p>
+                  <p className="mt-1 text-xs text-white/35">Buscando inbox, descobertas, cron e índice de conteúdo.</p>
                 </motion.div>
               ) : !hermesStatus ? (
                 <div className="bg-[#12121a] rounded-2xl p-10 border border-white/[0.07] text-center">
                   <Sparkles className="w-10 h-10 text-white/20 mx-auto mb-3" />
-                  <p className="text-white/40 text-sm">Não foi possível carregar o status Hermes.</p>
+                  <p className="text-sm font-bold text-white/55">Não foi possível carregar o status Hermes.</p>
+                  <p className="mt-1 text-xs text-white/35">Tente atualizar ou valide a rota `/api/agents/hermes/status` em uma sessão admin.</p>
+                  <button
+                    onClick={fetchHermesStatus}
+                    className="mt-5 inline-flex items-center gap-2 rounded-xl bg-cyan-500/15 px-3 py-2 text-xs font-bold text-cyan-200 transition-colors hover:bg-cyan-500/20"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" /> Tentar novamente
+                  </button>
                 </div>
               ) : (
                 <>
@@ -2592,7 +2704,10 @@ export default function AdminPage() {
                   <div className="grid lg:grid-cols-2 gap-5">
                     <Card title="Descobertas recentes" icon={Sparkles} iconColor="text-cyan-400">
                       {hermesStatus.descobertas.length === 0 ? (
-                        <p className="text-white/40 text-sm">Nenhuma descoberta registrada.</p>
+                        <div className="rounded-xl border border-dashed border-white/[0.08] bg-white/[0.02] px-4 py-8 text-center">
+                          <p className="text-sm font-bold text-white/55">Nenhuma descoberta registrada</p>
+                          <p className="mt-1 text-xs text-white/35">As descobertas aparecerão aqui quando o Hermes persistir evidências ou recomendações.</p>
+                        </div>
                       ) : (
                         <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
                           {hermesStatus.descobertas.map((d) => (
@@ -2632,7 +2747,10 @@ export default function AdminPage() {
                       }
                     >
                       {hermesStatus.inbox.items.length === 0 ? (
-                        <p className="text-white/40 text-sm">Inbox vazia (não lidas).</p>
+                        <div className="rounded-xl border border-dashed border-white/[0.08] bg-white/[0.02] px-4 py-8 text-center">
+                          <p className="text-sm font-bold text-white/55">Inbox vazia</p>
+                          <p className="mt-1 text-xs text-white/35">Não há recomendações não lidas para ação administrativa.</p>
+                        </div>
                       ) : (
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
                           {hermesStatus.inbox.items.map((item) => {

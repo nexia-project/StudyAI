@@ -162,7 +162,7 @@ O catalogo operacional fica em `artifacts/api-server/src/lib/hermes/jobs/dor-rea
 
 ## Criterios de aceite
 
-- `POST /internal/hermes/daily-learn` inclui os agentes de dor real implementados (`auditor_pedagogico`, `notebook_rag_quality`, `professor_success`, `caderno_erros_intelligence`, `custos_ia_optimizer`, `ux_product_auditor`, `content_gap_cqo_avancado`, `institution_success_b2b_roi`) no array `ran`.
+- `POST /internal/hermes/daily-learn` inclui os agentes de dor real implementados (`auditor_pedagogico`, `notebook_rag_quality`, `professor_success`, `simulado_intelligence`, `caderno_erros_intelligence`, `custos_ia_optimizer`, `ux_product_auditor`, `content_gap_cqo_avancado`, `institution_success_b2b_roi`) no array `ran`; Student Success continua rodando como implementacao existente `sucesso_aluno`.
 - `GET /api/agents/hermes/status` expõe `dorRealAgents` com prioridades, status, sinais, metricas, limites e sobreposicoes.
 - Toda descoberta da primeira leva persiste `payload.recommendation` com evidencia, impacto, recomendacao, acao/metrica, criterios de aceite, confianca e target/modulo.
 - Lacuna de observabilidade vira recomendacao de instrumentacao, nao metrica inventada.

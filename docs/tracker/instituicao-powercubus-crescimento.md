@@ -41,6 +41,10 @@ Adicionar ao portal institucional uma aba "Gestao Escolar" com:
 - Financeiro, cobrancas, contratos, inadimplencia e regras de folha.
 - Armazenamento de cenarios de grade, indicadores de qualidade e auditoria de reprocessamento.
 
+## Roadmap ERP / solver
+
+O plano tecnico de evolucao profunda fica em `docs/erp-solver-roadmap.md`. O proximo marco seguro e persistir modelo operacional e cenarios auditaveis antes de implementar solver real. Solver v1 so deve entrar depois do validador deterministico de restricoes, com hard constraints explicitas, resultado revisavel e sem publicacao automatica de grade.
+
 ## Hermes CQO avancado
 
 - `content_gap_cqo_avancado` entrou no `daily-learn` para priorizar lacunas de conteudo antes de uso institucional: demanda sem conteudo/postulado, BNCC/ENEM ausente, material fraco, falta de fonte, falta de exercicio/exemplo/checkpoint e material antigo sem revisao.

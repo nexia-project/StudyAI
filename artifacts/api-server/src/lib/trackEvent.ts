@@ -9,6 +9,7 @@ export type EventType =
   | "essay_submitted" | "essay_corrected"
   | "notebook_chat" | "notebook_source_added" | "notebook_created"
   | "notebook_material_generated" | "notebook_generation_failed"
+  | "teacher_notebook_output_generated"
   | "notebook_export" | "notebook_feedback"
   | "trilha_session" | "trilha_completed"
   | "plano_aula_created"

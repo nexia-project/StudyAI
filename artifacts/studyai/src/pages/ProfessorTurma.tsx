@@ -525,6 +525,7 @@ export default function ProfessorTurmaPage() {
         icon={<GraduationCap />}
         title={turma.name}
         subtitle="Portal do professor > Turmas > Diagnóstico e acompanhamento"
+        sticky={false}
         meta={
           <>
             {turma.serie && <AppStatusBadge tone="violet">{turma.serie}</AppStatusBadge>}
@@ -547,13 +548,13 @@ export default function ProfessorTurmaPage() {
           </>
         }
       />
-      <div className="sticky top-[73px] z-10 bg-white/80 backdrop-blur-xl border-b border-slate-100 md:top-[73px]">
+      <div className="sticky top-0 z-10 border-b border-slate-100 bg-white/80 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto px-4 py-2">
-          <div className="flex gap-1">
+          <div className="flex gap-1 overflow-x-auto pb-1">
             {tabs.map(tab => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-2 text-sm font-bold border-b-2 transition-colors",
+                  "flex flex-shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-bold transition-colors",
                   activeTab === tab.id ? "border-violet-500 text-violet-700" : "border-transparent text-slate-400 hover:text-slate-700"
                 )}>
                 <tab.icon className="w-4 h-4" />
@@ -675,7 +676,7 @@ export default function ProfessorTurmaPage() {
                     <AppEmptyState
                       icon={<Users />}
                       title="Sem alunos para diagnosticar"
-                      description="Compartilhe o código da turma e publique uma atividade diagnóstica inicial."
+                      description="Compartilhe o código da turma e publique uma atividade diagnóstica inicial. O CSV fica disponível quando houver pelo menos um aluno."
                     />
                   ) : premiumDiagnostic.lowActivityStudents.length > 0 ? (
                     <div className="space-y-2">
@@ -1357,7 +1358,7 @@ export default function ProfessorTurmaPage() {
                     <div className="text-center py-16 text-slate-400">
                       <BarChart2 className="w-12 h-12 mx-auto mb-3 opacity-20" />
                       <p className="font-semibold text-sm">Nenhuma atividade aplicada ainda</p>
-                      <p className="text-xs mt-1">Crie e aplique atividades para ver o desempenho da turma aqui</p>
+                      <p className="text-xs mt-1">Crie uma atividade diagnóstica curta para liberar sinais de desempenho e relatório mais útil.</p>
                       <button onClick={() => setActiveTab("tarefas")}
                         className="mt-4 px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-700 transition-colors">
                         Criar Atividade
@@ -1388,7 +1389,7 @@ export default function ProfessorTurmaPage() {
                     className="bg-white border border-violet-100 rounded-2xl shadow-sm overflow-hidden">
                     <div className="p-5">
                       <h4 className="font-black text-slate-800 mb-4">Nova tarefa para toda a turma</h4>
-                      <form onSubmit={saveTask} className="grid grid-cols-2 gap-3">
+                      <form onSubmit={saveTask} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
                           <label className="text-xs font-bold text-slate-500 mb-1 block">Tipo *</label>
                           <select value={taskForm.type} onChange={e => setTaskForm(f => ({ ...f, type: e.target.value }))}
@@ -1402,7 +1403,7 @@ export default function ProfessorTurmaPage() {
                             placeholder="Ex: Matemática"
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
                         </div>
-                        <div className="col-span-2">
+                        <div className="sm:col-span-2">
                           <label className="text-xs font-bold text-slate-500 mb-1 block">Título *</label>
                           <input value={taskForm.title} onChange={e => setTaskForm(f => ({ ...f, title: e.target.value }))}
                             placeholder="Ex: Simulado de Funções — Cap. 3"
@@ -1419,7 +1420,7 @@ export default function ProfessorTurmaPage() {
                             placeholder="Instruções adicionais"
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
                         </div>
-                        <div className="col-span-2 flex gap-2 justify-end">
+                        <div className="flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:justify-end">
                           <Button type="button" onClick={() => setShowTaskForm(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm">Cancelar</Button>
                           <Button type="submit" disabled={savingTask} className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm">
                             {savingTask ? "Salvando..." : "Atribuir para turma"}
@@ -1434,7 +1435,8 @@ export default function ProfessorTurmaPage() {
               {tasks.length === 0 ? (
                 <div className="text-center py-16 text-slate-400 bg-white rounded-2xl border border-slate-100">
                   <BookOpen className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                  <p>Nenhuma tarefa atribuída ainda</p>
+                  <p className="font-semibold">Nenhuma tarefa atribuída ainda</p>
+                  <p className="mt-1 text-xs">Publique uma atividade curta para criar a primeira linha de base da turma.</p>
                 </div>
               ) : (
                 <div className="space-y-3">

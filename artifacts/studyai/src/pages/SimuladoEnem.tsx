@@ -805,13 +805,13 @@ export default function SimuladoEnemPage() {
 
           <div className="bg-white rounded-2xl border border-slate-200 p-5 mb-6">
             <h3 className="font-bold text-slate-700 mb-3">Número de questões</h3>
-            <div className="flex gap-3 flex-wrap">
+            <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
               {[10, 20, 30, 45].map(n => (
                 <button
                   key={n}
                   onClick={() => setQtd(n)}
                   className={cn(
-                    "px-4 py-2 rounded-xl font-bold text-sm transition-all",
+                    "min-h-10 rounded-xl px-3 py-2 text-sm font-bold transition-all sm:px-4",
                     qtd === n
                       ? "bg-violet-600 text-white shadow-md"
                       : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -1249,7 +1249,7 @@ export default function SimuladoEnemPage() {
                 className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-3 py-2.5 text-sm font-black text-violet-700 transition hover:bg-violet-50 disabled:cursor-not-allowed disabled:bg-white/20 disabled:text-white/70"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                {recoveryMarkedDone ? "Missão marcada como concluída" : "Marcar recuperação como feita"}
+                {recoveryMarkedDone ? "Recuperação concluída e removida da Home" : "Marcar recuperação concluída"}
               </button>
             </div>
           </div>
@@ -1399,7 +1399,7 @@ export default function SimuladoEnemPage() {
             </AnimatePresence>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row">
             <button
               onClick={() => setFase("selecionar")}
               className="flex-1 py-3 rounded-2xl bg-violet-600 text-white font-black hover:bg-violet-700 transition-all"
@@ -1412,9 +1412,10 @@ export default function SimuladoEnemPage() {
                 if (navigator.share) navigator.share({ text }).catch(() => {});
                 else navigator.clipboard.writeText(text);
               }}
-              className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-all"
+              className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-all"
             >
               <Share2 className="w-4 h-4" />
+              <span className="sm:hidden">Compartilhar resultado</span>
             </button>
           </div>
         </ContentArea>

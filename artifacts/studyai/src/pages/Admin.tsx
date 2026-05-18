@@ -1062,7 +1062,7 @@ export default function AdminPage() {
             <input
               value={searchQ}
               onChange={e => setSearchQ(e.target.value)}
-              placeholder="Searcar..."
+              placeholder="Buscar..."
               className="w-full bg-white/5 border border-white/[0.08] rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-white/25 focus:outline-none focus:border-violet-500/40"
             />
           </div>
@@ -1083,8 +1083,8 @@ export default function AdminPage() {
         </header>
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto overflow-x-auto p-6">
-          <div className="min-w-[900px]">
+        <main className="flex-1 overflow-y-auto overflow-x-auto p-4 sm:p-6">
+          <div className="min-w-[820px] xl:min-w-0">
 
           {/* ══ VISÃO GERAL ══ */}
           {activeSection === "visao" && (
@@ -1798,7 +1798,7 @@ export default function AdminPage() {
                     {connectedProviderBilling.length ? `${connectedProviderBilling.length} conectado(s)` : "nenhum billing conectado"}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   {providerBilling.map(provider => {
                     const mainValue =
                       formatUsd(provider.costUsd) ??
@@ -1837,15 +1837,15 @@ export default function AdminPage() {
                   })}
                   {providerBilling.length === 0 && (
                     <div className="col-span-2 rounded-xl border border-dashed border-white/[0.08] bg-white/[0.02] px-4 py-8 text-center">
-                      <p className="text-sm font-bold text-white/60">Billing real ainda sem retorno</p>
-                      <p className="mt-1 text-xs text-white/35">Backend ainda não retornou providerBilling. Atualize a página após o deploy.</p>
+                      <p className="text-sm font-bold text-white/60">Billing real ainda não disponível</p>
+                      <p className="mt-1 text-xs text-white/35">Quando o backend retornar providerBilling, saldos e faturas aparecem aqui sem misturar com estimativas locais.</p>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* KPI cards */}
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {[
                   {
                     label: "Custo Registrado no Período", val: fmtBrlShort(ac?.rangeBrl ?? 0),
@@ -1886,14 +1886,14 @@ export default function AdminPage() {
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                   <div className="bg-white/[0.03] rounded-xl p-3 border border-white/[0.05]">
                     <p className="text-[10px] text-white/40 font-bold uppercase mb-2">Features rastreadas</p>
                     <div className="flex flex-wrap gap-1.5">
                       {trackedFeatures.slice(0, 8).map(feature => (
                         <span key={feature} className="text-[9px] px-2 py-1 rounded bg-emerald-500/10 text-emerald-200">{feature}</span>
                       ))}
-                      {trackedFeatures.length === 0 && <span className="text-xs text-white/25">Nenhuma no período</span>}
+                      {trackedFeatures.length === 0 && <span className="text-xs text-white/25">Nenhuma feature registrada no período</span>}
                     </div>
                   </div>
                   <div className="bg-white/[0.03] rounded-xl p-3 border border-white/[0.05]">
@@ -1902,7 +1902,7 @@ export default function AdminPage() {
                       {trackedModels.slice(0, 8).map(model => (
                         <span key={model} className="text-[9px] px-2 py-1 rounded bg-violet-500/10 text-violet-200">{model}</span>
                       ))}
-                      {trackedModels.length === 0 && <span className="text-xs text-white/25">Nenhum no período</span>}
+                      {trackedModels.length === 0 && <span className="text-xs text-white/25">Nenhum modelo registrado no período</span>}
                     </div>
                   </div>
                   <div className="bg-white/[0.03] rounded-xl p-3 border border-white/[0.05]">
@@ -1923,7 +1923,7 @@ export default function AdminPage() {
                 {telemetryCoverage.length > 0 && (
                   <div className="mt-4">
                     <p className="text-[10px] text-white/40 font-bold uppercase mb-2">Cobertura por caminho de IA</p>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
                       {telemetryCoverage.map(path => {
                         const statusClass =
                           path.status === "instrumented"
@@ -2002,15 +2002,15 @@ export default function AdminPage() {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {/* Custo por feature */}
                 <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-5">
                   <p className="text-sm font-bold text-white/70 mb-1">Custo Registrado por Feature</p>
                   <p className="text-[10px] text-white/40 mb-3">Soma deve bater com o custo registrado no período</p>
                   {noData ? (
                     <div className="rounded-xl border border-dashed border-white/[0.08] bg-white/[0.02] px-4 py-8 text-center">
-                      <p className="text-sm font-bold text-white/50">Sem feature registrada</p>
-                      <p className="mt-1 text-xs text-white/30">A lista aparece quando houver chamadas no período selecionado.</p>
+                      <p className="text-sm font-bold text-white/50">Sem feature registrada no período</p>
+                      <p className="mt-1 text-xs text-white/30">Faça uma chamada de IA instrumentada ou amplie o filtro para visualizar o ranking.</p>
                     </div>
                   ) : (
                     <div className="space-y-2.5">
@@ -2038,8 +2038,8 @@ export default function AdminPage() {
                   <p className="text-[10px] text-white/40 mb-3">Agrupado por provedor/modelo no mesmo período</p>
                   {(ac?.byModel?.length ?? 0) === 0 ? (
                     <div className="rounded-xl border border-dashed border-white/[0.08] bg-white/[0.02] px-4 py-8 text-center">
-                      <p className="text-sm font-bold text-white/50">Sem modelo registrado</p>
-                      <p className="mt-1 text-xs text-white/30">A lista aparece quando o backend agrupar chamadas por provedor/modelo.</p>
+                      <p className="text-sm font-bold text-white/50">Sem modelo registrado no período</p>
+                      <p className="mt-1 text-xs text-white/30">A lista aparece quando houver logs agrupados por provedor/modelo.</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -2099,7 +2099,7 @@ export default function AdminPage() {
                   return (
                     <div className="mt-4 space-y-5">
                       {/* KPI row */}
-                      <div className="grid grid-cols-4 gap-2">
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
                         {kpis.map(k => (
                           <div key={k.label} className="bg-white/[0.03] rounded-xl p-3 border border-white/[0.05]">
                             <p className="text-[9px] text-white/40 font-bold uppercase tracking-wide">{k.label}</p>
@@ -2151,7 +2151,7 @@ export default function AdminPage() {
                       {fc.cache.byFeature.length > 0 && (
                         <div>
                           <p className="text-[10px] text-white/40 font-bold uppercase tracking-wide mb-2">Cache semântico por feature</p>
-                          <div className="grid grid-cols-3 gap-2">
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                             {fc.cache.byFeature.slice(0, 6).map(cf => (
                               <div key={cf.feature} className="bg-white/[0.02] rounded-lg p-2.5 border border-white/[0.04]">
                                 <p className="text-[10px] font-bold text-emerald-300 capitalize truncate">{cf.feature}</p>
@@ -2165,8 +2165,8 @@ export default function AdminPage() {
                   );
                 })() : (
                   <div className="flex h-24 flex-col items-center justify-center rounded-xl border border-dashed border-white/[0.08] bg-white/[0.02] px-4 text-center">
-                    <p className="text-sm font-bold text-white/50">Consumo por fonte não carregado</p>
-                    <p className="mt-1 text-xs text-white/30">Clique em "Atualizar" para carregar os dados de fontes.</p>
+                    <p className="text-sm font-bold text-white/50">Consumo por fonte aguardando carga</p>
+                    <p className="mt-1 text-xs text-white/30">Clique em "Atualizar" para comparar IA paga, cache e fontes gratuitas.</p>
                   </div>
                 )}
               </div>
@@ -2182,7 +2182,7 @@ export default function AdminPage() {
                     {aiProviders.filter(p => p.ok).length}/{aiProviders.length} runtime ok
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   {aiProviders.map(p => (
                     <div key={p.name} className="flex items-center gap-3 p-3 rounded-xl border border-white/[0.05] bg-white/[0.02]">
                       <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-base ${p.bg}`}>{p.emoji}</div>
@@ -2420,7 +2420,7 @@ export default function AdminPage() {
 
               {inventory.length === 0 ? (
                 <div className="bg-[#12121a] border border-white/[0.07] rounded-2xl p-8 text-center text-sm text-white/35">
-                  Backend ainda não retornou integrationInventory. Atualize após o deploy.
+                  Inventário de integrações ainda não disponível. Quando o backend retornar integrationInventory, esta tela separa runtime, billing, mídia, dados e plataforma.
                 </div>
               ) : categoryOrder.map(category => {
                 const items = inventory.filter(i => i.category === category);
@@ -2428,7 +2428,7 @@ export default function AdminPage() {
                 return (
                   <div key={category} className="space-y-3">
                     <p className="text-xs font-black uppercase tracking-[0.18em] text-white/35">{categoryLabel[category]}</p>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                       {items.map(i => {
                         const meta = statusMeta[i.status] ?? statusMeta.missing_config;
                         return (

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ElementType } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -24,7 +24,7 @@ import {
 } from "@/components/Layout";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Section = "dashboard" | "turmas" | "planoaula" | "alunos" | "conteudos" | "estudio" | "pesquisa" | "caderno" | "provas" | "banco" | "atividades" | "assistente" | "relatorios" | "historico";
+type Section = "dashboard" | "turmas" | "planoaula" | "alunos" | "conteudos" | "estudio" | "pesquisa" | "provas" | "banco" | "atividades" | "assistente" | "relatorios" | "historico";
 type ExamMode = "classica" | "mundo" | "fraquezas";
 type VisualStyle = "enem" | "infantil" | "tecnico" | "aventura";
 
@@ -57,7 +57,9 @@ interface WorldStory { cenario: string; missao: string; personagem: string; obje
 interface ExamData { title: string; story?: WorldStory; questions: ExamQuestion[]; totalQuestions: number; }
 
 // ─── Nav items ────────────────────────────────────────────────────────────────
-const NAV = [
+type TeacherNavItem = { id: Section; label: string; icon: ElementType; external?: string };
+
+const NAV: TeacherNavItem[] = [
   { id: "dashboard" as Section, label: "Dashboard", icon: LayoutDashboard },
   { id: "turmas" as Section, label: "Minhas Turmas", icon: Users },
   { id: "planoaula" as Section, label: "Plano de Aula IA", icon: Wand2 },
@@ -65,7 +67,6 @@ const NAV = [
   { id: "conteudos" as Section, label: "Criador de Conteúdo", icon: Layers },
   { id: "estudio" as Section, label: "Estúdio Visual IA", icon: Sparkles },
   { id: "pesquisa" as Section, label: "Central de Pesquisa", icon: Microscope },
-  { id: "caderno" as Section, label: "Caderno IA do Professor", icon: BookOpen, external: "/notebook" },
   { id: "provas" as Section, label: "Gerador de Provas", icon: FileQuestion },
   { id: "banco" as Section, label: "Banco de Questões", icon: Database },
   { id: "atividades" as Section, label: "Atividades", icon: ClipboardList },
@@ -471,7 +472,7 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
       ))}
     </div>
   );
-  if (!data) return <div className="text-gray-500 text-center py-20">Erro ao carregar dados.</div>;
+  if (!data) return <AppErrorState description="Não foi possível carregar o painel do professor. Atualize a página ou tente novamente em alguns minutos." />;
 
   const engagementLabel = (rate: number) =>
     rate >= 70 ? { label: "Alto", color: "text-emerald-700 bg-emerald-50 border-emerald-200" } :
@@ -670,7 +671,7 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
               <h3 className="font-black text-gray-900 text-sm tracking-tight">Evolução Semanal</h3>
             </div>
             {data.weeklyChart.every(w => w.acertos === 0) ? (
-              <p className="text-gray-400 text-xs text-center py-6 font-semibold">Sem dados ainda</p>
+              <p className="text-gray-400 text-xs text-center py-6 font-semibold">Sem evolução ainda. Publique uma atividade para formar a primeira linha.</p>
             ) : (
               <ResponsiveContainer width="100%" height={120}>
                 <LineChart data={data.weeklyChart} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
@@ -705,6 +706,7 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
           <div className="text-center py-10 border-2 border-dashed border-gray-200 rounded-2xl">
             <ClipboardList className="w-9 h-9 mx-auto mb-3 text-gray-300" />
             <p className="text-gray-500 text-sm font-semibold">Nenhuma atividade criada ainda</p>
+            <p className="mt-1 text-xs text-gray-400">Crie uma atividade diagnóstica curta para destravar sinais do dashboard.</p>
           </div>
         ) : (
           <div className="space-y-1.5">

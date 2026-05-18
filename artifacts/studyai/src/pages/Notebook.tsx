@@ -300,6 +300,13 @@ type VisualEnrichment = {
   slots: VisualSlot[];
 };
 
+const VISUAL_STATUS_LABEL: Record<VisualSlot["status"], string> = {
+  resolved: "resolvido",
+  placeholder: "planejado",
+  disabled: "desativado",
+  unavailable: "indisponível",
+};
+
 const DEFAULT_MATERIAL_PREFERENCES: MaterialPreferences = {
   publico: "aluno",
   profundidade: "equilibrado",
@@ -543,7 +550,8 @@ function renderVisualEnrichmentHtml(enrichment: unknown): string {
     const media = slot.url
       ? `<img src="${escapeHtml(slot.url)}" alt="${escapeHtml(slot.alt || slot.title)}">`
       : `<div style="height:170px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#eef2ff,#fdf2f8);color:#6d28d9;font-weight:900;text-align:center;padding:16px">${escapeHtml(slot.kind === "math_visual" ? "Diagrama / fórmula" : slot.kind === "source_excerpt" ? "Trecho validado" : "Visual planejado")}</div>`;
-    return `<article class="studyai-visual-card">${media}<div class="studyai-visual-body"><div class="studyai-visual-kind">${escapeHtml(slot.source)} · ${escapeHtml(slot.status)}</div><h3 class="studyai-visual-title">${escapeHtml(slot.title)}</h3><p class="studyai-visual-caption">${escapeHtml(slot.caption)}</p>${slot.reason ? `<p class="studyai-visual-caption"><strong>Por quê:</strong> ${escapeHtml(slot.reason)}</p>` : ""}${slot.credit ? `<p class="studyai-visual-credit">Crédito: ${escapeHtml(slot.credit)}</p>` : ""}${slot.prompt && !slot.url ? `<p class="studyai-visual-credit">Prompt: ${escapeHtml(slot.prompt)}</p>` : ""}</div></article>`;
+    const statusLabel = VISUAL_STATUS_LABEL[slot.status] ?? slot.status;
+    return `<article class="studyai-visual-card">${media}<div class="studyai-visual-body"><div class="studyai-visual-kind">${escapeHtml(slot.source)} · ${escapeHtml(statusLabel)}</div><h3 class="studyai-visual-title">${escapeHtml(slot.title)}</h3><p class="studyai-visual-caption">${escapeHtml(slot.caption)}</p>${slot.reason ? `<p class="studyai-visual-caption"><strong>Por quê:</strong> ${escapeHtml(slot.reason)}</p>` : ""}${slot.credit ? `<p class="studyai-visual-credit">Crédito: ${escapeHtml(slot.credit)}</p>` : ""}${slot.prompt && !slot.url ? `<p class="studyai-visual-credit">Prompt: ${escapeHtml(slot.prompt)}</p>` : ""}</div></article>`;
   }).join("");
   return `<section class="studyai-section"><h2>Plano visual e fontes</h2>${data?.message ? `<div class="studyai-callout">${escapeHtml(data.message)}</div>` : ""}<div class="studyai-visual-grid">${cards}</div></section>`;
 }
@@ -599,6 +607,9 @@ function renderArtifactValue(value: unknown, key = "conteudo", depth = 0): strin
 
 function renderSlidesForPrint(deck: Slides): string {
   const slides = deck.slides ?? [];
+  if (!slides.length) {
+    return `<section class="studyai-section"><h2>Apresentação sem slides</h2><p>Não há slides suficientes neste artefato. Gere novamente a apresentação ou use a visualização do material original.</p></section>`;
+  }
   const coverImage = (deck as any).capaImagem as string | undefined;
   const meta = [
     ((deck as any).objetivos?.length ?? 0) > 0 ? `<section class="studyai-section"><h2>Objetivos de aprendizagem</h2>${renderPrimitiveList((deck as any).objetivos)}</section>` : "",
@@ -612,8 +623,8 @@ function renderSlidesForPrint(deck: Slides): string {
     const comparison = slide.esquerda || slide.direita
       ? `<div class="studyai-card-grid">${[slide.esquerda, slide.direita].filter(Boolean).map((col: any) => `<article class="studyai-card"><h3>${escapeHtml(col.titulo)}</h3>${renderPrimitiveList(col.itens ?? [])}</article>`).join("")}</div>`
       : "";
-    const visual = slide.visual ? `<article class="studyai-card"><span class="badge">${escapeHtml(slide.visual.tipo ?? "visual")}</span><h3>${escapeHtml(slide.visual.titulo ?? "Visual estruturado")}</h3><p>${escapeHtml(slide.visual.descricao ?? "Visual planejado a partir da fonte.")}</p>${slide.visual.caption ? `<p><strong>Legenda:</strong> ${escapeHtml(slide.visual.caption)}</p>` : ""}${slide.visual.credito ? `<p><strong>Credito:</strong> ${escapeHtml(slide.visual.credito)}</p>` : ""}</article>` : "";
-    const pedagogy = [slide.evidencia ? `<article class="studyai-card"><h3>Evidencia</h3><p>${escapeHtml(slide.evidencia)}</p></article>` : "", slide.comoExplicar ? `<article class="studyai-card"><h3>Como explicar</h3><p>${escapeHtml(slide.comoExplicar)}</p></article>` : "", slide.checkpoint ? `<article class="studyai-card"><h3>Checkpoint</h3><p>${escapeHtml(slide.checkpoint)}</p></article>` : ""].filter(Boolean).join("");
+    const visual = slide.visual ? `<article class="studyai-card"><span class="badge">${escapeHtml(slide.visual.tipo ?? "visual")}</span><h3>${escapeHtml(slide.visual.titulo ?? "Visual estruturado")}</h3><p>${escapeHtml(slide.visual.descricao ?? "Visual planejado a partir da fonte.")}</p>${slide.visual.caption ? `<p><strong>Legenda:</strong> ${escapeHtml(slide.visual.caption)}</p>` : ""}${slide.visual.credito ? `<p><strong>Crédito:</strong> ${escapeHtml(slide.visual.credito)}</p>` : ""}</article>` : "";
+    const pedagogy = [slide.evidencia ? `<article class="studyai-card"><h3>Evidência</h3><p>${escapeHtml(slide.evidencia)}</p></article>` : "", slide.comoExplicar ? `<article class="studyai-card"><h3>Como explicar</h3><p>${escapeHtml(slide.comoExplicar)}</p></article>` : "", slide.checkpoint ? `<article class="studyai-card"><h3>Checkpoint</h3><p>${escapeHtml(slide.checkpoint)}</p></article>` : ""].filter(Boolean).join("");
     return `<section class="studyai-slide">${img}<div class="studyai-slide-content"><span class="badge">Slide ${index + 1} de ${slides.length} · ${escapeHtml(slide.layout ?? slide.tipo ?? "slide")}</span><h2>${escapeHtml(slide.titulo ?? deck.titulo)}</h2>${slide.subtitulo ? `<p>${escapeHtml(slide.subtitulo)}</p>` : ""}${items.length ? renderPrimitiveList(items) : ""}${nums.length ? renderPrimitiveList(nums) : ""}${comparison}${slide.texto ? `<blockquote>${escapeHtml(slide.texto)}</blockquote>` : ""}${slide.mensagem ? `<p>${escapeHtml(slide.mensagem)}</p>` : ""}${slide.destaque ? `<div class="studyai-callout">${escapeHtml(slide.destaque)}</div>` : ""}${slide.exemplo ? `<div class="studyai-callout"><strong>Exemplo:</strong> ${escapeHtml(slide.exemplo)}</div>` : ""}${slide.dicaEnem ? `<div class="studyai-callout success"><strong>Como cai:</strong> ${escapeHtml(slide.dicaEnem)}</div>` : ""}${visual || pedagogy ? `<div class="studyai-card-grid">${visual}${pedagogy}</div>` : ""}</div></section>`;
   }).join("");
 }
@@ -713,7 +724,7 @@ function VisualEnrichmentPanel({ payload }: { payload: unknown }) {
               <div className="p-2">
                 <div className="flex items-center gap-1 mb-1">
                   <span className="text-[8px] font-black uppercase tracking-wider text-violet-500">{slot.source}</span>
-                  <span className={`text-[8px] font-black px-1 rounded ${slot.status === "resolved" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{slot.status}</span>
+                  <span className={`text-[8px] font-black px-1 rounded ${slot.status === "resolved" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{VISUAL_STATUS_LABEL[slot.status] ?? slot.status}</span>
                 </div>
                 <p className="text-[10px] font-black text-slate-800 leading-tight">{slot.title}</p>
                 <p className="text-[9px] text-slate-600 mt-1 leading-snug">{slot.caption}</p>
@@ -827,8 +838,8 @@ function MindMapView({ map }: { map: MindMap }) {
             <div className="min-w-0">
               <p className="text-[10px] font-black text-violet-500 uppercase tracking-wider">Mapa mental de estudo</p>
               <h3 className="text-lg font-black text-slate-900 leading-tight truncate">{map.subject}</h3>
-              <p className="text-xs text-slate-500">
-                {branchCards.length} ramos principais · {rows.length} topicos · {subtopicCount} subnos explicativos
+                  <p className="text-xs text-slate-500">
+                {branchCards.length} ramos principais · {rows.length} tópicos · {subtopicCount} subnós explicativos
                 {mapAny.generatedByFallback ? " · fallback estruturado usado" : ""}
               </p>
             </div>
@@ -1552,6 +1563,9 @@ function SlidesView({ deck, idx, setIdx }: { deck: Slides; idx: number; setIdx: 
 
       const fname = `${(deck.titulo ?? "apresentacao").replace(/\s+/g, "-").toLowerCase()}.pdf`;
       doc.save(fname);
+    } catch (error) {
+      console.error("PDF export:", error);
+      openPremiumPrintWindow({ apresentacao: deck }, deck.titulo ?? "Apresentação", "slides");
     } finally {
       setExporting(false);
     }
@@ -4042,11 +4056,11 @@ export default function Notebook() {
                                 <p className="px-3 py-1 text-[9px] font-black text-slate-400 uppercase tracking-wider">Exportar</p>
                                 <button onClick={() => { downloadArtifactAsPDF(a); setOpenArtifactMenu(null); }}
                                   className="w-full flex items-center gap-2.5 px-3 py-2 text-[11px] text-slate-700 hover:bg-slate-50 text-left">
-                                  <Download className="w-3.5 h-3.5 text-rose-500" /> Baixar como PDF
+                                  <Download className="w-3.5 h-3.5 text-rose-500" /> Imprimir / salvar PDF
                                 </button>
                                 <button onClick={() => { downloadArtifactAsPPTX(a); setOpenArtifactMenu(null); }}
                                   className="w-full flex items-center gap-2.5 px-3 py-2 text-[11px] text-slate-700 hover:bg-slate-50 text-left">
-                                  <Download className="w-3.5 h-3.5 text-orange-500" /> Baixar como PowerPoint
+                                  <Download className="w-3.5 h-3.5 text-orange-500" /> Gerar PowerPoint (.pptx)
                                 </button>
                                 <div className="h-px bg-slate-100 my-1" />
                                 <button onClick={() => { deleteSavedArtifact(a.id); setOpenArtifactMenu(null); }}
@@ -6712,10 +6726,10 @@ export default function Notebook() {
                       <div className="p-5 flex-1 flex flex-col">
                         {/* Emoji + title */}
                         <div className="flex items-start justify-between gap-3 mb-3">
-                          <div className="flex items-center gap-3">
+                          <div className="flex min-w-0 items-center gap-3">
                             <span className="text-3xl leading-none">{c.emoji ?? "📘"}</span>
                             <div className="min-w-0">
-                              <p className="font-display font-bold text-slate-900 leading-tight text-base">{c.title}</p>
+                              <p className="font-display line-clamp-2 text-base font-bold leading-tight text-slate-900">{c.title}</p>
                               {c.is_default && (
                                 <span className="inline-block mt-0.5 text-[9px] font-black uppercase tracking-wider bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">Padrão</span>
                               )}
@@ -6739,8 +6753,8 @@ export default function Notebook() {
                         )}
 
                         {/* Stats */}
-                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
-                          <div className="flex items-center gap-3">
+                        <div className="mt-3 flex flex-col gap-2 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex min-w-0 flex-wrap items-center gap-2">
                             {c.docs_count != null && (
                               <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-lg ${s.light} ${s.text}`}>
                                 <FileText className="w-3 h-3" />
@@ -6756,7 +6770,7 @@ export default function Notebook() {
                           </div>
                           <button
                             onClick={() => openCaderno(c)}
-                            className={`flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-xl bg-gradient-to-br ${s.gradient} text-white shadow-sm hover:shadow-md hover:scale-[1.03] active:scale-[0.98] transition-all`}
+                            className={`inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-br px-3 py-1.5 text-[11px] font-black text-white shadow-sm transition-all hover:scale-[1.03] hover:shadow-md active:scale-[0.98] sm:w-auto ${s.gradient}`}
                           >
                             Abrir <ChevronRight className="w-3 h-3" />
                           </button>
@@ -6807,12 +6821,12 @@ export default function Notebook() {
         {activeCaderno && (() => {
           const s = getCadernoStyle(activeCaderno.color);
           return (
-            <div className="flex items-center gap-2.5">
+            <div className="flex min-w-0 items-center gap-2.5">
               <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${s.gradient} flex items-center justify-center shadow-sm text-base`}>
                 {activeCaderno.emoji ?? "📘"}
               </div>
-              <div>
-                <p className="font-display font-bold text-slate-900 text-[13px] leading-tight tracking-tight">{activeCaderno.title}</p>
+              <div className="min-w-0">
+                <p className="font-display truncate text-[13px] font-bold leading-tight tracking-tight text-slate-900">{activeCaderno.title}</p>
                 <button onClick={() => setNotebookView("home")} className="text-[10px] text-slate-400 hover:text-violet-600 font-medium leading-tight flex items-center gap-0.5 transition-colors">
                   <Layers className="w-2.5 h-2.5" /> Meus Cadernos
                 </button>

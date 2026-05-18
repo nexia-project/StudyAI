@@ -372,9 +372,9 @@ export default function Caderno() {
         }
       />
 
-      <div className="max-w-7xl mx-auto px-4 py-4 flex gap-4 h-[calc(100vh-121px)]">
+      <div className="mx-auto flex min-h-[calc(100dvh-9rem)] max-w-7xl gap-4 px-4 py-4 md:h-[calc(100dvh-121px)]">
         {/* Sidebar */}
-        <div className={`flex-shrink-0 w-72 flex flex-col gap-3 ${showEditor ? "hidden md:flex" : "flex"}`}>
+        <div className={`w-full flex-shrink-0 flex-col gap-3 md:w-72 ${showEditor ? "hidden md:flex" : "flex"}`}>
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -446,7 +446,7 @@ export default function Caderno() {
                   className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-violet-600 px-3 py-2 text-xs font-black text-white transition hover:bg-violet-700 active:scale-[0.98]"
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  Marcar revisão feita
+                  Marcar revisão concluída
                 </button>
               </div>
             )}
@@ -471,14 +471,14 @@ export default function Caderno() {
                   <div key={`${item.createdAt}-${item.completedAt}`} className="rounded-xl bg-violet-50/60 px-3 py-2">
                     <p className="truncate text-xs font-black text-slate-800">{item.subject}</p>
                     <p className="text-[11px] text-slate-500">
-                      {item.errorsCount} erro{item.errorsCount !== 1 ? "s" : ""} · {item.accuracy}% · {item.completion === "manual_close" ? "feito" : "nota salva"} · {formatDate(item.completedAt)}
+                      {item.errorsCount} erro{item.errorsCount !== 1 ? "s" : ""} · {item.accuracy}% · {item.completion === "manual_close" ? "concluída manualmente" : "nota salva"} · {formatDate(item.completedAt)}
                     </p>
                   </div>
                 ))}
               </div>
             ) : (
               <p className="mt-3 text-xs leading-relaxed text-gray-500">
-                Ao salvar uma revisão importada do simulado, ela aparece aqui como concluída sem inventar progresso global.
+                  Ao salvar ou concluir uma revisão de simulado, ela aparece aqui com data local e sem inventar progresso global.
               </p>
             )}
           </div>
@@ -556,7 +556,7 @@ export default function Caderno() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="flex-1 flex gap-4 min-w-0 overflow-hidden"
+              className="flex min-w-0 flex-1 gap-4 overflow-hidden"
             >
               {/* Editor */}
               <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden min-w-0">
@@ -802,7 +802,7 @@ export default function Caderno() {
               {!processed && !isCreating && selectedId && (
                 <div className="w-72 flex-shrink-0 bg-white rounded-2xl shadow-sm border border-dashed border-violet-200 items-center justify-center text-center p-8 hidden lg:flex flex-col">
                   <Brain className="w-10 h-10 text-violet-200 mb-3" />
-                  <p className="text-sm text-gray-500 mb-4">Clique em <strong>Tiagão IA</strong> para gerar resumo, flashcards e questões automaticamente</p>
+                  <p className="text-sm text-gray-500 mb-4">Clique em <strong>Tiagão IA</strong> para transformar esta nota em resumo, flashcards e questões de revisão.</p>
                   <button
                     onClick={handleProcess}
                     disabled={aiLoading}

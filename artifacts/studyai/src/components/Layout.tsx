@@ -35,7 +35,7 @@ export function PageHeader({ icon, title, subtitle, actions, meta, sticky = true
       sticky && "sticky top-14 md:top-0",
       className
     )}>
-      <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3.5">
+      <div className="mx-auto flex max-w-6xl flex-col items-stretch gap-3 px-4 py-3.5 sm:flex-row sm:items-center">
         {icon && (
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-fuchsia-500 via-violet-600 to-purple-800 shadow-md shadow-violet-400/25 ring-1 ring-white/30">
             <span className="text-white [&>*]:h-4 [&>*]:w-4">{icon}</span>
@@ -43,10 +43,10 @@ export function PageHeader({ icon, title, subtitle, actions, meta, sticky = true
         )}
         <div className="min-w-0 flex-1">
           <h1 className="text-sm font-black leading-tight tracking-tight text-purple-950">{title}</h1>
-          {subtitle && <p className="truncate text-xs leading-tight text-violet-600/75">{subtitle}</p>}
+          {subtitle && <p className="text-xs leading-tight text-violet-600/75 sm:truncate">{subtitle}</p>}
           {meta && <div className="mt-1 flex flex-wrap items-center gap-1.5">{meta}</div>}
         </div>
-        {actions && <div className="flex flex-shrink-0 items-center gap-2">{actions}</div>}
+        {actions && <div className="flex w-full flex-shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end">{actions}</div>}
       </div>
     </div>
   );

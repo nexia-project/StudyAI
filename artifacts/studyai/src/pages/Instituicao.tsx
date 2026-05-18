@@ -691,6 +691,7 @@ export default function InstituicaoPage() {
         icon={<Building2 />}
         title={institution.name}
         subtitle={`Portal institucional${(institution.city || institution.state) ? ` > ${[institution.city, institution.state].filter(Boolean).join(", ")}` : ""}`}
+        sticky={false}
         meta={
           <>
             {institution.planType && <AppStatusBadge tone="violet">{planLabels[institution.planType] ?? institution.planType}</AppStatusBadge>}
@@ -888,8 +889,8 @@ export default function InstituicaoPage() {
             {turmas.length === 0 ? (
               <div className="text-center py-16 text-slate-500">
                 <GraduationCap className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p>Nenhuma turma vinculada à instituição</p>
-                <p className="text-sm mt-1">Professores devem criar turmas e vinculá-las aqui</p>
+                <p className="font-semibold">Nenhuma turma vinculada à instituição</p>
+                <p className="text-sm mt-1">Peça aos professores para criar turmas e vinculá-las antes de cobrar tração institucional.</p>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
@@ -1069,7 +1070,7 @@ export default function InstituicaoPage() {
               <AppEmptyState
                 icon={<FileText />}
                 title="Relatório ainda não carregado"
-                description="Carregue o relatório para habilitar diagnóstico por turma e exportação CSV."
+                description="Carregue o relatório para habilitar diagnóstico por turma, critérios de revisão humana e exportação CSV."
                 action={
                   <button onClick={loadReport}
                     className="flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white hover:bg-violet-500 transition-colors">
@@ -1118,7 +1119,7 @@ export default function InstituicaoPage() {
                   {report.totalStudents === 0 ? (
                     <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/50 p-4 text-center">
                       <p className="font-semibold text-slate-300">Sem alunos no relatório</p>
-                      <p className="text-xs text-slate-500 mt-1">Convide alunos e gere uma atividade diagnóstica para habilitar comparações.</p>
+                      <p className="text-xs text-slate-500 mt-1">Convide alunos, vincule turmas e gere uma atividade diagnóstica para habilitar comparações.</p>
                     </div>
                   ) : lowSignalTurmas.length > 0 ? (
                     <div className="space-y-2">

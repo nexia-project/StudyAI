@@ -2,6 +2,7 @@
 
 **Status:** controle operacional da evolucao premium
 **Fonte:** `docs/plano-mestre-evolucao-studyai.md`  
+**Cronograma vivo:** `docs/cronograma-premium-studyai.md`  
 **Escopo deste tracker:** coordenar execucao, aceite, validacao, rollout, commits e deploy.  
 **Fora de escopo:** editar landing, app, backend ou qualquer arquivo de implementacao.
 
@@ -36,6 +37,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - **Notebook do Professor RAG:** primeira fatia adiciona entrada docente no modo Professor, reusa fontes do Notebook, aceita upload de texto e gera entregaveis profissionais por formato (plano, roteiro, atividade, rubrica, lista, material da turma, resumo institucional e slides com notas) via `/api/notebook/teacher-output`, preservando `/notebook` do aluno.
 - **Area do Professor Premium+:** separacao visual reforcada entre aluno/professor, Tiagao generico oculto no portal docente, painel ganhou sala de comando com saude de turmas, fila de intervencao, habilidades frageis, pendencias e preparacao de aula, e Notebook do Professor ganhou rascunho de mensagem de intervencao.
 - **Hermes sistema nervoso / agentes de dor real:** doutrina canonica adicionada em `docs/hermes-agentes-dor-real.md`; primeira leva segura registra `auditor_pedagogico`, `notebook_rag_quality` e `professor_success` no `daily-learn`, expondo catalogo `dorRealAgents` no status Hermes.
+- **Cronograma premium vivo:** `docs/cronograma-premium-studyai.md` passa a concentrar concluido/deployado, validacao manual, proximas entregas, roadmap Hermes, QA, riscos e criterio de pronto de verdade.
 
 ## Tickets em execucao
 
@@ -247,7 +249,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 
 ### F0-05 Hermes sistema nervoso / agentes de dor real
 
-**Status:** primeira leva segura implementada; pendente execucao em ambiente com cron/admin e validacao de producao.
+**Status:** primeira leva segura implementada; Student Success/`sucesso_aluno` em consolidacao com sinais estruturados; pendente execucao em ambiente com cron/admin e validacao de producao.
 
 **Objetivo:** transformar Hermes no sistema nervoso operacional do StudyAI: observar, auditar qualidade, priorizar problemas, abrir recomendacoes claras e medir melhora, sempre separado por papel.
 
@@ -267,7 +269,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - `POST /internal/hermes/daily-learn` registra os tres agentes novos no array `ran`.
 - Lacunas de observabilidade viram recomendacoes, nao metricas inventadas.
 - Nenhum agente aplica autofix, envia mensagem real, altera conteudo, muda dados de aluno/turma ou aprova material sem revisao humana.
-- Proxima ordem apos a primeira leva: consolidar Student Success/`sucesso_aluno`, depois Simulado Intelligence, Caderno de Erros Intelligence, Custos IA Optimizer, UX/Product Auditor, Content Gap/CQO avancado e Institution Success/B2B ROI.
+- Proxima ordem apos a primeira leva: concluir validacao de Student Success/`sucesso_aluno`, depois Simulado Intelligence, Caderno de Erros Intelligence, Custos IA Optimizer, UX/Product Auditor, Content Gap/CQO avancado e Institution Success/B2B ROI.
 
 ## Checklist de validacao
 

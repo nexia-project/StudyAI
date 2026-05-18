@@ -77,7 +77,8 @@ router.post("/analisar-risco", requireAuth, requireAdmin, async (req: Request, r
     const systemPrompt = withHermesRecommendationStandard([
       "Você é o agente sucesso_aluno do StudyAI — retenção e customer success.",
       "Analise risco de churn com base nos dados JSON. Responda em português, bullets curtos.",
-      "Inclua: nível de risco (baixo/médio/alto), sinais observados, hipóteses e próximos passos.",
+      "Inclua: nível de risco (baixo/médio/alto), sinais observados, hipóteses, recomendação, ação segura e métrica.",
+      "Considere explicitamente sinais de aluno travado: sem dias de estudo, erros repetidos, simulado abandonado, muito chat sem prática e ausência de próxima missão.",
     ].join(" "));
 
     const userPrompt = [
@@ -111,6 +112,8 @@ router.post("/analisar-risco", requireAuth, requireAdmin, async (req: Request, r
       periodoDias: dias,
       alvoUserId: alvoUserId ?? null,
       patterns,
+      studentSuccessSignals: patterns.studentSuccessSignals,
+      structuredRecommendations: patterns.studentSuccessRecommendations,
       resposta,
     });
   } catch (err: any) {

@@ -30,7 +30,7 @@ Toda saida de agente Hermes deve seguir o padrao em `artifacts/api-server/src/li
 | --- | --- | --- | --- | --- |
 | 1 | Auditor Pedagogico | Admin | Implementado primeira leva | `qa_sintetico`, `cqo_conteudo`, padrao premium |
 | 2 | Notebook RAG Quality | Aluno/Professor | Implementado primeira leva | `qa_sintetico.notebook_rag_lousa`, CQO, smoke Notebook |
-| 3 | Student Success | Aluno | Existente | `sucesso_aluno` |
+| 3 | Student Success | Aluno | Em consolidacao | `sucesso_aluno` |
 | 4 | Professor Success | Professor | Implementado primeira leva | `qa_sintetico.professor_gestor_relatorios`, `sucesso_aluno` |
 | 5 | Simulado Intelligence | Aluno | Parcial/TODO | Simulado premium, Caderno |
 | 6 | Caderno de Erros Intelligence | Aluno | Parcial/TODO | Caderno premium, Home next-best-action |
@@ -67,14 +67,14 @@ O catalogo operacional fica em `artifacts/api-server/src/lib/hermes/jobs/dor-rea
 
 ### 3. Student Success
 
-- **Responsabilidade:** detectar risco de inatividade/churn e recomendar intervencoes seguras.
-- **Sinais observados:** assinantes sem estudo; usuarios sem atividade; baixo uso de simulado.
-- **Evidencias:** `users`, `user_activity`, `simulado_results`.
-- **Metricas:** reativacao em 7 dias; sessoes de estudo; retencao; simulados no periodo.
-- **Acoes:** plano de reengajamento; mensagem pela fila Hermes; revisao de onboarding.
-- **Limites de seguranca:** nao envia mensagem real sem aprovacao; nao expõe PII desnecessaria.
-- **Saida Admin:** acoes proativas e inbox de risco de churn.
-- **Status:** existente como `sucesso_aluno`; manter prioridade 3 e evoluir nomenclatura quando houver janela segura.
+- **Responsabilidade:** detectar aluno travado, risco de inatividade/churn e recomendar intervencoes seguras com acao e metrica.
+- **Sinais observados:** assinantes sem estudo; usuarios sem atividade; erros repetidos em simulado; simulado iniciado e nao concluido; muito chat sem pratica; ausencia de proxima missao.
+- **Evidencias:** `users`, `user_activity`, `simulado_results`, `activity_events`, `flashcard_sessions`, `study_schedules`, `study_plans`.
+- **Metricas:** reativacao em 7 dias; sessoes de estudo; praticas concluidas; recuperacao de simulado; missao ativa/CTA.
+- **Acoes:** plano de reengajamento; converter chat em pratica; priorizar Caderno/Simulado; mensagem pela fila Hermes; revisao de onboarding.
+- **Limites de seguranca:** nao envia mensagem real sem aprovacao; nao altera plano ou dados do aluno automaticamente; nao expõe PII desnecessaria.
+- **Saida Admin:** acoes proativas, inbox de risco e payload estruturado com sinal, acao e metrica.
+- **Status:** em consolidacao como `sucesso_aluno`; manter prioridade 3 e decidir alias publico `student_success` depois da validacao.
 
 ### 4. Professor Success
 
@@ -156,7 +156,7 @@ O catalogo operacional fica em `artifacts/api-server/src/lib/hermes/jobs/dor-rea
 ## Ordem de rollout
 
 1. **Primeira leva segura:** `auditor_pedagogico`, `notebook_rag_quality`, `professor_success`; todos registrados no `daily-learn`, expostos no catalogo e persistindo recomendacoes padronizadas.
-2. **Consolidar alias/continuidade:** manter `sucesso_aluno` como implementacao atual do Student Success; decidir depois se vale alias publico `student_success`.
+2. **Consolidar Student Success:** manter `sucesso_aluno` como implementacao atual, enriquecendo sinais estruturados antes de decidir alias publico `student_success`.
 3. **Proxima leva:** Simulado Intelligence e Caderno de Erros Intelligence, porque ja existem sinais locais e jornadas premium.
 4. **Depois:** Custos IA Optimizer, UX/Product Auditor, Content Gap/CQO avancado e Institution Success/B2B ROI.
 

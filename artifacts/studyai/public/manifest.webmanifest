@@ -1,0 +1,17 @@
+{
+  "name": "Study.IA",
+  "short_name": "Study.IA",
+  "description": "Tutor inteligente para o ENEM",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6d28d9",
+  "icons": [
+    {
+      "src": "/brand/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

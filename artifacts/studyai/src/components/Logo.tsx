@@ -15,15 +15,24 @@ export function Logo({
   className?: string;
   alt?: string;
 } & Omit<React.ImgHTMLAttributes<HTMLImageElement>, "src" | "alt">) {
-  const src =
-    variant === "icon" ? "/brand/icon.png" : "/brand/logo-horizontal.png";
-  const filter = tone === "white" ? "brightness(0) invert(1)" : undefined;
+  const src = variant === "icon"
+    ? "/brand/icon.svg"
+    : tone === "white"
+      ? "/brand/logo-horizontal-white.svg"
+      : "/brand/logo-horizontal.svg";
+
   return (
     <img
       src={src}
       alt={alt}
       className={className}
-      style={{ filter, ...(rest.style ?? {}) }}
+      decoding="async"
+      style={{
+        display: "block",
+        backgroundColor: "transparent",
+        objectFit: "contain",
+        ...(rest.style ?? {}),
+      }}
       {...rest}
     />
   );

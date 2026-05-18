@@ -1,0 +1,9 @@
+<svg width="400" height="120" viewBox="0 0 400 120" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Study.IA</title>
+  <desc id="desc">Tutor inteligente para o ENEM</desc>
+  <rect x="0" y="32" width="56" height="56" rx="14" fill="#7C3AED"/>
+  <text x="28" y="68" font-family="Arial Black, Arial, sans-serif" font-size="28" font-weight="900" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">S</text>
+  <text x="72" y="62" font-family="Arial Black, Arial, sans-serif" font-size="38" font-weight="900" fill="#FFFFFF">Study</text>
+  <text x="188" y="62" font-family="Arial Black, Arial, sans-serif" font-size="38" font-weight="900" fill="#C4B5FD">.IA</text>
+  <text x="73" y="88" font-family="Arial, sans-serif" font-size="13" fill="#DDD6FE" letter-spacing="1">Tutor inteligente para o ENEM</text>
+</svg>

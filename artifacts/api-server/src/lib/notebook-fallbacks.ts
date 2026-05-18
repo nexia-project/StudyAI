@@ -11,7 +11,7 @@ function splitStudySentences(content: string): string[] {
     .split(/(?<=[.!?])\s+|\n+/)
     .map((sentence) => compactText(sentence, 220))
     .filter((sentence) => sentence.length > 45 && /[a-zA-ZÀ-ÿ]/.test(sentence))
-    .slice(0, 80);
+    .slice(0, 120);
 }
 
 function titleWords(title: string): string[] {
@@ -52,24 +52,26 @@ function chunkArray<T>(items: T[], groups: number): T[][] {
 
 export function buildFallbackMindMap(title: string, content: string) {
   const sentences = splitStudySentences(content);
-  const terms = extractKeyTerms(title, content, 24);
-  const palette = ["#7c3aed", "#059669", "#ea580c", "#2563eb", "#db2777", "#0891b2", "#ca8a04"];
+  const terms = extractKeyTerms(title, content, 32);
+  const palette = ["#7c3aed", "#059669", "#ea580c", "#2563eb", "#db2777", "#0891b2", "#ca8a04", "#9333ea"];
   const branchNames = [
     "Ideia central",
     "Conceitos-chave",
     "Processos",
     "Exemplos",
     "Como cai",
+    "Relacoes",
     "Revisao final",
   ];
-  const sentenceGroups = chunkArray(sentences.length ? sentences : [title], 6);
-  const termGroups = chunkArray(terms.length ? terms : title.split(/\s+/).filter(Boolean), 6);
+  const branchIcons = ["🎯", "🧩", "⚙️", "💡", "📝", "🔗", "✅"];
+  const sentenceGroups = chunkArray(sentences.length ? sentences : [title], branchNames.length);
+  const termGroups = chunkArray(terms.length ? terms : title.split(/\s+/).filter(Boolean), branchNames.length);
   const categories = branchNames.map((name, i) => {
     const localTerms = termGroups[i].length ? termGroups[i] : terms.slice(i, i + 4);
     const localSentences = sentenceGroups[i].length ? sentenceGroups[i] : sentences.slice(i, i + 3);
     return {
       name,
-      icone: ["🎯", "🧩", "⚙️", "💡", "📝", "✅"][i],
+      icone: branchIcons[i],
       cor: palette[i],
       topics: Array.from({ length: 3 }, (_, j) => {
         const term = compactText(localTerms[j] ?? localTerms[0] ?? title, 42);
@@ -80,12 +82,14 @@ export function buildFallbackMindMap(title: string, content: string) {
             {
               name: j === 0 ? "Definicao essencial" : j === 1 ? "Exemplo da fonte" : "Ponto de prova",
               detail: sentence || `Relacione este ponto ao tema "${title}" e revise com suas proprias palavras.`,
+              evidencia: sentence || compactText(content, 180) || title,
             },
             {
               name: j === 0 ? "Por que importa" : j === 1 ? "Conexao pratica" : "Pergunta-checkpoint",
               detail: j === 2
                 ? `Explique como "${term || title}" se conecta ao tema central sem consultar o material.`
                 : `Use este ramo para entender ${term || title} dentro do contexto geral do documento.`,
+              evidencia: compactText(localSentences[(j + 1) % Math.max(localSentences.length, 1)] ?? sentence, 180),
             },
           ],
         };
@@ -100,9 +104,14 @@ export function buildFallbackMindMap(title: string, content: string) {
     conexoesCruzadas: [
       { de: "Ideia central", para: "Conceitos-chave", relacao: "A ideia central organiza os termos que precisam ser dominados." },
       { de: "Processos", para: "Exemplos", relacao: "Os exemplos mostram como os processos aparecem no material." },
+      { de: "Conceitos-chave", para: "Relacoes", relacao: "Os termos importantes ganham sentido quando aparecem conectados entre si." },
       { de: "Como cai", para: "Revisao final", relacao: "Os checkpoints transformam o mapa em roteiro de estudo." },
     ],
-    conceitosChave: terms.slice(0, 6).map((term) => `${term}: termo recorrente da fonte`),
+    conceitosChave: terms.slice(0, 8).map((term) => `${term}: termo recorrente da fonte`),
+    sourceSnippets: sentences.slice(0, 8).map((sentence, index) => ({
+      ref: `Trecho ${index + 1}`,
+      text: sentence,
+    })),
   };
 }
 
@@ -115,24 +124,29 @@ export function normalizeMindMap(input: unknown, title: string, content: string)
       name: compactText(cat?.name, 42) || fallback.categories[index % fallback.categories.length].name,
       icone: compactText(cat?.icone, 8) || fallback.categories[index % fallback.categories.length].icone,
       cor: /^#[0-9a-f]{6}$/i.test(String(cat?.cor ?? "")) ? cat.cor : fallback.categories[index % fallback.categories.length].cor,
-      topics: (Array.isArray(cat?.topics) ? cat.topics : []).slice(0, 4).map((topic: any, topicIndex: number) => ({
+      topics: (Array.isArray(cat?.topics) ? cat.topics : []).slice(0, 5).map((topic: any, topicIndex: number) => ({
         name: compactText(topic?.name, 52) || `Topico ${topicIndex + 1}`,
-        subtopics: (Array.isArray(topic?.subtopics) ? topic.subtopics : []).slice(0, 4).map((sub: any) => ({
-          name: compactText(sub?.name, 60) || "Conceito",
-          detail: compactText(sub?.detail, 260) || "Revise este ponto com base na fonte selecionada.",
-        })),
+        subtopics: (Array.isArray(topic?.subtopics) ? topic.subtopics : []).slice(0, 5).map((sub: any) => {
+          const isString = typeof sub === "string";
+          return {
+            name: compactText(isString ? sub : sub?.name, 60) || "Conceito",
+            detail: compactText(isString ? sub : sub?.detail, 260) || "Revise este ponto com base na fonte selecionada.",
+            evidencia: compactText(isString ? "" : sub?.evidencia ?? sub?.evidence ?? sub?.fonte, 220),
+            pagina: compactText(isString ? "" : sub?.pagina ?? sub?.page ?? sub?.ref, 40),
+          };
+        }),
       })),
     }))
     .filter((cat: any) => cat.topics.length > 0);
 
   const subtopicCount = normalizedCategories.reduce((sum: number, cat: any) =>
     sum + cat.topics.reduce((topicSum: number, topic: any) => topicSum + topic.subtopics.length, 0), 0);
-  const weak = normalizedCategories.length < 4 || subtopicCount < 12;
+  const weak = normalizedCategories.length < 5 || subtopicCount < 20;
   const map = weak ? fallback : {
     subject: compactText(parsed.subject, 48) || fallback.subject,
     color: /^#[0-9a-f]{6}$/i.test(String(parsed.color ?? "")) ? parsed.color : fallback.color,
     icone: compactText(parsed.icone, 8) || fallback.icone,
-    categories: normalizedCategories.slice(0, 7),
+    categories: normalizedCategories.slice(0, 8),
     conexoesCruzadas: Array.isArray(parsed.conexoesCruzadas) && parsed.conexoesCruzadas.length
       ? parsed.conexoesCruzadas.slice(0, 5).map((c: any) => ({
           de: compactText(c?.de, 48),
@@ -143,6 +157,12 @@ export function normalizeMindMap(input: unknown, title: string, content: string)
     conceitosChave: Array.isArray(parsed.conceitosChave) && parsed.conceitosChave.length
       ? parsed.conceitosChave.slice(0, 8).map((c: any) => compactText(c, 90)).filter(Boolean)
       : fallback.conceitosChave,
+    sourceSnippets: Array.isArray(parsed.sourceSnippets) && parsed.sourceSnippets.length
+      ? parsed.sourceSnippets.slice(0, 8).map((s: any, index: number) => ({
+          ref: compactText(s?.ref ?? s?.page ?? s?.pagina ?? `Trecho ${index + 1}`, 40),
+          text: compactText(s?.text ?? s?.trecho ?? s?.evidencia, 220),
+        })).filter((s: any) => s.text)
+      : fallback.sourceSnippets,
   };
   return {
     ...map,

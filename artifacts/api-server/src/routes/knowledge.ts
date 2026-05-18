@@ -8,6 +8,7 @@ import { usersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { validateFileUpload } from "../middlewares/security";
 import { enrichTopicFromWikipedia } from "./wikipedia";
+import { normalizeMindMap } from "../lib/notebook-fallbacks";
 
 // createRequire allows safe CJS import from ESM — avoids pdf-parse@1.1.1 module-level ENOENT bug
 const _require = createRequire(import.meta.url);
@@ -84,55 +85,79 @@ async function extractTextFromFile(file: Express.Multer.File): Promise<string> {
 }
 
 // ─── Generate mind map JSON from text via AI ──────────────────────────────────
-async function generateMindMapFromText(contentText: string, docTitle: string): Promise<{ subject: string; topics: Array<{ name: string; subtopics: string[] }> }> {
-  const completion = await openai.chat.completions.create({
-    model: OR.fast,
-    temperature: 0.2,
-    messages: [
-      {
-        role: "system",
-        content: `Você é um especialista em organização pedagógica e análise de conteúdo educacional brasileiro. Analise PROFUNDAMENTE o documento fornecido e extraia TODA a estrutura de conhecimento em formato de mapa mental completo e detalhado.
+async function generateMindMapFromText(contentText: string, docTitle: string): Promise<any> {
+  try {
+    const completion = await openai.chat.completions.create({
+      model: OR.fast,
+      temperature: 0.35,
+      max_tokens: 6000,
+      messages: [
+        {
+          role: "system",
+          content: `Você é um especialista em síntese visual, mapas mentais e aprendizagem ativa. Gere um mapa mental denso o suficiente para estudo real, inspirado em boas práticas de Miro, XMind, Whimsical, MindMeister e notas source-grounded tipo NotebookLM.
 
-Retorne SOMENTE um JSON válido com esta estrutura exata:
+Retorne SOMENTE JSON válido neste formato:
 {
-  "subject": "Nome da Matéria Principal",
-  "topics": [
+  "subject": "Tema central (max 5 palavras)",
+  "icone": "emoji do tema",
+  "categories": [
     {
-      "name": "Tópico 1",
-      "subtopics": ["Subtópico 1.1", "Subtópico 1.2", "Subtópico 1.3"]
+      "name": "Ramo principal (max 4 palavras)",
+      "icone": "emoji",
+      "cor": "#7c3aed",
+      "topics": [
+        {
+          "name": "Subtema (max 5 palavras)",
+          "subtopics": [
+            {
+              "name": "Conceito específico",
+              "detail": "1-2 frases: definição, exemplo, fórmula, data ou como cai.",
+              "evidencia": "trecho curto literal/parafraseado do documento",
+              "pagina": "p. X ou trecho Y se souber"
+            }
+          ]
+        }
+      ]
     }
-  ]
+  ],
+  "conexoesCruzadas": [
+    { "de": "Ramo A", "para": "Ramo B", "relacao": "relação curta" }
+  ],
+  "conceitosChave": ["termo: definição curta"],
+  "sourceSnippets": [{ "ref": "Trecho 1", "text": "evidência curta da fonte" }]
 }
 
 REGRAS OBRIGATÓRIAS:
-- subject: identifique a matéria/área corretamente (ex: "Matemática", "Biologia Celular", "Direito Constitucional")
-- Gere entre 8 e 12 tópicos principais — cubra TODOS os grandes temas do documento
-- Gere entre 4 e 7 subtópicos por tópico — seja específico e detalhado
-- Nomes curtos e diretos (máximo 5 palavras por item)
-- Extraia conceitos, fórmulas, datas, nomes, definições como subtópicos
-- Organize hierarquicamente do mais geral ao mais específico
-- IDIOMA OBRIGATÓRIO: SEMPRE em português brasileiro
-- Sem explicações fora do JSON — retorne APENAS o JSON válido`,
-      },
-      {
-        role: "user",
-        content: `Analise COMPLETAMENTE este documento chamado "${docTitle}" e gere o mapa mental completo e detalhado:\n\n${contentText.slice(0, 15000)}`,
-      },
-    ],
-    response_format: { type: "json_object" },
-  });
+- 5 a 8 ramos principais, agrupados por função pedagógica: fundamentos, processos, exemplos, aplicações, fórmulas/datas/termos, erros comuns e revisão.
+- 2 a 5 tópicos por ramo e 2 a 5 subtópicos por tópico.
+- Inclua exemplos, definições, fórmulas, datas, nomes próprios e termos que realmente aparecem na fonte.
+- Inclua 3 a 5 conexões cruzadas e 6 a 8 conceitos-chave.
+- Não devolva mapa genérico, lista rasa ou menos de 20 subtópicos.
+- Idioma: português brasileiro. Saída: apenas JSON.`,
+        },
+        {
+          role: "user",
+          content: `Documento: "${docTitle}"\n\n${contentText.slice(0, 50_000)}`,
+        },
+      ],
+      response_format: { type: "json_object" },
+    });
 
-  let rawJson: { subject?: string; topics?: Array<{ name: string; subtopics: string[] }> } = {};
-  try {
-    rawJson = JSON.parse(completion.choices[0].message.content || "{}");
-  } catch {
-    rawJson = {};
+    const raw = completion.choices[0].message.content || "{}";
+    let rawJson: any = {};
+    try {
+      rawJson = JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
+    } catch {
+      rawJson = {};
+    }
+    return normalizeMindMap(rawJson, docTitle, contentText);
+  } catch (err: any) {
+    console.warn("[mapa-mental] provider unavailable, using deterministic fallback:", err?.message);
+    return {
+      ...normalizeMindMap({}, docTitle, contentText),
+      providerWarning: "A IA principal não respondeu; geramos um mapa estruturado localmente a partir do texto extraído.",
+    };
   }
-
-  return {
-    subject: rawJson.subject || docTitle,
-    topics: rawJson.topics || [],
-  };
 }
 
 // Chunk size: ~4000 chars (~3 pages) for precise retrieval
@@ -535,15 +560,19 @@ router.post("/mapa-mental/from-doc", upload.single("file"), validateFileUpload, 
       return;
     }
 
-    const { subject, topics } = await generateMindMapFromText(contentText, docTitle);
-    const mindMapJson = { subject, topics, docTitle, source: "document" };
+    const mindMapJson = {
+      ...(await generateMindMapFromText(contentText, docTitle)),
+      docTitle,
+      source: "document",
+    };
 
-    await db.execute(sql`
+    const inserted = await db.execute(sql`
       INSERT INTO user_doc_mindmaps (user_id, doc_title, mind_map_json)
       VALUES (${req.userId}, ${docTitle}, ${JSON.stringify(mindMapJson)}::jsonb)
+      RETURNING id
     `);
 
-    res.json({ ok: true, mindMap: mindMapJson });
+    res.json({ ok: true, id: (inserted.rows[0] as any)?.id, mindMap: mindMapJson });
   } catch (err) {
     req.log.error({ err }, "Error generating mind map from doc");
     res.status(500).json({ erro: "Erro ao gerar mapa mental. Tente novamente." });
@@ -573,16 +602,17 @@ router.post("/mapa-mental/professor/from-doc", upload.single("file"), validateFi
       return;
     }
 
-    const { subject: aiSubject, topics } = await generateMindMapFromText(contentText, docTitle);
-    const finalSubject = subject?.trim() || aiSubject;
-    const mindMapJson = { subject: finalSubject, topics, docTitle, source: "professor" };
+    const generatedMap = await generateMindMapFromText(contentText, docTitle);
+    const finalSubject = subject?.trim() || generatedMap.subject || docTitle;
+    const mindMapJson = { ...generatedMap, subject: finalSubject, docTitle, source: "professor" };
 
-    await db.execute(sql`
+    const inserted = await db.execute(sql`
       INSERT INTO professor_mindmaps (professor_id, doc_title, subject, mind_map_json)
       VALUES (${req.userId}, ${docTitle}, ${finalSubject}, ${JSON.stringify(mindMapJson)}::jsonb)
+      RETURNING id
     `);
 
-    res.json({ ok: true, mindMap: mindMapJson });
+    res.json({ ok: true, id: (inserted.rows[0] as any)?.id, mindMap: mindMapJson });
   } catch (err) {
     req.log.error({ err }, "Error generating professor mind map from doc");
     res.status(500).json({ erro: "Erro ao gerar mapa mental. Tente novamente." });

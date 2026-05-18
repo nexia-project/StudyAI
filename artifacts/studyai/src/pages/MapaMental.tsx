@@ -6,7 +6,7 @@ import {
   ArrowLeft, Brain, BookOpen, LogIn, RefreshCw, Sparkles,
   Upload, X, FileText, CheckCircle, Lock, ChevronRight,
   Loader2, Trash2, GraduationCap, BookMarked, User2,
-  FolderOpen, Plus, ZoomIn, ZoomOut, Maximize2,
+  FolderOpen, Plus, ZoomIn, ZoomOut, Maximize2, Printer,
 } from "lucide-react";
 import { AppNav } from "@/components/AppNav";
 
@@ -16,11 +16,39 @@ const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 // Lets the student drag (mouse + touch) and pinch/scroll-zoom on the canvas.
 // Solves the "minWidth: 600 squashed on mobile" problem and gives a
 // best-in-class explorer feel similar to NotebookLM / Whimsical.
-function PannableSvg({ children, height = 600 }: { children: React.ReactNode; height?: number }) {
+function PannableSvg({
+  children, height = 600, contentWidth = 900, contentHeight = 600,
+}: {
+  children: React.ReactNode;
+  height?: number;
+  contentWidth?: number;
+  contentHeight?: number;
+}) {
   const [scale, setScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ startX: number; startY: number; baseX: number; baseY: number } | null>(null);
   const pinchRef = useRef<{ d0: number; s0: number } | null>(null);
+
+  const fitToViewport = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const nextScale = Math.min(1.15, Math.max(0.35, Math.min(
+      (el.clientWidth - 32) / Math.max(contentWidth, 1),
+      (el.clientHeight - 32) / Math.max(contentHeight, 1),
+    )));
+    setScale(nextScale);
+    setPan({ x: 0, y: 0 });
+  }, [contentWidth, contentHeight]);
+
+  useEffect(() => {
+    fitToViewport();
+    const el = containerRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => fitToViewport());
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [fitToViewport]);
 
   const dist = (a: Touch, b: Touch) =>
     Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
@@ -67,11 +95,12 @@ function PannableSvg({ children, height = 600 }: { children: React.ReactNode; he
   };
   const onTouchEnd = () => { dragRef.current = null; pinchRef.current = null; };
 
-  const reset = () => { setScale(1); setPan({ x: 0, y: 0 }); };
+  const reset = () => fitToViewport();
 
   return (
     <div className="relative w-full" style={{ height }}>
       <div
+        ref={containerRef}
         className="w-full h-full overflow-hidden touch-none cursor-grab active:cursor-grabbing select-none bg-gradient-to-br from-slate-50 to-violet-50/30 rounded-xl"
         onWheel={onWheel}
         onMouseDown={onMouseDown}
@@ -106,13 +135,13 @@ function PannableSvg({ children, height = 600 }: { children: React.ReactNode; he
           <ZoomOut className="w-4 h-4" />
         </button>
         <button onClick={reset}
-          aria-label="Centralizar"
+          aria-label="Ajustar à tela"
           className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-600">
           <Maximize2 className="w-4 h-4" />
         </button>
       </div>
       <div className="absolute bottom-3 left-3 text-[10px] text-slate-400 font-medium hidden sm:block bg-white/80 backdrop-blur-sm px-2 py-1 rounded-md">
-        Arraste para mover • Roda do mouse / pinça para zoom
+        Arraste para mover • zoom • ajustar à tela
       </div>
     </div>
   );
@@ -149,6 +178,9 @@ interface MindNode {
     flashcards?: number;
     topics?: string[];
     avgScore?: number;
+    detail?: string;
+    evidencia?: string;
+    pagina?: string;
   };
 }
 
@@ -157,7 +189,13 @@ interface DocMap {
   doc_title: string;
   mind_map_json: {
     subject: string;
-    topics: Array<{ name: string; subtopics: string[] }>;
+    topics?: Array<{ name: string; subtopics: Array<string | { name?: string; detail?: string; evidencia?: string; pagina?: string }> }>;
+    categories?: Array<{ name: string; icone?: string; cor?: string; topics: Array<{ name: string; subtopics: Array<string | { name?: string; detail?: string; evidencia?: string; pagina?: string }> }> }>;
+    conexoesCruzadas?: Array<{ de: string; para: string; relacao: string }>;
+    conceitosChave?: string[];
+    sourceSnippets?: Array<{ ref?: string; text: string }>;
+    generatedByFallback?: boolean;
+    providerWarning?: string;
     docTitle: string;
   };
   created_at: string;
@@ -169,7 +207,13 @@ interface ProfMap {
   subject: string;
   mind_map_json: {
     subject: string;
-    topics: Array<{ name: string; subtopics: string[] }>;
+    topics?: Array<{ name: string; subtopics: Array<string | { name?: string; detail?: string; evidencia?: string; pagina?: string }> }>;
+    categories?: Array<{ name: string; icone?: string; cor?: string; topics: Array<{ name: string; subtopics: Array<string | { name?: string; detail?: string; evidencia?: string; pagina?: string }> }> }>;
+    conexoesCruzadas?: Array<{ de: string; para: string; relacao: string }>;
+    conceitosChave?: string[];
+    sourceSnippets?: Array<{ ref?: string; text: string }>;
+    generatedByFallback?: boolean;
+    providerWarning?: string;
     docTitle: string;
   };
   created_at: string;
@@ -177,7 +221,7 @@ interface ProfMap {
 
 interface SubjectMap {
   subject: string;
-  topics: Array<{ name: string; subtopics: string[] }>;
+  topics: Array<{ name: string; subtopics: Array<string | { name?: string; detail?: string; evidencia?: string; pagina?: string }> }>;
 }
 
 // ─── Node component ───────────────────────────────────────────────────────────
@@ -313,8 +357,13 @@ const MM_PALETTE = [
   { fill: "#E8F1D4", stroke: "#BDD18C", text: "#3A4A1E", chip: "#6B8434" }, // depth 3
 ];
 
+function subtopicLabel(value: any): string {
+  return typeof value === "string" ? value : String(value?.name ?? value?.label ?? "").trim();
+}
+
 interface MMTreeNode {
   id: string; label: string; depth: number; detail?: string;
+  evidence?: string; page?: string;
   children: MMTreeNode[]; collapsed: boolean; raw?: any;
   x?: number; y?: number;
 }
@@ -348,11 +397,13 @@ function MindMapSVG({
         const catId = `c${ci}`;
         return {
           id: catId, label: cat.name, depth: 1,
+          raw: { icon: cat.icone, color: cat.cor, sourceSnippets: mapJson.sourceSnippets },
           collapsed: collapsed.has(catId),
           children: (cat.topics ?? []).map((t: any, ti: number) => {
             const tId = `${catId}-t${ti}`;
             return {
               id: tId, label: t.name, depth: 2,
+              raw: { parentCategory: cat.name, icon: cat.icone, color: cat.cor },
               collapsed: collapsed.has(tId),
               children: (t.subtopics ?? []).map((s: any, si: number) => {
                 const isStr = typeof s === "string";
@@ -361,6 +412,8 @@ function MindMapSVG({
                   label: isStr ? s : (s.name || ""),
                   depth: 3,
                   detail: isStr ? undefined : s.detail,
+                  evidence: isStr ? undefined : (s.evidencia ?? s.evidence),
+                  page: isStr ? undefined : (s.pagina ?? s.page ?? s.ref),
                   collapsed: false, children: [],
                   raw: { parentTopic: t.name, parentCategory: cat.name },
                 };
@@ -430,6 +483,9 @@ function MindMapSVG({
         topics: n.depth === 3
           ? [n.raw?.parentTopic ?? ""]
           : (n.children.map(c => c.label)),
+        detail: n.detail,
+        evidencia: n.evidence,
+        pagina: n.page,
       },
       children: [],
     };
@@ -451,7 +507,23 @@ function MindMapSVG({
 
   return (
     <>
-      <PannableSvg height={560}>
+      <div className="px-4 pt-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+          <span><strong className="text-foreground">{cats.length}</strong> ramos</span>
+          <span><strong className="text-foreground">{cats.reduce((sum: number, cat: any) => sum + (cat.topics?.length ?? 0), 0)}</strong> tópicos</span>
+          <span><strong className="text-foreground">{mapJson.conexoesCruzadas?.length ?? 0}</strong> conexões</span>
+          {mapJson.generatedByFallback && <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">fallback estruturado</span>}
+        </div>
+        <button
+          type="button"
+          onClick={() => window.print()}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-white text-xs font-bold text-foreground hover:bg-secondary"
+        >
+          <Printer className="w-3.5 h-3.5" /> Imprimir / PDF
+        </button>
+      </div>
+
+      <PannableSvg height={560} contentWidth={W} contentHeight={H}>
         <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "100%", minWidth: W }}>
           <defs>
             <filter id="mm-shadow" x="-20%" y="-20%" width="140%" height="140%">
@@ -482,6 +554,29 @@ function MindMapSVG({
             });
           })}
 
+          {/* Cross-links: dashed semantic relationships between major branches */}
+          {(mapJson.conexoesCruzadas ?? []).map((link: any, index: number) => {
+            const from = allNodes.find(n => n.depth === 1 && n.label.toLowerCase() === String(link.de ?? "").toLowerCase());
+            const to = allNodes.find(n => n.depth === 1 && n.label.toLowerCase() === String(link.para ?? "").toLowerCase());
+            if (!from || !to) return null;
+            const fx = (from.x ?? 0) + NODE_W;
+            const fy = from.y ?? 0;
+            const tx = to.x ?? 0;
+            const ty = to.y ?? 0;
+            const midX = Math.max(fx, tx) + 40 + index * 8;
+            return (
+              <path
+                key={`cross-${index}`}
+                d={`M${fx},${fy} C${midX},${fy} ${midX},${ty} ${tx},${ty}`}
+                fill="none"
+                stroke="#7c3aed"
+                strokeWidth={1.4}
+                strokeOpacity={0.35}
+                strokeDasharray="5 5"
+              />
+            );
+          })}
+
           {/* Nodes */}
           {allNodes.map(n => {
             const palette = MM_PALETTE[n.depth] ?? MM_PALETTE[3];
@@ -510,7 +605,9 @@ function MindMapSVG({
                   fill={palette.text}
                   style={{ pointerEvents: "none", userSelect: "none", fontFamily: "Inter, system-ui, sans-serif" }}
                 >
-                  {n.label.length > (hasChildren ? 22 : 25) ? n.label.slice(0, hasChildren ? 21 : 24) + "…" : n.label}
+                  {`${n.depth === 1 && n.raw?.icon ? n.raw.icon + " " : ""}${n.label}`.length > (hasChildren ? 22 : 25)
+                    ? `${n.depth === 1 && n.raw?.icon ? n.raw.icon + " " : ""}${n.label}`.slice(0, hasChildren ? 21 : 24) + "…"
+                    : `${n.depth === 1 && n.raw?.icon ? n.raw.icon + " " : ""}${n.label}`}
                 </text>
 
                 {/* Collapse/expand toggle */}
@@ -602,6 +699,20 @@ function MindMapSVG({
                       <div className="rounded-2xl p-4" style={{ backgroundColor: selectedNode.color + "10" }}>
                         <p className="text-xs text-muted-foreground mb-1">Subtópico dentro de</p>
                         <p className="text-sm font-bold" style={{ color: selectedNode.color }}>{parentTopic || mapJson.subject}</p>
+                      </div>
+                    )}
+                    {selectedNode.contentMeta?.detail && (
+                      <div className="rounded-2xl border border-border bg-white p-4">
+                        <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1">Explicação</p>
+                        <p className="text-sm text-foreground leading-relaxed">{selectedNode.contentMeta.detail}</p>
+                      </div>
+                    )}
+                    {selectedNode.contentMeta?.evidencia && (
+                      <div className="rounded-2xl bg-emerald-50 border border-emerald-100 p-4">
+                        <p className="text-xs text-emerald-700 font-bold mb-1">
+                          Evidência {selectedNode.contentMeta.pagina ? `· ${selectedNode.contentMeta.pagina}` : ""}
+                        </p>
+                        <p className="text-xs text-emerald-900 leading-relaxed">“{selectedNode.contentMeta.evidencia}”</p>
                       </div>
                     )}
                     <button
@@ -910,7 +1021,7 @@ function UploadModal({
   onClose, onSuccess, endpoint, forProfessor,
 }: {
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (data?: any) => void;
   endpoint: string;
   forProfessor?: boolean;
 }) {
@@ -935,11 +1046,12 @@ function UploadModal({
         credentials: "include",
         body: fd,
       });
-      const data = await res.json();
+      const text = await res.text();
+      const data = text ? JSON.parse(text) : {};
       if (!res.ok) throw new Error(data.erro || "Erro ao processar documento");
-      onSuccess();
+      onSuccess(data);
     } catch (err: any) {
-      setError(err.message || "Erro ao enviar arquivo");
+      setError(err.message || "Erro ao enviar arquivo. Verifique se o arquivo tem texto selecionável e tente novamente.");
     } finally {
       setUploading(false);
     }
@@ -1142,7 +1254,10 @@ export default function MapaMentalPage() {
         const sub = docMapJson.subject.toLowerCase().trim();
         if (!docTopicsMap[sub]) docTopicsMap[sub] = [];
         docTopicsMap[sub].push(topic.name);
-        for (const st of topic.subtopics || []) docTopicsMap[sub].push(st);
+        for (const st of topic.subtopics || []) {
+          const label = subtopicLabel(st);
+          if (label) docTopicsMap[sub].push(label);
+        }
       }
     }
 
@@ -1315,6 +1430,7 @@ export default function MapaMentalPage() {
   }
 
   const positions = mindData ? layoutTree(mindData, W / 2, H / 2) : [];
+  const activeDocMap = activeDocId !== null ? docMaps.find(m => m.id === activeDocId) ?? null : null;
 
   const TABS = [
     { id: "aluno" as const, label: "Meus Estudos", icon: GraduationCap },
@@ -1433,6 +1549,33 @@ export default function MapaMentalPage() {
                 <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin" />
                 <p className="text-muted-foreground text-sm">Montando seu mapa...</p>
               </div>
+            ) : activeDocMap ? (
+              <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl border border-border shadow-sm overflow-hidden">
+                <div className="px-6 pt-5 pb-3 border-b border-border flex flex-wrap gap-3 items-start justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">Documento carregado</p>
+                    <h2 className="text-lg font-black text-foreground">{activeDocMap.doc_title}</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {(activeDocMap.mind_map_json.categories?.length ?? 0) || activeDocMap.mind_map_json.topics?.length || 0} ramos/tópicos · {new Date(activeDocMap.created_at).toLocaleDateString("pt-BR")}
+                    </p>
+                    {activeDocMap.mind_map_json.providerWarning && (
+                      <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 mt-2 max-w-xl">
+                        {activeDocMap.mind_map_json.providerWarning}
+                      </p>
+                    )}
+                  </div>
+                  <button onClick={() => deleteDocMap(activeDocMap.id)} className="p-2 rounded-xl hover:bg-red-50 hover:text-red-500 transition-colors text-muted-foreground">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                <MindMapSVG mapJson={activeDocMap.mind_map_json} rootLabel={activeDocMap.mind_map_json.subject || activeDocMap.doc_title} />
+                <div className="px-6 py-4 border-t border-border bg-secondary/20 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                  <span>Mapa com zoom, pan, recolher/expandir ramos e painel de detalhes.</span>
+                  {(activeDocMap.mind_map_json.conceitosChave?.length ?? 0) > 0 && (
+                    <span><strong className="text-foreground">{activeDocMap.mind_map_json.conceitosChave?.length}</strong> conceitos-chave</span>
+                  )}
+                </div>
+              </motion.div>
             ) : !mindData ? (
               <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
@@ -1468,7 +1611,7 @@ export default function MapaMentalPage() {
                     <span className="flex items-center gap-1"><Lock className="w-2.5 h-2.5" /> sem estudo</span>
                   </div>
                 </div>
-                <PannableSvg height={560}>
+                <PannableSvg height={560} contentWidth={W} contentHeight={H}>
                   <svg ref={svgRef} width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "100%", maxWidth: W }}>
                     <defs>
                       <filter id="shadowRoot" x="-25%" y="-25%" width="150%" height="150%">
@@ -1615,7 +1758,7 @@ export default function MapaMentalPage() {
                   </div>
                   <MindMapSVG mapJson={selectedProfMap.mind_map_json} rootLabel={selectedProfMap.doc_title} />
                   <div className="px-6 py-4 border-t border-border bg-secondary/20">
-                    <p className="text-xs text-muted-foreground">{selectedProfMap.mind_map_json.topics.length} tópicos gerados pelo documento</p>
+                    <p className="text-xs text-muted-foreground">{selectedProfMap.mind_map_json.topics?.length ?? selectedProfMap.mind_map_json.categories?.length ?? 0} tópicos/ramos gerados pelo documento</p>
                   </div>
                 </motion.div>
               </div>
@@ -1661,14 +1804,14 @@ export default function MapaMentalPage() {
                         </button>
                       </div>
                       <div className="flex flex-wrap gap-1.5 mb-3">
-                        {(pm.mind_map_json.topics || []).slice(0, 3).map((t, j) => (
+                        {(pm.mind_map_json.topics || pm.mind_map_json.categories || []).slice(0, 3).map((t, j) => (
                           <span key={j} className="px-2 py-0.5 rounded-lg text-xs font-semibold" style={{ backgroundColor: color + "15", color }}>
                             {t.name.slice(0, 20)}{t.name.length > 20 ? "…" : ""}
                           </span>
                         ))}
-                        {(pm.mind_map_json.topics || []).length > 3 && (
+                        {(pm.mind_map_json.topics || pm.mind_map_json.categories || []).length > 3 && (
                           <span className="px-2 py-0.5 rounded-lg text-xs font-semibold text-muted-foreground bg-secondary">
-                            +{pm.mind_map_json.topics.length - 3}
+                            +{(pm.mind_map_json.topics || pm.mind_map_json.categories || []).length - 3}
                           </span>
                         )}
                       </div>
@@ -1696,7 +1839,11 @@ export default function MapaMentalPage() {
           <UploadModal
             endpoint="/api/mapa-mental/from-doc"
             onClose={() => setShowStudentUpload(false)}
-            onSuccess={() => { setShowStudentUpload(false); loadStudentData(); }}
+            onSuccess={(data) => {
+              setShowStudentUpload(false);
+              if (data?.id) setActiveDocId(Number(data.id));
+              loadStudentData(data?.id ? Number(data.id) : undefined);
+            }}
           />
         )}
         {showProfUpload && (
@@ -1704,7 +1851,17 @@ export default function MapaMentalPage() {
             endpoint="/api/mapa-mental/professor/from-doc"
             forProfessor
             onClose={() => setShowProfUpload(false)}
-            onSuccess={() => { setShowProfUpload(false); loadProfMaps(); }}
+            onSuccess={(data) => {
+              setShowProfUpload(false);
+              loadProfMaps();
+              if (data?.mindMap) setSelectedProfMap({
+                id: Number(data.id ?? Date.now()),
+                doc_title: data.mindMap.docTitle ?? data.mindMap.subject ?? "Material",
+                subject: data.mindMap.subject ?? "Material",
+                mind_map_json: data.mindMap,
+                created_at: new Date().toISOString(),
+              });
+            }}
           />
         )}
       </AnimatePresence>

@@ -46,3 +46,9 @@ Adicionar ao portal institucional uma aba "Gestao Escolar" com:
 - `content_gap_cqo_avancado` entrou no `daily-learn` para priorizar lacunas de conteudo antes de uso institucional: demanda sem conteudo/postulado, BNCC/ENEM ausente, material fraco, falta de fonte, falta de exercicio/exemplo/checkpoint e material antigo sem revisao.
 - A acao segura para instituicoes e alertar professor/admin e priorizar ingestao/curadoria; Hermes nao publica, aprova ou regenera material automaticamente.
 - Criterio de aceite institucional: materiais usados em turma precisam ter fonte, habilidade quando aplicavel, pratica/checkpoint e revisao humana rastreavel.
+
+## Hermes UX/Product Auditor
+
+- `ux_product_auditor` entrou no `daily-learn` para auditar friccao de jornada antes de ampliar uso institucional: telas confusas, abandono, CTAs escondidos, menu/rotas duplicadas, texto excessivo, estados fracos, risco mobile e feedback negativo por modulo.
+- Para Instituicao/B2B, a recomendacao segura e validar descoberta de funcionalidades, menu por papel e estados do Admin/Hermes sem remover rotas funcionais ou esconder CTA antes de QA manual.
+- Criterio de aceite institucional: gestor/professor precisa chegar ao relatorio, comunicacao, conteudo e Hermes com uma acao primaria clara, estados vazio/loading/erro compreensiveis e sem sobreposicao mobile.

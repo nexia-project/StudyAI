@@ -20,6 +20,112 @@ const isAdminUserAsync: any = _isAdminUserAsync;
 
 const router: IRouter = Router();
 
+type CommunicationChannel = "whatsapp" | "email" | "push" | "sms";
+type RecipientRole = "aluno" | "professor" | "responsavel" | "gestor";
+type CommunicationPurpose =
+  | "aviso_aluno"
+  | "aviso_professor"
+  | "cobranca_responsavel"
+  | "lembrete_estudo"
+  | "comunicado_pedagogico"
+  | "marketing";
+type ConsentStatus = "opted_in" | "unknown" | "opted_out";
+
+interface CommunicationRecipient {
+  nome?: string;
+  role: RecipientRole;
+  phone?: string;
+  email?: string;
+  consentStatus: ConsentStatus;
+  responsibleContact?: boolean;
+}
+
+interface CommunicationIntentRequest {
+  institutionId?: string;
+  channel?: CommunicationChannel;
+  purpose: CommunicationPurpose;
+  templateId?: string;
+  templateName?: string;
+  title?: string;
+  message?: string;
+  variables?: Record<string, string>;
+  recipients?: CommunicationRecipient[];
+  confirmedReview?: boolean;
+  noMassBlast?: boolean;
+}
+
+const INSTITUTION_PRESETS: Record<CommunicationPurpose, {
+  id: CommunicationPurpose;
+  label: string;
+  role: RecipientRole;
+  purposeLabel: string;
+  requiresTemplate: boolean;
+  requiresExplicitOptIn: boolean;
+  defaultMessage: string;
+  guardrail: string;
+}> = {
+  aviso_aluno: {
+    id: "aviso_aluno",
+    label: "Aviso ao aluno",
+    role: "aluno",
+    purposeLabel: "Comunicado operacional/pedagógico",
+    requiresTemplate: true,
+    requiresExplicitOptIn: true,
+    defaultMessage: "Oi, {nome}. A instituição publicou um aviso importante: {assunto}. Acesse o StudyAI para ver os detalhes.",
+    guardrail: "Use apenas para avisos ligados à vida escolar do aluno e preserve detalhes sensíveis no app.",
+  },
+  aviso_professor: {
+    id: "aviso_professor",
+    label: "Aviso ao professor",
+    role: "professor",
+    purposeLabel: "Comunicação interna",
+    requiresTemplate: true,
+    requiresExplicitOptIn: true,
+    defaultMessage: "Olá, {nome}. Há um comunicado da coordenação: {assunto}. Confira o painel institucional do StudyAI.",
+    guardrail: "Comunicações de equipe devem manter registro administrativo e canal de resposta institucional.",
+  },
+  cobranca_responsavel: {
+    id: "cobranca_responsavel",
+    label: "Responsável/pais cobrança/lembrete",
+    role: "responsavel",
+    purposeLabel: "Financeiro institucional",
+    requiresTemplate: true,
+    requiresExplicitOptIn: true,
+    defaultMessage: "Olá, {nome}. A instituição identificou um lembrete financeiro: {assunto}. Consulte o canal oficial da escola para detalhes.",
+    guardrail: "Cobrança deve ir para contato cadastrado do responsável, nunca para telefone do aluno por padrão.",
+  },
+  lembrete_estudo: {
+    id: "lembrete_estudo",
+    label: "Lembrete de estudo",
+    role: "aluno",
+    purposeLabel: "Engajamento pedagógico",
+    requiresTemplate: true,
+    requiresExplicitOptIn: true,
+    defaultMessage: "Oi, {nome}. Seu lembrete de estudo de hoje: {assunto}. Entre no StudyAI e continue pelo plano recomendado.",
+    guardrail: "Evite pressão excessiva e respeite janela de envio definida pela instituição.",
+  },
+  comunicado_pedagogico: {
+    id: "comunicado_pedagogico",
+    label: "Comunicado pedagógico",
+    role: "responsavel",
+    purposeLabel: "Acompanhamento pedagógico",
+    requiresTemplate: true,
+    requiresExplicitOptIn: true,
+    defaultMessage: "Olá, {nome}. A equipe pedagógica publicou um comunicado: {assunto}. O detalhe fica disponível no StudyAI/portal da instituição.",
+    guardrail: "Não exponha dados sensíveis do aluno no WhatsApp; use o app para detalhes individualizados.",
+  },
+  marketing: {
+    id: "marketing",
+    label: "Marketing institucional",
+    role: "responsavel",
+    purposeLabel: "Marketing/relacionamento",
+    requiresTemplate: true,
+    requiresExplicitOptIn: true,
+    defaultMessage: "Olá, {nome}. A instituição tem uma novidade: {assunto}. Responda PARAR para não receber mensagens promocionais.",
+    guardrail: "Marketing exige opt-in explícito, template aprovado e opção clara de parada/descadastro.",
+  },
+};
+
 let _resend: Resend | null = null;
 function getResend(): Resend {
   if (!_resend) {
@@ -28,6 +134,147 @@ function getResend(): Resend {
     _resend = new Resend(key);
   }
   return _resend;
+}
+
+function isWhatsappConfigured() {
+  const provider = (process.env.WHATSAPP_PROVIDER || "disabled").toLowerCase();
+  const metaConfigured = provider === "meta"
+    && !!process.env.WHATSAPP_META_ACCESS_TOKEN
+    && !!process.env.WHATSAPP_META_PHONE_NUMBER_ID;
+  return {
+    provider,
+    configured: metaConfigured,
+    mode: metaConfigured ? "ready" : "dry_run",
+    missing: [
+      !process.env.WHATSAPP_PROVIDER && "WHATSAPP_PROVIDER=meta",
+      provider === "meta" && !process.env.WHATSAPP_META_ACCESS_TOKEN && "WHATSAPP_META_ACCESS_TOKEN",
+      provider === "meta" && !process.env.WHATSAPP_META_PHONE_NUMBER_ID && "WHATSAPP_META_PHONE_NUMBER_ID",
+    ].filter(Boolean),
+  };
+}
+
+function normalizeWhatsappPhone(phone?: string) {
+  const trimmed = (phone ?? "").trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("+")) return /^\+[1-9]\d{7,14}$/.test(trimmed) ? trimmed : null;
+  const digits = trimmed.replace(/\D/g, "");
+  if (digits.length === 11) return `+55${digits}`;
+  if (digits.length === 13 && digits.startsWith("55")) return `+${digits}`;
+  return null;
+}
+
+function renderInstitutionMessage(input: CommunicationIntentRequest) {
+  const preset = INSTITUTION_PRESETS[input.purpose];
+  const firstRecipient = input.recipients?.[0];
+  const vars = {
+    nome: firstRecipient?.nome || input.variables?.nome || "responsável",
+    assunto: input.title || input.variables?.assunto || "comunicado da instituição",
+    instituicao: input.variables?.instituicao || "sua instituição",
+    ...(input.variables ?? {}),
+  };
+  const source = input.message?.trim() || preset.defaultMessage;
+  return source.replace(/\{(\w+)\}/g, (_match, key) => vars[key as keyof typeof vars] ?? "");
+}
+
+function validateCommunicationIntent(input: CommunicationIntentRequest) {
+  const preset = INSTITUTION_PRESETS[input.purpose];
+  const recipients = input.recipients ?? [];
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  if (!preset) errors.push("Preset de comunicação inválido.");
+  if ((input.channel ?? "whatsapp") !== "whatsapp") warnings.push("Esta primeira fundação prioriza WhatsApp; demais canais ficam como fallback futuro.");
+  if (recipients.length === 0) errors.push("Inclua pelo menos um destinatário para validar a intenção.");
+  if (recipients.length > 10 && !input.noMassBlast) errors.push("Disparos em massa exigem revisão explícita; limite manual inicial: 10 destinatários.");
+  if (!input.confirmedReview) errors.push("Revise conteúdo, público, finalidade e consentimento antes do envio.");
+  if (preset?.requiresTemplate && !input.templateName?.trim()) {
+    errors.push("WhatsApp fora da janela de 24h/uso ativo exige template aprovado configurado.");
+  }
+
+  recipients.forEach((recipient, index) => {
+    const label = recipient.nome || `destinatário ${index + 1}`;
+    if (recipient.role !== preset?.role) {
+      errors.push(`${label}: papel esperado para este preset é ${preset?.role}.`);
+    }
+    if (recipient.consentStatus !== "opted_in") {
+      errors.push(`${label}: consentimento/opt-in WhatsApp obrigatório antes do envio.`);
+    }
+    if (!normalizeWhatsappPhone(recipient.phone)) {
+      errors.push(`${label}: telefone WhatsApp inválido. Use +55DDDNUMERO ou DDDNUMERO.`);
+    }
+    if (input.purpose === "cobranca_responsavel" && (!recipient.responsibleContact || recipient.role !== "responsavel")) {
+      errors.push(`${label}: cobrança deve usar contato cadastrado do responsável, não telefone do aluno.`);
+    }
+  });
+
+  if (input.purpose === "marketing") {
+    warnings.push("Marketing precisa de opt-in explícito, template aprovado, identificação clara da instituição e instrução PARAR/STOP.");
+  }
+  if (input.purpose === "cobranca_responsavel") {
+    warnings.push("Evite detalhes financeiros sensíveis no corpo do WhatsApp; direcione para canal oficial autenticado.");
+  }
+
+  return { errors, warnings };
+}
+
+async function logHermesCommunicationRisk(kind: string, payload: Record<string, unknown>) {
+  try {
+    await db.execute(sql`
+      INSERT INTO hermes_admin_inbox (agent_id, tipo, titulo, corpo, payload)
+      VALUES (
+        'hermes_comunicacao',
+        'communication_guardrail',
+        ${kind},
+        'Hermes deve revisar risco de comunicação institucional: consentimento, template, cobrança ou falha de provider.',
+        ${JSON.stringify(payload)}::jsonb
+      )
+    `);
+  } catch {
+    // Hermes inbox is best-effort; communication audit must not fail because of it.
+  }
+}
+
+async function sendWhatsappViaMeta(opts: {
+  to: string;
+  templateName: string;
+  variables: Record<string, string>;
+}) {
+  const phoneNumberId = process.env.WHATSAPP_META_PHONE_NUMBER_ID;
+  const accessToken = process.env.WHATSAPP_META_ACCESS_TOKEN;
+  if (!phoneNumberId || !accessToken) {
+    throw new Error("WhatsApp Meta não configurado.");
+  }
+
+  const body = {
+    messaging_product: "whatsapp",
+    to: opts.to.replace(/^\+/, ""),
+    type: "template",
+    template: {
+      name: opts.templateName,
+      language: { code: process.env.WHATSAPP_META_TEMPLATE_LANGUAGE || "pt_BR" },
+      components: Object.keys(opts.variables).length
+        ? [{
+            type: "body",
+            parameters: Object.values(opts.variables).map((text) => ({ type: "text", text })),
+          }]
+        : undefined,
+    },
+  };
+
+  const response = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(`Meta WhatsApp error: ${JSON.stringify(data)}`);
+  }
+  return data;
 }
 
 // ============================================================
@@ -651,10 +898,175 @@ router.use("/comunicacao", async (req, res, next) => {
   }
   const isAdmin = await isAdminUserAsync(req.userId);
   if (!isAdmin) {
-    res.status(403).json({ error: "Acesso negado — apenas administradores" });
-    return;
+    const roleRes = await db.execute(sql`SELECT role FROM users WHERE id = ${req.userId} LIMIT 1`);
+    const role = getRows(roleRes)[0]?.role;
+    const institutionRes = await db.execute(sql`
+      SELECT role, is_approved
+      FROM institution_users
+      WHERE user_id = ${req.userId}
+      LIMIT 1
+    `);
+    const institutionRole = getRows(institutionRes)[0];
+    const allowedInstitutionUser =
+      ["institution_admin", "teacher"].includes(role ?? "")
+      || (!!institutionRole?.is_approved && ["owner", "admin", "teacher"].includes(institutionRole.role));
+    if (!allowedInstitutionUser) {
+      res.status(403).json({ error: "Acesso negado — comunicação institucional exige perfil administrativo/professor aprovado" });
+      return;
+    }
   }
   next();
+});
+
+router.get("/comunicacao/institution/status", async (_req, res) => {
+  const whatsapp = isWhatsappConfigured();
+  return void res.json({
+    channels: {
+      whatsapp: {
+        primary: true,
+        configured: whatsapp.configured,
+        provider: whatsapp.provider,
+        mode: whatsapp.mode,
+        missing: whatsapp.missing,
+      },
+      email: {
+        configured: !!process.env.RESEND_API_KEY,
+        provider: "resend",
+      },
+    },
+    presets: Object.values(INSTITUTION_PRESETS),
+    guardrails: [
+      "Consentimento/opt-in WhatsApp é obrigatório por destinatário.",
+      "Marketing exige opt-in explícito, template aprovado e STOP/PARAR.",
+      "Cobrança vai para responsável cadastrado; telefone do aluno não é fallback padrão.",
+      "Sem disparo em massa sem revisão humana e limite operacional.",
+      "Auditoria fica em communication_logs e alertas críticos entram no Hermes quando possível.",
+    ],
+  });
+});
+
+router.post("/comunicacao/institution/preview", async (req, res) => {
+  try {
+    const input = req.body as CommunicationIntentRequest;
+    const preset = INSTITUTION_PRESETS[input.purpose];
+    if (!preset) return void res.status(400).json({ error: "Preset inválido." });
+
+    const validation = validateCommunicationIntent({
+      ...input,
+      channel: input.channel ?? "whatsapp",
+      message: input.message ?? preset.defaultMessage,
+    });
+    const preview = renderInstitutionMessage({
+      ...input,
+      message: input.message ?? preset.defaultMessage,
+    });
+    const whatsapp = isWhatsappConfigured();
+
+    return void res.json({
+      ok: validation.errors.length === 0,
+      dryRun: !whatsapp.configured,
+      provider: whatsapp,
+      preset,
+      preview,
+      validation,
+      status: validation.errors.length ? "blocked" : whatsapp.configured ? "ready_to_send" : "configuration_required",
+    });
+  } catch (err: any) {
+    return void res.status(500).json({ error: err.message ?? "Erro ao gerar preview." });
+  }
+});
+
+router.post("/comunicacao/institution/send", async (req, res) => {
+  try {
+    const input = req.body as CommunicationIntentRequest;
+    const preset = INSTITUTION_PRESETS[input.purpose];
+    if (!preset) return void res.status(400).json({ error: "Preset inválido." });
+
+    const intent = {
+      ...input,
+      channel: input.channel ?? "whatsapp" as CommunicationChannel,
+      message: input.message ?? preset.defaultMessage,
+    };
+    const validation = validateCommunicationIntent(intent);
+    const whatsapp = isWhatsappConfigured();
+    const preview = renderInstitutionMessage(intent);
+    const firstRecipient = intent.recipients?.[0];
+    const normalizedPhone = normalizeWhatsappPhone(firstRecipient?.phone);
+
+    if (validation.errors.length > 0) {
+      await logDisparo({
+        user_id: req.userId,
+        destinatario: firstRecipient?.phone ?? firstRecipient?.email ?? "sem_destinatario",
+        canal: "whatsapp",
+        trigger_id: `institution_${intent.purpose}`,
+        perfil: firstRecipient?.role ?? preset.role,
+        template: intent.templateId ?? intent.templateName ?? preset.id,
+        assunto: intent.title ?? preset.label,
+        status: "bloqueado",
+        simulado: true,
+        error_msg: validation.errors.join(" | "),
+        metadata: { purpose: intent.purpose, validation, dryRun: true },
+      });
+      await logHermesCommunicationRisk("Envio bloqueado por guardrail", {
+        purpose: intent.purpose,
+        errors: validation.errors,
+        warnings: validation.warnings,
+      });
+      return void res.status(400).json({ ok: false, status: "blocked", validation, preview });
+    }
+
+    if (!whatsapp.configured) {
+      await logDisparo({
+        user_id: req.userId,
+        destinatario: normalizedPhone ?? firstRecipient?.phone ?? "sem_phone",
+        canal: "whatsapp",
+        trigger_id: `institution_${intent.purpose}`,
+        perfil: firstRecipient?.role ?? preset.role,
+        template: intent.templateId ?? intent.templateName ?? preset.id,
+        assunto: intent.title ?? preset.label,
+        status: "configuracao_pendente",
+        simulado: true,
+        error_msg: `WhatsApp provider não configurado: ${whatsapp.missing.join(", ")}`,
+        metadata: { purpose: intent.purpose, preview, provider: whatsapp },
+      });
+      await logHermesCommunicationRisk("WhatsApp institucional sem provider configurado", {
+        purpose: intent.purpose,
+        missing: whatsapp.missing,
+      });
+      return void res.status(409).json({
+        ok: false,
+        status: "configuration_required",
+        provider: whatsapp,
+        preview,
+        message: "Nenhuma mensagem real foi enviada. Configure o provider WhatsApp para habilitar envio.",
+      });
+    }
+
+    const result = await sendWhatsappViaMeta({
+      to: normalizedPhone!,
+      templateName: intent.templateName!,
+      variables: intent.variables ?? {},
+    });
+
+    await logDisparo({
+      user_id: req.userId,
+      destinatario: normalizedPhone!,
+      canal: "whatsapp",
+      trigger_id: `institution_${intent.purpose}`,
+      perfil: firstRecipient?.role ?? preset.role,
+      template: intent.templateId ?? intent.templateName ?? preset.id,
+      assunto: intent.title ?? preset.label,
+      status: "enviado",
+      metadata: { purpose: intent.purpose, provider: whatsapp.provider, meta: result, preview },
+    });
+
+    return void res.json({ ok: true, status: "sent", provider: whatsapp.provider, result });
+  } catch (err: any) {
+    await logHermesCommunicationRisk("Falha no envio WhatsApp institucional", {
+      error: err.message,
+    });
+    return void res.status(500).json({ ok: false, error: err.message ?? "Falha no envio." });
+  }
 });
 
 // ============================================================

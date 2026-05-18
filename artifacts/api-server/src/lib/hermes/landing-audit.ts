@@ -17,16 +17,16 @@ export const LANDING_AUDIT = {
         },
         {
           type: "subhead",
-          text: "Entre com seu objetivo, prova-alvo ou material. O StudyAI transforma tudo em um hub de diagnóstico, plano, treino, revisão e tutor IA, sem você ficar pulando entre ferramentas.",
+          text: "Entre com seu objetivo, prova-alvo ou material. O StudyAI organiza a jornada em um hub de diagnóstico, plano, treino, revisão e tutor IA, sem você ficar pulando entre ferramentas.",
         },
         {
           type: "subhead",
-          text: "Feito para ENEM, vestibular, concursos e estudo cotidiano no Brasil. Comece sem cartão e avance com Tiagão, Notebook RAG, simulado e sala de estudos no mesmo login.",
+          text: "Feito para ENEM, vestibular, concursos e estudo cotidiano no Brasil. Comece sem cartão e avance do plano à sessão de estudo com Tiagão, Notebook RAG, simulado e sala de estudos no mesmo login.",
         },
         { type: "cta_primary", text: "Começar grátis — 2 minutos" },
         {
           type: "cta_secondary",
-          text: "Ver demonstração (1:32) — link com ícone Play, mesma linha que o primário em desktop",
+          text: "Ver vídeos planejados (roteiros) — link com ícone Play, mesma linha que o primário em desktop",
         },
         {
           type: "text_link",
@@ -45,8 +45,18 @@ export const LANDING_AUDIT = {
       ],
     },
     {
+      id: "pain_outcomes",
+      title: "O StudyAI não vende mais conteúdo. Ele organiza decisão.",
+      audiences: [
+        "Aluno: sabe o que estudar agora, erra menos e revisa melhor",
+        "Professor: enxerga lacunas e orienta melhor",
+        "Instituição: acompanha progresso e qualidade",
+        "Admin / Hermes: melhora continuamente com auditoria e feedback",
+      ],
+    },
+    {
       id: "credibility",
-      title: "Credibilidade sem logos inventados: o produto mostra como ajuda.",
+      title: "Antes de prometer resultado, o produto deixa o caminho visível.",
       items: [
         "Próximo passo, não lista solta",
         "Seu material continua sendo fonte",
@@ -58,8 +68,13 @@ export const LANDING_AUDIT = {
       items: ["Fazedores", "Notebook RAG", "Lousa Imersiva", "Tutor IA (GPT e Claude)"],
     },
     {
+      id: "enem_destaque",
+      title: "Simulado ENEM no fluxo — treino, erro e revisão conectados",
+    },
+    {
       id: "app_showcase",
       count: 7,
+      narrative: "Rotas reais apresentadas como sequência: alvo, material, treino, revisão e orientação.",
       sampleTitles: [
         "Professor Tiagão",
         "Simulado ENEM",
@@ -68,26 +83,42 @@ export const LANDING_AUDIT = {
       ],
     },
     {
+      id: "pillars",
+      title: "Orientação e fonte: os dois pilares",
+      items: ["Professor Tiagão", "Notebook RAG"],
+    },
+    {
       id: "features_grid",
-      count: 15,
+      count: 8,
       sampleLabels: [
-        "Plano de Estudos IA",
-        "Tutor Tiagão 24h",
-        "Notebook RAG",
-        "Corretor de Redação",
+        "Diagnóstico e plano",
+        "Material com contexto",
+        "Treino guiado",
+        "Tutor no fluxo",
       ],
     },
     {
       id: "steps",
       titles: [
-        "Conte seus objetivos",
-        "Receba seu plano personalizado",
-        "Estude com tutor IA 24h",
+        "Declare a missão",
+        "Monte o centro de estudo",
+        "Execute e ajuste",
       ],
     },
     {
-      id: "testimonials",
+      id: "video_briefs",
+      title: "A história já está pronta para virar vídeo.",
+      strategy: "Substitui MP4 genérico por cards de roteiro em produção com objetivo, duração, cenas/capítulos e CTA.",
+      briefs: [
+        "Tour principal: do caos ao próximo passo",
+        "Tiagão: sessão curta, foco imediato",
+        "Instituição: progresso e qualidade em uma visão",
+      ],
+    },
+    {
+      id: "use_cases",
       count: 4,
+      note: "Substitui depoimentos com resultados não auditáveis por cenários de uso sem promessa de aprovação.",
     },
     {
       id: "pricing",
@@ -104,8 +135,10 @@ export const LANDING_AUDIT = {
     "H1 em teste A/B (sessão): ENEM vs. tempo/foco; CTA dispara studyia_landing_cta com variant.",
     "Prova do hero evita números/logos não auditáveis e reforça capacidade verificável: ENEM, RAG, Tiagão e B2B com revisão humana.",
     "Bloco de credibilidade virou faixa de prova operacional: próximo passo, fontes e limites da IA.",
-    "Faixa de novidades foi compactada no mobile para deixar a dobra hero/CTA aparecer mais cedo.",
-    "Grid de 15 features pode sobrecarregar escaneabilidade.",
+    "Sequência narrativa reforçada: hero -> dor por persona -> solução/prova operacional -> como funciona -> produto -> personas -> confiança -> preço -> CTA.",
+    "Grid de features reduzido de 15 para 8 capacidades para diminuir sobrecarga de escaneabilidade.",
+    "Depoimentos com números/aprovações foram trocados por cenários de uso para evitar claims não auditáveis.",
+    "Vídeos genéricos/placeholder foram removidos; a seção agora documenta briefs de produção para assets reais ou gerados por IA.",
   ],
 } as const;
 

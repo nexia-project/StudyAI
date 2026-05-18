@@ -32,12 +32,13 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - **App Shell Premium + Design System Interno:** primeira fatia alinha shell, cabecalho, missao, estados e badges em Caderno, Notebook RAG, Simulado ENEM e Meus Conteudos sem reescrever fluxos de dados.
 - **App Shell Premium B2B:** segunda fatia em andamento alinha Professor, ProfessorTurma e Instituicao com cabecalho, missao, badges, secoes e estados compartilhados, mantendo Admin para lote posterior.
 - **App Shell Premium Admin:** fatia conservadora aplicada em IA & Custos e Hermes, com cabecalhos, badges de base/cobertura/status e estados de loading/vazio sem alterar endpoints, filtros, numeros ou calculos.
+- **QA visual/manual geral + menus:** passada premium final em andamento corrige responsividade de cabecalhos/cards/modais e reduz entradas duplicadas de navegacao por papel sem remover rotas legadas.
 
 ## Tickets em execucao
 
 ### F1-01 Landing premium
 
-**Status:** primeira entrega concluida; manter em observacao de conversao e clareza.
+**Status:** segunda passada premium concluida; manter em observacao de conversao, clareza mobile e assets de video reais.
 
 **Objetivo:** refinar a landing para comunicar promessa, primeira dobra, CTA, prova, modulos e instituicoes com hierarquia premium.
 
@@ -48,6 +49,8 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - Primeira dobra com promessa clara: objetivo/material do aluno entra, Tiagao organiza o proximo passo.
 - CTA principal dominante para comecar/entrar no app e CTA institucional secundario.
 - Modulos apresentados como prova de capacidade, nao como lista concorrente.
+- Narrativa ponta a ponta: hero -> dor por persona -> solucao -> como funciona -> produto -> personas -> confianca -> preco/CTA.
+- Area de video usa briefs/roteiros de marca em producao, sem MP4 generico ou claim visual nao auditavel.
 - Sinais de confianca com fonte auditavel, pilotos ou linguagem explicitamente experimental.
 - Visual premium, educacional e brasileiro, sem promessa de resultado garantido.
 
@@ -381,6 +384,10 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [x] Instituicao explicita contexto do gestor, missao institucional, status de plano/aprovacao, estados vazios/loading/erro e relatorio/export CSV.
 - [x] Admin IA & Custos explicita base de custo, periodo, billing real, cobertura, provedores e estados vazios/loading sem mexer em calculos ou provider billing.
 - [x] Admin Hermes explicita status, inbox, recomendacoes, loading/erro/vazio e detalhe de recomendacao sem alterar rotas ou payloads.
+- [x] Menu escola/instituicao foi simplificado: uma entrada funcional para Portal Institucional, uma para Conteudos da instituicao e uma para Comunicacao; abas internas continuam dentro do portal.
+- [x] Menu rapido do professor removeu atalho duplicado para a mesma rota `/professor` e manteve Dashboard, Notebook, Conteudos e Comunicacao.
+- [x] Sidebar interna do Professor removeu o atalho duplicado "Caderno IA do Professor"; o Notebook continua acessivel pelo shell global e pelo menu rapido.
+- [x] Admin manteve secoes distintas porque representam dores operacionais diferentes; ajuste aplicado apenas em legibilidade/overflow e typo de busca.
 - [ ] QA manual mobile/desktop: validar navegacao interna, sticky headers, bottom nav e ausencia de sobreposicao em Caderno/Simulado/Notebook.
 - [ ] QA manual B2B mobile/desktop: validar Professor, ProfessorTurma e Instituicao com dados reais, CSV e impressao/PDF.
 - [ ] QA manual Admin desktop: validar IA & Custos com dados reais, providerBilling vazio/conectado, cobertura com e sem lacunas e refresh de fontes.

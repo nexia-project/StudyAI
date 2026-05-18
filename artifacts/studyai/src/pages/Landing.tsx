@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import {
@@ -50,13 +50,6 @@ const LANDING_IMG = {
   escolaColaboracaoFoto: `${BASE}/landing/landing-escola-colaboracao.jpg`.replace(/([^:]\/)\/+/g, "$1"),
 } as const;
 
-/** Mídia estável (CC0 / CDN público) + posters Unsplash com largura fixa. */
-const MAIN_DEMO_VIDEO = {
-  src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
-  poster:
-    "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1920&q=82",
-};
-
 const UNSPLASH = {
   studyDesk:
     "https://images.unsplash.com/photo-1513258496099-48168024aec0?auto=format&fit=crop&w=1000&q=82",
@@ -75,28 +68,28 @@ const UNSPLASH = {
 const APP_SHOWCASE = [
   {
     title: "Professor Tiagão",
-    desc: "Tutor por voz proativa no app: chama você, conhece o plano e age nos fluxos — a partir do hub.",
+    desc: "Tutor por voz e texto que usa seu plano para sugerir a próxima sessão e abrir caminhos no app.",
     path: "/app",
     icon: Mic,
     img: LANDING_IMG.professorTiagao,
   },
   {
     title: "Simulado ENEM",
-    desc: "Simulado completo com foco no vestibular brasileiro, integrado ao plano e ao radar de desempenho.",
+    desc: "Treino com questões oficiais, correção e leitura de desempenho para transformar erro em revisão.",
     path: "/simulado-enem",
     icon: Target,
     img: UNSPLASH.focus,
   },
   {
     title: "Notebook RAG",
-    desc: "Transforme PDFs, links e materiais em aula interativa: resumos, questões e respostas ancoradas na sua biblioteca.",
+    desc: "PDFs, links e materiais viram uma biblioteca consultável para resumos, questões e respostas com contexto.",
     path: "/notebook",
     icon: Layers,
     img: LANDING_IMG.notebookRag,
   },
   {
     title: "Tutor IA (GPT e Claude)",
-    desc: "Converse com modelos de ponta, com contexto do seu estudo — complementa o Tiagão por voz no app.",
+    desc: "Use chats de apoio para dúvidas longas, comparações de explicação e aprofundamento dentro da rotina.",
     path: "/tutor-ia",
     icon: Brain,
     img: UNSPLASH.laptop,
@@ -117,7 +110,7 @@ const APP_SHOWCASE = [
   },
   {
     title: "Cronograma e Sala de Estudos",
-    desc: "Organize a semana com a IA e entre na sala para foco, Pomodoro e revisão no mesmo ecossistema.",
+    desc: "Transforme plano em sessão: foco, Pomodoro, revisão e ritmo semanal no mesmo ecossistema.",
     path: "/cronograma",
     icon: Clock,
     img: LANDING_IMG.cronogramaBanner,
@@ -191,6 +184,29 @@ const CREDIBILITY_ITEMS = [
   },
 ] as const;
 
+const PAIN_OUTCOMES = [
+  {
+    audience: "Aluno",
+    pain: "Muito conteúdo, pouco critério para decidir o que estudar agora.",
+    outcome: "Próxima sessão clara, erros virando revisão e material sempre à mão.",
+  },
+  {
+    audience: "Professor",
+    pain: "Lacunas aparecem tarde demais quando tudo fica espalhado em tarefa, planilha e conversa.",
+    outcome: "Visão de dificuldade por turma para orientar melhor, preparar reforço e reaproveitar material.",
+  },
+  {
+    audience: "Instituição",
+    pain: "É difícil acompanhar progresso e qualidade sem transformar gestão em retrabalho manual.",
+    outcome: "Relatórios, sinais de atenção e acompanhamento com espaço para revisão humana.",
+  },
+  {
+    audience: "Admin / Hermes",
+    pain: "Uma landing e um produto premium precisam melhorar continuamente, não só acumular módulos.",
+    outcome: "Auditoria de copy, limites de IA e feedback ajudam a manter consistência e evolução.",
+  },
+] as const;
+
 const HERO_PREVIEW_CARDS = [
   {
     icon: Target,
@@ -213,34 +229,27 @@ const HERO_PREVIEW_CARDS = [
 ] as const;
 
 const FEATURES = [
-  { icon: Target,    label: "Plano de Estudos IA",      desc: "Plano personalizado dia a dia com IA. PDF, foto ou tema digitado.", color: "text-violet-700", bg: "bg-violet-50", border: "border-violet-200/80" },
-  { icon: Mic,       label: "Tutor Tiagão 24h",         desc: "Primeiro tutor de voz proativo do Brasil. Chama você, age no app.", color: "text-fuchsia-700", bg: "bg-fuchsia-50/90",  border: "border-fuchsia-200/80" },
-  { icon: Layers,    label: "Notebook RAG",              desc: "Transforme qualquer material em aula interativa com IA.", color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-200/80" },
-  { icon: PenLine,   label: "Corretor de Redação",       desc: "Nota 0–1000 em 30s nas 5 competências ENEM.", color: "text-violet-800",   bg: "bg-violet-50",   border: "border-violet-200/80"   },
-  { icon: Zap,       label: "Simulado e treino no app",  desc: "Simulado ENEM e treinos guiados a partir do hub (`/app`) — sem página legada separada.", color: "text-purple-700",   bg: "bg-purple-50",   border: "border-purple-200/80"   },
-  { icon: Users,     label: "Aula ao Vivo 2.0",         desc: "Sala virtual com quadro colaborativo, quiz e gravação automática.", color: "text-violet-700", bg: "bg-violet-50", border: "border-violet-200/80" },
-  { icon: BarChart2, label: "Análise Preditiva",         desc: "IA prevê risco de evasão e sugere intervenção em tempo real.", color: "text-fuchsia-700",   bg: "bg-fuchsia-50/80",   border: "border-fuchsia-200/70"   },
-  { icon: Trophy,    label: "Gamificação Natural",       desc: "Streaks, conquistas, ranking e desafios semanais por turma.", color: "text-purple-800", bg: "bg-purple-50",  border: "border-purple-200/80"  },
-  { icon: GraduationCap, label: "Aula com Professor IA", desc: "Aulas estruturadas com IA, materiais e ritmo de sala — integrado ao seu plano.", color: "text-violet-700", bg: "bg-violet-50", border: "border-violet-200/80" },
-  { icon: Map,       label: "Trilha Mestre",             desc: "Percursos por nível com checkpoints, reforço e revisão espaçada.", color: "text-fuchsia-700", bg: "bg-fuchsia-50/80", border: "border-fuchsia-200/70" },
-  { icon: BookOpen,  label: "Caderno Digital",           desc: "Organize anotações, anexos e leituras com busca e links para o Notebook RAG.", color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-200/80" },
-  { icon: Video,     label: "Lousa Imersiva",            desc: "Experiência imersiva de quadro e narração para aprofundar tópicos difíceis.", color: "text-violet-800", bg: "bg-violet-50", border: "border-violet-200/80" },
-  { icon: Hammer,    label: "Fazedores",                 desc: "Microdesafios práticos para destravar hábitos, organizar estudo e criar conteúdo.", color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-200/80" },
-  { icon: Sparkles,  label: "Tutor IA (GPT e Claude)",   desc: "Chat com modelos de ponta para tirar dúvidas longas e comparar abordagens.", color: "text-indigo-700", bg: "bg-indigo-50", border: "border-indigo-200/80" },
-  { icon: Globe,     label: "Base de Conhecimento",      desc: "Centralize fontes e documentos para consulta rápida e uso em turmas.", color: "text-teal-700", bg: "bg-teal-50", border: "border-teal-200/80" },
+  { icon: Target,    label: "Diagnóstico e plano",       desc: "Objetivo, tempo disponível e dificuldade viram prioridades semanais.", color: "text-violet-700", bg: "bg-violet-50", border: "border-violet-200/80" },
+  { icon: Layers,    label: "Material com contexto",      desc: "Notebook RAG consulta PDFs e links para estudar a partir das suas fontes.", color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-200/80" },
+  { icon: Zap,       label: "Treino guiado",              desc: "Simulado ENEM, questões e revisões conectam erro, habilidade e próxima tarefa.", color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-200/80" },
+  { icon: Mic,       label: "Tutor no fluxo",             desc: "Tiagão orienta por voz e texto sem tirar você do app.", color: "text-fuchsia-700", bg: "bg-fuchsia-50/90", border: "border-fuchsia-200/80" },
+  { icon: PenLine,   label: "Redação com critérios",      desc: "Correção por competências para revisar argumento, coesão e proposta.", color: "text-violet-800", bg: "bg-violet-50", border: "border-violet-200/80" },
+  { icon: BookOpen,  label: "Caderno e rotina",           desc: "Anotações, anexos, cronograma e sala de estudos ficam no mesmo login.", color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-200/80" },
+  { icon: Video,     label: "Aprofundamento visual",      desc: "Lousa Imersiva e Professor IA ajudam quando o tema pede aula guiada.", color: "text-violet-800", bg: "bg-violet-50", border: "border-violet-200/80" },
+  { icon: Users,     label: "Camada institucional",       desc: "Professores e gestores acompanham turmas com revisão humana e contexto.", color: "text-teal-700", bg: "bg-teal-50", border: "border-teal-200/80" },
 ];
 
 const STEPS = [
-  { num: "01", title: "Conte seus objetivos", desc: "IA analisa seu perfil em 2 minutos — nível, matérias, tempo disponível e data do ENEM.", icon: "🎯" },
-  { num: "02", title: "Receba seu plano personalizado", desc: "Estudo diário, revisões, simulados e reforço com IA — tudo calculado para a sua realidade, acessível pelo app.", icon: "📅" },
-  { num: "03", title: "Estude com tutor IA 24h", desc: "Dúvidas? O Tiagão explica por voz. Quer aprofundar? O Notebook transforma qualquer material em aula.", icon: "🤖" },
+  { num: "01", title: "Declare a missão", desc: "Informe prova, prazo, matérias e tempo real. O app entende onde você está antes de sugerir o caminho.", icon: "🎯" },
+  { num: "02", title: "Monte o centro de estudo", desc: "Plano, materiais, simulado e caderno entram no mesmo hub para evitar troca de ferramenta.", icon: "📅" },
+  { num: "03", title: "Execute e ajuste", desc: "Tiagão orienta a sessão, o Notebook aprofunda o material e os erros voltam como revisão.", icon: "🤖" },
 ];
 
 const TESTIMONIALS = [
-  { name: "Mariana S.", role: "Medicina — USP 2024", text: "Tirava 580. Depois de 2 meses com o StudyAI, fui para 724. A Tiagão me chamava quando ficava dias sem estudar. Era como ter uma tutora particular.", before: "580 pts", after: "724 pts", emoji: "🎓" },
-  { name: "Carlos M.", role: "Aprovado no TRF — 3ª tentativa", text: "Os simulados e o plano no app mostraram onde eu errava. Finalmente passei após 3 anos tentando — a IA apontou lacunas que eu não via.", before: "3 reprovações", after: "✅ Aprovado", emoji: "📋" },
-  { name: "Juliana R.", role: "FUVEST — Direito", text: "Fotografava minha apostila no ônibus. Em 30 segundos tinha exercícios sobre o que ia cair. Nunca estudei tão pouco e aprendi tanto.", before: "Sem foco", after: "✅ Aprovada", emoji: "⚡" },
-  { name: "Rafael T.", role: "3ª série — Ensino Médio", text: "Minha redação foi de 640 para 880. O corretor identificou que eu não desenvolvia proposta de intervenção. Nenhum professor havia me dito isso antes.", before: "Redação 640", after: "Redação 880", emoji: "✍️" },
+  { name: "Aluno ENEM", role: "Rotina individual", text: "Quando o estudo espalha em PDF, caderno e vídeo, o StudyAI junta tudo em uma próxima ação clara: revisar, treinar ou pedir explicação.", before: "Dor", after: "Próximo passo", emoji: "🎓" },
+  { name: "Concurseiro", role: "Revisão de longo prazo", text: "O valor está em voltar ao erro certo. Simulado, mapa de desempenho e revisão ajudam a não repetir a mesma lacuna toda semana.", before: "Dor", after: "Revisão guiada", emoji: "📋" },
+  { name: "Professor", role: "Material da turma", text: "O Notebook RAG permite transformar o material já usado em sala em perguntas, resumos e apoio para estudo sem perder a fonte original.", before: "Dor", after: "Material reaproveitado", emoji: "📚" },
+  { name: "Gestor escolar", role: "Acompanhamento", text: "Para instituições, a promessa é visibilidade: acompanhar turmas, priorizar casos de atenção e manter intervenção com revisão humana.", before: "Dor", after: "Acompanhamento", emoji: "🏫" },
 ];
 
 const PLANS = [
@@ -266,14 +275,14 @@ const PLANS = [
     name: "Pro",
     price: "R$ 59,90",
     period: "/mês",
-    desc: "Para estudantes sérios",
+    desc: "Para rotina intensa",
     highlight: true,
     color: "border-violet-500",
     features: [
-      "Planos e simulados ilimitados",
-      "Flashcards com IA avançada",
-      "Tiagão ilimitada + voz proativa",
-      "Correções de redação ilimitadas",
+      "Planos, simulados e revisões ampliados",
+      "Flashcards e treino com IA",
+      "Tiagão com voz e texto",
+      "Correções de redação ampliadas",
       "Notebook RAG completo",
       "Dashboard + mapa de calor",
       "Histórico + ranking prioritário",
@@ -289,9 +298,9 @@ const PLANS = [
     highlight: false,
     color: "border-violet-300",
     features: [
-      "Todos os alunos ilimitados",
+      "Gestão de alunos e turmas",
       "Dashboard de gestão institucional",
-      "Relatórios e análise preditiva",
+      "Relatórios e sinais de atenção",
       "Orquestrador de comunicação",
       "White label disponível",
       "Suporte dedicado",
@@ -302,54 +311,66 @@ const PLANS = [
 ];
 
 const FAQS = [
-  { q: "O StudyAI é gratuito?", a: "Sim! O plano gratuito inclui plano de estudos, simulados, revisões com IA no app, redação e acesso ao Tiagão (5 mensagens/dia). O Pro (R$59,90/mês) libera tudo ilimitado." },
-  { q: "O que é a Professor Tiagão?", a: "Tiagão é o primeiro tutor por voz com IA do Brasil. Age de forma proativa — chama você quando percebe que está dias sem estudar, sabe seu plano e pontos fracos. É como ter um tutor particular 24h." },
+  { q: "O StudyAI é gratuito?", a: "Sim. O plano gratuito permite começar com plano de estudos, simulados, revisões com IA no app, redação e acesso limitado ao Tiagão. O Pro amplia limites e recursos para quem estuda com frequência." },
+  { q: "O que é a Professor Tiagão?", a: "Tiagão é o tutor por voz e texto do StudyAI. Ele usa contexto do seu plano para orientar a próxima sessão, lembrar pontos de atenção e ajudar você a navegar pelo app." },
   { q: "Como o plano de estudos é gerado?", a: "Você informa matéria, nível, tempo disponível e objetivo. Pode enviar PDF, DOCX ou foto do caderno. Nossa IA cria um cronograma personalizado dia a dia com tópicos, exercícios e revisão no app." },
-  { q: "Funciona para ENEM, vestibular e concursos?", a: "Sim! O StudyAI foi criado para estudantes brasileiros. A IA adapta conteúdo para ENEM, FUVEST, UNICAMP, OAB, Receita Federal, PRF, concursos militares e qualquer outra prova." },
-  { q: "Como funciona a correção de redação ENEM?", a: "Envie sua redação (texto ou foto). A IA avalia nas 5 competências oficiais: domínio da norma culta, compreensão do tema, argumentos, coesão e proposta de intervenção. Resultado em menos de 30 segundos." },
-  { q: "O que é o Notebook RAG?", a: "É o diferencial competitivo do StudyAI. Você sobe qualquer material (PDF, vídeo, site) e nossa IA responde com base exatamente naquele conteúdo — gerando resumos, flashcards, questões e planos de aula diretamente do seu material." },
-  { q: "Vale mais do que um cursinho?", a: "Cursinhos tradicionais custam R$200–800/mês com conteúdo igual para todos. O StudyAI oferece plano 100% personalizado, simulados ilimitados e tutor IA 24h por R$59,90/mês — ou gratuitamente no plano básico." },
+  { q: "Funciona para ENEM, vestibular e concursos?", a: "Sim. A landing destaca ENEM porque há fluxo dedicado de simulado, mas o mesmo hub pode organizar estudo para vestibulares, concursos e rotina escolar quando você informa objetivo e material." },
+  { q: "Como funciona a correção de redação ENEM?", a: "Você envia a redação e recebe uma análise estruturada por competências, com pontos de revisão. A correção por IA deve ser usada como apoio de estudo, não como substituto de avaliação humana oficial." },
+  { q: "O que é o Notebook RAG?", a: "É a área em que você adiciona materiais e conversa com IA usando esse contexto. A proposta é responder, resumir e gerar exercícios a partir das fontes que você trouxe." },
+  { q: "Substitui cursinho ou professor?", a: "Não é essa a promessa. O StudyAI organiza rotina, treino e revisão com IA; professores, cursinhos e orientação humana continuam valiosos, principalmente para feedback sensível e decisões pedagógicas." },
 ];
 
-// ─── Vídeos demonstrativos (MP4 estáveis + poster Unsplash) ───────────────
-const VIDEOS = [
+const VIDEO_BRIEFS = [
   {
     id: "intro",
-    title: "Conheça o Study.IA em 90 segundos",
-    subtitle: "Visão geral da plataforma",
+    title: "Tour principal: do caos ao próximo passo",
+    objective: "Mostrar a dor do aluno que não sabe o que estudar e a virada para um hub com plano, treino, revisão e tutor.",
     duration: "1:32",
-    tag: "Institucional",
+    tag: "Roteiro em produção",
     tagColor: "bg-violet-50 text-violet-700 border-violet-200",
     gradient: "from-violet-500 via-violet-500 to-purple-600",
     icon: Sparkles,
-    src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
-    poster: MAIN_DEMO_VIDEO.poster,
+    scenes: [
+      "Aluno abre materiais espalhados e perde tempo decidindo por onde começar.",
+      "StudyAI recebe objetivo, material e prazo; o hub sugere a próxima sessão.",
+      "Tiagão orienta, Notebook aprofunda e simulado devolve erro como revisão.",
+    ],
+    cta: "Começar pelo hub",
+    path: "/app",
   },
   {
     id: "tiagao",
-    title: "Tiagão na prática — caso real",
-    subtitle: "Como o tutor IA por voz transforma a rotina de estudos",
+    title: "Tiagão: sessão curta, foco imediato",
+    objective: "Demonstrar como o tutor reduz fricção: identifica lacuna, propõe estudo de 20 minutos e conecta treino ao material.",
     duration: "2:18",
-    tag: "Estudante",
+    tag: "Roteiro para IA/video",
     tagColor: "bg-orange-50 text-orange-700 border-orange-200",
     gradient: "from-orange-400 via-rose-500 to-fuchsia-500",
     icon: Mic,
-    src: "https://www.w3schools.com/html/mov_bbb.mp4",
-    poster:
-      "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1280&q=82",
+    scenes: [
+      "Tiagão mostra que matemática ficou para trás no plano.",
+      "Aluno escolhe uma sessão curta e recebe revisão objetiva.",
+      "O app abre treino e deixa Notebook como apoio para dúvida.",
+    ],
+    cta: "Conhecer o Tiagão",
+    path: "/app",
   },
   {
     id: "escolas",
-    title: "Para gestores escolares",
-    subtitle: "Dashboard institucional + análise preditiva de evasão",
+    title: "Instituição: progresso e qualidade em uma visão",
+    objective: "Explicar como professor, gestor e Hermes fecham o ciclo: lacunas, acompanhamento, revisão humana e melhoria contínua.",
     duration: "2:45",
-    tag: "Escola",
+    tag: "Roteiro institucional",
     tagColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
     gradient: "from-emerald-500 via-teal-500 to-cyan-600",
     icon: Building2,
-    src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-    poster:
-      "https://images.unsplash.com/photo-1580582932707-52087e40d367?auto=format&fit=crop&w=1280&q=82",
+    scenes: [
+      "Professor enxerga lacunas recorrentes antes de preparar intervenção.",
+      "Gestor acompanha progresso, qualidade e sinais de atenção por turma.",
+      "Hermes usa auditoria e feedback para melhorar recomendações e consistência.",
+    ],
+    cta: "Falar com equipe",
+    path: "#institucional",
   },
 ];
 
@@ -369,48 +390,6 @@ export default function Landing() {
   const [b2bLoading, setB2bLoading] = useState(false);
   const [b2bDone, setB2bDone] = useState(false);
   const [b2bError, setB2bError] = useState("");
-  const [activeVideo, setActiveVideo] = useState<typeof VIDEOS[number] | null>(null);
-  const lastTriggerRef = useRef<HTMLElement | null>(null);
-  const dialogRef = useRef<HTMLDivElement | null>(null);
-  const closeBtnRef = useRef<HTMLButtonElement | null>(null);
-
-  // Captura o elemento que abriu o modal para devolver o foco depois
-  const openVideo = (v: typeof VIDEOS[number], e?: React.MouseEvent) => {
-    lastTriggerRef.current = (e?.currentTarget as HTMLElement) ?? (document.activeElement as HTMLElement);
-    setActiveVideo(v);
-  };
-
-  // Fecha modal: ESC, scroll-lock, focus trap, focus restore
-  useEffect(() => {
-    if (!activeVideo) return;
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { setActiveVideo(null); return; }
-      if (e.key !== "Tab" || !dialogRef.current) return;
-      // Focus trap: mantém foco dentro do diálogo
-      const focusables = dialogRef.current.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), video, [tabindex]:not([tabindex="-1"])'
-      );
-      if (focusables.length === 0) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-    };
-
-    window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    // Foca no botão de fechar logo que o modal abre
-    const t = setTimeout(() => closeBtnRef.current?.focus(), 50);
-
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-      clearTimeout(t);
-      // Devolve o foco para o disparador
-      lastTriggerRef.current?.focus?.();
-    };
-  }, [activeVideo]);
 
   useEffect(() => {
     const interval = setInterval(() => setActiveTest(v => (v + 1) % TESTIMONIALS.length), 5000);
@@ -536,7 +515,7 @@ export default function Landing() {
             <div className="flex-shrink-0">
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">Lançamentos no app</p>
               <p className="text-sm md:text-base font-bold text-white mt-0.5">
-                Fazedores, Notebook RAG, Lousa Imersiva e Tutor multi-modelo — já no ar para alunos.
+                Novos módulos para organizar, aprofundar e executar a rotina sem sair do app.
               </p>
             </div>
             <div className="flex flex-wrap gap-2 md:ml-auto">
@@ -630,11 +609,11 @@ export default function Landing() {
 
             <motion.p variants={fadeUp} initial="hidden" animate="show" custom={2}
               className="mb-3 max-w-2xl text-lg leading-relaxed text-slate-200 text-pretty sm:text-xl">
-              Entre com seu objetivo, prova-alvo ou material. O StudyAI transforma tudo em um hub de diagnóstico, plano, treino, revisão e tutor IA, sem você ficar pulando entre ferramentas.
+              Entre com seu objetivo, prova-alvo ou material. O StudyAI organiza a jornada em um hub de diagnóstico, plano, treino, revisão e tutor IA, sem você ficar pulando entre ferramentas.
             </motion.p>
             <motion.p variants={fadeUp} initial="hidden" animate="show" custom={2}
               className="mb-6 max-w-xl text-sm font-medium leading-relaxed text-slate-300 sm:text-base">
-              Feito para ENEM, vestibular, concursos e estudo cotidiano no Brasil. Comece sem cartão e avance com Tiagão, Notebook RAG, simulado e sala de estudos no mesmo login.
+              Feito para ENEM, vestibular, concursos e estudo cotidiano no Brasil. Comece sem cartão e avance do plano à sessão de estudo com Tiagão, Notebook RAG, simulado e sala de estudos no mesmo login.
             </motion.p>
 
             <motion.div variants={fadeUp} initial="hidden" animate="show" custom={3}
@@ -645,17 +624,16 @@ export default function Landing() {
                   Começar grátis — 2 minutos
                   <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1" aria-hidden />
                 </button>
-                <button
-                  type="button"
-                  onClick={(e) => openVideo(VIDEOS[0], e)}
+                <a
+                  href="#videos"
                   className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-bold text-white backdrop-blur transition-colors hover:bg-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
                 >
                   <Play className="h-4 w-4 shrink-0 text-violet-100" fill="currentColor" aria-hidden />
                   <span>
-                    Ver demonstração{" "}
-                    <span className="font-normal text-slate-300">(1:32)</span>
+                    Ver vídeos planejados{" "}
+                    <span className="font-normal text-slate-300">(roteiros)</span>
                   </span>
-                </button>
+                </a>
               </div>
               <p className="text-sm text-slate-300">
                 <a
@@ -750,6 +728,43 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ── DOR E RESULTADO ── */}
+      <section className="bg-white px-6 py-16 md:py-20">
+        <div className="mx-auto max-w-6xl">
+          <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
+            className="mb-10 max-w-3xl">
+            <p className="text-xs font-black uppercase tracking-widest text-violet-600">Por que existe</p>
+            <h2 className="mt-3 text-3xl font-black tracking-tight text-gray-950 sm:text-4xl">
+              O StudyAI não vende mais conteúdo. Ele organiza decisão.
+            </h2>
+            <p className="mt-4 text-lg leading-relaxed text-gray-600">
+              A dor não é só falta de aula. É não saber o próximo passo, repetir os mesmos erros e perder contexto entre materiais, provas e conversas.
+            </p>
+          </motion.div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {PAIN_OUTCOMES.map((item, i) => (
+              <motion.article
+                key={item.audience}
+                variants={fadeUp}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true }}
+                custom={i * 0.06}
+                className="rounded-3xl border border-gray-200 bg-gray-50/60 p-5 shadow-sm"
+              >
+                <p className="text-xs font-black uppercase tracking-widest text-violet-600">{item.audience}</p>
+                <p className="mt-3 text-sm leading-relaxed text-gray-500">
+                  <span className="font-bold text-gray-900">Dor:</span> {item.pain}
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-gray-700">
+                  <span className="font-bold text-gray-900">Resultado esperado:</span> {item.outcome}
+                </p>
+              </motion.article>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── CREDIBILIDADE ── */}
       <section className="border-y border-violet-100/70 bg-gradient-to-b from-white via-violet-50/60 to-white px-6 py-12">
         <div className="max-w-6xl mx-auto">
@@ -757,11 +772,11 @@ export default function Landing() {
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.24em] text-violet-600">Prova operacional</p>
               <h2 className="mt-2 text-2xl font-black tracking-tight text-gray-950 md:text-3xl">
-                Credibilidade sem logos inventados: o produto mostra como ajuda.
+                Antes de prometer resultado, o produto deixa o caminho visível.
               </h2>
             </div>
             <p className="max-w-sm text-sm leading-relaxed text-gray-600">
-              O StudyAI prioriza fonte, próximo passo e revisão humana onde importa.
+              A prova aqui é operacional: fonte clara, próxima ação e limites explícitos para a IA.
             </p>
           </div>
           <div className="grid gap-4 md:grid-cols-3">
@@ -807,16 +822,16 @@ export default function Landing() {
                   Treine pro ENEM
                 </p>
                 <h2 className="text-2xl sm:text-3xl md:text-5xl font-black leading-[1.05] tracking-tight drop-shadow-sm">
-                  Simulado ENEM completo<br className="hidden md:block" />
-                  <span className="text-amber-300">+1.600 questões oficiais</span>
+                  Simulado ENEM no fluxo<br className="hidden md:block" />
+                  <span className="text-amber-300">treino, erro e revisão conectados</span>
                 </h2>
                 <p className="mt-3 text-sm sm:text-base md:text-lg text-slate-100 leading-snug max-w-xl">
-                  Provas reais de 2009 a 2023, correção instantânea, mapa de calor por habilidade BNCC.
+                  Questões, correção e leitura de desempenho ajudam a transformar cada erro em tarefa de revisão.
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => navigate("/sign-up")}
+                onClick={handleStart}
                 className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-amber-400 hover:bg-amber-300 px-6 md:px-7 py-3 md:py-3.5 text-sm md:text-base font-black text-slate-950 shadow-xl shadow-amber-900/20 transition-all hover:scale-[1.03] active:scale-[0.98]"
               >
                 Começar simulado grátis
@@ -832,12 +847,12 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto">
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
             className="max-w-3xl mb-12 md:mb-14">
-            <p className="text-xs font-black text-violet-600 uppercase tracking-widest mb-3">Recursos no app</p>
+            <p className="text-xs font-black text-violet-600 uppercase tracking-widest mb-3">Do plano à prática</p>
             <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-gray-900 mb-4">
-              Tudo o que você vê no menu do aluno — em destaque para conversão
+              Um estudo premium não é uma lista de recursos. É uma sequência.
             </h2>
             <p className="text-gray-600 text-lg leading-relaxed">
-              Estas são rotas vivas do StudyAI: entre com sua conta (ou crie em segundos) e abra cada módulo. Abaixo, os mesmos fluxos que aparecem na navegação lateral — Simulado ENEM, Notebook RAG, Tutor IA, Lousa Imersiva, Fazedores, cronograma e sala de estudos.
+              Primeiro você define o alvo. Depois traz material, treina, revisa e recebe orientação no mesmo lugar. Os módulos abaixo são rotas reais do app, apresentados como etapas da jornada.
             </p>
           </motion.div>
 
@@ -890,7 +905,7 @@ export default function Landing() {
 
           <motion.p variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
             className="mt-10 text-center text-sm text-gray-500 max-w-2xl mx-auto">
-            Também disponíveis: Aula com Professor IA, Caderno digital, Trilha Mestre, Radar de desempenho, ranking, conquistas e comunicação para turmas —{" "}
+            Também disponíveis: Aula com Professor IA, Caderno digital, Trilha Mestre, radar de desempenho e recursos para turmas —{" "}
             <button type="button" onClick={handleStart} className="font-semibold text-violet-600 hover:text-violet-700 underline-offset-2 hover:underline">
               entrar no app
             </button>
@@ -910,9 +925,9 @@ export default function Landing() {
             className="max-w-2xl mb-10 md:mb-12"
           >
             <p className="text-xs font-black text-violet-600 uppercase tracking-widest mb-3">Experiência no produto</p>
-            <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-gray-900 mb-3">Dois pilares do StudyAI</h2>
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-gray-900 mb-3">Orientação e fonte: os dois pilares</h2>
             <p className="text-gray-600 text-lg leading-relaxed">
-              O hub com a Tiagão no seu ritmo e o Notebook com respostas ancoradas no seu material — rotas vivas: <span className="font-semibold text-gray-800">/app</span> e <span className="font-semibold text-gray-800">/notebook</span>.
+              O hub orienta o que fazer agora. O Notebook mantém o estudo conectado ao material que você trouxe. Juntos, reduzem a sensação de estudar no escuro.
             </p>
           </motion.div>
 
@@ -939,7 +954,7 @@ export default function Landing() {
               <div className="flex flex-1 flex-col p-5 sm:p-6 border-t border-violet-100/80">
                 <h3 className="font-black text-gray-900 text-lg sm:text-xl tracking-tight mb-2">Professor Tiagão</h3>
                 <p className="text-gray-600 text-sm leading-relaxed flex-1 mb-5">
-                  Tutora por voz proativa no app: integra ao plano, lembra você de estudar e executa ações no fluxo.
+                  Tutor por voz e texto no app: usa o plano para orientar a sessão, lembrar pontos de atenção e abrir caminhos no fluxo.
                 </p>
                 <button
                   type="button"
@@ -973,7 +988,7 @@ export default function Landing() {
               <div className="flex flex-1 flex-col p-5 sm:p-6 border-t border-violet-100/80">
                 <h3 className="font-black text-gray-900 text-lg sm:text-xl tracking-tight mb-2">Notebook RAG</h3>
                 <p className="text-gray-600 text-sm leading-relaxed flex-1 mb-5">
-                  PDFs e links viram aula, resumo e questões com citações no seu conteúdo — sem alucinar fora do material.
+                  PDFs e links viram aula, resumo e questões com contexto do seu conteúdo, para estudar sem perder a referência.
                 </p>
                 <button
                   type="button"
@@ -994,7 +1009,7 @@ export default function Landing() {
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
             className="text-center mb-10 md:mb-12">
             <p className="text-xs font-black text-violet-600 uppercase tracking-widest mb-3">Como funciona</p>
-            <h2 className="text-4xl font-black tracking-tight text-gray-900">3 passos para transformar seus estudos</h2>
+            <h2 className="text-4xl font-black tracking-tight text-gray-900">3 passos para tirar o estudo do improviso</h2>
           </motion.div>
 
           <motion.div
@@ -1016,7 +1031,7 @@ export default function Landing() {
                 <Sparkles className="w-3 h-3" /> Rotina viva, não planilha
               </p>
               <p className="text-white font-black text-base md:text-xl leading-tight drop-shadow">
-                Do primeiro objetivo ao tutor 24h — em poucos minutos.
+                Do primeiro objetivo à próxima sessão — em poucos minutos.
               </p>
             </div>
           </motion.div>
@@ -1037,7 +1052,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── VÍDEOS INSTITUCIONAIS ── */}
+      {/* ── VÍDEOS / ROTEIROS DE MARCA ── */}
       <section id="videos" className="relative py-24 px-6 bg-gradient-to-b from-white via-gray-50/40 to-white overflow-hidden">
         <div aria-hidden className="absolute inset-0 pointer-events-none">
           <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[700px] h-[420px] rounded-full bg-violet-100/40 blur-3xl" />
@@ -1046,84 +1061,71 @@ export default function Landing() {
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
             className="text-center mb-10 md:mb-12">
             <p className="inline-flex items-center gap-1.5 text-xs font-black text-violet-600 uppercase tracking-widest mb-3">
-              <Film className="w-3 h-3" /> Em ação
+              <Film className="w-3 h-3" /> Vídeos em produção
             </p>
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight text-gray-900">Veja o Study.IA por dentro</h2>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight text-gray-900">A história já está pronta para virar vídeo.</h2>
             <p className="text-gray-600 mt-3 max-w-2xl mx-auto text-lg">
-              Vídeo em destaque com mídia CC0 estável (substitua por tour gravado no app quando estiver pronto). Abaixo, três cortes demonstrativos e atalhos para explorar os módulos reais.
+              Em vez de MP4 genérico, a landing mostra os roteiros reais que precisam ser gravados ou gerados: dor, virada no produto, cenas e CTA.
             </p>
           </motion.div>
 
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
-            className="mb-12 md:mb-14 rounded-3xl overflow-hidden border border-gray-200 bg-gray-950 shadow-2xl shadow-violet-900/10 ring-1 ring-black/5">
-            <div className="grid lg:grid-cols-5 gap-0">
-              <div className="lg:col-span-3 aspect-video bg-black relative">
-                <span className="absolute top-3 left-3 z-20 inline-flex items-center rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-white ring-1 ring-white/25 backdrop-blur-sm">
-                  Demonstração em breve
-                </span>
-                <video
-                  src={MAIN_DEMO_VIDEO.src}
-                  poster={MAIN_DEMO_VIDEO.poster}
-                  controls
-                  playsInline
-                  muted
-                  loop
-                  preload="metadata"
-                  className="h-full w-full object-cover"
-                  aria-label="Demonstração de vídeo em alta definição (conteúdo CC0)"
-                />
+            className="mb-12 md:mb-14 overflow-hidden rounded-3xl border border-violet-100 bg-slate-950 shadow-2xl shadow-violet-900/10 ring-1 ring-black/5">
+            <div className="grid lg:grid-cols-5">
+              <div className="relative min-h-[280px] overflow-hidden bg-gradient-to-br from-violet-700 via-slate-950 to-fuchsia-700 lg:col-span-3">
+                <div className="absolute inset-0 opacity-[0.2] [background-image:linear-gradient(rgba(255,255,255,0.16)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.16)_1px,transparent_1px)] [background-size:36px_36px]" />
+                <div className="absolute -left-16 top-10 h-48 w-48 rounded-full bg-cyan-300/20 blur-3xl" />
+                <div className="absolute -right-16 bottom-4 h-56 w-56 rounded-full bg-fuchsia-300/20 blur-3xl" />
+                <div className="relative flex h-full min-h-[280px] flex-col justify-between p-6 md:p-8 text-white">
+                  <span className="inline-flex w-fit items-center rounded-full bg-white/15 px-3 py-1 text-[10px] font-black uppercase tracking-widest ring-1 ring-white/20 backdrop-blur">
+                    Asset de marca pendente
+                  </span>
+                  <div className="max-w-xl">
+                    <p className="text-xs font-black uppercase tracking-[0.24em] text-violet-100">Shot list mestre</p>
+                    <h3 className="mt-3 text-2xl font-black leading-tight md:text-4xl">
+                      Abrir com a dor real: muito conteúdo, pouca direção.
+                    </h3>
+                    <p className="mt-4 text-sm leading-relaxed text-slate-200 md:text-base">
+                      O vídeo principal deve mostrar a passagem de materiais soltos para uma sessão guiada. O produto aparece como decisão clara, não como vitrine de botões.
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="lg:col-span-2 flex flex-col justify-center gap-4 p-6 md:p-8 bg-gradient-to-br from-gray-900 to-gray-950 text-left">
-                <p className="text-xs font-black uppercase tracking-widest text-violet-300/90">Demonstração imediata</p>
+              <div className="flex flex-col justify-center gap-4 bg-gradient-to-br from-gray-900 to-gray-950 p-6 text-left md:p-8 lg:col-span-2">
+                <p className="text-xs font-black uppercase tracking-widest text-violet-300/90">Direção criativa</p>
                 <h3 className="text-xl md:text-2xl font-black text-white leading-tight">
-                  Experiência fluida de streaming no app
+                  Premium porque educa antes de vender.
                 </h3>
                 <p className="text-sm text-gray-300 leading-relaxed">
-                  Este trecho usa arquivo público hospedado pela Mozilla (CC0) para provar carregamento rápido e controles acessíveis. Quando sua gravação institucional estiver pronta, basta trocar a URL no código — a estrutura de poster + legenda já está preparada.
+                  Cada roteiro conecta uma dor objetiva a uma capacidade real: aluno sabe o que estudar agora, professor enxerga lacunas, instituição acompanha qualidade e Hermes melhora o ciclo.
                 </p>
                 <div className="flex flex-wrap gap-2 pt-1">
                   <button type="button" onClick={handleStart}
                     className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-gray-900 hover:bg-violet-50 transition-colors">
                     Abrir o app <ArrowRight className="h-3.5 w-3.5" />
                   </button>
-                  <button type="button" onClick={(e) => openVideo(VIDEOS[1], e)}
+                  <a href="#institucional"
                     className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-xs font-semibold text-white hover:bg-white/10 transition-colors">
-                    Ver outro exemplo (MP4) <Play className="h-3.5 w-3.5" />
-                  </button>
+                    Planejar institucional <ArrowRight className="h-3.5 w-3.5" />
+                  </a>
                 </div>
               </div>
             </div>
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-5 md:gap-6">
-            {VIDEOS.map((video, i) => {
+            {VIDEO_BRIEFS.map((video, i) => {
               const Icon = video.icon;
               return (
-                <motion.button
+                <motion.article
                   key={video.id}
-                  onClick={(e) => openVideo(video, e)}
                   variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i * 0.1}
-                  className="group text-left rounded-3xl bg-white border border-gray-200 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-violet-500/10 hover:-translate-y-1 hover:border-violet-300 transition-all duration-500"
+                  className="group overflow-hidden rounded-3xl border border-gray-200 bg-white text-left shadow-sm transition-all duration-500 hover:-translate-y-1 hover:border-violet-300 hover:shadow-2xl hover:shadow-violet-500/10"
                 >
-                  {/* Thumbnail */}
-                  <div className={`relative aspect-video overflow-hidden bg-gradient-to-br ${video.gradient}`}>
-                    {video.poster ? (
-                      <img src={video.poster} alt="" width={1280} height={720} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
-                    ) : null}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/20 to-transparent" aria-hidden />
-                    {video.src.includes("flower") && (
-                      <span className="absolute top-14 left-4 z-10 inline-flex items-center rounded-full bg-black/65 px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-white ring-1 ring-white/20 backdrop-blur-sm">
-                        Demonstração em breve
-                      </span>
-                    )}
-                    {/* Ruído sutil + grid */}
-                    <div className="absolute inset-0 opacity-[0.18] mix-blend-overlay"
-                      style={{ backgroundImage: "radial-gradient(circle at 20% 20%, rgba(255,255,255,0.5), transparent 40%), radial-gradient(circle at 80% 80%, rgba(0,0,0,0.3), transparent 40%)" }} />
+                  <div className={`relative overflow-hidden bg-gradient-to-br ${video.gradient} p-5 text-white`}>
                     <div className="absolute inset-0 opacity-20"
-                      style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px)", backgroundSize: "32px 32px" }} />
-
-                    {/* Marca d'água com ícone */}
-                    <div className="absolute top-4 left-4 right-4 flex items-start justify-between text-white">
+                      style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
+                    <div className="relative flex items-start justify-between gap-3">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-md text-[10px] font-black uppercase tracking-wider border border-white/30">
                         <Icon className="w-3 h-3" /> {video.tag}
                       </span>
@@ -1131,34 +1133,32 @@ export default function Landing() {
                         {video.duration}
                       </span>
                     </div>
-
-                    {/* Botão play central */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="relative">
-                        <span className="absolute inset-0 rounded-full bg-white/40 blur-xl group-hover:bg-white/60 transition-all" />
-                        <span className="relative w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform duration-300">
-                          <Play className="w-6 h-6 text-gray-900 ml-1" fill="currentColor" />
-                        </span>
-                      </span>
-                    </div>
-
-                    {/* Logo Study.IA inferior */}
-                    <div className="absolute bottom-3 right-3 text-white/80 text-[10px] font-black tracking-wider uppercase">
-                      Study<span className="text-white">.IA</span>
+                    <div className="relative mt-12">
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">Objetivo do vídeo</p>
+                      <h3 className="mt-2 text-lg font-black leading-tight">{video.title}</h3>
                     </div>
                   </div>
-
-                  {/* Meta */}
                   <div className="p-5">
-                    <div className="flex items-start justify-between gap-3 mb-1.5">
-                      <h3 className="font-black text-gray-900 text-base leading-tight group-hover:text-violet-600 transition-colors">
-                        {video.title}
-                      </h3>
-                      <ArrowUpRight className="w-4 h-4 text-gray-300 group-hover:text-violet-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all flex-shrink-0 mt-0.5" />
-                    </div>
-                    <p className="text-gray-500 text-sm leading-snug">{video.subtitle}</p>
+                    <p className="text-sm leading-relaxed text-gray-600">{video.objective}</p>
+                    <ol className="mt-4 space-y-2">
+                      {video.scenes.map((scene, j) => (
+                        <li key={scene} className="flex gap-2 text-xs leading-snug text-gray-600">
+                          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-50 text-[10px] font-black text-violet-700">
+                            {j + 1}
+                          </span>
+                          <span>{scene}</span>
+                        </li>
+                      ))}
+                    </ol>
+                    <button
+                      type="button"
+                      onClick={() => video.path.startsWith("#") ? document.querySelector(video.path)?.scrollIntoView({ behavior: "smooth" }) : navigate(video.path)}
+                      className="mt-5 inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-violet-500"
+                    >
+                      {video.cta} <ArrowRight className="h-3.5 w-3.5" />
+                    </button>
                   </div>
-                </motion.button>
+                </motion.article>
               );
             })}
           </div>
@@ -1183,17 +1183,17 @@ export default function Landing() {
                 <Radio className="w-3 h-3 animate-pulse" /> Exclusivo Study.IA
               </span>
               <h2 className="text-4xl font-black tracking-tight text-gray-900 mb-4">
-                Conheça a Professor Tiagão
+                Conheça o Professor Tiagão
               </h2>
               <p className="text-gray-600 text-lg leading-relaxed mb-8">
-                O primeiro tutor por voz com IA que age de forma proativa. Não espera você perguntar — <strong className="text-gray-900">ela chama você</strong>.
+                O tutor por voz e texto que entra na rotina de estudo. Ele não é mais uma aba: usa seu plano para sugerir o que fazer agora.
               </p>
               <div className="space-y-4">
                 {[
-                  { icon: Radio,  title: "Fala primeiro, sem você pedir",    desc: "Percebe quando você ficou dias sem estudar e chama por voz.", color: "text-orange-500" },
-                  { icon: Cpu,    title: "Sabe tudo sobre seu progresso",     desc: "Acesso ao seu plano, XP, matérias e histórico completo.", color: "text-violet-600" },
-                  { icon: Layers, title: "Age no app por você",              desc: "Peça para criar um plano ou navegar — ela executa.", color: "text-violet-600" },
-                  { icon: Shield, title: "Voz natural, zero robótica",        desc: "Voz calorosa e fluida, 100% exclusiva do Study.IA.", color: "text-emerald-500" },
+                  { icon: Radio,  title: "Orienta a próxima sessão",          desc: "Ajuda a retomar quando a rotina perde ritmo.", color: "text-orange-500" },
+                  { icon: Cpu,    title: "Usa o contexto do plano",           desc: "Considera objetivo, matérias e histórico disponíveis no app.", color: "text-violet-600" },
+                  { icon: Layers, title: "Conecta módulos",                   desc: "Aponta para plano, treino, revisão e Notebook sem quebrar o fluxo.", color: "text-violet-600" },
+                  { icon: Shield, title: "Apoio, não promessa mágica",        desc: "Organiza decisões de estudo e mantém espaço para revisão humana.", color: "text-emerald-500" },
                 ].map((b, i) => (
                   <motion.div key={i} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i * 0.1}
                     className="flex gap-3 items-start">
@@ -1250,11 +1250,11 @@ export default function Landing() {
                 </div>
                 <div className="space-y-3 text-sm">
                   {[
-                    { role: "tiagao", msg: "🎯 Ei Ana! Você ficou 3 dias sem estudar. Seu streak de 12 dias está em risco!" },
-                    { role: "user",   msg: "Que bom que me lembrou! Posso estudar só 20 minutos hoje?" },
-                    { role: "tiagao", msg: "Claro! Já preparei uma revisão express de Funções — os seus pontos mais fracos. Vamos?" },
-                    { role: "user",   msg: "Sim! Começar agora." },
-                    { role: "tiagao", msg: "✅ Abrindo o módulo de Funções Logarítmicas... Prontas as suas 5 questões personalizadas!" },
+                    { role: "tiagao", msg: "Vi que matemática ficou parada no seu plano. Quer uma sessão curta agora?" },
+                    { role: "user",   msg: "Tenho só 20 minutos hoje." },
+                    { role: "tiagao", msg: "Então vamos revisar funções e fechar com 5 questões do seu material." },
+                    { role: "user",   msg: "Pode abrir." },
+                    { role: "tiagao", msg: "Abrindo o treino e deixando o Notebook como apoio se pintar dúvida." },
                   ].map((m, i) => (
                     <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                       <div className={`rounded-2xl px-3.5 py-2.5 max-w-[85%] text-xs leading-snug ${
@@ -1266,7 +1266,7 @@ export default function Landing() {
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2">
                     <Mic className="w-3.5 h-3.5 text-orange-500 animate-pulse" />
-                    <span className="text-xs text-gray-400">Falar com o Tiagão...</span>
+                    <span className="text-xs text-gray-400">Perguntar ao Tiagão...</span>
                   </div>
                 </div>
               </div>
@@ -1279,9 +1279,9 @@ export default function Landing() {
       <section id="funcoes" className="py-24 px-6">
         <div className="max-w-5xl mx-auto">
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-14">
-            <p className="text-xs font-black text-violet-600 uppercase tracking-widest mb-3">Diferenciais</p>
-            <h2 className="text-4xl font-black tracking-tight text-gray-900">Tudo integrado. Uma única plataforma.</h2>
-            <p className="text-gray-600 mt-3 max-w-2xl mx-auto">Cada módulo conversa com os outros no mesmo login: simulado, plano, Notebook RAG, revisões e Tutor IA — tudo a partir do hub (`/app`) e das rotas reais (Simulado ENEM, Notebook RAG, Lousa Imersiva, Fazedores e mais).</p>
+            <p className="text-xs font-black text-violet-600 uppercase tracking-widest mb-3">Mapa de capacidades</p>
+            <h2 className="text-4xl font-black tracking-tight text-gray-900">O suficiente para avançar, sem catálogo infinito.</h2>
+            <p className="text-gray-600 mt-3 max-w-2xl mx-auto">A landing agora prioriza as capacidades que sustentam a história: diagnosticar, estudar com fonte, treinar, revisar e acompanhar. O menu completo continua dentro do app.</p>
           </motion.div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {FEATURES.map((f, i) => (
@@ -1320,7 +1320,7 @@ export default function Landing() {
                 <BookOpen className="w-3 h-3" /> Para professores
               </p>
               <p className="text-white font-black text-lg md:text-2xl leading-tight drop-shadow">
-                Mais tempo com a turma, menos tempo em planilhas.
+                Mais clareza para preparar, acompanhar e intervir.
               </p>
             </div>
           </motion.div>
@@ -1332,11 +1332,11 @@ export default function Landing() {
                 <p className="text-xs font-black text-gray-500 uppercase mb-4">Portal do Professor</p>
                 <div className="space-y-2">
                   {[
-                    { icon: Users,        label: "3 Turmas ativas",           sub: "90 alunos monitorados",    color: "text-violet-600" },
-                    { icon: AlertTriangle, label: "2 alunos em atenção",       sub: "Risco de abandono detectado", color: "text-amber-500" },
-                    { icon: MessageSquare, label: "Comunicação automatizada",  sub: "12 mensagens enviadas hoje", color: "text-green-500" },
-                    { icon: Brain,        label: "Plano de Aula IA gerado",   sub: "Funções Logarítmicas — 9º B", color: "text-violet-600" },
-                    { icon: TrendingUp,   label: "Desempenho da turma",       sub: "+8% vs semana anterior",  color: "text-emerald-500" },
+                    { icon: Users,        label: "Turmas acompanhadas",        sub: "Visão por grupo e estudante", color: "text-violet-600" },
+                    { icon: AlertTriangle, label: "Alunos em atenção",         sub: "Sinais para priorizar intervenção", color: "text-amber-500" },
+                    { icon: MessageSquare, label: "Comunicação organizada",    sub: "Mensagens e combinados em contexto", color: "text-green-500" },
+                    { icon: Brain,        label: "Plano de aula assistido",    sub: "Sequências e atividades para revisar", color: "text-violet-600" },
+                    { icon: TrendingUp,   label: "Leitura de desempenho",      sub: "Evolução sem depender só de planilha", color: "text-emerald-500" },
                   ].map((item, i) => {
                     const Icon = item.icon;
                     return (
@@ -1358,17 +1358,17 @@ export default function Landing() {
                 <BookOpen className="w-3 h-3" /> Para Professores
               </span>
               <h2 className="text-4xl font-black tracking-tight text-gray-900 mb-4">
-                Ensine mais. Administre menos.
+                Mais preparo, menos retrabalho.
               </h2>
               <p className="text-gray-600 text-lg leading-relaxed mb-6">
-                IA que gera planos de aula, detecta alunos em risco e envia mensagens automáticas — para você focar no que importa: ensinar.
+                Ferramentas para transformar material da turma em plano, atividade e acompanhamento, com revisão humana quando a decisão pedagógica pede cuidado.
               </p>
               <ul className="space-y-3 mb-8">
                 {[
-                  "Plano de Aula IA com 6 personas pedagógicas",
-                  "Validador por pares (3 IAs revisam cada aula)",
-                  "Análise preditiva de risco de evasão",
-                  "Orquestrador de comunicação (WhatsApp + Email)",
+                  "Plano de aula assistido por IA",
+                  "Revisão estruturada antes de usar em sala",
+                  "Sinais de atenção por engajamento e desempenho",
+                  "Comunicação organizada com alunos e responsáveis",
                   "Notebook RAG para material da turma",
                   "Gerador de provas e atividades",
                 ].map((item, i) => (
@@ -1409,7 +1409,7 @@ export default function Landing() {
                 <Building2 className="w-3 h-3" /> Para escolas
               </p>
               <p className="text-white font-black text-lg md:text-2xl leading-tight drop-shadow">
-                Gestão com IA: dados, alertas e ação — para zero aluno perdido.
+                Gestão com IA para enxergar sinais antes que virem crise.
               </p>
             </div>
           </motion.div>
@@ -1423,13 +1423,13 @@ export default function Landing() {
                 Gestão institucional com IA
               </h2>
               <p className="text-gray-600 text-lg leading-relaxed mb-6">
-                Dashboard completo para gestores, relatórios automáticos e análise preditiva. Zero aluno perdido.
+                Dashboard para gestores, relatórios e sinais de atenção para priorizar acompanhamento com responsabilidade.
               </p>
               <ul className="space-y-3 mb-8">
                 {[
                   "Dashboard de gestão de turmas e professores",
                   "Relatórios automáticos de desempenho",
-                  "Análise preditiva de risco de evasão escolar",
+                  "Sinais de risco e queda de engajamento",
                   "Orquestrador de comunicação com responsáveis",
                   "White label disponível para sua marca",
                   "Suporte dedicado e onboarding assistido",
@@ -1448,11 +1448,11 @@ export default function Landing() {
 
             <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
               transition={{ duration: 0.6 }} className="rounded-2xl bg-white border border-gray-200 p-6 shadow-lg">
-              <p className="text-xs font-black text-gray-500 uppercase mb-4">⚠️ Alunos em Atenção</p>
+              <p className="text-xs font-black text-gray-500 uppercase mb-4">Alunos em atenção</p>
               {[
-                { nome: "Maria S.", prob: 70, motivo: "5 dias sem acessar, queda em Matemática", acao: "Enviar convite para aula de reforço" },
-                { nome: "João P.",  prob: 45, motivo: "Dificuldade em 3 tópicos correlacionados", acao: "Gerar plano de recuperação" },
-                { nome: "Lucas M.", prob: 38, motivo: "Meta semanal não atingida por 2 semanas", acao: "Agendar conversa com responsável" },
+                { nome: "Maria S.", prob: 70, motivo: "5 dias sem acessar, queda em Matemática", acao: "Sugerir reforço" },
+                { nome: "João P.",  prob: 45, motivo: "Dificuldade em tópicos correlacionados", acao: "Revisar plano" },
+                { nome: "Lucas M.", prob: 38, motivo: "Meta semanal não atingida por 2 semanas", acao: "Agendar conversa" },
               ].map((aluno, i) => (
                 <div key={i} className="mb-4 p-3 rounded-xl bg-gray-50 border border-gray-200">
                   <div className="flex items-center justify-between mb-1.5">
@@ -1481,8 +1481,8 @@ export default function Landing() {
       <section className="py-24 px-6 bg-gray-50">
         <div className="max-w-4xl mx-auto">
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-12">
-            <p className="text-xs font-black text-violet-600 uppercase tracking-widest mb-3">Depoimentos</p>
-            <h2 className="text-4xl font-black tracking-tight text-gray-900">Resultados reais</h2>
+            <p className="text-xs font-black text-violet-600 uppercase tracking-widest mb-3">Casos de uso</p>
+            <h2 className="text-4xl font-black tracking-tight text-gray-900">Cenários reais de uso, sem prometer milagre</h2>
           </motion.div>
           <div className="relative">
             <AnimatePresence mode="wait">
@@ -1500,8 +1500,8 @@ export default function Landing() {
                     <p className="font-black text-gray-900 text-lg">{TESTIMONIALS[activeTest].name}</p>
                     <p className="text-gray-500 text-sm">{TESTIMONIALS[activeTest].role}</p>
                     <div className="flex gap-2 mt-2">
-                      <span className="px-2.5 py-1 bg-red-500/20 text-red-500 rounded-lg text-xs font-bold">Antes: {TESTIMONIALS[activeTest].before}</span>
-                      <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-600 rounded-lg text-xs font-bold">Depois: {TESTIMONIALS[activeTest].after}</span>
+                      <span className="px-2.5 py-1 bg-violet-50 text-violet-700 rounded-lg text-xs font-bold">{TESTIMONIALS[activeTest].before}</span>
+                      <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold">{TESTIMONIALS[activeTest].after}</span>
                     </div>
                   </div>
                 </div>
@@ -1524,7 +1524,7 @@ export default function Landing() {
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-center mb-14">
             <p className="text-xs font-black text-violet-600 uppercase tracking-widest mb-3">Preços</p>
             <h2 className="text-4xl font-black tracking-tight text-gray-900">Planos claros. Sem surpresas.</h2>
-            <p className="text-gray-600 mt-3">Enquanto cursinhos tradicionais custam R$200–800/mês, o Study.IA cabe no seu bolso.</p>
+            <p className="text-gray-600 mt-3">Comece leve, avance quando a rotina pedir mais limites e use o plano institucional quando houver turmas.</p>
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-6">
@@ -1685,9 +1685,9 @@ export default function Landing() {
             <div className="absolute inset-0 bg-gradient-to-br from-violet-600 via-violet-600 to-purple-700" />
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PHBhdGggZD0iTTM2IDM0djZoNnYtNmgtNnptNiA2djZoNnYtNmgtNnptLTEyIDB2NmgtNnY2aDZ2Nmg2di02aC02di02aC02em0tNiA2SDEydjZoNnYtNnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30" />
             <div className="relative px-8 py-16">
-              <p className="text-5xl mb-4">🚀</p>
-              <h2 className="text-4xl font-black text-white mb-4 tracking-tight">Pronto para transformar seus estudos?</h2>
-              <p className="text-violet-200 text-lg mb-8">Não precisa de cartão. Começa em 2 minutos. Cancela quando quiser.</p>
+              <p className="text-5xl mb-4">✦</p>
+              <h2 className="text-4xl font-black text-white mb-4 tracking-tight">Seu próximo estudo já pode nascer com direção.</h2>
+              <p className="text-violet-200 text-lg mb-8">Comece sem cartão, crie o hub e veja se a rotina fica mais clara antes de assinar.</p>
               <button onClick={handleStart}
                 className="inline-flex items-center gap-2.5 px-8 py-4 rounded-2xl font-black text-violet-600 bg-white hover:bg-violet-50 transition-all hover:scale-[1.03] active:scale-[0.97] text-base shadow-xl">
                 Começar grátis agora <ArrowRight className="w-5 h-5" />
@@ -1696,66 +1696,6 @@ export default function Landing() {
           </motion.div>
         </div>
       </section>
-
-      {/* ── MODAL DE VÍDEO ── */}
-      <AnimatePresence>
-        {activeVideo && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            onClick={() => setActiveVideo(null)}
-            className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8"
-            role="dialog" aria-modal="true"
-            aria-labelledby="video-modal-title"
-            aria-describedby="video-modal-desc"
-          >
-            <motion.div
-              ref={dialogRef}
-              initial={{ opacity: 0, scale: 0.92, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-4xl bg-gray-950 rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/10"
-            >
-              <button
-                ref={closeBtnRef}
-                onClick={() => setActiveVideo(null)}
-                aria-label="Fechar vídeo"
-                className="absolute top-3 right-3 z-10 w-10 h-10 rounded-full bg-black/60 hover:bg-black/90 backdrop-blur-md text-white flex items-center justify-center transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white/60"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="aspect-video bg-black">
-                <video
-                  key={activeVideo.id}
-                  src={activeVideo.src}
-                  poster={activeVideo.poster}
-                  controls
-                  autoPlay
-                  playsInline
-                  aria-label={activeVideo.title}
-                  className="w-full h-full"
-                />
-              </div>
-
-              <div className="p-5 sm:p-6 bg-gradient-to-b from-gray-950 to-gray-900 border-t border-white/5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${activeVideo.tagColor} mb-2`}>
-                      <activeVideo.icon className="w-3 h-3" /> {activeVideo.tag}
-                    </p>
-                    <h3 id="video-modal-title" className="font-black text-white text-lg leading-tight">{activeVideo.title}</h3>
-                    <p id="video-modal-desc" className="text-gray-400 text-sm mt-1">{activeVideo.subtitle}</p>
-                  </div>
-                  <span className="px-2.5 py-1 rounded-md bg-white/10 text-white text-[11px] font-bold tabular-nums flex-shrink-0">
-                    {activeVideo.duration}
-                  </span>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ── FOOTER ── */}
       <footer className="bg-gray-900 border-t border-white/10 py-12 px-6">

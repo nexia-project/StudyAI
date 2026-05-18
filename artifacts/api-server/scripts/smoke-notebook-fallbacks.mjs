@@ -27,7 +27,7 @@ const sandbox = { exports: {}, module: { exports: {} } };
 sandbox.exports = sandbox.module.exports;
 vm.runInNewContext(compiled, sandbox, { filename: helperPath });
 
-const { normalizeMindMap, normalizeSlides } = sandbox.module.exports;
+const { buildUnreadableDocumentMindMap, normalizeMindMap, normalizeSlides } = sandbox.module.exports;
 
 const title = "Função quadrática no ENEM";
 const content = `
@@ -114,6 +114,17 @@ assert(map.topics.length >= 18, "fallback mind map should include flattened topi
 assert((map.conexoesCruzadas?.length ?? 0) >= 3, "fallback mind map should include cross-connections");
 assertMindMapPreviewContract(map);
 
+const unreadablePdfMap = buildUnreadableDocumentMindMap("VELA", {
+  fileName: "VELA.pdf",
+  fileSizeKb: 812,
+  mime: "application/pdf",
+  userTitle: "VELA",
+});
+assert(unreadablePdfMap.generatedByFallback === true, "unreadable PDF map should be marked as fallback");
+assert(unreadablePdfMap.fallbackReason === "PDF_TEXT_EXTRACTION_EMPTY", "unreadable PDF map should expose a technical fallback reason");
+assert(/PDF com texto selecionável|DOCX\/TXT/i.test(unreadablePdfMap.providerWarning), "unreadable PDF map should guide the user to a readable source");
+assertMindMapPreviewContract(unreadablePdfMap);
+
 const strongDeck = roundTrip(normalizeSlides(deck, title, content));
 assert(strongDeck.generatedByFallback === false, "strong normalized deck should survive JSON roundtrip without fallback");
 assertSlideExportContract(strongDeck);
@@ -126,5 +137,6 @@ console.log(JSON.stringify({
   mindMapBranches: map.categories.length,
   mindMapTopics: map.topics.length,
   mindMapFallback: map.generatedByFallback,
+  unreadablePdfFallback: unreadablePdfMap.fallbackReason,
   serialization: "preview-export-contract-ok",
 }, null, 2));

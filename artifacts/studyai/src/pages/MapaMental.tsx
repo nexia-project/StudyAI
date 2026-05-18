@@ -164,6 +164,12 @@ function getColor(subject: string): string {
   return colors[hash % colors.length];
 }
 
+function uploadErrorMessage(data: any, fallback: string) {
+  const code = data?.code || data?.errorCode;
+  const message = data?.erro || data?.error || fallback;
+  return code ? `${message} Código: ${code}.` : message;
+}
+
 interface MindNode {
   id: string;
   label: string;
@@ -1047,8 +1053,13 @@ function UploadModal({
         body: fd,
       });
       const text = await res.text();
-      const data = text ? JSON.parse(text) : {};
-      if (!res.ok) throw new Error(data.erro || "Erro ao processar documento");
+      let data: any = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = { code: "INVALID_SERVER_RESPONSE", erro: "O servidor respondeu em formato inválido." };
+      }
+      if (!res.ok) throw new Error(uploadErrorMessage(data, "Erro ao processar documento"));
       onSuccess(data);
     } catch (err: any) {
       setError(err.message || "Erro ao enviar arquivo. Verifique se o arquivo tem texto selecionável e tente novamente.");
@@ -1340,7 +1351,15 @@ export default function MapaMentalPage() {
       if (prof?.studentName) setStudentName(prof.studentName);
       const maps: DocMap[] = docMapsRes.maps ?? [];
       setDocMaps(maps);
-      const targetDocId = docId ?? activeDocId;
+      const hasHistory = Boolean(
+        (hist?.plans?.length ?? 0) ||
+        (hist?.simulados?.length ?? 0) ||
+        (hist?.flashcards?.length ?? 0)
+      );
+      const targetDocId = docId !== undefined
+        ? docId
+        : activeDocId ?? (!hasHistory && maps.length > 0 ? maps[0].id : null);
+      if (targetDocId !== activeDocId) setActiveDocId(targetDocId);
       let docMapJson: DocMap["mind_map_json"] | null = null;
       if (targetDocId !== null) {
         const found = maps.find(m => m.id === targetDocId);
@@ -1577,21 +1596,39 @@ export default function MapaMentalPage() {
                 </div>
               </motion.div>
             ) : !mindData ? (
-              <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-                  <BookOpen className="w-8 h-8 text-primary" />
-                </div>
-                <h3 className="font-black text-foreground text-lg">Mapa vazio por enquanto</h3>
-                <p className="text-muted-foreground text-sm max-w-xs">
-                  Gere planos de estudo e faça simulados para o mapa crescer — ou carregue um documento.
-                </p>
-                <div className="flex gap-3 flex-wrap justify-center">
-                  <button onClick={() => navigate("/app")} className="px-5 py-2.5 rounded-2xl bg-primary text-white font-bold flex items-center gap-2 text-sm">
-                    <Sparkles className="w-4 h-4" /> Gerar plano
-                  </button>
-                  <button onClick={() => setShowStudentUpload(true)} className="px-5 py-2.5 rounded-2xl border-2 border-primary text-primary font-bold flex items-center gap-2 text-sm">
-                    <Upload className="w-4 h-4" /> Carregar doc
-                  </button>
+              <div className="relative overflow-hidden rounded-3xl border border-violet-100 bg-white shadow-sm">
+                <div className="absolute inset-0 bg-gradient-to-br from-violet-50 via-white to-pink-50" />
+                <div className="relative flex flex-col items-center justify-center py-24 px-6 gap-5 text-center">
+                  <div className="w-20 h-20 bg-white rounded-3xl shadow-sm border border-violet-100 flex items-center justify-center">
+                    <BookOpen className="w-10 h-10 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-foreground text-xl">Seu mapa mental vai aparecer aqui</h3>
+                    <p className="text-muted-foreground text-sm max-w-lg mt-2">
+                      Ainda não encontramos mapas salvos nem histórico suficiente nesta conta. Carregue um PDF/DOCX/TXT ou gere um plano para criar ramos, tópicos e revisões automaticamente.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl w-full text-left">
+                    {[
+                      ["1", "Carregue um material", "PDF com texto selecionável gera o mapa mais fiel."],
+                      ["2", "Revise os ramos", "Abra tópicos, evidências e links de estudo."],
+                      ["3", "Continue estudando", "Planos, simulados e flashcards enriquecem o histórico."],
+                    ].map(([step, title, copy]) => (
+                      <div key={step} className="rounded-2xl border border-border bg-white/80 p-4">
+                        <p className="text-xs font-black text-primary mb-1">Passo {step}</p>
+                        <p className="text-sm font-bold text-foreground">{title}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{copy}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-3 flex-wrap justify-center">
+                    <button onClick={() => setShowStudentUpload(true)} className="px-5 py-2.5 rounded-2xl bg-primary text-white font-bold flex items-center gap-2 text-sm">
+                      <Upload className="w-4 h-4" /> Carregar documento
+                    </button>
+                    <button onClick={() => navigate("/app")} className="px-5 py-2.5 rounded-2xl border-2 border-primary text-primary bg-white font-bold flex items-center gap-2 text-sm">
+                      <Sparkles className="w-4 h-4" /> Gerar plano
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (

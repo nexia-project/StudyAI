@@ -505,6 +505,37 @@ await db.execute(sql`
       ON material_style_events (user_id, materia, created_at DESC)
     `);
 
+    // ── Mapas mentais gerados por upload ─────────────────────────────────────
+    // Rotas /api/mapa-mental/* dependem destas tabelas; sem elas o upload
+    // termina em 500 mesmo quando o PDF foi processado corretamente.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS user_doc_mindmaps (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR NOT NULL,
+        doc_title VARCHAR(500) NOT NULL DEFAULT 'Documento',
+        mind_map_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_user_doc_mindmaps_user_created
+      ON user_doc_mindmaps (user_id, created_at DESC)
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS professor_mindmaps (
+        id SERIAL PRIMARY KEY,
+        professor_id VARCHAR NOT NULL,
+        doc_title VARCHAR(500) NOT NULL DEFAULT 'Material',
+        subject VARCHAR(255),
+        mind_map_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS idx_professor_mindmaps_prof_created
+      ON professor_mindmaps (professor_id, created_at DESC)
+    `);
+
     // ── Perfil detalhado do estudante ────────────────────────────────────────
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS student_profiles (

@@ -42,7 +42,11 @@ export function validateFileUpload(req: Request, res: Response, next: NextFuncti
   const mime = req.file.mimetype;
 
   if (!ALLOWED_MAGIC[mime]) {
-    res.status(400).json({ erro: "Tipo de arquivo não permitido. Envie PDF, DOCX, DOC, TXT, XLSX, CSV ou EPUB." });
+    res.status(400).json({
+      ok: false,
+      code: "UNSUPPORTED_FILE_TYPE",
+      erro: "Tipo de arquivo não permitido. Envie PDF, DOCX, DOC, TXT, XLSX, CSV ou EPUB.",
+    });
     return;
   }
 
@@ -50,7 +54,7 @@ export function validateFileUpload(req: Request, res: Response, next: NextFuncti
   if (mime === "application/pdf") {
     const pdfMagic = ALLOWED_MAGIC["application/pdf"].magic[0];
     if (!req.file.buffer.slice(0, 4).equals(pdfMagic)) {
-      res.status(400).json({ erro: "Arquivo inválido: não é um PDF real." });
+      res.status(400).json({ ok: false, code: "INVALID_PDF", erro: "Arquivo inválido: não é um PDF real." });
       return;
     }
   }
@@ -64,7 +68,7 @@ export function validateFileUpload(req: Request, res: Response, next: NextFuncti
   ) {
     const zipMagic = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
     if (!req.file.buffer.slice(0, 4).equals(zipMagic)) {
-      res.status(400).json({ erro: "Arquivo inválido: não é um arquivo Office/EPUB real." });
+      res.status(400).json({ ok: false, code: "INVALID_OFFICE_FILE", erro: "Arquivo inválido: não é um arquivo Office/EPUB real." });
       return;
     }
   }
@@ -73,7 +77,7 @@ export function validateFileUpload(req: Request, res: Response, next: NextFuncti
   if (mime === "application/msword") {
     const docMagic = ALLOWED_MAGIC[mime].magic[0];
     if (!req.file.buffer.slice(0, 4).equals(docMagic)) {
-      res.status(400).json({ erro: "Arquivo inválido: não é um DOC real." });
+      res.status(400).json({ ok: false, code: "INVALID_DOC", erro: "Arquivo inválido: não é um DOC real." });
       return;
     }
   }
@@ -84,14 +88,14 @@ export function validateFileUpload(req: Request, res: Response, next: NextFuncti
       const decoder = new TextDecoder("utf-8", { fatal: true });
       decoder.decode(req.file.buffer);
     } catch {
-      res.status(400).json({ erro: "Arquivo de texto inválido: encoding não suportado." });
+      res.status(400).json({ ok: false, code: "INVALID_TEXT_ENCODING", erro: "Arquivo de texto inválido: encoding não suportado." });
       return;
     }
   }
 
   // File size: 50MB max (already enforced by multer, but double-check)
   if (req.file.size > 50 * 1024 * 1024) {
-    res.status(400).json({ erro: "Arquivo muito grande. Máximo 50 MB." });
+    res.status(413).json({ ok: false, code: "FILE_TOO_LARGE", erro: "Arquivo muito grande. Máximo 50 MB." });
     return;
   }
 

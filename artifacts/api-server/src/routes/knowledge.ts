@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Request, type Response } from "express";
+import { Router, type IRouter, type NextFunction, type Request, type Response } from "express";
 import { createRequire } from "module";
 import { openai, OR } from "../lib/aiClient";
 import multer from "multer";
@@ -8,13 +8,36 @@ import { usersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { validateFileUpload } from "../middlewares/security";
 import { enrichTopicFromWikipedia } from "./wikipedia";
-import { normalizeMindMap } from "../lib/notebook-fallbacks";
+import { buildUnreadableDocumentMindMap, normalizeMindMap } from "../lib/notebook-fallbacks";
 
 // createRequire allows safe CJS import from ESM — avoids pdf-parse@1.1.1 module-level ENOENT bug
 const _require = createRequire(import.meta.url);
 
 const router: IRouter = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+
+function uploadSingleFile(req: Request, res: Response, next: NextFunction) {
+  upload.single("file")(req, res, (err: any) => {
+    if (!err) {
+      next();
+      return;
+    }
+    if (err?.code === "LIMIT_FILE_SIZE") {
+      res.status(413).json({
+        ok: false,
+        code: "FILE_TOO_LARGE",
+        erro: "Arquivo muito grande. Envie um arquivo de até 50 MB.",
+      });
+      return;
+    }
+    req.log?.error({ err }, "[mapa-mental] multipart upload parse failed");
+    res.status(400).json({
+      ok: false,
+      code: "MULTIPART_PARSE_FAILED",
+      erro: "Não foi possível ler o upload. Tente reenviar o arquivo ou exporte-o novamente em PDF.",
+    });
+  });
+}
 
 // ─── Extract text from uploaded file (PDF, DOCX, DOC, TXT) ───────────────────
 async function extractTextFromFile(file: Express.Multer.File): Promise<string> {
@@ -158,6 +181,15 @@ REGRAS OBRIGATÓRIAS:
       providerWarning: "A IA principal não respondeu; geramos um mapa estruturado localmente a partir do texto extraído.",
     };
   }
+}
+
+function createUnreadableDocumentMindMap(docTitle: string, file?: Express.Multer.File, userTitle?: string) {
+  return buildUnreadableDocumentMindMap(docTitle, {
+    fileName: file?.originalname,
+    fileSizeKb: file ? Math.round(file.size / 1024) : null,
+    mime: file?.mimetype,
+    userTitle,
+  });
 }
 
 // Chunk size: ~4000 chars (~3 pages) for precise retrieval
@@ -538,30 +570,30 @@ export async function searchKnowledgeRich(query: string, subject?: string): Prom
 }
 
 // ─── Generate mind map from document (student) ────────────────────────────────
-router.post("/mapa-mental/from-doc", upload.single("file"), validateFileUpload, async (req: Request, res: Response) => {
-  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+router.post("/mapa-mental/from-doc", uploadSingleFile, validateFileUpload, async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ ok: false, code: "AUTH_EXPIRED", erro: "Sessão expirada. Faça login novamente e tente enviar o documento." }); return; }
   const { title } = req.body;
 
   try {
     const docTitle = title || (req.file?.originalname.replace(/\.[^.]+$/, "") ?? "Documento");
     let contentText = "";
+    let usedFallback = false;
 
     if (req.file) {
       contentText = await extractTextFromFile(req.file);
     } else if (req.body.contentText) {
       contentText = req.body.contentText;
     } else {
-      res.status(400).json({ erro: "Arquivo ou texto obrigatório" });
+      res.status(400).json({ ok: false, code: "MISSING_DOCUMENT", erro: "Envie um arquivo ou cole um texto para gerar o mapa mental." });
       return;
     }
 
-    if (!contentText || contentText.trim().length < 30) {
-      res.status(422).json({ erro: "O documento não tem conteúdo de texto suficiente. Tente um PDF com texto selecionável (não escaneado)." });
-      return;
-    }
+    const mindMapBase = !contentText || contentText.trim().length < 30
+      ? (usedFallback = true, createUnreadableDocumentMindMap(docTitle, req.file, title))
+      : await generateMindMapFromText(contentText, docTitle);
 
     const mindMapJson = {
-      ...(await generateMindMapFromText(contentText, docTitle)),
+      ...mindMapBase,
       docTitle,
       source: "document",
     };
@@ -572,37 +604,56 @@ router.post("/mapa-mental/from-doc", upload.single("file"), validateFileUpload, 
       RETURNING id
     `);
 
-    res.json({ ok: true, id: (inserted.rows[0] as any)?.id, mindMap: mindMapJson });
-  } catch (err) {
-    req.log.error({ err }, "Error generating mind map from doc");
-    res.status(500).json({ erro: "Erro ao gerar mapa mental. Tente novamente." });
+    if (usedFallback) {
+      req.log.warn({
+        userId: req.userId,
+        docTitle,
+        fileName: req.file?.originalname,
+        mime: req.file?.mimetype,
+        size: req.file?.size,
+      }, "[mapa-mental] generated unreadable document fallback");
+    }
+
+    res.json({
+      ok: true,
+      id: (inserted.rows[0] as any)?.id,
+      mindMap: mindMapJson,
+      warning: usedFallback ? mindMapJson.providerWarning : undefined,
+      code: usedFallback ? "PDF_TEXT_EXTRACTION_EMPTY_FALLBACK" : undefined,
+    });
+  } catch (err: any) {
+    req.log.error({ err, userId: req.userId, fileName: req.file?.originalname }, "Error generating mind map from doc");
+    res.status(500).json({
+      ok: false,
+      code: "MINDMAP_GENERATION_FAILED",
+      erro: "Não foi possível salvar/gerar o mapa mental agora. Tente novamente; se persistir, informe o código MINDMAP_GENERATION_FAILED ao suporte.",
+      detalhe: process.env.NODE_ENV === "development" ? err?.message : undefined,
+    });
   }
 });
 
 // ─── Professor: Generate mind map from their document ─────────────────────────
-router.post("/mapa-mental/professor/from-doc", upload.single("file"), validateFileUpload, async (req: Request, res: Response) => {
-  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+router.post("/mapa-mental/professor/from-doc", uploadSingleFile, validateFileUpload, async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ ok: false, code: "AUTH_EXPIRED", erro: "Sessão expirada. Faça login novamente e tente enviar o documento." }); return; }
   const { title, subject } = req.body;
 
   try {
     const docTitle = title || (req.file?.originalname.replace(/\.[^.]+$/, "") ?? "Material");
     let contentText = "";
+    let usedFallback = false;
 
     if (req.file) {
       contentText = await extractTextFromFile(req.file);
     } else if (req.body.contentText) {
       contentText = req.body.contentText;
     } else {
-      res.status(400).json({ erro: "Arquivo ou texto obrigatório" });
+      res.status(400).json({ ok: false, code: "MISSING_DOCUMENT", erro: "Envie um arquivo ou cole um texto para gerar o mapa mental." });
       return;
     }
 
-    if (!contentText || contentText.trim().length < 30) {
-      res.status(422).json({ erro: "O documento não tem conteúdo de texto suficiente. Tente um PDF com texto selecionável (não escaneado)." });
-      return;
-    }
-
-    const generatedMap = await generateMindMapFromText(contentText, docTitle);
+    const generatedMap = !contentText || contentText.trim().length < 30
+      ? (usedFallback = true, createUnreadableDocumentMindMap(docTitle, req.file, title))
+      : await generateMindMapFromText(contentText, docTitle);
     const finalSubject = subject?.trim() || generatedMap.subject || docTitle;
     const mindMapJson = { ...generatedMap, subject: finalSubject, docTitle, source: "professor" };
 
@@ -612,10 +663,31 @@ router.post("/mapa-mental/professor/from-doc", upload.single("file"), validateFi
       RETURNING id
     `);
 
-    res.json({ ok: true, id: (inserted.rows[0] as any)?.id, mindMap: mindMapJson });
-  } catch (err) {
-    req.log.error({ err }, "Error generating professor mind map from doc");
-    res.status(500).json({ erro: "Erro ao gerar mapa mental. Tente novamente." });
+    if (usedFallback) {
+      req.log.warn({
+        userId: req.userId,
+        docTitle,
+        fileName: req.file?.originalname,
+        mime: req.file?.mimetype,
+        size: req.file?.size,
+      }, "[mapa-mental] generated professor unreadable document fallback");
+    }
+
+    res.json({
+      ok: true,
+      id: (inserted.rows[0] as any)?.id,
+      mindMap: mindMapJson,
+      warning: usedFallback ? mindMapJson.providerWarning : undefined,
+      code: usedFallback ? "PDF_TEXT_EXTRACTION_EMPTY_FALLBACK" : undefined,
+    });
+  } catch (err: any) {
+    req.log.error({ err, userId: req.userId, fileName: req.file?.originalname }, "Error generating professor mind map from doc");
+    res.status(500).json({
+      ok: false,
+      code: "MINDMAP_GENERATION_FAILED",
+      erro: "Não foi possível salvar/gerar o mapa mental agora. Tente novamente; se persistir, informe o código MINDMAP_GENERATION_FAILED ao suporte.",
+      detalhe: process.env.NODE_ENV === "development" ? err?.message : undefined,
+    });
   }
 });
 

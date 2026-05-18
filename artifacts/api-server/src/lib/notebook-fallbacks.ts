@@ -115,6 +115,32 @@ export function buildFallbackMindMap(title: string, content: string) {
   };
 }
 
+export function buildUnreadableDocumentMindMap(title: string, options: {
+  fileName?: string;
+  fileSizeKb?: number | null;
+  mime?: string;
+  userTitle?: string;
+} = {}) {
+  const scaffold = [
+    `Documento: ${title}`,
+    options.userTitle && options.userTitle !== title ? `Título informado pelo usuário: ${options.userTitle}` : "",
+    options.fileName ? `Arquivo original: ${options.fileName}` : "",
+    options.mime ? `Tipo detectado: ${options.mime}` : "",
+    options.fileSizeKb ? `Tamanho aproximado: ${options.fileSizeKb} KB` : "",
+    "",
+    "O texto selecionável não pôde ser extraído automaticamente. O arquivo pode ser um PDF escaneado, protegido, com páginas em imagem ou exportado sem camada de texto.",
+    "Use este mapa como roteiro inicial: identifique o tema central pelo nome do documento, separe conceitos principais, processos, exemplos, dúvidas e revisão final.",
+    "Para um mapa mais fiel, envie um PDF com texto selecionável, um DOCX/TXT, ou cole o conteúdo textual do material.",
+  ].filter(Boolean).join("\n");
+
+  return {
+    ...normalizeMindMap({}, title, scaffold),
+    generatedByFallback: true,
+    fallbackReason: "PDF_TEXT_EXTRACTION_EMPTY",
+    providerWarning: "Não conseguimos extrair texto selecionável deste arquivo. Geramos um mapa inicial pelo título/metadados; para um mapa mais preciso, envie um PDF com texto selecionável, DOCX/TXT, ou cole o conteúdo.",
+  };
+}
+
 export function normalizeMindMap(input: unknown, title: string, content: string) {
   const fallback = buildFallbackMindMap(title, content);
   const parsed = input && typeof input === "object" ? input as any : {};

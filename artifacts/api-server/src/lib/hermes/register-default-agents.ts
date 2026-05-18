@@ -11,6 +11,7 @@ import { qaSinteticoDailyLearn } from "./jobs/qa-sintetico";
 import {
   auditorPedagogicoDailyLearn,
   cadernoErrosIntelligenceDailyLearn,
+  custosIaOptimizerDailyLearn,
   notebookRagQualityDailyLearn,
   professorSuccessDailyLearn,
   simuladoIntelligenceDailyLearn,
@@ -190,6 +191,19 @@ export function registerDefaultAgents(): void {
         "Agente de dor real registrado no catálogo Hermes; roda no daily-learn e persiste recomendações estruturadas.",
     }),
     dailyLearn: cadernoErrosIntelligenceDailyLearn,
+  });
+
+  agentRegistry.register({
+    id: "custos_ia_optimizer",
+    description:
+      "Custos IA Optimizer — custo por feature/aluno/material, cache, prompts, retries e billing",
+    role: "system",
+    handler: async () => ({
+      ok: true,
+      message:
+        "Agente de dor real registrado no catálogo Hermes; roda no daily-learn e persiste recomendações estruturadas.",
+    }),
+    dailyLearn: custosIaOptimizerDailyLearn,
   });
 
   registered = true;

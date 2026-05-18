@@ -301,15 +301,42 @@ export const HERMES_DOR_REAL_AGENT_CATALOG: HermesDorRealAgentCatalogItem[] = [
     priority: 7,
     name: "Custos IA Optimizer",
     productRole: "admin",
-    status: "partial",
+    status: "new",
     responsibility: "Reduzir custo IA sem degradar qualidade pedagogica.",
-    observedSignals: ["uso por provider", "custo por feature", "fallbacks/caches"],
-    evidence: ["Admin IA & Custos", "ai usage telemetry"],
-    metrics: ["custo por entrega util", "latencia", "qualidade aceita"],
-    actions: ["recomendar cache/model routing", "abrir alerta de custo"],
-    safetyBoundaries: ["nao troca provider/modelo automaticamente"],
-    adminOutput: "Roadmap/TODO apos primeira leva.",
-    overlaps: ["gestao", "monitor"],
+    observedSignals: [
+      "custo por feature",
+      "custo por aluno ativo",
+      "custo por material gerado",
+      "modelo caro sem ganho aparente",
+      "prompts longos/chamadas com muitos tokens",
+      "falhas/retries/fallbacks",
+      "oportunidades e desperdicio de cache",
+      "billing provider ausente versus logs internos",
+    ],
+    evidence: ["Admin IA & Custos", "ai_cost_log", "ai_response_cache", "activity_events"],
+    metrics: [
+      "custo por entrega util",
+      "custo por aluno ativo",
+      "custo por material gerado",
+      "taxa de cache hit/reuso",
+      "tokens medios por chamada",
+      "billing reconciliado",
+    ],
+    actions: [
+      "recomendar cache por feature",
+      "recomendar roteamento de modelo para revisao humana",
+      "pedir limite/compactacao de prompt",
+      "pedir configuracao de billing real",
+      "abrir alerta de custo auditavel",
+    ],
+    safetyBoundaries: [
+      "nao troca provider/modelo automaticamente",
+      "nao reduz qualidade pedagogica sem metrica de aceite",
+      "nao soma fatura real com log interno sem reconciliacao",
+      "nao limpa cache automaticamente",
+    ],
+    adminOutput: "Descoberta/inbox Hermes com recomendacao estruturada para Admin IA & Custos.",
+    overlaps: ["gestao", "monitor", "Admin IA & Custos"],
   },
   {
     id: "ux_product_auditor",
@@ -548,6 +575,558 @@ async function persistPainAgentRecommendation(
       withRecommendationPayload(payload, recommendation),
     );
   }
+}
+
+type CostOptimizerFeatureSignal = {
+  feature: string;
+  calls: number;
+  uniqueUsers: number;
+  costUsd: number;
+  tokens: number;
+  avgTokens: number;
+  avgCostPerCall: number;
+};
+
+type CostOptimizerModelSignal = {
+  provider: string;
+  model: string;
+  rawModel: string;
+  calls: number;
+  costUsd: number;
+  tokens: number;
+  avgCostPerCall: number;
+  avgTokens: number;
+  premiumLike: boolean;
+};
+
+type CostOptimizerLongCallSignal = {
+  feature: string;
+  model: string;
+  tokensIn: number;
+  tokensOut: number;
+  totalTokens: number;
+  costUsd: number;
+  createdAt: string | null;
+};
+
+type CostOptimizerCacheSignal = {
+  feature: string;
+  entries: number;
+  hits: number;
+  hitRate: number;
+  unusedEntries: number;
+};
+
+type CostOptimizerMissingBillingSignal = {
+  provider: string;
+  loggedCostUsd: number;
+  loggedCalls: number;
+  runtimeConfigured: boolean;
+  billingConfigured: boolean;
+  action: string;
+};
+
+async function safeTableExists(tableName: string): Promise<boolean> {
+  try {
+    const res = await db.execute(sql`
+      SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = ${tableName}
+      ) AS exists
+    `);
+    return Boolean((res.rows[0] as Record<string, unknown> | undefined)?.exists);
+  } catch {
+    return false;
+  }
+}
+
+function configuredEnv(...names: string[]): boolean {
+  return names.some((name) => {
+    const value = process.env[name];
+    return Boolean(value && value !== "dummy" && value.trim().length > 0);
+  });
+}
+
+function roundUsd(value: number): number {
+  return Math.round((value + Number.EPSILON) * 1_000_000) / 1_000_000;
+}
+
+function normalizeProvider(rawModel: string): string {
+  const model = rawModel.toLowerCase();
+  if (model.startsWith("openai-direct:")) return "openai";
+  if (model.includes("/")) return model.split("/")[0] ?? "nao_informado";
+  if (model.startsWith("gpt-") || model.startsWith("text-embedding") || model.startsWith("whisper")) {
+    return "openai";
+  }
+  if (model.includes("claude")) return "anthropic";
+  if (model.includes("deepseek")) return "deepseek";
+  if (model.includes("gemini")) return "gemini";
+  return "nao_informado";
+}
+
+function normalizeModelName(rawModel: string): string {
+  if (rawModel.includes("/")) return rawModel.slice(rawModel.indexOf("/") + 1);
+  if (rawModel.includes(":")) return rawModel.slice(rawModel.indexOf(":") + 1);
+  return rawModel || "nao_classificado";
+}
+
+function isPremiumLikeModel(rawModel: string): boolean {
+  const model = rawModel.toLowerCase();
+  return (
+    model.includes("gpt-4o") && !model.includes("mini") ||
+    model.includes("sonnet") ||
+    model.includes("opus") ||
+    model.includes("gpt-image")
+  );
+}
+
+function providerBillingConfig(provider: string): { runtimeConfigured: boolean; billingConfigured: boolean; action: string } {
+  if (provider === "openrouter") {
+    return {
+      runtimeConfigured: configuredEnv("AI_INTEGRATIONS_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"),
+      billingConfigured: configuredEnv("OPENROUTER_MANAGEMENT_API_KEY"),
+      action: "Configurar OPENROUTER_MANAGEMENT_API_KEY para reconciliar credits/saldo com ai_cost_log.",
+    };
+  }
+  if (provider === "openai") {
+    return {
+      runtimeConfigured: configuredEnv("OPENAI_API_KEY", "AI_INTEGRATIONS_OPENAI_API_KEY"),
+      billingConfigured: configuredEnv("OPENAI_ADMIN_API_KEY"),
+      action: "Configurar OPENAI_ADMIN_API_KEY com permissao de Usage/Costs antes de comparar custo real.",
+    };
+  }
+  if (provider === "anthropic") {
+    return {
+      runtimeConfigured: configuredEnv("ANTHROPIC_API_KEY", "AI_INTEGRATIONS_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"),
+      billingConfigured: configuredEnv("ANTHROPIC_ADMIN_API_KEY", "ANTHROPIC_ADMIN_KEY"),
+      action: "Configurar ANTHROPIC_ADMIN_API_KEY ou reconciliar Claude via OpenRouter billing.",
+    };
+  }
+  if (provider === "deepseek") {
+    return {
+      runtimeConfigured: configuredEnv("AI_INTEGRATIONS_OPENROUTER_API_KEY", "OPENROUTER_API_KEY", "DEEPSEEK_API_KEY"),
+      billingConfigured: configuredEnv("OPENROUTER_MANAGEMENT_API_KEY"),
+      action: "Reconciliar DeepSeek via OpenRouter credits enquanto runtime direto nao estiver ativo.",
+    };
+  }
+  if (provider === "gemini") {
+    return {
+      runtimeConfigured: configuredEnv("GEMINI_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY"),
+      billingConfigured: configuredEnv("GOOGLE_CLOUD_BILLING_EXPORT", "GOOGLE_CLOUD_BILLING_ACCOUNT_ID"),
+      action: "Configurar export/API de Google Cloud Billing antes de tratar custo Google como fatura real.",
+    };
+  }
+  return {
+    runtimeConfigured: false,
+    billingConfigured: false,
+    action: `Mapear runtime e billing do provider ${provider}.`,
+  };
+}
+
+async function fetchCustosIaOptimizerSignals(periodoDias = 14) {
+  const sinceIso = new Date(Date.now() - periodoDias * 24 * 60 * 60 * 1000).toISOString();
+  const [
+    hasAiCostLog,
+    hasAiResponseCache,
+    hasActivityEvents,
+    hasUserActivity,
+    hasGeneratedContent,
+    hasNotebookOverviews,
+    hasTeacherContent,
+  ] = await Promise.all([
+    safeTableExists("ai_cost_log"),
+    safeTableExists("ai_response_cache"),
+    safeTableExists("activity_events"),
+    safeTableExists("user_activity"),
+    safeTableExists("generated_content"),
+    safeTableExists("notebook_overviews"),
+    safeTableExists("teacher_content"),
+  ]);
+
+  const summary = {
+    periodoDias,
+    totalCostUsd: 0,
+    totalCalls: 0,
+    totalTokens: 0,
+    uniqueUsers: 0,
+    activeUsers: 0,
+    generatedMaterials: 0,
+    costPerActiveUserUsd: null as number | null,
+    costPerAlunoUsd: null as number | null,
+    costPerGeneratedMaterialUsd: null as number | null,
+  };
+  let byFeature: CostOptimizerFeatureSignal[] = [];
+  let byModel: CostOptimizerModelSignal[] = [];
+  let longCalls: CostOptimizerLongCallSignal[] = [];
+  let fallbackRetry = { loggedFallbackCalls: 0, eventFailures: 0, eventRetries: 0 };
+  let cache: {
+    totalEntries: number;
+    totalHits: number;
+    totalUnusedEntries: number;
+    byFeature: CostOptimizerCacheSignal[];
+    opportunities: Array<{ feature: string; calls: number; costUsd: number; reason: string }>;
+  } = {
+    totalEntries: 0,
+    totalHits: 0,
+    totalUnusedEntries: 0,
+    byFeature: [],
+    opportunities: [],
+  };
+
+  if (hasAiCostLog) {
+    try {
+      const res = await db.execute(sql`
+        SELECT
+          COALESCE(SUM(cost_usd::numeric), 0)::float AS total_cost,
+          COUNT(*)::int AS total_calls,
+          COALESCE(SUM(COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0)), 0)::int AS total_tokens,
+          COUNT(DISTINCT user_id) FILTER (WHERE user_id IS NOT NULL)::int AS unique_users
+        FROM ai_cost_log
+        WHERE created_at >= ${sinceIso}
+      `);
+      const row = res.rows[0] as Record<string, unknown> | undefined;
+      summary.totalCostUsd = roundUsd(Number(row?.total_cost ?? 0));
+      summary.totalCalls = Number(row?.total_calls ?? 0);
+      summary.totalTokens = Number(row?.total_tokens ?? 0);
+      summary.uniqueUsers = Number(row?.unique_users ?? 0);
+    } catch {
+      // Mantem a recomendacao resiliente a migracoes parciais.
+    }
+
+    try {
+      const res = await db.execute(sql`
+        SELECT
+          COALESCE(NULLIF(BTRIM(feature), ''), 'nao_classificado') AS feature,
+          COUNT(*)::int AS calls,
+          COUNT(DISTINCT user_id) FILTER (WHERE user_id IS NOT NULL)::int AS unique_users,
+          COALESCE(SUM(cost_usd::numeric), 0)::float AS cost_usd,
+          COALESCE(SUM(COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0)), 0)::int AS tokens,
+          COALESCE(ROUND(AVG(COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0)), 0), 0)::int AS avg_tokens,
+          COALESCE(AVG(cost_usd::numeric), 0)::float AS avg_cost_per_call
+        FROM ai_cost_log
+        WHERE created_at >= ${sinceIso}
+        GROUP BY 1
+        ORDER BY cost_usd DESC, calls DESC
+        LIMIT 12
+      `);
+      byFeature = res.rows.map((row) => ({
+        feature: String((row as Record<string, unknown>).feature ?? "nao_classificado"),
+        calls: Number((row as Record<string, unknown>).calls ?? 0),
+        uniqueUsers: Number((row as Record<string, unknown>).unique_users ?? 0),
+        costUsd: roundUsd(Number((row as Record<string, unknown>).cost_usd ?? 0)),
+        tokens: Number((row as Record<string, unknown>).tokens ?? 0),
+        avgTokens: Number((row as Record<string, unknown>).avg_tokens ?? 0),
+        avgCostPerCall: roundUsd(Number((row as Record<string, unknown>).avg_cost_per_call ?? 0)),
+      }));
+    } catch {
+      byFeature = [];
+    }
+
+    try {
+      const res = await db.execute(sql`
+        SELECT
+          COALESCE(NULLIF(BTRIM(model), ''), 'nao_classificado') AS raw_model,
+          COUNT(*)::int AS calls,
+          COALESCE(SUM(cost_usd::numeric), 0)::float AS cost_usd,
+          COALESCE(SUM(COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0)), 0)::int AS tokens,
+          COALESCE(AVG(cost_usd::numeric), 0)::float AS avg_cost_per_call,
+          COALESCE(ROUND(AVG(COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0)), 0), 0)::int AS avg_tokens
+        FROM ai_cost_log
+        WHERE created_at >= ${sinceIso}
+        GROUP BY 1
+        ORDER BY cost_usd DESC, calls DESC
+        LIMIT 12
+      `);
+      byModel = res.rows.map((row) => {
+        const rawModel = String((row as Record<string, unknown>).raw_model ?? "nao_classificado");
+        return {
+          provider: normalizeProvider(rawModel),
+          model: normalizeModelName(rawModel),
+          rawModel,
+          calls: Number((row as Record<string, unknown>).calls ?? 0),
+          costUsd: roundUsd(Number((row as Record<string, unknown>).cost_usd ?? 0)),
+          tokens: Number((row as Record<string, unknown>).tokens ?? 0),
+          avgCostPerCall: roundUsd(Number((row as Record<string, unknown>).avg_cost_per_call ?? 0)),
+          avgTokens: Number((row as Record<string, unknown>).avg_tokens ?? 0),
+          premiumLike: isPremiumLikeModel(rawModel),
+        };
+      });
+    } catch {
+      byModel = [];
+    }
+
+    try {
+      const res = await db.execute(sql`
+        SELECT
+          feature,
+          model,
+          COALESCE(tokens_in, 0)::int AS tokens_in,
+          COALESCE(tokens_out, 0)::int AS tokens_out,
+          (COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0))::int AS total_tokens,
+          COALESCE(cost_usd::numeric, 0)::float AS cost_usd,
+          created_at::text AS created_at
+        FROM ai_cost_log
+        WHERE created_at >= ${sinceIso}
+          AND (COALESCE(tokens_in, 0) >= 4000 OR COALESCE(tokens_in, 0) + COALESCE(tokens_out, 0) >= 8000)
+        ORDER BY total_tokens DESC, cost_usd DESC
+        LIMIT 10
+      `);
+      longCalls = res.rows.map((row) => ({
+        feature: String((row as Record<string, unknown>).feature ?? "nao_classificado"),
+        model: String((row as Record<string, unknown>).model ?? "nao_classificado"),
+        tokensIn: Number((row as Record<string, unknown>).tokens_in ?? 0),
+        tokensOut: Number((row as Record<string, unknown>).tokens_out ?? 0),
+        totalTokens: Number((row as Record<string, unknown>).total_tokens ?? 0),
+        costUsd: roundUsd(Number((row as Record<string, unknown>).cost_usd ?? 0)),
+        createdAt: ((row as Record<string, unknown>).created_at as string | null) ?? null,
+      }));
+    } catch {
+      longCalls = [];
+    }
+
+    try {
+      const res = await db.execute(sql`
+        SELECT COUNT(*)::int AS logged_fallback_calls
+        FROM ai_cost_log
+        WHERE created_at >= ${sinceIso}
+          AND (
+            feature ILIKE '%fallback%' OR
+            feature ILIKE '%retry%' OR
+            model ILIKE '%openai-direct:%'
+          )
+      `);
+      fallbackRetry.loggedFallbackCalls = Number(
+        (res.rows[0] as Record<string, unknown> | undefined)?.logged_fallback_calls ?? 0,
+      );
+    } catch {
+      fallbackRetry.loggedFallbackCalls = 0;
+    }
+  }
+
+  if (hasUserActivity) {
+    try {
+      const res = await db.execute(sql`
+        SELECT COUNT(DISTINCT user_id)::int AS active_users
+        FROM user_activity
+        WHERE study_date >= ${sinceIso.slice(0, 10)}
+      `);
+      summary.activeUsers = Number((res.rows[0] as Record<string, unknown> | undefined)?.active_users ?? 0);
+    } catch {
+      summary.activeUsers = 0;
+    }
+  }
+
+  const generatedCounts: Array<{ table: string; count: number }> = [];
+  if (hasGeneratedContent) {
+    try {
+      const res = await db.execute(sql`
+        SELECT COUNT(*)::int AS count
+        FROM generated_content
+        WHERE deleted_at IS NULL AND created_at >= ${sinceIso}
+      `);
+      generatedCounts.push({
+        table: "generated_content",
+        count: Number((res.rows[0] as Record<string, unknown> | undefined)?.count ?? 0),
+      });
+    } catch {
+      generatedCounts.push({ table: "generated_content", count: 0 });
+    }
+  }
+  if (hasNotebookOverviews) {
+    try {
+      const res = await db.execute(sql`
+        SELECT COUNT(*)::int AS count
+        FROM notebook_overviews
+        WHERE created_at >= ${sinceIso}
+      `);
+      generatedCounts.push({
+        table: "notebook_overviews",
+        count: Number((res.rows[0] as Record<string, unknown> | undefined)?.count ?? 0),
+      });
+    } catch {
+      generatedCounts.push({ table: "notebook_overviews", count: 0 });
+    }
+  }
+  if (hasTeacherContent) {
+    try {
+      const res = await db.execute(sql`
+        SELECT COUNT(*)::int AS count
+        FROM teacher_content
+        WHERE created_at >= ${sinceIso}
+      `);
+      generatedCounts.push({
+        table: "teacher_content",
+        count: Number((res.rows[0] as Record<string, unknown> | undefined)?.count ?? 0),
+      });
+    } catch {
+      generatedCounts.push({ table: "teacher_content", count: 0 });
+    }
+  }
+  summary.generatedMaterials = generatedCounts.reduce((sum, item) => sum + item.count, 0);
+  summary.costPerActiveUserUsd =
+    summary.activeUsers > 0 ? roundUsd(summary.totalCostUsd / summary.activeUsers) : null;
+  summary.costPerAlunoUsd = summary.costPerActiveUserUsd;
+  summary.costPerGeneratedMaterialUsd =
+    summary.generatedMaterials > 0 ? roundUsd(summary.totalCostUsd / summary.generatedMaterials) : null;
+
+  if (hasActivityEvents) {
+    try {
+      const res = await db.execute(sql`
+        SELECT
+          COUNT(*) FILTER (WHERE event_type ILIKE '%fail%' OR event_type ILIKE '%error%')::int AS failures,
+          COUNT(*) FILTER (WHERE event_type ILIKE '%retry%' OR event_type ILIKE '%fallback%')::int AS retries
+        FROM activity_events
+        WHERE created_at >= ${sinceIso}
+      `);
+      const row = res.rows[0] as Record<string, unknown> | undefined;
+      fallbackRetry.eventFailures = Number(row?.failures ?? 0);
+      fallbackRetry.eventRetries = Number(row?.retries ?? 0);
+    } catch {
+      fallbackRetry.eventFailures = 0;
+      fallbackRetry.eventRetries = 0;
+    }
+  }
+
+  if (hasAiResponseCache) {
+    try {
+      const res = await db.execute(sql`
+        SELECT
+          feature,
+          COUNT(*)::int AS entries,
+          COALESCE(SUM(uso_count), 0)::int AS hits,
+          COUNT(*) FILTER (WHERE COALESCE(uso_count, 0) = 0)::int AS unused_entries
+        FROM ai_response_cache
+        GROUP BY feature
+        ORDER BY COALESCE(SUM(uso_count), 0) DESC, COUNT(*) DESC
+        LIMIT 12
+      `);
+      cache.byFeature = res.rows.map((row) => {
+        const entries = Number((row as Record<string, unknown>).entries ?? 0);
+        const hits = Number((row as Record<string, unknown>).hits ?? 0);
+        return {
+          feature: String((row as Record<string, unknown>).feature ?? "nao_classificado"),
+          entries,
+          hits,
+          hitRate: hits + entries > 0 ? Math.round((hits / (hits + entries)) * 100) : 0,
+          unusedEntries: Number((row as Record<string, unknown>).unused_entries ?? 0),
+        };
+      });
+      cache.totalEntries = cache.byFeature.reduce((sum, item) => sum + item.entries, 0);
+      cache.totalHits = cache.byFeature.reduce((sum, item) => sum + item.hits, 0);
+      cache.totalUnusedEntries = cache.byFeature.reduce((sum, item) => sum + item.unusedEntries, 0);
+    } catch {
+      cache = { ...cache, totalEntries: 0, totalHits: 0, totalUnusedEntries: 0, byFeature: [] };
+    }
+  }
+
+  const cachedFeatures = new Set(cache.byFeature.map((item) => item.feature));
+  cache.opportunities = byFeature
+    .filter((feature) => feature.calls >= 5 && feature.costUsd > 0 && !cachedFeatures.has(feature.feature))
+    .slice(0, 5)
+    .map((feature) => ({
+      feature: feature.feature,
+      calls: feature.calls,
+      costUsd: feature.costUsd,
+      reason: "feature com chamadas/custo no periodo sem entrada correspondente em ai_response_cache",
+    }));
+
+  const cheaperByFeature = new Map<string, number>();
+  if (hasAiCostLog) {
+    try {
+      const res = await db.execute(sql`
+        SELECT feature, MIN(cost_usd::numeric)::float AS min_cost
+        FROM ai_cost_log
+        WHERE created_at >= ${sinceIso} AND cost_usd::numeric > 0
+        GROUP BY feature
+      `);
+      for (const row of res.rows) {
+        cheaperByFeature.set(
+          String((row as Record<string, unknown>).feature ?? "nao_classificado"),
+          Number((row as Record<string, unknown>).min_cost ?? 0),
+        );
+      }
+    } catch {
+      cheaperByFeature.clear();
+    }
+  }
+
+  const expensiveModelsWithoutApparentGain = byModel.filter((model) => {
+    if (!model.premiumLike) return false;
+    if (model.avgCostPerCall <= 0 && model.avgTokens < 8000) return false;
+    return true;
+  });
+  const expensiveFeaturesWithoutApparentGain = byFeature.filter((feature) => {
+    const minCost = cheaperByFeature.get(feature.feature) ?? 0;
+    return (
+      feature.avgCostPerCall > 0.002 ||
+      feature.avgTokens >= 8000 ||
+      (minCost > 0 && feature.avgCostPerCall > minCost * 3)
+    );
+  });
+
+  const providerUsage = new Map<string, { loggedCostUsd: number; loggedCalls: number }>();
+  for (const model of byModel) {
+    const provider = model.provider;
+    if (provider === "nao_informado") continue;
+    const current = providerUsage.get(provider) ?? { loggedCostUsd: 0, loggedCalls: 0 };
+    current.loggedCostUsd += model.costUsd;
+    current.loggedCalls += model.calls;
+    providerUsage.set(provider, current);
+  }
+  for (const feature of byFeature) {
+    if (feature.feature.startsWith("gemini_compat")) {
+      const current = providerUsage.get("gemini") ?? { loggedCostUsd: 0, loggedCalls: 0 };
+      current.loggedCostUsd += feature.costUsd;
+      current.loggedCalls += feature.calls;
+      providerUsage.set("gemini", current);
+    }
+  }
+  const missingBillingConfig: CostOptimizerMissingBillingSignal[] = [...providerUsage.entries()]
+    .map(([provider, usage]) => {
+      const config = providerBillingConfig(provider);
+      return {
+        provider,
+        loggedCostUsd: roundUsd(usage.loggedCostUsd),
+        loggedCalls: usage.loggedCalls,
+        ...config,
+      };
+    })
+    .filter((provider) => provider.loggedCalls > 0 && (!provider.billingConfigured || !provider.runtimeConfigured));
+
+  return {
+    generatedAt: new Date().toISOString(),
+    periodoDias,
+    tableSignals: {
+      aiCostLog: hasAiCostLog,
+      aiResponseCache: hasAiResponseCache,
+      activityEvents: hasActivityEvents,
+      userActivity: hasUserActivity,
+      generatedContent: hasGeneratedContent,
+      notebookOverviews: hasNotebookOverviews,
+      teacherContent: hasTeacherContent,
+    },
+    summary,
+    byFeature,
+    byModel,
+    activeUsers: summary.activeUsers,
+    generatedCounts,
+    longCalls,
+    expensiveModelsWithoutApparentGain,
+    expensiveFeaturesWithoutApparentGain,
+    fallbackRetry,
+    cache,
+    missingBillingConfig,
+    missingInstrumentation: [
+      !hasAiCostLog ? "ai_cost_log ausente: sem custo por feature/modelo/chamada" : null,
+      !hasUserActivity ? "user_activity ausente: sem custo por aluno ativo" : null,
+      !hasGeneratedContent && !hasNotebookOverviews && !hasTeacherContent
+        ? "tabelas de materiais ausentes: sem custo por material gerado"
+        : null,
+      !hasAiResponseCache ? "ai_response_cache ausente: sem taxa de cache/reuso/desperdicio" : null,
+      !hasActivityEvents ? "activity_events ausente: sem falhas/retries/fallbacks de produto" : null,
+    ].filter((value): value is string => Boolean(value)),
+  };
 }
 
 type CadernoNoteSignal = typeof cadernoNotesTable.$inferSelect;
@@ -1259,6 +1838,231 @@ export async function cadernoErrosIntelligenceDailyLearn(): Promise<void> {
       ? {
           tipo: "caderno_erros_intelligence",
           titulo: "Caderno de Erros precisa fechar loop de recuperacao",
+          corpo: recommendation.observedState,
+        }
+      : undefined,
+  );
+}
+
+export async function custosIaOptimizerDailyLearn(): Promise<void> {
+  const signals = await fetchCustosIaOptimizerSignals(14);
+  const topCostFeature = signals.byFeature[0];
+  const topLongCall = signals.longCalls[0];
+  const topExpensiveModel = signals.expensiveModelsWithoutApparentGain[0];
+  const topExpensiveFeature = signals.expensiveFeaturesWithoutApparentGain[0];
+  const topCacheOpportunity = signals.cache.opportunities[0];
+  const topMissingBilling = signals.missingBillingConfig[0];
+  const hasCostRisk =
+    signals.missingInstrumentation.length > 0 ||
+    signals.missingBillingConfig.length > 0 ||
+    signals.expensiveModelsWithoutApparentGain.length > 0 ||
+    signals.expensiveFeaturesWithoutApparentGain.length > 0 ||
+    signals.longCalls.length > 0 ||
+    signals.cache.opportunities.length > 0 ||
+    signals.cache.totalUnusedEntries > 0 ||
+    signals.fallbackRetry.loggedFallbackCalls > 0 ||
+    signals.fallbackRetry.eventFailures > 0 ||
+    signals.fallbackRetry.eventRetries > 0;
+
+  const target =
+    topMissingBilling?.provider ??
+    topExpensiveFeature?.feature ??
+    topCostFeature?.feature ??
+    topExpensiveModel?.rawModel ??
+    "Admin IA & Custos";
+
+  const observedState = [
+    `${signals.summary.totalCalls} chamada(s) IA em ${signals.periodoDias}d`,
+    `US$ ${signals.summary.totalCostUsd} em ai_cost_log`,
+    signals.summary.costPerActiveUserUsd !== null
+      ? `US$ ${signals.summary.costPerActiveUserUsd}/aluno ativo`
+      : "custo por aluno ativo sem base",
+    signals.summary.costPerGeneratedMaterialUsd !== null
+      ? `US$ ${signals.summary.costPerGeneratedMaterialUsd}/material gerado`
+      : "custo por material sem base",
+    `${signals.longCalls.length} chamada(s) longa(s)`,
+    `${signals.cache.totalHits} hit(s) de cache e ${signals.cache.totalUnusedEntries} entrada(s) sem reuso`,
+  ].join("; ");
+
+  const recommendedChange = topMissingBilling
+    ? `${topMissingBilling.action} Logs internos mostram ${topMissingBilling.loggedCalls} chamada(s) e US$ ${topMissingBilling.loggedCostUsd} para ${topMissingBilling.provider}.`
+    : topExpensiveModel
+      ? `Revisar uso de ${topExpensiveModel.rawModel}: ${topExpensiveModel.calls} chamada(s), US$ ${topExpensiveModel.costUsd}, ${topExpensiveModel.avgTokens} tokens medios; testar roteamento/capping em uma feature antes de trocar modelo.`
+      : topExpensiveFeature
+        ? `Auditar a feature ${topExpensiveFeature.feature}: custo medio US$ ${topExpensiveFeature.avgCostPerCall}/chamada e ${topExpensiveFeature.avgTokens} tokens medios; criar limite de prompt e metrica de qualidade aceita.`
+        : topLongCall
+          ? `Compactar prompt/contexto de ${topLongCall.feature}: chamada com ${topLongCall.totalTokens} tokens em ${topLongCall.model}.`
+          : topCacheOpportunity
+            ? `Criar cache/reuso para ${topCacheOpportunity.feature}: ${topCacheOpportunity.calls} chamada(s) e US$ ${topCacheOpportunity.costUsd} sem entrada em ai_response_cache.`
+            : signals.cache.totalUnusedEntries > 0
+              ? "Revisar politicas de TTL/score do cache para entradas sem reuso antes de limpar qualquer dado."
+              : "Manter monitoramento diario de custo por feature, aluno ativo, material gerado, cache e billing real.";
+
+  const structuredActions = [
+    {
+      type: "billing_reconciliation",
+      target: topMissingBilling?.provider ?? "providerBilling",
+      module: "Admin IA & Custos",
+      evidence: signals.missingBillingConfig,
+      action: topMissingBilling?.action ?? "Manter billing real conectado e separar invoice de ai_cost_log.",
+      impact: "Evitar decisao financeira baseada só em estimativa interna.",
+      metric: "provider_billing_connected_and_reconciled",
+      acceptanceCriteria: [
+        "Admin mostra status de billing por provider",
+        "invoice/providerBilling nao e somado a ai_cost_log sem reconciliacao",
+        "provedor com uso interno tem acao de configuracao explicita quando billing falta",
+      ],
+      confidence: signals.missingBillingConfig.length > 0 ? "alta" : "media",
+    },
+    {
+      type: "cache_opportunity",
+      target: topCacheOpportunity?.feature ?? topCostFeature?.feature ?? "features caras",
+      module: "Admin IA & Custos",
+      evidence: {
+        opportunities: signals.cache.opportunities,
+        cacheByFeature: signals.cache.byFeature,
+        unusedEntries: signals.cache.totalUnusedEntries,
+      },
+      action:
+        topCacheOpportunity
+          ? `Avaliar cache semantico/exato para ${topCacheOpportunity.feature} com TTL e criterio de qualidade.`
+          : "Monitorar hit-rate e entradas sem reuso antes de expandir cache.",
+      impact: "Reduzir chamadas repetidas sem esconder resposta ruim ou desatualizada.",
+      metric: "cache_hit_rate_por_feature_e_custo_evitable_usd",
+      acceptanceCriteria: [
+        "Feature cacheada registra hit/miss e custo evitado",
+        "Cache so reutiliza resposta com score/qualidade aceitavel",
+        "Entradas sem reuso viram revisao de TTL, nao limpeza automatica",
+      ],
+      confidence: topCacheOpportunity ? "media" : "baixa",
+    },
+    {
+      type: "prompt_and_model_routing",
+      target: topExpensiveFeature?.feature ?? topExpensiveModel?.rawModel ?? topLongCall?.feature ?? "modelos/prompts",
+      module: "Admin IA & Custos",
+      evidence: {
+        expensiveModelsWithoutApparentGain: signals.expensiveModelsWithoutApparentGain,
+        expensiveFeaturesWithoutApparentGain: signals.expensiveFeaturesWithoutApparentGain,
+        longCalls: signals.longCalls,
+      },
+      action: "Testar compactacao de contexto, limite de tokens e roteamento revisado por humano antes de mudar provider/modelo.",
+      impact: "Baixar custo por entrega util preservando qualidade pedagogica medida.",
+      metric: "custo_por_entrega_util_com_qualidade_aceita",
+      acceptanceCriteria: [
+        "Experimento compara custo, latencia e qualidade aceita antes/depois",
+        "Feature critica mantem fallback para modelo forte quando criterio pedagogico exigir",
+        "Prompts longos tem limite, sumarizacao ou chunking instrumentado",
+      ],
+      confidence:
+        signals.expensiveModelsWithoutApparentGain.length > 0 || signals.longCalls.length > 0
+          ? "media"
+          : "baixa",
+    },
+    {
+      type: "reliability_cost",
+      target: "fallbacks/retries/falhas",
+      module: "Admin IA & Custos",
+      evidence: signals.fallbackRetry,
+      action: "Investigar falhas/retries/fallbacks que duplicam custo antes de aumentar limites de provider.",
+      impact: "Reduzir custo desperdicado por repeticao de chamada e melhorar previsibilidade operacional.",
+      metric: "falhas_retries_fallbacks_por_100_chamadas_ia",
+      acceptanceCriteria: [
+        "Falhas e retries ficam visiveis por feature/provider",
+        "Fallback loga motivo e modelo final usado",
+        "Alertas nao disparam autofix nem troca automatica de provider",
+      ],
+      confidence:
+        signals.fallbackRetry.loggedFallbackCalls > 0 ||
+        signals.fallbackRetry.eventFailures > 0 ||
+        signals.fallbackRetry.eventRetries > 0
+          ? "media"
+          : "baixa",
+    },
+  ];
+
+  const recommendation: HermesRecommendation = {
+    agentId: "custos_ia_optimizer",
+    area: "admin/ia_custos",
+    module: "Admin IA & Custos",
+    targetSurface: String(target),
+    observedState,
+    evidence: JSON.stringify({
+      summary: signals.summary,
+      byFeature: signals.byFeature,
+      byModel: signals.byModel,
+      generatedCounts: signals.generatedCounts,
+      longCalls: signals.longCalls,
+      fallbackRetry: signals.fallbackRetry,
+      cache: signals.cache,
+      missingBillingConfig: signals.missingBillingConfig,
+      missingInstrumentation: signals.missingInstrumentation,
+      tableSignals: signals.tableSignals,
+    }),
+    problemOpportunity: hasCostRisk
+      ? "Admin ja enxerga uso/custo, mas ainda precisa priorizar onde ha gasto evitavel, prompts longos, cache mal aproveitado, retries/fallbacks ou billing real sem reconciliacao."
+      : "Custo IA esta observavel no periodo, mas deve continuar medido contra entrega util e qualidade pedagogica aceita.",
+    recommendedChange,
+    expectedImpact:
+      "Reduzir custo por aluno ativo/material gerado e melhorar confiabilidade financeira sem degradar qualidade pedagogica.",
+    confidence:
+      signals.missingBillingConfig.length > 0 ||
+      signals.longCalls.length > 0 ||
+      signals.expensiveFeaturesWithoutApparentGain.length > 0
+        ? "alta"
+        : hasCostRisk
+          ? "media"
+          : "baixa",
+    successMetric:
+      "Custo por entrega util, custo por aluno ativo, custo por material gerado, cache hit-rate, tokens medios por chamada e billing reconciliado.",
+    implementationNotes:
+      "O agente observa e recomenda; nao troca provider/modelo, nao limpa cache e nao aplica limite sem revisao humana e metrica de qualidade.",
+    acceptanceCriteria: [
+      "Recomendacao inclui evidencia, impacto, acao sugerida, metrica, aceite, confianca e alvo/modulo",
+      "Admin consegue ver custo por feature, aluno ativo quando houver base e material gerado quando houver base",
+      "Modelo caro ou prompt longo vira experimento medido, nao troca automatica",
+      "Cache e billing ausentes viram lacuna/acao explicita em vez de economia inventada",
+    ],
+  };
+
+  await persistPainAgentRecommendation(
+    recommendation,
+    {
+      kind: "dor_real_agent",
+      agentCatalog: "custos_ia_optimizer",
+      snapshotGeneratedAt: signals.generatedAt,
+      overlaps: ["gestao", "monitor", "Admin IA & Custos"],
+      structuredRecommendation: {
+        evidence: recommendation.evidence,
+        impact: recommendation.expectedImpact,
+        suggestedAction: recommendation.recommendedChange,
+        action: recommendation.recommendedChange,
+        metric: recommendation.successMetric,
+        acceptanceCriteria: recommendation.acceptanceCriteria,
+        confidence: recommendation.confidence,
+        target: recommendation.targetSurface,
+        module: recommendation.module,
+      },
+      observedSignals: {
+        costByFeature: signals.byFeature,
+        costPerActiveUser: signals.summary.costPerActiveUserUsd,
+        costPerAluno: signals.summary.costPerAlunoUsd,
+        costPerGeneratedMaterial: signals.summary.costPerGeneratedMaterialUsd,
+        expensiveModelsWithoutApparentGain: signals.expensiveModelsWithoutApparentGain,
+        expensiveFeaturesWithoutApparentGain: signals.expensiveFeaturesWithoutApparentGain,
+        longPromptsHighTokenCalls: signals.longCalls,
+        failuresRetriesFallbacks: signals.fallbackRetry,
+        cacheOpportunitiesWaste: signals.cache,
+        missingProviderBillingConfigVsInternalLogs: signals.missingBillingConfig,
+      },
+      structuredActions,
+      missingInstrumentation: signals.missingInstrumentation,
+      tableSignals: signals.tableSignals,
+    },
+    hasCostRisk ? 4 : 2,
+    hasCostRisk
+      ? {
+          tipo: "custos_ia_optimizer",
+          titulo: "Custos IA Optimizer encontrou oportunidade de eficiencia",
           corpo: recommendation.observedState,
         }
       : undefined,

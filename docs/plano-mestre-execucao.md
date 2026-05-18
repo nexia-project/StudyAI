@@ -249,7 +249,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 
 ### F0-05 Hermes sistema nervoso / agentes de dor real
 
-**Status:** primeira leva segura implementada; Student Success/`sucesso_aluno` em consolidacao; Simulado Intelligence e Caderno de Erros Intelligence implementados; pendente execucao em ambiente com cron/admin e validacao de producao.
+**Status:** primeira leva segura implementada; Student Success/`sucesso_aluno` em consolidacao; Simulado Intelligence, Caderno de Erros Intelligence e Custos IA Optimizer implementados; pendente execucao em ambiente com cron/admin e validacao de producao.
 
 **Objetivo:** transformar Hermes no sistema nervoso operacional do StudyAI: observar, auditar qualidade, priorizar problemas, abrir recomendacoes claras e medir melhora, sempre separado por papel.
 
@@ -259,7 +259,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 
 - Doutrina por papel fica explicita: aluno aprende/pratica/revisa; professor planeja/diagnostica/intervem/avalia; instituicao acompanha qualidade/risco/adocao/resultados; admin opera/audita/custos/qualidade/conteudo/crescimento.
 - Catalogo Hermes lista os 10 agentes em ordem de prioridade, com responsabilidade, sinais, evidencias, metricas, acoes, limites e saida Admin.
-- Primeira leva e a expansao aluno rodam como agentes explicitos: `auditor_pedagogico`, `notebook_rag_quality`, `professor_success`, `simulado_intelligence` e `caderno_erros_intelligence`.
+- Primeira leva, expansao aluno e otimizacao admin rodam como agentes explicitos: `auditor_pedagogico`, `notebook_rag_quality`, `professor_success`, `simulado_intelligence`, `caderno_erros_intelligence` e `custos_ia_optimizer`.
 - Saidas persistidas seguem o padrao Hermes de evidencia, impacto, recomendacao, acao, metrica, aceite, confianca e target/modulo.
 - Agentes reaproveitam `qa_sintetico`, `cqo_conteudo`, `knowledge-index` e `sucesso_aluno` sem duplicar logica.
 
@@ -269,7 +269,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - `POST /internal/hermes/daily-learn` registra os agentes de dor real implementados no array `ran`.
 - Lacunas de observabilidade viram recomendacoes, nao metricas inventadas.
 - Nenhum agente aplica autofix, envia mensagem real, altera conteudo, muda dados de aluno/turma ou aprova material sem revisao humana.
-- Proxima ordem apos Simulado/Caderno: concluir validacao de Student Success/`sucesso_aluno`, depois Custos IA Optimizer, UX/Product Auditor, Content Gap/CQO avancado e Institution Success/B2B ROI.
+- Proxima ordem apos Custos IA Optimizer: concluir validacao de Student Success/`sucesso_aluno`, validar Simulado/Caderno/Custos em producao, depois UX/Product Auditor, Content Gap/CQO avancado e Institution Success/B2B ROI.
 
 ## Checklist de validacao
 
@@ -498,7 +498,8 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [x] Criar doutrina Hermes sistema nervoso e primeira leva de agentes de dor real.
 - [ ] Validar, publicar e auditar producao da segunda fatia App Shell Premium B2B.
 - [ ] Executar e auditar daily-learn Hermes com `auditor_pedagogico`, `notebook_rag_quality` e `professor_success`.
-- [ ] Proxima leva Hermes: consolidar Student Success/`sucesso_aluno`, validar Simulado/Caderno em producao e implementar Custos IA Optimizer.
+- [x] Implementar Custos IA Optimizer observando custo por feature/aluno/material, prompts longos, modelos caros, cache, retries/fallbacks e billing ausente sem troca automatica de provider.
+- [ ] Proxima leva Hermes: consolidar Student Success/`sucesso_aluno`, validar Simulado/Caderno/Custos em producao e implementar UX/Product Auditor.
 - [ ] Proximo lote de Caderno de Erros: persistir historico estruturado no backend quando houver schema/API definido.
 - [ ] Proxima fatia de layout interno: Admin restante com usuarios, financeiro, integracoes e seguranca em lotes pequenos.
 - [ ] Landing QA final: validar conversao, clareza, mobile e ausencia de promessa garantida apos o shell interno.

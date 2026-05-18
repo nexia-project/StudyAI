@@ -34,7 +34,7 @@ Toda saida de agente Hermes deve seguir o padrao em `artifacts/api-server/src/li
 | 4 | Professor Success | Professor | Implementado primeira leva | `qa_sintetico.professor_gestor_relatorios`, `sucesso_aluno` |
 | 5 | Simulado Intelligence | Aluno | Implementado neste lote | Simulado premium, Caderno |
 | 6 | Caderno de Erros Intelligence | Aluno | Implementado neste lote | Caderno premium, Home next-best-action, Simulado |
-| 7 | Custos IA Optimizer | Admin | Parcial/TODO | Admin IA & Custos, `gestao`, `monitor` |
+| 7 | Custos IA Optimizer | Admin | Implementado neste lote | Admin IA & Custos, `gestao`, `monitor` |
 | 8 | UX/Product Auditor | Admin | Existente/parcial | `ux_layout`, `qa_sintetico` |
 | 9 | Content Gap/CQO avancado | Admin | Existente/parcial | `cqo_conteudo`, `knowledge-index` |
 | 10 | Institution Success / B2B ROI | Instituicao | Parcial/TODO | Relatorios B2B, `professor_success` |
@@ -112,13 +112,13 @@ O catalogo operacional fica em `artifacts/api-server/src/lib/hermes/jobs/dor-rea
 ### 7. Custos IA Optimizer
 
 - **Responsabilidade:** reduzir custo IA sem degradar qualidade pedagogica.
-- **Sinais observados:** uso por provider/modelo; custo por feature; fallback/cache; latencia.
-- **Evidencias:** Admin IA & Custos, telemetria de IA.
-- **Metricas:** custo por entrega util; latencia; qualidade aceita.
-- **Acoes:** recomendar cache, roteamento de modelo ou limite por feature.
-- **Limites de seguranca:** nao troca provider/modelo automaticamente.
-- **Saida Admin:** TODO da proxima leva.
-- **Status:** parcial.
+- **Sinais observados:** custo por feature; custo por aluno ativo quando `user_activity` existe; custo por material gerado quando `generated_content`/`notebook_overviews`/`teacher_content` existem; modelos caros sem ganho aparente; prompts longos ou chamadas de muitos tokens; falhas/retries/fallbacks; oportunidades/desperdicio de cache; billing provider ausente versus logs internos.
+- **Evidencias:** Admin IA & Custos, `ai_cost_log`, `ai_response_cache`, `activity_events`, `user_activity`, tabelas de materiais gerados e envs de billing por provider.
+- **Metricas:** custo por entrega util; custo por aluno ativo; custo por material gerado; tokens medios por chamada; cache hit-rate/reuso; falhas/retries por 100 chamadas; billing reconciliado.
+- **Acoes:** recomendar cache por feature; testar roteamento/compactacao/limite com revisao humana; pedir configuracao de billing real; investigar retries/fallbacks; abrir alerta de custo auditavel.
+- **Limites de seguranca:** nao troca provider/modelo automaticamente; nao reduz qualidade pedagogica sem metrica de aceite; nao soma fatura real com log interno sem reconciliacao; nao limpa cache automaticamente.
+- **Saida Admin:** descoberta/inbox Hermes com recomendacao estruturada contendo evidencia, impacto, acao sugerida, metrica, criterios de aceite, confianca e alvo/modulo.
+- **Status:** implementado como `custos_ia_optimizer` no `daily-learn`.
 
 ### 8. UX/Product Auditor
 
@@ -158,11 +158,11 @@ O catalogo operacional fica em `artifacts/api-server/src/lib/hermes/jobs/dor-rea
 1. **Primeira leva segura:** `auditor_pedagogico`, `notebook_rag_quality`, `professor_success`; todos registrados no `daily-learn`, expostos no catalogo e persistindo recomendacoes padronizadas.
 2. **Consolidar Student Success:** manter `sucesso_aluno` como implementacao atual, enriquecendo sinais estruturados antes de decidir alias publico `student_success`.
 3. **Proxima leva:** Simulado Intelligence deve fechar resultado/abandono/recuperacao com persistencia backend; Caderno de Erros Intelligence ja roda no `daily-learn`.
-4. **Depois:** Custos IA Optimizer, UX/Product Auditor, Content Gap/CQO avancado e Institution Success/B2B ROI.
+4. **Depois:** UX/Product Auditor, Content Gap/CQO avancado e Institution Success/B2B ROI.
 
 ## Criterios de aceite
 
-- `POST /internal/hermes/daily-learn` inclui os agentes de dor real implementados (`auditor_pedagogico`, `notebook_rag_quality`, `professor_success`, `caderno_erros_intelligence`) no array `ran`.
+- `POST /internal/hermes/daily-learn` inclui os agentes de dor real implementados (`auditor_pedagogico`, `notebook_rag_quality`, `professor_success`, `caderno_erros_intelligence`, `custos_ia_optimizer`) no array `ran`.
 - `GET /api/agents/hermes/status` expõe `dorRealAgents` com prioridades, status, sinais, metricas, limites e sobreposicoes.
 - Toda descoberta da primeira leva persiste `payload.recommendation` com evidencia, impacto, recomendacao, acao/metrica, criterios de aceite, confianca e target/modulo.
 - Lacuna de observabilidade vira recomendacao de instrumentacao, nao metrica inventada.

@@ -44,6 +44,7 @@ export async function claimNextTasks(limit: number): Promise<HermesTarefa[]> {
     WITH picked AS (
       SELECT id FROM hermes_tarefas
       WHERE status = 'pending'
+        AND tipo <> 'action_center'
       ORDER BY created_at ASC
       LIMIT ${n}
       FOR UPDATE SKIP LOCKED

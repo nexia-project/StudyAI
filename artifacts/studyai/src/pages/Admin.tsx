@@ -4,7 +4,7 @@ import { DateRangeFilter, defaultDateRange, computeDates, type DateRange } from 
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@clerk/react";
 import {
-  Brain, Shield, CheckCircle, XCircle, Users, RefreshCw, Crown, UserX,
+  Shield, CheckCircle, XCircle, Users, RefreshCw, Crown, UserX,
   BookOpen, Plus, Trash2, FileText, GraduationCap, Building2, Globe,
   Database, Upload, Loader2, Search, Bell, Clock, TrendingUp,
   BarChart3, Activity, Zap, AlertTriangle, UserPlus, Home,
@@ -12,6 +12,7 @@ import {
   Mail, Key, UserCog, Server, Cpu, LayoutDashboard, Lock, ArrowLeft, Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/Logo";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, PieChart, Pie, Cell,
@@ -212,6 +213,30 @@ type HermesStatus = {
     keywordStats: { postuladoCoverageRatio: number };
   } | null;
 };
+type HermesActionStatus = "pending" | "approved" | "in_progress" | "done" | "dismissed" | "blocked" | string;
+type HermesAction = {
+  id: string;
+  status: HermesActionStatus;
+  agentId: string;
+  title: string;
+  action: string;
+  owner: string;
+  responsible: string;
+  priority: "low" | "medium" | "high" | "critical" | string;
+  dueDate: string | null;
+  source: { type?: string; id?: string; agentId?: string };
+  module: string | null;
+  target: string | null;
+  evidence: string;
+  metric: { name: string; baseline: string | null; followUp: string | null; followUpStatus: string };
+  acceptanceCriteria: string[];
+  recommendation: HermesRecommendation | null;
+  safeExecution: { executable: boolean; kind: string; reason: string };
+  auditTrail: unknown[];
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -364,6 +389,35 @@ function extractHermesRecommendation(source: Record<string, unknown> | null | un
   if (!source) return null;
   const recommendation = source.recommendation;
   return isRecord(recommendation) ? (recommendation as HermesRecommendation) : null;
+}
+
+function normalizeHermesActionsPayload(payload: unknown): HermesAction[] {
+  const data = asRecord(payload);
+  return asArray<Record<string, unknown>>(data.items).map((item) => {
+    const metric = asRecord(item.metric);
+    const safeExecution = asRecord(item.safeExecution);
+    return {
+      ...(item as HermesAction),
+      source: asRecord(item.source),
+      module: textValue(item.module),
+      target: textValue(item.target),
+      evidence: textValue(item.evidence) ?? "",
+      metric: {
+        name: textValue(metric.name) ?? "",
+        baseline: textValue(metric.baseline),
+        followUp: textValue(metric.followUp),
+        followUpStatus: textValue(metric.followUpStatus) ?? "not_started",
+      },
+      acceptanceCriteria: asArray(item.acceptanceCriteria).map((entry) => String(entry)).filter(Boolean),
+      recommendation: isRecord(item.recommendation) ? (item.recommendation as HermesRecommendation) : null,
+      safeExecution: {
+        executable: safeExecution.executable === true,
+        kind: textValue(safeExecution.kind) ?? "noop_log",
+        reason: textValue(safeExecution.reason) ?? "",
+      },
+      auditTrail: asArray(item.auditTrail),
+    };
+  });
 }
 
 function HermesRecommendationDetails({ recommendation }: { recommendation: HermesRecommendation | null }) {
@@ -528,8 +582,11 @@ export default function AdminPage() {
   const [fonteConsumo, setFonteConsumo] = useState<FonteConsumo | null>(null);
   const [fonteLoading, setFonteLoading] = useState(false);
   const [hermesStatus, setHermesStatus] = useState<HermesStatus | null>(null);
+  const [hermesActions, setHermesActions] = useState<HermesAction[]>([]);
   const [hermesLoading, setHermesLoading] = useState(false);
+  const [hermesActionsLoading, setHermesActionsLoading] = useState(false);
   const [hermesInboxBusy, setHermesInboxBusy] = useState<string | null>(null);
+  const [hermesActionBusy, setHermesActionBusy] = useState<string | null>(null);
 
   // ── Date range filter — read initial value from URL ──────────────────────────
   const searchStr = useSearch();
@@ -760,7 +817,12 @@ export default function AdminPage() {
   useEffect(() => { if (activeSection === "conteudos") fetchTeacherContent(); }, [activeSection]);
   useEffect(() => { if (activeSection === "banco-dados") fetchKbDocs(); }, [activeSection]);
   useEffect(() => { if (activeSection === "ia-custos" && !fonteConsumo) fetchFonteConsumo(); }, [activeSection]);
-  useEffect(() => { if (activeSection === "hermes") fetchHermesStatus(); }, [activeSection]);
+  useEffect(() => {
+    if (activeSection === "hermes") {
+      fetchHermesStatus();
+      fetchHermesActions();
+    }
+  }, [activeSection]);
 
   async function fetchHermesStatus() {
     setHermesLoading(true);
@@ -772,6 +834,49 @@ export default function AdminPage() {
       setHermesStatus(null);
     } finally {
       setHermesLoading(false);
+    }
+  }
+
+  async function fetchHermesActions() {
+    setHermesActionsLoading(true);
+    try {
+      const res = await adminFetch("/api/agents/hermes/actions?limit=50");
+      if (res.ok) setHermesActions(normalizeHermesActionsPayload(await res.json()));
+      else setHermesActions([]);
+    } catch {
+      setHermesActions([]);
+    } finally {
+      setHermesActionsLoading(false);
+    }
+  }
+
+  async function hermesCreateActionFromInbox(id: string) {
+    setHermesInboxBusy(id);
+    try {
+      const res = await adminFetch("/api/agents/hermes/actions/from-source", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceType: "inbox", sourceId: id }),
+      });
+      if (res.ok) {
+        await Promise.all([fetchHermesStatus(), fetchHermesActions()]);
+      }
+    } finally {
+      setHermesInboxBusy(null);
+    }
+  }
+
+  async function hermesUpdateAction(id: string, status: HermesActionStatus, note?: string) {
+    setHermesActionBusy(`${id}:${status}`);
+    try {
+      const res = await adminFetch(`/api/agents/hermes/actions/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, note }),
+      });
+      if (res.ok) await fetchHermesActions();
+    } finally {
+      setHermesActionBusy(null);
     }
   }
 
@@ -965,9 +1070,7 @@ export default function AdminPage() {
       <aside className="w-56 flex-shrink-0 bg-[#0d0d16] border-r border-white/[0.06] flex flex-col">
         {/* Logo */}
         <div className="px-5 py-5 flex items-center gap-2.5 border-b border-white/[0.06]">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center">
-            <Brain className="w-3.5 h-3.5 text-white" />
-          </div>
+          <Logo variant="icon" className="h-7 w-7 flex-shrink-0 rounded-lg" alt="Study.IA" />
           <span className="font-black text-base tracking-tight">StudyAI Admin</span>
         </div>
 
@@ -2606,10 +2709,13 @@ export default function AdminPage() {
                       </span>
                     )}
                     <button
-                      onClick={fetchHermesStatus}
+                      onClick={() => {
+                        fetchHermesStatus();
+                        fetchHermesActions();
+                      }}
                       className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-black text-white/55 transition-colors hover:bg-white/[0.14] hover:text-white"
                     >
-                      <RefreshCw className={`w-3.5 h-3.5 ${hermesLoading ? "animate-spin" : ""}`} /> Atualizar
+                      <RefreshCw className={`w-3.5 h-3.5 ${hermesLoading || hermesActionsLoading ? "animate-spin" : ""}`} /> Atualizar
                     </button>
                   </>
                 }
@@ -2627,7 +2733,10 @@ export default function AdminPage() {
                   <p className="text-sm font-bold text-white/55">Não foi possível carregar o status Hermes.</p>
                   <p className="mt-1 text-xs text-white/35">Tente atualizar ou valide a rota `/api/agents/hermes/status` em uma sessão admin.</p>
                   <button
-                    onClick={fetchHermesStatus}
+                    onClick={() => {
+                      fetchHermesStatus();
+                      fetchHermesActions();
+                    }}
                     className="mt-5 inline-flex items-center gap-2 rounded-xl bg-cyan-500/15 px-3 py-2 text-xs font-bold text-cyan-200 transition-colors hover:bg-cyan-500/20"
                   >
                     <RefreshCw className="h-3.5 w-3.5" /> Tentar novamente
@@ -2665,6 +2774,143 @@ export default function AdminPage() {
                       )}
                     </div>
                   )}
+
+                  <Card
+                    title="Hermes Action Center"
+                    icon={CheckCircle}
+                    iconColor="text-emerald-400"
+                    action={
+                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-300 border border-emerald-500/20">
+                        {hermesActions.filter((item) => !["done", "dismissed"].includes(item.status)).length} abertas
+                      </span>
+                    }
+                  >
+                    <div className="mb-3 rounded-xl border border-amber-500/15 bg-amber-500/[0.04] p-3 text-xs text-amber-100/75">
+                      Recomendações viram tarefas operacionais com responsável, prioridade, métrica e aceite. A primeira versão só registra aprovação/triagem; nenhuma ação altera conteúdo, billing, usuários ou produção automaticamente.
+                    </div>
+                    {hermesActionsLoading && hermesActions.length === 0 ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 className="h-5 w-5 animate-spin text-emerald-400" />
+                      </div>
+                    ) : hermesActions.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-white/[0.08] bg-white/[0.02] px-4 py-8 text-center">
+                        <p className="text-sm font-bold text-white/55">Nenhuma tarefa operacional criada</p>
+                        <p className="mt-1 text-xs text-white/35">Use “Criar tarefa” em uma recomendação da inbox para iniciar o fluxo.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+                        {hermesActions.map((action) => {
+                          const statusLabel: Record<string, string> = {
+                            pending: "Pendente",
+                            approved: "Aprovada",
+                            in_progress: "Em andamento",
+                            done: "Concluída",
+                            dismissed: "Dispensada",
+                            blocked: "Bloqueada",
+                          };
+                          const statusClass = action.status === "done"
+                            ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/25"
+                            : action.status === "dismissed"
+                              ? "bg-white/5 text-white/35 border-white/10"
+                              : action.status === "approved" || action.status === "in_progress"
+                                ? "bg-cyan-500/15 text-cyan-300 border-cyan-500/25"
+                                : "bg-amber-500/15 text-amber-300 border-amber-500/25";
+                          const busyPrefix = `${action.id}:`;
+                          return (
+                            <div key={action.id} className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4">
+                              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div className="min-w-0 flex-1">
+                                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                                    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black ${statusClass}`}>
+                                      {statusLabel[action.status] ?? action.status}
+                                    </span>
+                                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-black text-white/50">
+                                      prioridade {action.priority}
+                                    </span>
+                                    <span className="text-[10px] font-bold uppercase tracking-wide text-cyan-300/80">
+                                      {action.agentId}
+                                    </span>
+                                    {action.module && <span className="text-[10px] text-white/35">módulo {action.module}</span>}
+                                  </div>
+                                  <p className="text-sm font-black text-white">{action.title}</p>
+                                  <p className="mt-1 text-xs text-white/65">{action.action}</p>
+                                  <div className="mt-3 grid gap-2 text-[11px] text-white/55 sm:grid-cols-2 lg:grid-cols-4">
+                                    <div className="rounded-lg bg-black/15 px-2.5 py-2">
+                                      <p className="text-[9px] uppercase tracking-wide text-white/30">Responsável</p>
+                                      <p className="font-bold text-white/70">{action.owner || action.responsible}</p>
+                                    </div>
+                                    <div className="rounded-lg bg-black/15 px-2.5 py-2">
+                                      <p className="text-[9px] uppercase tracking-wide text-white/30">Target</p>
+                                      <p className="font-bold text-white/70">{action.target || "não definido"}</p>
+                                    </div>
+                                    <div className="rounded-lg bg-black/15 px-2.5 py-2">
+                                      <p className="text-[9px] uppercase tracking-wide text-white/30">Métrica</p>
+                                      <p className="font-bold text-white/70">{action.metric.name || "a definir"}</p>
+                                    </div>
+                                    <div className="rounded-lg bg-black/15 px-2.5 py-2">
+                                      <p className="text-[9px] uppercase tracking-wide text-white/30">Baseline/follow-up</p>
+                                      <p className="font-bold text-white/70">{action.metric.baseline || "sem baseline"} → {action.metric.followUp || "pendente"}</p>
+                                    </div>
+                                  </div>
+                                  {action.evidence && (
+                                    <p className="mt-3 rounded-lg border border-white/[0.05] bg-white/[0.025] px-3 py-2 text-[11px] leading-relaxed text-white/55">
+                                      <span className="font-bold text-white/70">Evidência:</span> {action.evidence}
+                                    </p>
+                                  )}
+                                  {action.acceptanceCriteria.length > 0 && (
+                                    <p className="mt-2 text-[11px] text-white/45">
+                                      <span className="font-bold text-white/60">Aceite:</span> {action.acceptanceCriteria.join("; ")}
+                                    </p>
+                                  )}
+                                  <p className="mt-2 text-[10px] text-amber-200/55">
+                                    Execução segura: {action.safeExecution.kind} · {action.safeExecution.executable ? "suporta aprovação explícita" : "somente log/triagem"}
+                                  </p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-1.5 lg:w-36 lg:grid-cols-1">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={hermesActionBusy?.startsWith(busyPrefix) || action.status !== "pending"}
+                                    onClick={() => hermesUpdateAction(action.id, "approved", "Aprovada para triagem segura.")}
+                                    className="h-8 border-emerald-500/20 text-[10px] text-emerald-300"
+                                  >
+                                    {hermesActionBusy === `${action.id}:approved` ? <Loader2 className="h-3 w-3 animate-spin" /> : "Aprovar"}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={hermesActionBusy?.startsWith(busyPrefix) || !["pending", "approved", "blocked"].includes(action.status)}
+                                    onClick={() => hermesUpdateAction(action.id, "in_progress", "Admin iniciou a execução humana.")}
+                                    className="h-8 border-cyan-500/20 text-[10px] text-cyan-300"
+                                  >
+                                    {hermesActionBusy === `${action.id}:in_progress` ? <Loader2 className="h-3 w-3 animate-spin" /> : "Iniciar"}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={hermesActionBusy?.startsWith(busyPrefix) || !["approved", "in_progress"].includes(action.status)}
+                                    onClick={() => hermesUpdateAction(action.id, "done", "Critérios de aceite marcados como concluídos.")}
+                                    className="h-8 border-white/10 text-[10px]"
+                                  >
+                                    {hermesActionBusy === `${action.id}:done` ? <Loader2 className="h-3 w-3 animate-spin" /> : "Done"}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={hermesActionBusy?.startsWith(busyPrefix) || ["done", "dismissed"].includes(action.status)}
+                                    onClick={() => hermesUpdateAction(action.id, "dismissed", "Dispensada pelo admin.")}
+                                    className="h-8 border-white/10 text-[10px] text-white/45"
+                                  >
+                                    {hermesActionBusy === `${action.id}:dismissed` ? <Loader2 className="h-3 w-3 animate-spin" /> : "Dispensar"}
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </Card>
 
                   {hermesStatus.contentIndex && (
                     <Card title="Índice de conteúdo" icon={Database} iconColor="text-cyan-400">
@@ -2770,6 +3016,15 @@ export default function AdminPage() {
                                     <HermesRecommendationDetails recommendation={extractHermesRecommendation(item.payload)} />
                                   </motion.div>
                                   <div className="flex flex-col gap-1 flex-shrink-0">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={busy}
+                                      onClick={() => hermesCreateActionFromInbox(item.id)}
+                                      className="h-7 text-[10px] border-emerald-500/20 text-emerald-300"
+                                    >
+                                      {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : "Criar tarefa"}
+                                    </Button>
                                     <Button
                                       size="sm"
                                       variant="outline"

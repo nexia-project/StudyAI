@@ -271,6 +271,22 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - Nenhum agente aplica autofix, envia mensagem real, altera conteudo, muda dados de aluno/turma ou aprova material sem revisao humana.
 - Proxima ordem apos implementar Institution Success/B2B ROI: concluir validacao de Student Success/`sucesso_aluno`, validar os 10 agentes no status/daily-learn/admin e corrigir lacunas de instrumentacao observadas em producao.
 
+### F0-06 Hermes Action Center
+
+**Status:** primeira versao implementada sobre `hermes_tarefas.payload.actionCenter`; pendente validacao em ambiente admin/producao.
+
+**Objetivo:** evoluir Hermes de recomendador em background para fluxo operacional auditavel: recomendacoes viram tarefas com responsavel, prioridade, status, evidencia, metrica, baseline/follow-up e criterio de aceite.
+
+**Superficies previstas:** `artifacts/api-server/src/routes/agents/hermes.ts`, `artifacts/api-server/src/lib/hermes/tasks/queue.ts`, `artifacts/studyai/src/pages/Admin.tsx`, docs Hermes.
+
+**Criterios de aceite:**
+
+- Admin lista tarefas no Hermes Action Center e consegue criar tarefa a partir de item da inbox.
+- Status suportados: `pending`, `approved`, `in_progress`, `done`, `dismissed`, `blocked`.
+- Aprovacao registra trilha de auditoria/no-op; nenhuma acao destrutiva ou mudanca de producao e executada automaticamente.
+- Worker de `hermes_tarefas` nao processa `tipo = action_center`.
+- Baseline/follow-up ficam no payload para a proxima fase medir melhora real da metrica.
+
 ## Checklist de validacao
 
 ### Auditoria de bloqueadores - 2026-05-17 17:10
@@ -357,6 +373,8 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [x] Admin exibe modulo junto com superficie, evidencia, problema, mudanca, metrica e aceite.
 - [x] Catalogo de agentes de dor real documentado e exposto em `dorRealAgents`.
 - [x] Primeira leva segura registrada: `auditor_pedagogico`, `notebook_rag_quality`, `professor_success`.
+- [x] Action Center Hermes criado com tarefas auditaveis em `hermes_tarefas.payload.actionCenter`.
+- [x] Worker ignora tarefas `action_center`; aprovacao atual e somente log/triagem humana.
 - [ ] Executar `POST /api/agents/qa_sintetico/executar-auditoria` em ambiente autenticado de admin.
 - [ ] Executar `POST /internal/hermes/daily-learn` e confirmar `ran` com a primeira leva de dor real.
 - [ ] Conferir que achados persistidos aparecem em Descobertas/Inbox Hermes sem tarefa destrutiva.

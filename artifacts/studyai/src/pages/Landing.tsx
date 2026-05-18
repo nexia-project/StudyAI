@@ -201,9 +201,9 @@ const PAIN_OUTCOMES = [
     outcome: "Relatórios, sinais de atenção e acompanhamento com espaço para revisão humana.",
   },
   {
-    audience: "Admin / Hermes",
-    pain: "Uma landing e um produto premium precisam melhorar continuamente, não só acumular módulos.",
-    outcome: "Auditoria de copy, limites de IA e feedback ajudam a manter consistência e evolução.",
+    audience: "Equipe StudyAI",
+    pain: "Uma experiência premium precisa evoluir com clareza, consistência e cuidado pedagógico.",
+    outcome: "Revisão de conteúdo, limites de IA e feedback ajudam a manter qualidade em cada etapa.",
   },
 ] as const;
 
@@ -323,10 +323,10 @@ const FAQS = [
 const VIDEO_BRIEFS = [
   {
     id: "intro",
-    title: "Tour principal: do caos ao próximo passo",
-    objective: "Mostrar a dor do aluno que não sabe o que estudar e a virada para um hub com plano, treino, revisão e tutor.",
+    title: "Do caos ao próximo passo",
+    objective: "Quando o aluno não sabe por onde começar, o hub transforma objetivo, material e prazo em uma sessão clara de estudo.",
     duration: "1:32",
-    tag: "Roteiro em produção",
+    tag: "Hub de estudos",
     tagColor: "bg-violet-50 text-violet-700 border-violet-200",
     gradient: "from-violet-500 via-violet-500 to-purple-600",
     icon: Sparkles,
@@ -341,9 +341,9 @@ const VIDEO_BRIEFS = [
   {
     id: "tiagao",
     title: "Tiagão: sessão curta, foco imediato",
-    objective: "Demonstrar como o tutor reduz fricção: identifica lacuna, propõe estudo de 20 minutos e conecta treino ao material.",
+    objective: "O tutor ajuda a retomar o ritmo, identifica uma lacuna provável e conecta revisão, treino e material de apoio.",
     duration: "2:18",
-    tag: "Roteiro para IA/video",
+    tag: "Tutor Tiagão",
     tagColor: "bg-orange-50 text-orange-700 border-orange-200",
     gradient: "from-orange-400 via-rose-500 to-fuchsia-500",
     icon: Mic,
@@ -358,16 +358,16 @@ const VIDEO_BRIEFS = [
   {
     id: "escolas",
     title: "Instituição: progresso e qualidade em uma visão",
-    objective: "Explicar como professor, gestor e Hermes fecham o ciclo: lacunas, acompanhamento, revisão humana e melhoria contínua.",
+    objective: "Professores e gestores acompanham lacunas, progresso e sinais de atenção sem perder espaço para revisão humana.",
     duration: "2:45",
-    tag: "Roteiro institucional",
+    tag: "Para instituições",
     tagColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
     gradient: "from-emerald-500 via-teal-500 to-cyan-600",
     icon: Building2,
     scenes: [
       "Professor enxerga lacunas recorrentes antes de preparar intervenção.",
       "Gestor acompanha progresso, qualidade e sinais de atenção por turma.",
-      "Hermes usa auditoria e feedback para melhorar recomendações e consistência.",
+      "Feedback e revisão ajudam a manter recomendações consistentes ao longo do ciclo.",
     ],
     cta: "Falar com equipe",
     path: "#institucional",
@@ -629,10 +629,7 @@ export default function Landing() {
                   className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-bold text-white backdrop-blur transition-colors hover:bg-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
                 >
                   <Play className="h-4 w-4 shrink-0 text-violet-100" fill="currentColor" aria-hidden />
-                  <span>
-                    Ver vídeos planejados{" "}
-                    <span className="font-normal text-slate-300">(roteiros)</span>
-                  </span>
+                  <span>Ver a experiência em vídeo</span>
                 </a>
               </div>
               <p className="text-sm text-slate-300">
@@ -738,7 +735,7 @@ export default function Landing() {
               O StudyAI não vende mais conteúdo. Ele organiza decisão.
             </h2>
             <p className="mt-4 text-lg leading-relaxed text-gray-600">
-              A dor não é só falta de aula. É não saber o próximo passo, repetir os mesmos erros e perder contexto entre materiais, provas e conversas.
+              O desafio não é só falta de aula. É não saber o próximo passo, repetir os mesmos erros e perder contexto entre materiais, provas e conversas.
             </p>
           </motion.div>
           <div className="grid gap-4 md:grid-cols-2">
@@ -754,10 +751,10 @@ export default function Landing() {
               >
                 <p className="text-xs font-black uppercase tracking-widest text-violet-600">{item.audience}</p>
                 <p className="mt-3 text-sm leading-relaxed text-gray-500">
-                  <span className="font-bold text-gray-900">Dor:</span> {item.pain}
+                  <span className="font-bold text-gray-900">{item.pain}</span>
                 </p>
                 <p className="mt-2 text-sm leading-relaxed text-gray-700">
-                  <span className="font-bold text-gray-900">Resultado esperado:</span> {item.outcome}
+                  {item.outcome}
                 </p>
               </motion.article>
             ))}
@@ -1061,11 +1058,11 @@ export default function Landing() {
           <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
             className="text-center mb-10 md:mb-12">
             <p className="inline-flex items-center gap-1.5 text-xs font-black text-violet-600 uppercase tracking-widest mb-3">
-              <Film className="w-3 h-3" /> Vídeos em produção
+              <Film className="w-3 h-3" /> Experiência em vídeo
             </p>
             <h2 className="text-4xl md:text-5xl font-black tracking-tight text-gray-900">A história já está pronta para virar vídeo.</h2>
             <p className="text-gray-600 mt-3 max-w-2xl mx-auto text-lg">
-              Em vez de MP4 genérico, a landing mostra os roteiros reais que precisam ser gravados ou gerados: dor, virada no produto, cenas e CTA.
+              Veja como o StudyAI aparece na rotina real de estudo: menos dispersão, mais direção e próximos passos claros para cada perfil.
             </p>
           </motion.div>
 
@@ -1078,26 +1075,26 @@ export default function Landing() {
                 <div className="absolute -right-16 bottom-4 h-56 w-56 rounded-full bg-fuchsia-300/20 blur-3xl" />
                 <div className="relative flex h-full min-h-[280px] flex-col justify-between p-6 md:p-8 text-white">
                   <span className="inline-flex w-fit items-center rounded-full bg-white/15 px-3 py-1 text-[10px] font-black uppercase tracking-widest ring-1 ring-white/20 backdrop-blur">
-                    Asset de marca pendente
+                    Demonstração guiada
                   </span>
                   <div className="max-w-xl">
-                    <p className="text-xs font-black uppercase tracking-[0.24em] text-violet-100">Shot list mestre</p>
+                    <p className="text-xs font-black uppercase tracking-[0.24em] text-violet-100">Jornada StudyAI</p>
                     <h3 className="mt-3 text-2xl font-black leading-tight md:text-4xl">
-                      Abrir com a dor real: muito conteúdo, pouca direção.
+                      Quando há muito conteúdo e pouca direção.
                     </h3>
                     <p className="mt-4 text-sm leading-relaxed text-slate-200 md:text-base">
-                      O vídeo principal deve mostrar a passagem de materiais soltos para uma sessão guiada. O produto aparece como decisão clara, não como vitrine de botões.
+                      A experiência mostra a passagem de materiais soltos para uma sessão guiada. O produto aparece como uma decisão clara, não como uma vitrine de botões.
                     </p>
                   </div>
                 </div>
               </div>
               <div className="flex flex-col justify-center gap-4 bg-gradient-to-br from-gray-900 to-gray-950 p-6 text-left md:p-8 lg:col-span-2">
-                <p className="text-xs font-black uppercase tracking-widest text-violet-300/90">Direção criativa</p>
+                <p className="text-xs font-black uppercase tracking-widest text-violet-300/90">Experiência do produto</p>
                 <h3 className="text-xl md:text-2xl font-black text-white leading-tight">
                   Premium porque educa antes de vender.
                 </h3>
                 <p className="text-sm text-gray-300 leading-relaxed">
-                  Cada roteiro conecta uma dor objetiva a uma capacidade real: aluno sabe o que estudar agora, professor enxerga lacunas, instituição acompanha qualidade e Hermes melhora o ciclo.
+                  Cada fluxo conecta uma necessidade concreta a uma capacidade real: o aluno sabe o que estudar agora, o professor enxerga lacunas e a instituição acompanha qualidade com mais clareza.
                 </p>
                 <div className="flex flex-wrap gap-2 pt-1">
                   <button type="button" onClick={handleStart}
@@ -1134,7 +1131,7 @@ export default function Landing() {
                       </span>
                     </div>
                     <div className="relative mt-12">
-                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">Objetivo do vídeo</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">O que você acompanha</p>
                       <h3 className="mt-2 text-lg font-black leading-tight">{video.title}</h3>
                     </div>
                   </div>

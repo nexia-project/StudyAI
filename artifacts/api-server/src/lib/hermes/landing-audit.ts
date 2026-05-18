@@ -26,7 +26,7 @@ export const LANDING_AUDIT = {
         { type: "cta_primary", text: "Começar grátis — 2 minutos" },
         {
           type: "cta_secondary",
-          text: "Ver vídeos planejados (roteiros) — link com ícone Play, mesma linha que o primário em desktop",
+          text: "Ver a experiência em vídeo — link com ícone Play, mesma linha que o primário em desktop",
         },
         {
           type: "text_link",
@@ -51,7 +51,7 @@ export const LANDING_AUDIT = {
         "Aluno: sabe o que estudar agora, erra menos e revisa melhor",
         "Professor: enxerga lacunas e orienta melhor",
         "Instituição: acompanha progresso e qualidade",
-        "Admin / Hermes: melhora continuamente com auditoria e feedback",
+        "Equipe StudyAI: mantém qualidade com revisão de conteúdo, limites de IA e feedback",
       ],
     },
     {
@@ -108,9 +108,9 @@ export const LANDING_AUDIT = {
     {
       id: "video_briefs",
       title: "A história já está pronta para virar vídeo.",
-      strategy: "Substitui MP4 genérico por cards de roteiro em produção com objetivo, duração, cenas/capítulos e CTA.",
+      strategy: "Substitui MP4 genérico por cards de experiência com fluxo, duração, momentos-chave e chamada contextual.",
       briefs: [
-        "Tour principal: do caos ao próximo passo",
+        "Do caos ao próximo passo",
         "Tiagão: sessão curta, foco imediato",
         "Instituição: progresso e qualidade em uma visão",
       ],
@@ -135,10 +135,10 @@ export const LANDING_AUDIT = {
     "H1 em teste A/B (sessão): ENEM vs. tempo/foco; CTA dispara studyia_landing_cta com variant.",
     "Prova do hero evita números/logos não auditáveis e reforça capacidade verificável: ENEM, RAG, Tiagão e B2B com revisão humana.",
     "Bloco de credibilidade virou faixa de prova operacional: próximo passo, fontes e limites da IA.",
-    "Sequência narrativa reforçada: hero -> dor por persona -> solução/prova operacional -> como funciona -> produto -> personas -> confiança -> preço -> CTA.",
+    "Sequência narrativa reforçada: hero -> desafio por público -> solução/prova operacional -> como funciona -> produto -> personas -> confiança -> preço -> CTA.",
     "Grid de features reduzido de 15 para 8 capacidades para diminuir sobrecarga de escaneabilidade.",
     "Depoimentos com números/aprovações foram trocados por cenários de uso para evitar claims não auditáveis.",
-    "Vídeos genéricos/placeholder foram removidos; a seção agora documenta briefs de produção para assets reais ou gerados por IA.",
+    "Vídeos genéricos/placeholder foram removidos; a seção agora apresenta experiências do produto em linguagem final para usuários.",
   ],
 } as const;
 

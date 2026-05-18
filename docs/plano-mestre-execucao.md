@@ -249,7 +249,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 
 ### F0-05 Hermes sistema nervoso / agentes de dor real
 
-**Status:** primeira leva segura implementada; Student Success/`sucesso_aluno` em consolidacao; Simulado Intelligence, Caderno de Erros Intelligence, Custos IA Optimizer e UX/Product Auditor implementados; pendente execucao em ambiente com cron/admin e validacao de producao.
+**Status:** roadmap canonico implementado; Student Success/`sucesso_aluno` segue como implementacao existente a consolidar/alias; todos os 10 agentes de dor real estao registrados ou cobertos no catalogo; pendente execucao em ambiente com cron/admin e validacao de producao.
 
 **Objetivo:** transformar Hermes no sistema nervoso operacional do StudyAI: observar, auditar qualidade, priorizar problemas, abrir recomendacoes claras e medir melhora, sempre separado por papel.
 
@@ -259,7 +259,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 
 - Doutrina por papel fica explicita: aluno aprende/pratica/revisa; professor planeja/diagnostica/intervem/avalia; instituicao acompanha qualidade/risco/adocao/resultados; admin opera/audita/custos/qualidade/conteudo/crescimento.
 - Catalogo Hermes lista os 10 agentes em ordem de prioridade, com responsabilidade, sinais, evidencias, metricas, acoes, limites e saida Admin.
-- Primeira leva, expansao aluno e otimizacao admin/UX rodam como agentes explicitos: `auditor_pedagogico`, `notebook_rag_quality`, `professor_success`, `simulado_intelligence`, `caderno_erros_intelligence`, `custos_ia_optimizer` e `ux_product_auditor`.
+- Primeira leva, expansao aluno, otimizacao admin/UX/conteudo e fechamento institucional rodam como agentes explicitos: `auditor_pedagogico`, `notebook_rag_quality`, `professor_success`, `simulado_intelligence`, `caderno_erros_intelligence`, `custos_ia_optimizer`, `ux_product_auditor`, `content_gap_cqo_avancado` e `institution_success_b2b_roi` (alem de `sucesso_aluno` como implementacao atual de Student Success).
 - Saidas persistidas seguem o padrao Hermes de evidencia, impacto, recomendacao, acao, metrica, aceite, confianca e target/modulo.
 - Agentes reaproveitam `qa_sintetico`, `ux_layout`, `cqo_conteudo`, `knowledge-index`, `activity_events` e `sucesso_aluno` sem duplicar logica.
 
@@ -269,7 +269,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - `POST /internal/hermes/daily-learn` registra os agentes de dor real implementados no array `ran`.
 - Lacunas de observabilidade viram recomendacoes, nao metricas inventadas.
 - Nenhum agente aplica autofix, envia mensagem real, altera conteudo, muda dados de aluno/turma ou aprova material sem revisao humana.
-- Proxima ordem apos UX/Product Auditor: concluir validacao de Student Success/`sucesso_aluno`, validar Simulado/Caderno/Custos/UX/Content Gap em producao, depois Institution Success/B2B ROI.
+- Proxima ordem apos implementar Institution Success/B2B ROI: concluir validacao de Student Success/`sucesso_aluno`, validar os 10 agentes no status/daily-learn/admin e corrigir lacunas de instrumentacao observadas em producao.
 
 ## Checklist de validacao
 

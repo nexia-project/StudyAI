@@ -25,6 +25,7 @@ Este documento marca o que ja foi entregue, o que esta em validacao e a ordem co
 | 13 | Hermes Custos IA Optimizer | Implementado/aguarda deploy | lote atual | `custos_ia_optimizer` monitora custo por feature/aluno/material, prompts, cache, retries e billing sem trocar provider automaticamente. |
 | 14 | Hermes Content Gap/CQO avancado | Implementado/aguarda deploy | lote atual | `content_gap_cqo_avancado` prioriza lacunas por demanda, BNCC/ENEM, fonte, qualidade, revisao e ingestao sem publicar automaticamente. |
 | 15 | Hermes UX/Product Auditor | Implementado/aguarda deploy | lote atual | `ux_product_auditor` compoe `qa_sintetico`, `ux_layout` landing-only e `activity_events` para friccao, abandono, CTAs, rotas, estados, mobile e feedback por modulo. |
+| 16 | Hermes Institution Success / B2B ROI | Implementado/aguarda deploy | lote atual | `institution_success_b2b_roi` mede adocao, risco, WhatsApp, exports e prova agregada de ROI sem contato automatico ou ranking sensivel. |
 | 11 | Comunicacao institutional WhatsApp foundation | Concluido/deployado | plano mestre | Fundacao institucional pronta, sem envio real indevido. |
 
 ## Em validacao manual
@@ -38,8 +39,8 @@ Este documento marca o que ja foi entregue, o que esta em validacao e a ordem co
 
 ## Proximas entregas por ordem
 
-1. **Student Success / `sucesso_aluno`**: consolidar sinais de aluno travado, acao segura e metrica no Hermes. Aceite: observa sem estudo, sem dias, erro repetido, simulado abandonado, chat sem pratica e falta de missao; gera recomendacao estruturada sem envio real.
-2. **Institution Success / B2B ROI**: medir adocao, risco e valor institucional agregado. Aceite: sem ranking sensivel indevido e com revisao humana obrigatoria.
+1. **Validacao Hermes real-pain roadmap**: executar daily-learn/status em ambiente admin/cron e conferir `ran`, descoberta/inbox e payload estruturado dos 10 agentes.
+2. **Student Success / `sucesso_aluno`**: consolidar alias publico depois da validacao dos sinais atuais. Aceite: observa sem estudo, sem dias, erro repetido, simulado abandonado, chat sem pratica e falta de missao; gera recomendacao estruturada sem envio real.
 
 ## Hermes agents roadmap
 
@@ -54,11 +55,11 @@ Este documento marca o que ja foi entregue, o que esta em validacao e a ordem co
 | 7 | `custos_ia_optimizer` | Implementado/aguarda deploy | Validar descoberta/inbox, custo por entrega util e billing reconciliado | Admin IA & Custos, `ai_cost_log`, `ai_response_cache` |
 | 8 | `ux_product_auditor` | Implementado/aguarda deploy | Validar descoberta/inbox, mobile 360px, menu por papel, eventos de abandono e feedback por modulo | `qa_sintetico`, `ux_layout` landing-only, `activity_events`, App Shell |
 | 9 | `content_gap_cqo_avancado` | Implementado/aguarda deploy | Validar descoberta/inbox, lacunas priorizadas e payload de curadoria/revisao/ingestao | CQO, knowledge-index, `generated_content`, `knowledge_base`, `enem_questions` |
-| 10 | `institution_success_b2b_roi` | Parcial/TODO | ROI/adocao institucional agregado | Professor Success, Relatorios B2B |
+| 10 | `institution_success_b2b_roi` | Implementado/aguarda deploy | Validar daily-learn, descoberta/inbox, risco B2B, WhatsApp e ROI agregado | Professor Success, Relatorios B2B, Comunicacao institucional |
 
 ## QA checklist
 
-- [ ] Rodar `pnpm run typecheck` antes de commit.
+- [x] Rodar `pnpm run typecheck` antes de commit.
 - [ ] Quando houver backend Hermes, confirmar `GET /api/agents/hermes/status` com `dorRealAgents`.
 - [ ] Quando houver cron/admin autenticado, executar `POST /internal/hermes/daily-learn` e conferir `ran`.
 - [ ] Conferir que descoberta/inbox Hermes contem `recommendation` com evidencia, acao, metrica, aceite e confianca.

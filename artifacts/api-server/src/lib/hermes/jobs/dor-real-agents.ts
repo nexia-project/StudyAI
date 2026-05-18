@@ -435,15 +435,61 @@ export const HERMES_DOR_REAL_AGENT_CATALOG: HermesDorRealAgentCatalogItem[] = [
     priority: 10,
     name: "Institution Success / B2B ROI",
     productRole: "institution",
-    status: "partial",
-    responsibility: "Medir adocao, risco e resultado institucional sem invadir privacidade.",
-    observedSignals: ["turmas ativas", "adocao", "exports", "alunos em risco"],
-    evidence: ["Professor", "Instituicao", "Relatorios B2B"],
-    metrics: ["adocao por turma", "uso docente", "risco agregado", "ROI/valor percebido"],
-    actions: ["abrir recomendacao de coordenacao", "priorizar onboarding institucional"],
-    safetyBoundaries: ["sem ranking sensivel indevido", "revisao humana obrigatoria"],
-    adminOutput: "Roadmap/TODO apos primeira leva.",
-    overlaps: ["qa_sintetico.Relatorios B2B", "professor_success"],
+    status: "new",
+    responsibility:
+      "Medir adocao, risco de churn e prova de valor institucional/comercial sem expor ranking sensivel individual.",
+    observedSignals: [
+      "instituicoes interessadas ou ativas",
+      "uso/adocao institucional",
+      "professores ativos",
+      "turmas com engajamento",
+      "relatorios/exports para lideranca",
+      "uso ou lacuna de comunicacao WhatsApp",
+      "risco por ausencia de turmas, baixa adocao docente, poucos relatorios ou baixa atividade discente",
+      "prova de ROI por diagnosticos, simulados, materiais, exports e uso de IA",
+    ],
+    evidence: [
+      "instituicoes",
+      "corporate_leads",
+      "institution_users",
+      "turmas/turma_memberships",
+      "user_activity",
+      "simulado_results",
+      "flashcard_sessions",
+      "activities/activity_submissions",
+      "generated_content/notebook_overviews",
+      "communication_logs/user_notification_prefs",
+      "activity_events report/export",
+      "Relatorios B2B",
+      "professor_success",
+    ],
+    metrics: [
+      "instituicoes ativas/interessadas",
+      "adocao docente por instituicao",
+      "turmas ativas e turmas com alunos",
+      "alunos ativos 30d",
+      "relatorios/exportacoes",
+      "uso/configuracao WhatsApp",
+      "sinais de ROI por diagnosticos e artefatos gerados",
+      "instituicoes em risco",
+    ],
+    actions: [
+      "enviar plano de onboarding institucional",
+      "preparar relatorio de ROI para lideranca",
+      "ativar canal de comunicacao WhatsApp",
+      "treinar professores com baixa adocao",
+      "fazer follow-up com instituicao em risco",
+      "exportar relatorio executivo para direcao",
+    ],
+    safetyBoundaries: [
+      "sem ranking sensivel indevido",
+      "nao contata escola, professor, aluno ou responsavel automaticamente",
+      "nao expõe PII em evidencias",
+      "revisao humana obrigatoria antes de acao comercial ou comunicacao",
+      "ausencia de sinal vira lacuna de observabilidade, nao metrica inventada",
+    ],
+    adminOutput: "Descoberta/inbox Hermes com recomendacao estruturada de adocao, risco, ROI e proxima acao B2B.",
+    overlaps: ["qa_sintetico.Relatorios B2B", "professor_success", "comunicacao institucional"],
   },
 ];
 
@@ -783,6 +829,605 @@ function providerBillingConfig(provider: string): { runtimeConfigured: boolean; 
     runtimeConfigured: false,
     billingConfigured: false,
     action: `Mapear runtime e billing do provider ${provider}.`,
+  };
+}
+
+type InstitutionAggregateSignal = {
+  id: string;
+  name: string;
+  planType: string | null;
+  contractEnd: string | null;
+  maxUsers: number;
+  maxTeachers: number;
+  totalClasses: number;
+  activeClasses: number;
+  engagedClasses: number;
+  approvedTeachers: number;
+  teachersWithActiveClasses: number;
+  admins: number;
+  students: number;
+  activeStudents: number;
+  teacherAdoptionRate: number | null;
+  studentActivityRate: number | null;
+  simuladoResults: number;
+  flashcardSessions: number;
+  teacherGeneratedContent: number;
+  notebookOverviews: number;
+  teacherActivities: number;
+  activitySubmissions: number;
+  reportExports: number;
+  diagnosticsCompleted: number;
+  roiSignalScore: number;
+  riskSignals: string[];
+  recommendedNextAction: string;
+};
+
+function rowNumber(row: Record<string, unknown>, key: string): number {
+  return Number(row[key] ?? 0);
+}
+
+function getCount(map: Map<string, number>, institutionId: string): number {
+  return map.get(institutionId) ?? 0;
+}
+
+function toCountMap(rows: unknown[], key = "institution_id", value = "count"): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const raw of rows) {
+    const row = raw as Record<string, unknown>;
+    const id = String(row[key] ?? "");
+    if (!id) continue;
+    map.set(id, Number(row[value] ?? 0));
+  }
+  return map;
+}
+
+async function fetchInstitutionSuccessB2BRoiSignals(periodoDias = 30) {
+  const sinceIso = new Date(Date.now() - periodoDias * 24 * 60 * 60 * 1000).toISOString();
+  const [
+    hasInstitutions,
+    hasInstitutionUsers,
+    hasTurmas,
+    hasTurmaMemberships,
+    hasUserActivity,
+    hasSimuladoResults,
+    hasFlashcardSessions,
+    hasGeneratedContent,
+    hasNotebookOverviews,
+    hasActivities,
+    hasActivitySubmissions,
+    hasCommunicationLogs,
+    hasUserNotificationPrefs,
+    hasCorporateLeads,
+    hasActivityEvents,
+    hasTrilhaSessions,
+  ] = await Promise.all([
+    safeTableExists("instituicoes"),
+    safeTableExists("institution_users"),
+    safeTableExists("turmas"),
+    safeTableExists("turma_memberships"),
+    safeTableExists("user_activity"),
+    safeTableExists("simulado_results"),
+    safeTableExists("flashcard_sessions"),
+    safeTableExists("generated_content"),
+    safeTableExists("notebook_overviews"),
+    safeTableExists("activities"),
+    safeTableExists("activity_submissions"),
+    safeTableExists("communication_logs"),
+    safeTableExists("user_notification_prefs"),
+    safeTableExists("corporate_leads"),
+    safeTableExists("activity_events"),
+    safeTableExists("trilha_mestre_sessions"),
+  ]);
+
+  const missingCore = [
+    !hasInstitutions ? "instituicoes ausente: sem catalogo institucional" : null,
+    !hasInstitutionUsers ? "institution_users ausente: sem adocao docente/gestor" : null,
+    !hasTurmas ? "turmas ausente: sem uso por turma" : null,
+    !hasTurmaMemberships ? "turma_memberships ausente: sem cobertura de alunos por turma" : null,
+  ].filter((value): value is string => Boolean(value));
+
+  if (missingCore.length > 0) {
+    return {
+      generatedAt: new Date().toISOString(),
+      periodoDias,
+      institutions: [] as InstitutionAggregateSignal[],
+      atRiskInstitutions: [] as InstitutionAggregateSignal[],
+      valueProofInstitutions: [] as InstitutionAggregateSignal[],
+      summary: {
+        totalInstitutions: 0,
+        activeInstitutions: 0,
+        interestedLeads30d: 0,
+        interestedLeadsTotal: 0,
+        approvedTeachers: 0,
+        teachersWithActiveClasses: 0,
+        students: 0,
+        activeStudents: 0,
+        reportExports30d: 0,
+        roiSignalScore30d: 0,
+      },
+      communication: {
+        whatsapp: {
+          provider: (process.env.WHATSAPP_PROVIDER || "disabled").toLowerCase(),
+          configured: false,
+          mode: "unknown",
+          missing: ["institution_core_tables"],
+        },
+        logs30d: null,
+        notificationPrefs: null,
+      },
+      missingInstrumentation: missingCore,
+      tableSignals: {
+        hasInstitutions,
+        hasInstitutionUsers,
+        hasTurmas,
+        hasTurmaMemberships,
+        hasUserActivity,
+        hasSimuladoResults,
+        hasFlashcardSessions,
+        hasGeneratedContent,
+        hasNotebookOverviews,
+        hasActivities,
+        hasActivitySubmissions,
+        hasCommunicationLogs,
+        hasUserNotificationPrefs,
+        hasCorporateLeads,
+        hasActivityEvents,
+        hasTrilhaSessions,
+      },
+    };
+  }
+
+  const baseRows = await db.execute(sql`
+    SELECT
+      i.id,
+      i.name,
+      i.plan_type,
+      i.contract_end,
+      COALESCE(i.max_users, 0)::int AS max_users,
+      COALESCE(i.max_teachers, 0)::int AS max_teachers,
+      (
+        SELECT COUNT(*)::int FROM turmas t WHERE t.institution_id = i.id
+      ) AS total_classes,
+      (
+        SELECT COUNT(*)::int FROM turmas t
+        WHERE t.institution_id = i.id AND COALESCE(t.is_active, TRUE) = TRUE
+      ) AS active_classes,
+      (
+        SELECT COUNT(DISTINCT t.id)::int
+        FROM turmas t
+        JOIN turma_memberships tm ON tm.turma_id = t.id
+        WHERE t.institution_id = i.id AND COALESCE(t.is_active, TRUE) = TRUE
+      ) AS engaged_classes,
+      (
+        SELECT COUNT(DISTINCT iu.user_id)::int
+        FROM institution_users iu
+        WHERE iu.institution_id = i.id
+          AND COALESCE(iu.is_approved, FALSE) = TRUE
+          AND iu.role IN ('teacher', 'admin', 'owner')
+      ) AS approved_teachers,
+      (
+        SELECT COUNT(DISTINCT t.teacher_id)::int
+        FROM turmas t
+        WHERE t.institution_id = i.id AND COALESCE(t.is_active, TRUE) = TRUE
+      ) AS teachers_with_active_classes,
+      (
+        SELECT COUNT(DISTINCT iu.user_id)::int
+        FROM institution_users iu
+        WHERE iu.institution_id = i.id
+          AND COALESCE(iu.is_approved, FALSE) = TRUE
+          AND iu.role IN ('admin', 'owner')
+      ) AS admins,
+      (
+        SELECT COUNT(DISTINCT tm.student_id)::int
+        FROM turmas t
+        JOIN turma_memberships tm ON tm.turma_id = t.id
+        WHERE t.institution_id = i.id
+      ) AS students
+    FROM instituicoes i
+    ORDER BY i.created_at DESC
+    LIMIT 50
+  `);
+
+  let activeStudents = new Map<string, number>();
+  if (hasUserActivity) {
+    try {
+      const res = await db.execute(sql`
+        SELECT t.institution_id, COUNT(DISTINCT ua.user_id)::int AS count
+        FROM turmas t
+        JOIN turma_memberships tm ON tm.turma_id = t.id
+        JOIN user_activity ua ON ua.user_id = tm.student_id
+        WHERE ua.created_at >= ${sinceIso}
+        GROUP BY t.institution_id
+      `);
+      activeStudents = toCountMap(res.rows);
+    } catch {
+      activeStudents = new Map();
+    }
+  }
+
+  let simuladoCounts = new Map<string, number>();
+  if (hasSimuladoResults) {
+    try {
+      const res = await db.execute(sql`
+        SELECT t.institution_id, COUNT(*)::int AS count
+        FROM turmas t
+        JOIN turma_memberships tm ON tm.turma_id = t.id
+        JOIN simulado_results sr ON sr.user_id = tm.student_id
+        WHERE sr.created_at >= ${sinceIso}
+        GROUP BY t.institution_id
+      `);
+      simuladoCounts = toCountMap(res.rows);
+    } catch {
+      simuladoCounts = new Map();
+    }
+  }
+
+  let flashcardCounts = new Map<string, number>();
+  if (hasFlashcardSessions) {
+    try {
+      const res = await db.execute(sql`
+        SELECT t.institution_id, COUNT(*)::int AS count
+        FROM turmas t
+        JOIN turma_memberships tm ON tm.turma_id = t.id
+        JOIN flashcard_sessions fs ON fs.user_id = tm.student_id
+        WHERE fs.completed_at >= ${sinceIso}
+        GROUP BY t.institution_id
+      `);
+      flashcardCounts = toCountMap(res.rows);
+    } catch {
+      flashcardCounts = new Map();
+    }
+  }
+
+  let teacherGeneratedCounts = new Map<string, number>();
+  if (hasGeneratedContent) {
+    try {
+      const res = await db.execute(sql`
+        SELECT iu.institution_id, COUNT(*)::int AS count
+        FROM institution_users iu
+        JOIN generated_content gc ON gc.owner_id = iu.user_id
+        WHERE COALESCE(iu.is_approved, FALSE) = TRUE
+          AND gc.deleted_at IS NULL
+          AND gc.created_at >= ${sinceIso}
+          AND (gc.owner_role = 'teacher' OR iu.role IN ('teacher', 'admin', 'owner'))
+        GROUP BY iu.institution_id
+      `);
+      teacherGeneratedCounts = toCountMap(res.rows);
+    } catch {
+      teacherGeneratedCounts = new Map();
+    }
+  }
+
+  let notebookOverviewCounts = new Map<string, number>();
+  if (hasNotebookOverviews) {
+    try {
+      const res = await db.execute(sql`
+        SELECT t.institution_id, COUNT(*)::int AS count
+        FROM turmas t
+        JOIN turma_memberships tm ON tm.turma_id = t.id
+        JOIN notebook_overviews no ON no.user_id = tm.student_id
+        WHERE no.created_at >= ${sinceIso}
+        GROUP BY t.institution_id
+      `);
+      notebookOverviewCounts = toCountMap(res.rows);
+    } catch {
+      notebookOverviewCounts = new Map();
+    }
+  }
+
+  let teacherActivityCounts = new Map<string, number>();
+  if (hasActivities) {
+    try {
+      const res = await db.execute(sql`
+        SELECT t.institution_id, COUNT(*)::int AS count
+        FROM turmas t
+        JOIN activities a ON a.turma_id = t.id
+        WHERE a.created_at >= ${sinceIso}
+        GROUP BY t.institution_id
+      `);
+      teacherActivityCounts = toCountMap(res.rows);
+    } catch {
+      teacherActivityCounts = new Map();
+    }
+  }
+
+  let submissionCounts = new Map<string, number>();
+  if (hasActivities && hasActivitySubmissions) {
+    try {
+      const res = await db.execute(sql`
+        SELECT t.institution_id, COUNT(*)::int AS count
+        FROM turmas t
+        JOIN activities a ON a.turma_id = t.id
+        JOIN activity_submissions sub ON sub.activity_id = a.id
+        WHERE sub.submitted_at >= ${sinceIso}
+        GROUP BY t.institution_id
+      `);
+      submissionCounts = toCountMap(res.rows);
+    } catch {
+      submissionCounts = new Map();
+    }
+  }
+
+  let reportExportCounts = new Map<string, number>();
+  let reportExports30d = 0;
+  if (hasActivityEvents) {
+    try {
+      const res = await db.execute(sql`
+        SELECT iu.institution_id, COUNT(*)::int AS count
+        FROM institution_users iu
+        JOIN activity_events ae ON ae.user_id = iu.user_id
+        WHERE ae.created_at >= ${sinceIso}
+          AND (
+            ae.event_type ILIKE '%export%'
+            OR ae.event_type ILIKE '%report%'
+            OR ae.event_type ILIKE '%relatorio%'
+            OR ae.event_type ILIKE '%csv%'
+          )
+        GROUP BY iu.institution_id
+      `);
+      reportExportCounts = toCountMap(res.rows);
+      reportExports30d = [...reportExportCounts.values()].reduce((sum, value) => sum + value, 0);
+    } catch {
+      reportExportCounts = new Map();
+      reportExports30d = 0;
+    }
+  }
+
+  let diagnosticsCompleted = new Map<string, number>();
+  if (hasTrilhaSessions) {
+    try {
+      const res = await db.execute(sql`
+        SELECT t.institution_id, COUNT(DISTINCT ts.user_id)::int AS count
+        FROM turmas t
+        JOIN turma_memberships tm ON tm.turma_id = t.id
+        JOIN trilha_mestre_sessions ts ON ts.user_id = tm.student_id
+        WHERE ts.created_at >= ${sinceIso} AND ts.level = 5
+        GROUP BY t.institution_id
+      `);
+      diagnosticsCompleted = toCountMap(res.rows);
+    } catch {
+      diagnosticsCompleted = new Map();
+    }
+  }
+
+  let interestedLeads30d = 0;
+  let interestedLeadsTotal = 0;
+  if (hasCorporateLeads) {
+    try {
+      const res = await db.execute(sql`
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE created_at >= ${sinceIso})::int AS recent
+        FROM corporate_leads
+      `);
+      const row = res.rows[0] as Record<string, unknown> | undefined;
+      interestedLeadsTotal = Number(row?.total ?? 0);
+      interestedLeads30d = Number(row?.recent ?? 0);
+    } catch {
+      interestedLeads30d = 0;
+      interestedLeadsTotal = 0;
+    }
+  }
+
+  const whatsappProvider = (process.env.WHATSAPP_PROVIDER || "disabled").toLowerCase();
+  const whatsappConfigured =
+    whatsappProvider === "meta" &&
+    configuredEnv("WHATSAPP_META_ACCESS_TOKEN") &&
+    configuredEnv("WHATSAPP_META_PHONE_NUMBER_ID");
+  const whatsappMissing = [
+    !process.env.WHATSAPP_PROVIDER ? "WHATSAPP_PROVIDER=meta" : null,
+    whatsappProvider === "meta" && !configuredEnv("WHATSAPP_META_ACCESS_TOKEN")
+      ? "WHATSAPP_META_ACCESS_TOKEN"
+      : null,
+    whatsappProvider === "meta" && !configuredEnv("WHATSAPP_META_PHONE_NUMBER_ID")
+      ? "WHATSAPP_META_PHONE_NUMBER_ID"
+      : null,
+  ].filter((value): value is string => Boolean(value));
+
+  let communicationLogs: Record<string, number> | null = null;
+  if (hasCommunicationLogs) {
+    try {
+      const res = await db.execute(sql`
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE trigger_id LIKE 'institution_%')::int AS institutional,
+          COUNT(*) FILTER (WHERE canal = 'whatsapp')::int AS whatsapp,
+          COUNT(*) FILTER (WHERE status = 'enviado')::int AS sent,
+          COUNT(*) FILTER (WHERE status IN ('erro', 'falha'))::int AS errors,
+          COUNT(*) FILTER (WHERE status = 'configuracao_pendente')::int AS pending_config
+        FROM communication_logs
+        WHERE criado_em >= ${sinceIso}
+      `);
+      const row = res.rows[0] as Record<string, unknown> | undefined;
+      communicationLogs = {
+        total: Number(row?.total ?? 0),
+        institutional: Number(row?.institutional ?? 0),
+        whatsapp: Number(row?.whatsapp ?? 0),
+        sent: Number(row?.sent ?? 0),
+        errors: Number(row?.errors ?? 0),
+        pendingConfig: Number(row?.pending_config ?? 0),
+      };
+    } catch {
+      communicationLogs = null;
+    }
+  }
+
+  let notificationPrefs: Record<string, number> | null = null;
+  if (hasUserNotificationPrefs) {
+    try {
+      const res = await db.execute(sql`
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE whatsapp_phone IS NOT NULL AND TRIM(whatsapp_phone) <> '')::int AS whatsapp_phones
+        FROM user_notification_prefs
+      `);
+      const row = res.rows[0] as Record<string, unknown> | undefined;
+      notificationPrefs = {
+        total: Number(row?.total ?? 0),
+        whatsappPhones: Number(row?.whatsapp_phones ?? 0),
+      };
+    } catch {
+      notificationPrefs = null;
+    }
+  }
+
+  const institutions: InstitutionAggregateSignal[] = baseRows.rows.map((raw) => {
+    const row = raw as Record<string, unknown>;
+    const id = String(row.id ?? "");
+    const approvedTeachers = rowNumber(row, "approved_teachers");
+    const teachersWithActiveClasses = rowNumber(row, "teachers_with_active_classes");
+    const students = rowNumber(row, "students");
+    const activeStudentsCount = getCount(activeStudents, id);
+    const reportExports = getCount(reportExportCounts, id);
+    const roiSignalScore =
+      getCount(simuladoCounts, id) +
+      getCount(flashcardCounts, id) +
+      getCount(teacherGeneratedCounts, id) +
+      getCount(notebookOverviewCounts, id) +
+      getCount(teacherActivityCounts, id) +
+      getCount(submissionCounts, id) +
+      getCount(diagnosticsCompleted, id) +
+      reportExports;
+    const teacherAdoptionRate =
+      approvedTeachers > 0 ? Math.round((teachersWithActiveClasses / approvedTeachers) * 100) / 100 : null;
+    const studentActivityRate =
+      students > 0 ? Math.round((activeStudentsCount / students) * 100) / 100 : null;
+    const riskSignals = [
+      rowNumber(row, "active_classes") === 0 ? "sem_turmas_ativas" : null,
+      rowNumber(row, "engaged_classes") === 0 && rowNumber(row, "active_classes") > 0
+        ? "turmas_sem_alunos"
+        : null,
+      approvedTeachers > 0 && teacherAdoptionRate !== null && teacherAdoptionRate < 0.5
+        ? "baixa_adocao_docente"
+        : null,
+      students >= 5 && studentActivityRate !== null && studentActivityRate < 0.2
+        ? "baixa_atividade_discente_30d"
+        : null,
+      reportExports === 0 ? "sem_export_relatorio_observado" : null,
+      roiSignalScore === 0 && students > 0 ? "sem_sinal_roi_30d" : null,
+      !whatsappConfigured ? "whatsapp_institucional_nao_configurado" : null,
+      communicationLogs && communicationLogs.institutional === 0 ? "sem_uso_comunicacao_institucional_30d" : null,
+    ].filter((value): value is string => Boolean(value));
+
+    const recommendedNextAction = riskSignals.includes("sem_turmas_ativas")
+      ? "send_onboarding_plan"
+      : riskSignals.includes("baixa_adocao_docente")
+        ? "train_teachers"
+        : riskSignals.includes("sem_export_relatorio_observado")
+          ? "export_report_for_leadership"
+          : riskSignals.includes("whatsapp_institucional_nao_configurado")
+            ? "activate_communication_channel"
+            : roiSignalScore > 0
+              ? "prepare_roi_report"
+              : "follow_up_at_risk_institution";
+
+    return {
+      id,
+      name: String(row.name ?? "Instituicao sem nome"),
+      planType: row.plan_type ? String(row.plan_type) : null,
+      contractEnd: row.contract_end ? String(row.contract_end) : null,
+      maxUsers: rowNumber(row, "max_users"),
+      maxTeachers: rowNumber(row, "max_teachers"),
+      totalClasses: rowNumber(row, "total_classes"),
+      activeClasses: rowNumber(row, "active_classes"),
+      engagedClasses: rowNumber(row, "engaged_classes"),
+      approvedTeachers,
+      teachersWithActiveClasses,
+      admins: rowNumber(row, "admins"),
+      students,
+      activeStudents: activeStudentsCount,
+      teacherAdoptionRate,
+      studentActivityRate,
+      simuladoResults: getCount(simuladoCounts, id),
+      flashcardSessions: getCount(flashcardCounts, id),
+      teacherGeneratedContent: getCount(teacherGeneratedCounts, id),
+      notebookOverviews: getCount(notebookOverviewCounts, id),
+      teacherActivities: getCount(teacherActivityCounts, id),
+      activitySubmissions: getCount(submissionCounts, id),
+      reportExports,
+      diagnosticsCompleted: getCount(diagnosticsCompleted, id),
+      roiSignalScore,
+      riskSignals,
+      recommendedNextAction,
+    };
+  });
+
+  const atRiskInstitutions = [...institutions]
+    .filter((institution) => institution.riskSignals.length > 0)
+    .sort((a, b) => b.riskSignals.length - a.riskSignals.length || b.students - a.students)
+    .slice(0, 10);
+  const valueProofInstitutions = [...institutions]
+    .filter((institution) => institution.roiSignalScore > 0)
+    .sort((a, b) => b.roiSignalScore - a.roiSignalScore)
+    .slice(0, 10);
+
+  const missingInstrumentation = [
+    ...missingCore,
+    !hasCorporateLeads ? "corporate_leads ausente: sem demanda B2B interessada" : null,
+    !hasUserActivity ? "user_activity ausente: sem atividade discente por instituicao" : null,
+    !hasSimuladoResults ? "simulado_results ausente: sem prova de aprendizagem por simulado" : null,
+    !hasFlashcardSessions ? "flashcard_sessions ausente: sem revisao/flashcards por instituicao" : null,
+    !hasGeneratedContent ? "generated_content ausente: sem materiais docentes/artefatos de valor" : null,
+    !hasNotebookOverviews ? "notebook_overviews ausente: sem uso de Notebook/RAG institucional" : null,
+    !hasActivities ? "activities ausente: sem atividades enviadas por professor" : null,
+    !hasActivitySubmissions ? "activity_submissions ausente: sem entregas/engajamento por atividade" : null,
+    !hasActivityEvents ? "activity_events ausente: sem exports/relatorios ou eventos de diagnostico" : null,
+    !hasCommunicationLogs ? "communication_logs ausente: sem uso/risco de comunicacao institucional" : null,
+    !hasUserNotificationPrefs ? "user_notification_prefs ausente: sem cobertura de WhatsApp/opt-in por usuario" : null,
+    !hasTrilhaSessions ? "trilha_mestre_sessions ausente: sem diagnosticos completos 30d" : null,
+    !whatsappConfigured ? `WhatsApp institucional nao configurado (${whatsappMissing.join(", ") || "provider disabled"})` : null,
+  ].filter((value): value is string => Boolean(value));
+
+  return {
+    generatedAt: new Date().toISOString(),
+    periodoDias,
+    institutions,
+    atRiskInstitutions,
+    valueProofInstitutions,
+    summary: {
+      totalInstitutions: institutions.length,
+      activeInstitutions: institutions.filter(
+        (institution) =>
+          institution.activeClasses > 0 || institution.approvedTeachers > 0 || institution.students > 0,
+      ).length,
+      interestedLeads30d,
+      interestedLeadsTotal,
+      approvedTeachers: institutions.reduce((sum, item) => sum + item.approvedTeachers, 0),
+      teachersWithActiveClasses: institutions.reduce((sum, item) => sum + item.teachersWithActiveClasses, 0),
+      students: institutions.reduce((sum, item) => sum + item.students, 0),
+      activeStudents: institutions.reduce((sum, item) => sum + item.activeStudents, 0),
+      reportExports30d,
+      roiSignalScore30d: institutions.reduce((sum, item) => sum + item.roiSignalScore, 0),
+    },
+    communication: {
+      whatsapp: {
+        provider: whatsappProvider,
+        configured: whatsappConfigured,
+        mode: whatsappConfigured ? "ready" : "dry_run",
+        missing: whatsappMissing,
+      },
+      logs30d: communicationLogs,
+      notificationPrefs,
+    },
+    missingInstrumentation,
+    tableSignals: {
+      hasInstitutions,
+      hasInstitutionUsers,
+      hasTurmas,
+      hasTurmaMemberships,
+      hasUserActivity,
+      hasSimuladoResults,
+      hasFlashcardSessions,
+      hasGeneratedContent,
+      hasNotebookOverviews,
+      hasActivities,
+      hasActivitySubmissions,
+      hasCommunicationLogs,
+      hasUserNotificationPrefs,
+      hasCorporateLeads,
+      hasActivityEvents,
+      hasTrilhaSessions,
+    },
   };
 }
 
@@ -3347,6 +3992,215 @@ export async function contentGapCqoAvancadoDailyLearn(): Promise<void> {
       ? {
           tipo: "content_gap_cqo_avancado",
           titulo: "CQO avancado encontrou lacuna de conteudo",
+          corpo: recommendation.observedState,
+        }
+      : undefined,
+  );
+}
+
+export async function institutionSuccessB2BRoiDailyLearn(): Promise<void> {
+  const signals = await fetchInstitutionSuccessB2BRoiSignals(30);
+  const topRisk = signals.atRiskInstitutions[0];
+  const topValue = signals.valueProofInstitutions[0];
+  const hasRisk =
+    signals.atRiskInstitutions.length > 0 ||
+    signals.missingInstrumentation.length > 0 ||
+    !signals.communication.whatsapp.configured ||
+    signals.summary.reportExports30d === 0;
+  const target = topRisk?.name ?? topValue?.name ?? "Instituicoes / Relatorios B2B";
+  const observedState = [
+    `${signals.summary.totalInstitutions} instituicao(oes) cadastrada(s)`,
+    `${signals.summary.activeInstitutions} ativa(s)`,
+    `${signals.summary.interestedLeads30d} lead(s) B2B em ${signals.periodoDias}d`,
+    `${signals.summary.teachersWithActiveClasses}/${signals.summary.approvedTeachers} professor(es) com turma ativa`,
+    `${signals.summary.activeStudents}/${signals.summary.students} aluno(s) ativos em ${signals.periodoDias}d`,
+    `${signals.summary.reportExports30d} export(s)/relatorio(s) observado(s)`,
+    `${signals.summary.roiSignalScore30d} sinal(is) agregados de ROI`,
+    `WhatsApp=${signals.communication.whatsapp.configured ? "configurado" : "pendente"}`,
+  ].join("; ");
+
+  const recommendedChange = topRisk
+    ? topRisk.recommendedNextAction === "send_onboarding_plan"
+      ? `Enviar plano de onboarding para ${topRisk.name}: criar/ativar turmas, aprovar professores e definir primeira rotina de relatorio.`
+      : topRisk.recommendedNextAction === "train_teachers"
+        ? `Treinar professores de ${topRisk.name}: adocao docente ${(topRisk.teacherAdoptionRate ?? 0) * 100}% com ${topRisk.approvedTeachers} professor(es) aprovado(s).`
+        : topRisk.recommendedNextAction === "export_report_for_leadership"
+          ? `Exportar relatorio executivo para ${topRisk.name} com adocao, engajamento, lacunas e proxima acao de coordenacao.`
+          : topRisk.recommendedNextAction === "activate_communication_channel"
+            ? `Ativar canal de comunicacao institucional antes de prometer follow-up por WhatsApp para ${topRisk.name}.`
+            : `Fazer follow-up humano com ${topRisk.name}: sinais de risco ${topRisk.riskSignals.join(", ")}.`
+    : topValue
+      ? `Preparar relatorio de ROI para ${topValue.name}: ${topValue.roiSignalScore} sinal(is) de valor em simulados, revisoes, materiais, diagnosticos, atividades ou exports.`
+      : "Manter monitoramento institucional e transformar lacunas de instrumentacao em tarefas antes de promessa comercial.";
+
+  const structuredActions = [
+    {
+      type: "send_onboarding_plan",
+      target: topRisk?.name ?? "instituicoes sem turma ativa",
+      module: "Instituicao / Gestao Escolar",
+      action:
+        "Enviar plano revisado por humano com passos de setup: aprovar gestor/professores, criar turmas, matricular alunos e agendar primeiro relatorio.",
+      metric: "instituicoes_com_turma_ativa_e_professor_aprovado",
+      acceptanceCriteria: [
+        "instituicao tem pelo menos uma turma ativa",
+        "professor/gestor aprovado consegue acessar painel",
+        "primeiro relatorio B2B tem dados ou lacunas explicitas",
+      ],
+      confidence: topRisk?.riskSignals.includes("sem_turmas_ativas") ? "alta" : "media",
+    },
+    {
+      type: "prepare_roi_report",
+      target: topValue?.name ?? topRisk?.name ?? "lideranca institucional",
+      module: "Relatorios B2B",
+      action:
+        "Preparar relatorio de ROI com adocao docente, alunos ativos, turmas engajadas, diagnosticos, simulados, materiais e exports observados.",
+      metric: "relatorios_roi_exportados_e_revisados_pela_lideranca",
+      acceptanceCriteria: [
+        "relatorio separa evidencia real de lacuna de observabilidade",
+        "nao inclui ranking individual sensivel",
+        "lideranca recebe proxima acao e metrica de acompanhamento",
+      ],
+      confidence: topValue ? "alta" : "media",
+    },
+    {
+      type: "activate_communication_channel",
+      target: "WhatsApp institucional",
+      module: "Comunicacao",
+      action:
+        "Configurar provider/template/opt-in antes de usar WhatsApp para avisos, lembretes ou follow-up institucional.",
+      metric: "whatsapp_configurado_logs_institucionais_sem_guardrail_blocker",
+      acceptanceCriteria: [
+        "provider WhatsApp configurado sem expor secrets",
+        "templates e opt-in revisados por finalidade",
+        "communication_logs registra envio, bloqueio ou simulacao",
+      ],
+      confidence: signals.communication.whatsapp.configured ? "media" : "alta",
+    },
+    {
+      type: "train_teachers",
+      target: topRisk?.name ?? "professores com baixa adocao",
+      module: "Professor Success",
+      action:
+        "Rodar treinamento curto para professores criarem turma, gerarem material/atividade e exportarem diagnostico revisavel.",
+      metric: "professores_com_turma_ativa_e_artefato_docente_30d",
+      acceptanceCriteria: [
+        "professor cria ou assume turma ativa",
+        "ha ao menos um artefato docente ou atividade vinculada",
+        "gestor consegue ver adocao agregada sem PII desnecessaria",
+      ],
+      confidence: topRisk?.riskSignals.includes("baixa_adocao_docente") ? "alta" : "media",
+    },
+    {
+      type: "follow_up_at_risk_institution",
+      target: topRisk?.name ?? "instituicoes em risco",
+      module: "B2B Success",
+      action:
+        "Priorizar follow-up humano com instituicoes sem turma ativa, sem relatorio, baixa atividade discente ou sem sinais de ROI.",
+      metric: "instituicoes_em_risco_com_plano_revisado_e_novo_sinal_7d",
+      acceptanceCriteria: [
+        "follow-up cita evidencia agregada e lacuna",
+        "acao comercial/comunicacao passa por revisao humana",
+        "novo sinal de adocao ou ROI e observado no proximo daily-learn",
+      ],
+      confidence: topRisk ? "alta" : "baixa",
+    },
+    {
+      type: "export_report_for_leadership",
+      target: topRisk?.name ?? topValue?.name ?? "gestor/direcao",
+      module: "Relatorios B2B",
+      action:
+        "Exportar relatorio executivo para lideranca com adocao, engajamento, ROI, riscos e criterios de aceite da proxima etapa.",
+      metric: "exports_b2b_30d",
+      acceptanceCriteria: [
+        "export mostra dados agregados e nao ranking sensivel",
+        "criterios de aceite aparecem junto da recomendacao",
+        "Hermes registra evidencia de export ou lacuna de instrumentacao",
+      ],
+      confidence: signals.summary.reportExports30d > 0 ? "media" : "alta",
+    },
+  ];
+
+  const recommendation: HermesRecommendation = {
+    agentId: "institution_success_b2b_roi",
+    area: "instituicao/b2b_roi",
+    module: "Relatorios B2B",
+    targetSurface: String(target),
+    observedState,
+    evidence: JSON.stringify({
+      summary: signals.summary,
+      topRisk,
+      topValue,
+      atRiskInstitutions: signals.atRiskInstitutions,
+      valueProofInstitutions: signals.valueProofInstitutions,
+      communication: signals.communication,
+      missingInstrumentation: signals.missingInstrumentation,
+      tableSignals: signals.tableSignals,
+    }),
+    problemOpportunity: hasRisk
+      ? "Instituicoes podem entrar em churn antes de perceber valor se turmas, professores, relatorios, comunicacao e prova de ROI nao virarem rotina."
+      : "Ha sinais suficientes para transformar uso institucional em prova de valor comercial e acompanhamento de renovacao.",
+    recommendedChange,
+    expectedImpact:
+      "Aumentar ativacao institucional, reduzir risco B2B, acelerar prova de ROI para direcao e priorizar onboarding/comunicacao sem expor dados sensiveis.",
+    confidence:
+      topRisk || topValue || signals.summary.totalInstitutions > 0
+        ? signals.missingInstrumentation.length > 0
+          ? "media"
+          : "alta"
+        : "baixa",
+    successMetric:
+      "Instituicoes com turma ativa, professor adotante, alunos ativos 30d, relatorio/export revisado, WhatsApp configurado/registrado e pelo menos um sinal de ROI por ciclo.",
+    implementationNotes:
+      "O agente observa dados agregados, abre recomendacao/inbox e exige revisao humana; nao envia comunicacao, nao altera contrato e nao expõe ranking individual.",
+    acceptanceCriteria: [
+      "Payload inclui evidencia, impacto, acao, metrica, criterios de aceite, confianca e alvo/modulo",
+      "Risco institucional cita sinais agregados: turmas, professores, atividade discente, exports, comunicacao e ROI",
+      "Ausencia de activity_events/communication_logs/exports vira lacuna de observabilidade",
+      "Acoes comerciais/comunicacao dependem de revisao humana e consentimento",
+    ],
+  };
+
+  await persistPainAgentRecommendation(
+    recommendation,
+    {
+      kind: "dor_real_agent",
+      agentCatalog: "institution_success_b2b_roi",
+      snapshotGeneratedAt: signals.generatedAt,
+      overlaps: ["qa_sintetico.Relatorios B2B", "professor_success", "comunicacao institucional"],
+      structuredRecommendation: {
+        evidence: recommendation.evidence,
+        impact: recommendation.expectedImpact,
+        suggestedAction: recommendation.recommendedChange,
+        action: recommendation.recommendedChange,
+        metric: recommendation.successMetric,
+        acceptanceCriteria: recommendation.acceptanceCriteria,
+        confidence: recommendation.confidence,
+        target: recommendation.targetSurface,
+        module: recommendation.module,
+      },
+      observedSignals: {
+        institutionsInterestedOrActive: {
+          total: signals.summary.totalInstitutions,
+          active: signals.summary.activeInstitutions,
+          interestedLeads30d: signals.summary.interestedLeads30d,
+        },
+        institutionUsageAdoption: signals.institutions.slice(0, 12),
+        activeTeachers: signals.summary.teachersWithActiveClasses,
+        engagedClasses: signals.institutions.reduce((sum, item) => sum + item.engagedClasses, 0),
+        reportsExported: signals.summary.reportExports30d,
+        communicationUsageOrMissingConfig: signals.communication,
+        riskChurnSignals: signals.atRiskInstitutions,
+        roiValueProofSignals: signals.valueProofInstitutions,
+      },
+      structuredActions,
+      missingInstrumentation: signals.missingInstrumentation,
+      tableSignals: signals.tableSignals,
+    },
+    hasRisk ? 4 : 2,
+    hasRisk
+      ? {
+          tipo: "institution_success_b2b_roi",
+          titulo: "Institution Success encontrou risco/ROI B2B",
           corpo: recommendation.observedState,
         }
       : undefined,

@@ -37,7 +37,7 @@ Toda saida de agente Hermes deve seguir o padrao em `artifacts/api-server/src/li
 | 7 | Custos IA Optimizer | Admin | Implementado neste lote | Admin IA & Custos, `gestao`, `monitor` |
 | 8 | UX/Product Auditor | Admin | Existente/parcial | `ux_layout`, `qa_sintetico` |
 | 9 | Content Gap/CQO avancado | Admin | Implementado neste lote | `cqo_conteudo`, `knowledge-index`, Auditor Pedagogico |
-| 10 | Institution Success / B2B ROI | Instituicao | Parcial/TODO | Relatorios B2B, `professor_success` |
+| 10 | Institution Success / B2B ROI | Instituicao | Implementado neste lote | Relatorios B2B, `professor_success`, Comunicacao institucional |
 
 O catalogo operacional fica em `artifacts/api-server/src/lib/hermes/jobs/dor-real-agents.ts` e e exposto no Admin por `GET /api/agents/hermes/status` em `dorRealAgents`.
 
@@ -144,25 +144,25 @@ O catalogo operacional fica em `artifacts/api-server/src/lib/hermes/jobs/dor-rea
 
 ### 10. Institution Success / B2B ROI
 
-- **Responsabilidade:** medir adocao, risco e valor institucional sem invadir privacidade.
-- **Sinais observados:** turmas ativas; adocao; exports; alunos em risco; cobertura por turma.
-- **Evidencias:** Professor, Instituicao, Relatorios B2B, `professor_success`.
-- **Metricas:** adocao por turma; uso docente; risco agregado; ROI/valor percebido.
-- **Acoes:** recomendacao para coordenacao; onboarding institucional; priorizacao de turma.
-- **Limites de seguranca:** sem ranking sensivel indevido; revisao humana obrigatoria.
-- **Saida Admin:** TODO da proxima leva.
-- **Status:** parcial.
+- **Responsabilidade:** medir adocao, risco de churn e prova de valor institucional/comercial sem expor ranking sensivel individual.
+- **Sinais observados:** instituicoes interessadas/ativas; uso/adocao institucional; professores ativos; turmas com alunos/engajamento; reports/export; comunicacao/WhatsApp configurada ou bloqueada; risco por sem turma ativa, baixa adocao docente, baixa atividade discente, sem relatorio ou sem sinal de ROI; valor por diagnosticos, simulados, revisoes, materiais, atividades e exports.
+- **Evidencias:** `instituicoes`, `corporate_leads`, `institution_users`, `turmas`, `turma_memberships`, `user_activity`, `simulado_results`, `flashcard_sessions`, `activities`, `activity_submissions`, `generated_content`, `notebook_overviews`, `communication_logs`, `user_notification_prefs`, `activity_events` de report/export, Relatorios B2B, `professor_success`.
+- **Metricas:** instituicoes ativas/interessadas; adocao docente; turmas ativas/engajadas; alunos ativos 30d; exports B2B; WhatsApp configurado/registrado; sinais agregados de ROI; instituicoes em risco.
+- **Acoes:** enviar plano de onboarding institucional; preparar relatorio de ROI; ativar canal de comunicacao; treinar professores; follow-up com instituicao em risco; exportar relatorio executivo para lideranca.
+- **Limites de seguranca:** sem ranking sensivel indevido; sem contato automatico com escola/professor/aluno/responsavel; sem PII em evidencias; revisao humana obrigatoria; lacuna de observabilidade nao vira metrica inventada.
+- **Saida Admin:** descoberta/inbox com recomendacao estruturada de adocao, risco, ROI, acao, metrica, aceite, confianca e alvo/modulo.
+- **Status:** implementado como `institution_success_b2b_roi` no `daily-learn`; pendente validacao manual/cron em ambiente real.
 
 ## Ordem de rollout
 
 1. **Primeira leva segura:** `auditor_pedagogico`, `notebook_rag_quality`, `professor_success`; todos registrados no `daily-learn`, expostos no catalogo e persistindo recomendacoes padronizadas.
 2. **Consolidar Student Success:** manter `sucesso_aluno` como implementacao atual, enriquecendo sinais estruturados antes de decidir alias publico `student_success`.
 3. **Proxima leva:** Simulado Intelligence deve fechar resultado/abandono/recuperacao com persistencia backend; Caderno de Erros Intelligence ja roda no `daily-learn`.
-4. **Depois:** Institution Success/B2B ROI.
+4. **Fechamento do roadmap:** `institution_success_b2b_roi` fecha a lista canonica; proximas atividades sao validacao manual, cron/admin e ajuste fino de instrumentacao.
 
 ## Criterios de aceite
 
-- `POST /internal/hermes/daily-learn` inclui os agentes de dor real implementados (`auditor_pedagogico`, `notebook_rag_quality`, `professor_success`, `caderno_erros_intelligence`, `custos_ia_optimizer`, `ux_product_auditor`, `content_gap_cqo_avancado`) no array `ran`.
+- `POST /internal/hermes/daily-learn` inclui os agentes de dor real implementados (`auditor_pedagogico`, `notebook_rag_quality`, `professor_success`, `caderno_erros_intelligence`, `custos_ia_optimizer`, `ux_product_auditor`, `content_gap_cqo_avancado`, `institution_success_b2b_roi`) no array `ran`.
 - `GET /api/agents/hermes/status` expõe `dorRealAgents` com prioridades, status, sinais, metricas, limites e sobreposicoes.
 - Toda descoberta da primeira leva persiste `payload.recommendation` com evidencia, impacto, recomendacao, acao/metrica, criterios de aceite, confianca e target/modulo.
 - Lacuna de observabilidade vira recomendacao de instrumentacao, nao metrica inventada.

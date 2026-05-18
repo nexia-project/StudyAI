@@ -52,3 +52,9 @@ Adicionar ao portal institucional uma aba "Gestao Escolar" com:
 - `ux_product_auditor` entrou no `daily-learn` para auditar friccao de jornada antes de ampliar uso institucional: telas confusas, abandono, CTAs escondidos, menu/rotas duplicadas, texto excessivo, estados fracos, risco mobile e feedback negativo por modulo.
 - Para Instituicao/B2B, a recomendacao segura e validar descoberta de funcionalidades, menu por papel e estados do Admin/Hermes sem remover rotas funcionais ou esconder CTA antes de QA manual.
 - Criterio de aceite institucional: gestor/professor precisa chegar ao relatorio, comunicacao, conteudo e Hermes com uma acao primaria clara, estados vazio/loading/erro compreensiveis e sem sobreposicao mobile.
+
+## Hermes Institution Success / B2B ROI
+
+- `institution_success_b2b_roi` entrou no `daily-learn` para fechar o roadmap de agentes de dor real com leitura institucional/comercial: instituicoes interessadas/ativas, adocao docente, turmas engajadas, atividade discente, exports, comunicacao WhatsApp e prova agregada de ROI.
+- A acao segura para Instituicao/B2B e abrir recomendacao revisavel: onboarding institucional, relatorio de ROI para lideranca, ativacao de comunicacao, treinamento docente, follow-up de risco ou export executivo.
+- Criterio de aceite institucional: nenhuma acao envia comunicacao real, altera contrato ou expõe ranking sensivel; ausencia de `activity_events`, `communication_logs` ou exports vira lacuna de observabilidade.

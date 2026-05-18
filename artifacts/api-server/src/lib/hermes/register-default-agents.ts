@@ -13,6 +13,7 @@ import {
   cadernoErrosIntelligenceDailyLearn,
   contentGapCqoAvancadoDailyLearn,
   custosIaOptimizerDailyLearn,
+  institutionSuccessB2BRoiDailyLearn,
   notebookRagQualityDailyLearn,
   professorSuccessDailyLearn,
   simuladoIntelligenceDailyLearn,
@@ -232,6 +233,19 @@ export function registerDefaultAgents(): void {
         "Agente de dor real registrado no catálogo Hermes; roda no daily-learn e prioriza lacunas de conteúdo com revisão humana.",
     }),
     dailyLearn: contentGapCqoAvancadoDailyLearn,
+  });
+
+  agentRegistry.register({
+    id: "institution_success_b2b_roi",
+    description:
+      "Institution Success / B2B ROI — adoção institucional, risco de churn, WhatsApp, exports e prova de valor",
+    role: "system",
+    handler: async () => ({
+      ok: true,
+      message:
+        "Agente de dor real registrado no catálogo Hermes; roda no daily-learn e prioriza adoção, risco e ROI institucional com revisão humana.",
+    }),
+    dailyLearn: institutionSuccessB2BRoiDailyLearn,
   });
 
   registered = true;

@@ -53,7 +53,7 @@ import { clearStudyaiAccountLocalCaches, STUDYAI_ACCOUNT_CHANGED } from "@/lib/a
 function VoiceProfessorGate() {
   const [location] = useLocation();
   // Routes where the lesson itself uses TTS — suppress floating professor.
-  const HIDE_ON = ["/aula-ia", "/notebook", "/lousa-imersiva"];
+  const HIDE_ON = ["/aula-ia", "/notebook", "/lousa-imersiva", "/professor", "/instituicao", "/admin", "/governo"];
   if (HIDE_ON.some(p => location.startsWith(p))) return null;
   // Wouter path is relative to `base`; marketing home is `/` only (not sign-in/up).
   const path = (location || "/").replace(/\/+$/, "") || "/";

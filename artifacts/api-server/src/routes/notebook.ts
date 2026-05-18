@@ -2273,6 +2273,275 @@ Inclua evidências específicas, próximos passos e plano visual quando o conte�
   }
 });
 
+type TeacherNotebookOutputKind =
+  | "plano-aula"
+  | "roteiro-aula"
+  | "atividade-avaliativa"
+  | "rubrica"
+  | "lista-exercicios"
+  | "material-turma"
+  | "resumo-familia-coordenacao"
+  | "slides-professor"
+  | "mensagem-intervencao";
+
+const TEACHER_OUTPUT_LABELS: Record<TeacherNotebookOutputKind, string> = {
+  "plano-aula": "Plano de aula",
+  "roteiro-aula": "Roteiro de aula",
+  "atividade-avaliativa": "Atividade avaliativa",
+  rubrica: "Rubrica",
+  "lista-exercicios": "Lista de exercícios",
+  "material-turma": "Material para turma",
+  "resumo-familia-coordenacao": "Resumo para pais e coordenação",
+  "slides-professor": "Slides com notas do professor",
+  "mensagem-intervencao": "Mensagem de intervenção",
+};
+
+function normalizeTeacherOutputKind(value: unknown): TeacherNotebookOutputKind {
+  return Object.prototype.hasOwnProperty.call(TEACHER_OUTPUT_LABELS, String(value))
+    ? String(value) as TeacherNotebookOutputKind
+    : "plano-aula";
+}
+
+function buildFallbackTeacherOutput(input: {
+  title: string;
+  content: string;
+  outputType: TeacherNotebookOutputKind;
+  serie: string;
+  objetivo: string;
+  tempoAula: number;
+  nivelTurma: string;
+}) {
+  const sentences = splitStudySentences(input.content);
+  const terms = extractKeyTerms(input.title, input.content, 10);
+  const evidence = (index: number) => compactText(sentences[index] ?? sentences[0] ?? input.title, 220);
+  const objetivo = input.objetivo || `Trabalhar ${input.title} com evidências da fonte e checagem formativa.`;
+  const outputLabel = TEACHER_OUTPUT_LABELS[input.outputType];
+  const tempo = Math.max(20, Math.min(180, Number(input.tempoAula) || 50));
+  const abertura = Math.max(5, Math.round(tempo * 0.18));
+  const pratica = Math.max(10, Math.round(tempo * 0.42));
+  const sintese = Math.max(5, Math.round(tempo * 0.16));
+  const desenvolvimento = tempo - abertura - pratica - sintese;
+  const keyTerms = terms.length ? terms : [input.title];
+
+  return {
+    titulo: `${outputLabel}: ${compactText(input.title, 80)}`,
+    outputType: input.outputType,
+    resumoExecutivo: `Material docente estruturado para ${input.serie}, baseado na fonte "${input.title}", com foco em ${compactText(objetivo, 140)}.`,
+    contextoProfessor: `Turma ${input.nivelTurma}. Use a fonte como base auditável, valide lacunas em sala e ajuste exemplos ao repertório real dos estudantes.`,
+    objetivos: [
+      `Identificar os conceitos centrais de ${compactText(input.title, 80)} com base na fonte.`,
+      `Aplicar ${keyTerms[0]} em uma atividade observável durante a aula.`,
+      "Produzir evidências de aprendizagem por resposta curta, discussão guiada ou exercício.",
+    ],
+    habilidades: keyTerms.slice(0, 5).map(term => `Mobilizar o conceito "${term}" em análise, explicação ou resolução.`),
+    materiais: ["Fonte selecionada no Notebook", "Quadro ou projetor", "Folha de atividade", "Checklist/rubrica para correção"],
+    tempoTotal: `${tempo} minutos`,
+    desenvolvimento: [
+      { tempo: `${abertura} min`, etapa: "Abertura com evidência", acaoProfessor: `Apresente o problema central e leia um trecho curto da fonte: ${evidence(0)}`, acaoAlunos: "Respondem o que já sabem e levantam hipóteses.", evidenciaFonte: evidence(0) },
+      { tempo: `${desenvolvimento} min`, etapa: "Construção guiada", acaoProfessor: `Organize os conceitos ${keyTerms.slice(0, 3).join(", ")} em mapa, exemplo ou comparação.`, acaoAlunos: "Registram relações, dúvidas e exemplos.", evidenciaFonte: evidence(1) },
+      { tempo: `${pratica} min`, etapa: "Prática avaliativa", acaoProfessor: "Propõe tarefa em dupla com critérios explícitos e circula fazendo perguntas de diagnóstico.", acaoAlunos: "Resolvem, justificam escolhas e marcam evidências usadas.", evidenciaFonte: evidence(2) },
+      { tempo: `${sintese} min`, etapa: "Fechamento e evidência", acaoProfessor: "Recolhe ticket de saída e conecta respostas aos objetivos.", acaoAlunos: "Entregam síntese curta com uma evidência da fonte.", evidenciaFonte: evidence(3) },
+    ],
+    atividade: {
+      titulo: `Atividade avaliativa sobre ${compactText(input.title, 70)}`,
+      instrucoesAluno: [
+        "Leia o trecho indicado e destaque uma evidência.",
+        `Explique a relação entre ${keyTerms[0]} e ${keyTerms[1] ?? "a ideia central"}.`,
+        "Resolva a situação proposta e justifique com base na fonte.",
+      ],
+      criterios: ["Uso correto da fonte", "Clareza conceitual", "Justificativa observável", "Organização da resposta"],
+      gabaritoComentado: [
+        `Resposta deve mencionar ${keyTerms[0]} e conectar à evidência: ${evidence(0)}`,
+        "Aceite formulações diferentes se houver justificativa fiel à fonte.",
+      ],
+    },
+    avaliacao: {
+      instrumento: input.outputType === "rubrica" ? "Rubrica analítica para correção e devolutiva." : "Avaliação formativa com ticket de saída e atividade curta.",
+      evidencias: ["Resposta com citação/trecho da fonte", "Explicação própria do estudante", "Aplicação em exemplo ou exercício"],
+      rubrica: [
+        { criterio: "Fonte e evidência", insuficiente: "Não usa fonte", regular: "Cita sem explicar", bom: "Usa evidência adequada", excelente: "Integra evidência e análise" },
+        { criterio: "Conceito", insuficiente: "Confunde termos", regular: "Define parcialmente", bom: "Define e aplica", excelente: "Relaciona conceitos com precisão" },
+        { criterio: "Comunicação", insuficiente: "Resposta incompleta", regular: "Organização irregular", bom: "Clara e objetiva", excelente: "Clara, precisa e transferível" },
+      ],
+    },
+    adaptacoes: [
+      { perfil: "Turma com dificuldade", ajuste: "Reduza o número de conceitos, use exemplos concretos e entregue frases-início." },
+      { perfil: "Alunos avançados", ajuste: "Peça comparação entre duas evidências e uma hipótese alternativa." },
+      { perfil: "Acessibilidade", ajuste: "Ofereça fonte em leitura guiada, vocabulário antecipado e opção de resposta oral." },
+    ],
+    visualSlots: [
+      { titulo: "Mapa conceitual", uso: "Lousa/projeção", descricao: `Conectar ${keyTerms.slice(0, 5).join(", ")} em blocos visuais.`, notaProfessor: "Use setas com verbos, não apenas linhas." },
+      { titulo: "Quadro de evidências", uso: "Atividade", descricao: "Tabela com trecho da fonte, conceito associado e interpretação do aluno.", notaProfessor: "Ajuda a evitar respostas genéricas." },
+    ],
+    slides: input.outputType === "slides-professor" ? [
+      { titulo: "Abertura", objetivo: "Situar o tema", bullets: [compactText(objetivo, 120), evidence(0)], notasProfessor: "Comece com pergunta diagnóstica antes de explicar.", visual: "Capa com conceito central e evidência." },
+      { titulo: "Conceitos-chave", objetivo: "Organizar vocabulário", bullets: keyTerms.slice(0, 5), notasProfessor: "Peça que alunos deem exemplos antes da definição final.", visual: "Cards por conceito." },
+      { titulo: "Prática guiada", objetivo: "Aplicar", bullets: ["Resolver em dupla", "Justificar com fonte", "Compartilhar uma dúvida"], notasProfessor: "Circule buscando erros comuns.", visual: "Checklist de solução." },
+      { titulo: "Fechamento", objetivo: "Coletar evidência", bullets: ["Ticket de saída", "Critério de sucesso", "Próxima aula"], notasProfessor: "Guarde respostas para replanejar.", visual: "Semáforo de domínio." },
+    ] : [],
+    comunicacao: {
+      paraFamilias: input.outputType === "mensagem-intervencao"
+        ? `Olá, família. Identificamos a necessidade de reforçar ${compactText(input.title, 90)} com uma ação curta e acompanhada. A proposta é combinar uma revisão guiada, uma atividade objetiva e uma devolutiva em até uma semana, sem exposição individual nem promessa de resultado.`
+        : `Nesta aula, a turma trabalhará ${compactText(input.title, 90)} com leitura orientada, prática e evidências de aprendizagem.`,
+      paraCoordenacao: input.outputType === "mensagem-intervencao"
+        ? `Sugestão de intervenção pedagógica para ${input.serie}: revisar ${compactText(input.title, 90)}, aplicar evidência curta de aprendizagem, registrar devolutiva e reavaliar após nova atividade. Dados sensíveis devem ser validados pelo professor antes do envio.`
+        : `Material planejado para ${input.serie}, ${tempo} minutos, com objetivos observáveis, atividade avaliativa, rubrica e adaptações.`,
+    },
+    citacoes: sourceSnippetsFromContent(input.title, input.content, 4).map(snippet => ({
+      fonte: `Fonte ${snippet.numero}: ${snippet.titulo}`,
+      trecho: snippet.trecho,
+      usoPedagogico: "Evidência para grounding da aula",
+    })),
+    proximosPassos: [
+      "Revisar os trechos citados antes de aplicar.",
+      "Ajustar tempo e exemplos conforme a turma real.",
+      "Exportar/imprimir e salvar devolutiva após a aula.",
+    ],
+    generatedByFallback: true,
+  };
+}
+
+// ─── POST /api/notebook/teacher-output ────────────────────────────────────────
+router.post("/notebook/teacher-output", async (req: Request, res: Response) => {
+  if (!req.userId) { res.status(401).json({ erro: "Não autenticado" }); return; }
+  const {
+    docId,
+    outputType: rawOutputType,
+    serie = "Ensino Médio",
+    objetivo = "",
+    tempoAula = 50,
+    nivelTurma = "heterogênea",
+    formatoSaida = "documento profissional",
+  } = req.body as {
+    docId: number;
+    outputType?: TeacherNotebookOutputKind;
+    serie?: string;
+    objetivo?: string;
+    tempoAula?: number;
+    nivelTurma?: string;
+    formatoSaida?: string;
+    materialPreferences?: any;
+  };
+  const outputType = normalizeTeacherOutputKind(rawOutputType);
+  const materialPreferences = normalizeMaterialPreferences({
+    ...(req.body as any)?.materialPreferences,
+    publico: "professor",
+    tom: "aula",
+  });
+
+  try {
+    const docs = await db.execute(sql`
+      SELECT content_text, title, source_file, file_size_kb
+      FROM knowledge_documents
+      WHERE id = ${docId} AND uploaded_by = ${req.userId}
+      LIMIT 1
+    `);
+    const row = (docs.rows as any[])[0];
+    if (!row) { res.status(404).json({ erro: "Documento não encontrado" }); return; }
+
+    const safeTempo = Math.max(20, Math.min(180, Number(tempoAula) || 50));
+    const fallback = buildFallbackTeacherOutput({
+      title: row.title,
+      content: row.content_text,
+      outputType,
+      serie: compactText(serie, 80) || "Ensino Médio",
+      objetivo: compactText(objetivo, 220),
+      tempoAula: safeTempo,
+      nivelTurma: compactText(nivelTurma, 180) || "heterogênea",
+    });
+
+    const prompt = `Você é um designer instrucional sênior ajudando PROFESSORES. Gere "${TEACHER_OUTPUT_LABELS[outputType]}" com padrão profissional, auditável e pronto para uso.
+
+CONTEXTO DOCENTE:
+- Série/ano: ${compactText(serie, 80)}
+- Objetivo declarado: ${compactText(objetivo, 260) || "definir objetivo observável a partir da fonte"}
+- Tempo de aula: ${safeTempo} minutos
+- Nível/perfil da turma: ${compactText(nivelTurma, 220)}
+- Formato desejado: ${compactText(formatoSaida, 220)}
+
+REGRAS:
+- Não entregue texto genérico. Use termos, exemplos, números, relações e trechos presentes na fonte.
+- Saída deve servir ao PROFESSOR: decisões de condução, fala/pergunta, evidências, adaptação, avaliação e revisão humana.
+- Inclua objetivos observáveis, habilidades/competências, tempo, materiais, desenvolvimento, atividade, avaliação, rubrica, adaptações, evidências/citações e slots visuais.
+- Para "slides-professor", inclua slides[] com notasProfessor e visual por slide.
+- Para "resumo-familia-coordenacao", escreva comunicação institucional sem expor dado sensível nem prometer resultado.
+- Para "mensagem-intervencao", escreva como colega de trabalho do professor: rascunho cuidadoso para aluno/família/coordenação, com motivo pedagógico, ação combinada, prazo de acompanhamento e linguagem não acusatória.
+- O professor é seu colega de trabalho; nunca responda como se estivesse ensinando o professor como aluno.
+- Use tom premium+: preciso, validado, auditável, sem frases genéricas, sem promessa de aprendizagem garantida.
+- Se a fonte estiver fraca, avise em sourceValidation.warning e mantenha scaffold profissional.
+- Retorne APENAS JSON válido com esta estrutura:
+{
+  "titulo": "string",
+  "outputType": "${outputType}",
+  "resumoExecutivo": "string",
+  "contextoProfessor": "string",
+  "objetivos": ["3-5 objetivos observáveis"],
+  "habilidades": ["habilidades ou competências trabalhadas"],
+  "materiais": ["materiais concretos"],
+  "tempoTotal": "${safeTempo} minutos",
+  "desenvolvimento": [{"tempo":"string","etapa":"string","acaoProfessor":"string","acaoAlunos":"string","evidenciaFonte":"string"}],
+  "atividade": {"titulo":"string","instrucoesAluno":["..."],"criterios":["..."],"gabaritoComentado":["..."]},
+  "avaliacao": {"instrumento":"string","evidencias":["..."],"rubrica":[{"criterio":"string","insuficiente":"string","regular":"string","bom":"string","excelente":"string"}]},
+  "adaptacoes": [{"perfil":"string","ajuste":"string"}],
+  "visualSlots": [{"titulo":"string","uso":"string","descricao":"string","notaProfessor":"string"}],
+  "slides": [{"titulo":"string","objetivo":"string","bullets":["..."],"notasProfessor":"string","visual":"string"}],
+  "comunicacao": {"paraFamilias":"string","paraCoordenacao":"string"},
+  "citacoes": [{"fonte":"Fonte 1","trecho":"trecho fiel da fonte","usoPedagogico":"como usar"}],
+  "proximosPassos": ["..."],
+  "sourceValidation": {"status":"grounded|weak-source","warning":"string opcional"}
+}
+${buildMaterialInstruction(materialPreferences)}`;
+
+    const completion = await gpt.chat.completions.create({
+      model: OR.fast,
+      temperature: 0.45,
+      max_tokens: 6500,
+      messages: [
+        { role: "system", content: prompt },
+        { role: "user", content: `Fonte: "${row.title}"\n\n${String(row.content_text).slice(0, 45_000)}` },
+      ],
+    });
+    const raw = completion.choices[0].message.content ?? "{}";
+    const parsed = parseNotebookJson(raw);
+    const weak = !parsed || !Array.isArray(parsed.objetivos) || !Array.isArray(parsed.desenvolvimento) || parsed.desenvolvimento.length < 3;
+    const payload = weak ? fallback : { ...fallback, ...parsed, generatedByFallback: false };
+    const enriched = await enrichMaterialPayload(`teacher-${outputType}`, row.title, row.content_text, payload, materialPreferences);
+
+    await saveArtifact(req.userId, docId, `teacher-${outputType}`, enriched.titulo ?? fallback.titulo, enriched);
+    trackEvent({
+      userId: req.userId,
+      eventType: "teacher_notebook_output_generated",
+      entityType: "notebook_teacher_material",
+      entityId: String(docId),
+      metadata: {
+        outputType,
+        title: compactText(enriched.titulo ?? row.title, 120),
+        serie,
+        tempoAula: safeTempo,
+        nivelTurma,
+        formatoSaida,
+        fallbackUsed: Boolean(enriched.generatedByFallback || enriched.hermesQuality?.fallbackUsed),
+        visualStatus: enriched.visualEnrichment?.status,
+        source: { chars: row.content_text?.length ?? null, fileSizeKb: row.file_size_kb ?? null, sourceFile: row.source_file ?? null },
+      },
+    });
+    trackNotebookMaterialEvent({
+      userId: req.userId,
+      docId,
+      kind: `teacher-${outputType}`,
+      title: row.title,
+      prefs: materialPreferences,
+      payload: enriched,
+      source: row,
+    });
+
+    res.json(enriched);
+  } catch (e) {
+    console.error("notebook teacher-output:", e);
+    res.status(500).json({ erro: "Erro ao gerar Notebook do Professor" });
+  }
+});
+
 // ─── POST /api/notebook/plano-aula ───────────────────────────────────────────
 // ─── PERSONAS de Geração Educacional ──────────────────────────────────────────
 // /personas/mestre_yoda.py  /personas/tia_marlene.py  /personas/coach_energia.py

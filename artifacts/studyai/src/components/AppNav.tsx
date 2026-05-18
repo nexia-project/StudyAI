@@ -67,15 +67,15 @@ const PROFESSOR_NAV_GROUPS: { label: string; items: NavItem[] }[] = [
         label: "Painel do professor",
         path: "/professor",
       },
-      { Illustration: IllNotebookStack, label: "Notebook IA", path: "/notebook", badge: "NOVO" },
-      { Illustration: IllChatWave,    label: "Comunicação", path: "/comunicacao", badge: "NOVO" },
+      { Illustration: IllNotebookStack, label: "Notebook do Professor", path: "/professor?section=notebook", badge: "NOVO" },
+      { Illustration: IllChatWave,    label: "Tiagão Professor", path: "/professor?section=assistente", badge: "NOVO" },
     ],
   },
   {
     label: "Turmas e atividades",
     items: [
-      { Illustration: IllClipboard,   label: "Atividades", path: "/atividades" },
-      { Illustration: IllFolderStack, label: "Meus conteúdos", path: "/meus-conteudos", badge: "NOVO" },
+      { Illustration: IllClipboard,   label: "Atividades", path: "/professor?section=atividades" },
+      { Illustration: IllFolderStack, label: "Histórico docente", path: "/professor?section=historico", badge: "NOVO" },
     ],
   },
 ];
@@ -112,9 +112,9 @@ const QUICK_LINKS_MAP: Record<AppMode, NavItem[]> = {
   ],
   professor: [
     { Illustration: IllBarsSoft,     label: "Dashboard",  path: "/professor" },
-    { Illustration: IllNotebookStack, label: "Notebook",   path: "/notebook" },
-    { Illustration: IllFolderStack,   label: "Conteúdos",  path: "/meus-conteudos" },
-    { Illustration: IllChatWave,     label: "Comunicar",  path: "/comunicacao" },
+    { Illustration: IllNotebookStack, label: "Notebook",   path: "/professor?section=notebook" },
+    { Illustration: IllFolderStack,   label: "Histórico",  path: "/professor?section=historico" },
+    { Illustration: IllChatWave,     label: "Tiagão",  path: "/professor?section=assistente" },
   ],
   escola: [
     { Illustration: IllBuilding,     label: "Portal",     path: "/instituicao" },
@@ -253,7 +253,6 @@ export function AppNav({ onHome }: AppNavProps) {
   const [location, navigate] = useLocation();
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { mode } = useMode();
   const [navTheme, setNavTheme] = useState<"elegante" | "vibrante">(() => {
     if (typeof window === "undefined") return "elegante";
     const saved = localStorage.getItem("studyai_nav_theme");
@@ -262,13 +261,14 @@ export function AppNav({ onHome }: AppNavProps) {
   const isVibrante = navTheme === "vibrante";
 
   const currentPath = location;
-  const navGroups = getNavGroups(mode);
-  const quickLinks = QUICK_LINKS_MAP[mode];
+  const effectiveMode: AppMode = currentPath.startsWith("/instituicao") ? "escola" : "aluno";
+  const navGroups = getNavGroups(effectiveMode);
+  const quickLinks = QUICK_LINKS_MAP[effectiveMode];
 
   useEffect(() => {
-    const g = getNavGroups(mode);
+    const g = getNavGroups(effectiveMode);
     setExpandedGroups(Object.fromEntries(g.map(gr => [gr.label, true])));
-  }, [mode]);
+  }, [effectiveMode]);
 
   useEffect(() => {
     try { localStorage.setItem("studyai_nav_theme", navTheme); } catch { /* ignore */ }
@@ -303,7 +303,9 @@ export function AppNav({ onHome }: AppNavProps) {
             <Logo variant="horizontal" tone="white" className="h-8 w-auto drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]" />
           </button>
           <div className="mt-3">
-            <ModeSwitcher />
+            <div className="rounded-xl border border-white/20 bg-white/12 px-3 py-2 text-xs font-black text-white/95">
+              Ambiente: {MODE_CONFIG[effectiveMode].label}
+            </div>
           </div>
           <div className="mt-2 grid grid-cols-2 gap-1.5">
             <button
@@ -476,9 +478,6 @@ export function AppNav({ onHome }: AppNavProps) {
                   Vibrante
                 </button>
               </div>
-
-              {/* Mode switcher mobile */}
-              <MobileModeSection mode={mode} onSelect={(m) => { navigate(MODE_CONFIG[m].defaultPath); setMobileOpen(false); }} />
 
               <div className="p-3 space-y-4">
                 {navGroups.map(group => (

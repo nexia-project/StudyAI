@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, type ElementType } from "react";
-import { useLocation } from "wouter";
+import { useState, useEffect, useRef, type ElementType, type ReactNode } from "react";
+import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, UserCircle, BookOpen, FileQuestion, Brain,
@@ -9,7 +9,7 @@ import {
   Zap, Target, Bell, Globe, Layers, BookMarked, Map, Star,
   Wand2, FileText, LayoutTemplate, Network, Microscope, Download,
   Database, ClipboardList, Filter, Calendar, ChevronDown as ChevronDownIcon, X, Lock,
-  History, Presentation, Image as ImageIcon,
+  History, Presentation, Image as ImageIcon, Upload,
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
@@ -24,7 +24,7 @@ import {
 } from "@/components/Layout";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Section = "dashboard" | "turmas" | "planoaula" | "alunos" | "conteudos" | "estudio" | "pesquisa" | "provas" | "banco" | "atividades" | "assistente" | "relatorios" | "historico";
+type Section = "dashboard" | "turmas" | "planoaula" | "notebook" | "alunos" | "conteudos" | "estudio" | "pesquisa" | "provas" | "banco" | "atividades" | "assistente" | "relatorios" | "historico";
 type ExamMode = "classica" | "mundo" | "fraquezas";
 type VisualStyle = "enem" | "infantil" | "tecnico" | "aventura";
 
@@ -63,6 +63,7 @@ const NAV: TeacherNavItem[] = [
   { id: "dashboard" as Section, label: "Dashboard", icon: LayoutDashboard },
   { id: "turmas" as Section, label: "Minhas Turmas", icon: Users },
   { id: "planoaula" as Section, label: "Plano de Aula IA", icon: Wand2 },
+  { id: "notebook" as Section, label: "Notebook do Professor", icon: BookOpen },
   { id: "alunos" as Section, label: "Alunos", icon: UserCircle },
   { id: "conteudos" as Section, label: "Criador de Conteúdo", icon: Layers },
   { id: "estudio" as Section, label: "Estúdio Visual IA", icon: Sparkles },
@@ -336,6 +337,7 @@ function ContentPackageView({ content, fromKb }: { content: ContentPackage; from
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function ProfessorPage() {
   const [, navigate] = useLocation();
+  const search = useSearch();
   const { user } = useAuth();
   const [section, setSection] = useState<Section>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -353,6 +355,11 @@ export default function ProfessorPage() {
       if (!r.ok) navigate("/professor/login");
     }).catch(() => { setAuthChecked(true); navigate("/professor/login"); });
   }, []);
+
+  useEffect(() => {
+    const requested = new URLSearchParams(search).get("section");
+    if (requested && NAV.some(item => item.id === requested)) setSection(requested as Section);
+  }, [search]);
 
   if (!authChecked) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50/40 flex items-center justify-center p-4">
@@ -397,10 +404,10 @@ export default function ProfessorPage() {
           })}
         </nav>
         <div className="border-t border-gray-100 p-3">
-          <button onClick={() => navigate("/app")}
+          <button onClick={() => navigate("/")}
             className="w-full flex items-center gap-3 px-3 py-2 text-gray-500 hover:text-gray-900 text-xs font-semibold transition-colors rounded-xl hover:bg-gray-50">
             <ArrowLeft className="w-4 h-4 flex-shrink-0" />
-            <span className={`transition-opacity duration-200 ${sidebarOpen ? "opacity-100" : "opacity-0 lg:opacity-100"}`}>Voltar ao App</span>
+            <span className={`transition-opacity duration-200 ${sidebarOpen ? "opacity-100" : "opacity-0 lg:opacity-100"}`}>Sair do painel</span>
           </button>
         </div>
       </aside>
@@ -429,6 +436,7 @@ export default function ProfessorPage() {
               {section === "dashboard" && <DashboardSection apiFetch={apiFetch} onNavigate={setSection} />}
               {section === "turmas" && <TurmasSection apiFetch={apiFetch} onNavigate={id => navigate(`/professor/turma/${id}`)} />}
               {section === "planoaula" && <PlanoAulaSection apiFetch={apiFetch} />}
+              {section === "notebook" && <TeacherNotebookSection apiFetch={apiFetch} />}
               {section === "alunos" && <AlunosSection apiFetch={apiFetch} />}
               {section === "conteudos" && <ConteudosSection apiFetch={apiFetch} />}
               {section === "estudio" && (
@@ -445,6 +453,487 @@ export default function ProfessorPage() {
           </AnimatePresence>
         </div>
       </main>
+    </div>
+  );
+}
+
+type TeacherNotebookDoc = {
+  id: number;
+  title: string;
+  source_file?: string | null;
+  file_size_kb?: number | null;
+  content_length?: number;
+  created_at?: string;
+};
+
+type TeacherOutputType =
+  | "plano-aula"
+  | "roteiro-aula"
+  | "atividade-avaliativa"
+  | "rubrica"
+  | "lista-exercicios"
+  | "material-turma"
+  | "resumo-familia-coordenacao"
+  | "slides-professor"
+  | "mensagem-intervencao";
+
+type TeacherNotebookOutput = {
+  titulo?: string;
+  outputType?: TeacherOutputType;
+  resumoExecutivo?: string;
+  contextoProfessor?: string;
+  objetivos?: string[];
+  habilidades?: string[];
+  materiais?: string[];
+  tempoTotal?: string;
+  desenvolvimento?: Array<{ tempo?: string; etapa?: string; acaoProfessor?: string; acaoAlunos?: string; evidenciaFonte?: string }>;
+  atividade?: { titulo?: string; instrucoesAluno?: string[]; criterios?: string[]; gabaritoComentado?: string[] };
+  avaliacao?: { instrumento?: string; evidencias?: string[]; rubrica?: Array<Record<string, string>> };
+  adaptacoes?: Array<{ perfil?: string; ajuste?: string }>;
+  visualSlots?: Array<{ titulo?: string; uso?: string; descricao?: string; notaProfessor?: string }>;
+  slides?: Array<{ titulo?: string; objetivo?: string; bullets?: string[]; notasProfessor?: string; visual?: string }>;
+  comunicacao?: { paraFamilias?: string; paraCoordenacao?: string };
+  citacoes?: Array<{ fonte?: string; trecho?: string; usoPedagogico?: string }>;
+  proximosPassos?: string[];
+  sourceValidation?: { status?: string; warning?: string };
+  visualEnrichment?: { status?: string; message?: string; slots?: Array<{ title?: string; caption?: string; reason?: string; source?: string; status?: string }> };
+};
+
+const TEACHER_OUTPUTS: Array<{ id: TeacherOutputType; label: string; desc: string; icon: ElementType }> = [
+  { id: "plano-aula", label: "Plano de aula", desc: "Objetivos, BNCC, tempo, avaliação e adaptações.", icon: Wand2 },
+  { id: "roteiro-aula", label: "Roteiro de aula", desc: "Falas, perguntas norteadoras e condução minuto a minuto.", icon: Presentation },
+  { id: "atividade-avaliativa", label: "Atividade avaliativa", desc: "Enunciado, critérios, gabarito e evidências.", icon: ClipboardList },
+  { id: "rubrica", label: "Rubrica", desc: "Descritores por nível para correção consistente.", icon: CheckCircle2 },
+  { id: "lista-exercicios", label: "Lista de exercícios", desc: "Questões graduadas com gabarito comentado.", icon: FileQuestion },
+  { id: "material-turma", label: "Material para turma", desc: "Folha de apoio pronta para entregar aos alunos.", icon: BookMarked },
+  { id: "resumo-familia-coordenacao", label: "Resumo para pais/coordenação", desc: "Comunicação clara, institucional e auditável.", icon: Users },
+  { id: "slides-professor", label: "Slides com notas", desc: "Estrutura de slides com notas do professor e visuais.", icon: LayoutTemplate },
+  { id: "mensagem-intervencao", label: "Mensagem de intervenção", desc: "Rascunho profissional para aluno, família ou coordenação.", icon: Bell },
+];
+
+function normalizeTeacherList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(item => String(item ?? "").trim()).filter(Boolean);
+  if (typeof value === "string" && value.trim()) return [value.trim()];
+  return [];
+}
+
+function TeacherNotebookSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) => Promise<Response> }) {
+  const [docs, setDocs] = useState<TeacherNotebookDoc[]>([]);
+  const [selectedDocId, setSelectedDocId] = useState<number | "">("");
+  const [loadingDocs, setLoadingDocs] = useState(true);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadTitle, setUploadTitle] = useState("");
+  const [uploadText, setUploadText] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [outputType, setOutputType] = useState<TeacherOutputType>("plano-aula");
+  const [serie, setSerie] = useState("Ensino Médio");
+  const [objetivo, setObjetivo] = useState("");
+  const [tempoAula, setTempoAula] = useState("50");
+  const [nivelTurma, setNivelTurma] = useState("heterogênea, com ritmos diferentes");
+  const [formatoSaida, setFormatoSaida] = useState("documento profissional com seções e checklist");
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<TeacherNotebookOutput | null>(null);
+
+  async function loadDocs() {
+    setLoadingDocs(true);
+    try {
+      const r = await apiFetch("/api/notebook/docs");
+      const data = await r.json().catch(() => []);
+      const rows = Array.isArray(data) ? data : (Array.isArray(data?.rows) ? data.rows : []);
+      setDocs(rows);
+      if (!selectedDocId && rows[0]?.id) setSelectedDocId(rows[0].id);
+    } finally {
+      setLoadingDocs(false);
+    }
+  }
+
+  useEffect(() => { loadDocs(); }, []);
+
+  async function uploadSource() {
+    if (!uploadTitle.trim() || !uploadText.trim()) return;
+    setUploading(true);
+    setError("");
+    try {
+      const r = await apiFetch("/api/notebook/upload-text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: uploadTitle.trim(), content: uploadText.trim() }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data?.erro ?? "Não foi possível salvar a fonte.");
+      setUploadTitle("");
+      setUploadText("");
+      setUploadOpen(false);
+      await loadDocs();
+      if (data?.id) setSelectedDocId(Number(data.id));
+    } catch (err: any) {
+      setError(err?.message ?? "Erro ao enviar fonte.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function generateOutput() {
+    if (!selectedDocId) {
+      setError("Selecione ou envie uma fonte antes de gerar.");
+      return;
+    }
+    setGenerating(true);
+    setError("");
+    setResult(null);
+    try {
+      const r = await apiFetch("/api/notebook/teacher-output", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          docId: selectedDocId,
+          outputType,
+          serie,
+          objetivo,
+          tempoAula: Number(tempoAula) || 50,
+          nivelTurma,
+          formatoSaida,
+          materialPreferences: {
+            publico: "professor",
+            profundidade: "aprofundado",
+            visual: outputType === "slides-professor" ? "diagramas" : "web",
+            tom: "aula",
+            formato: outputType === "slides-professor" ? "apresentacao" : outputType === "lista-exercicios" ? "exercicios" : "aula",
+            estiloVisual: "institucional premium, limpo, com blocos visuais e notas docentes",
+            instrucoes: objetivo,
+          },
+        }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data?.erro ?? "Erro ao gerar material docente.");
+      setResult(data);
+    } catch (err: any) {
+      setError(err?.message ?? "Erro ao gerar material.");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  function trackTeacherTelemetry(action: "export" | "feedback", feedback?: { rating: "up" | "down"; comment?: string }) {
+    apiFetch("/api/notebook/telemetry", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action,
+        kind: `teacher-${outputType}`,
+        docId: selectedDocId || undefined,
+        feedback,
+        metadata: { surface: "professor_notebook", outputType, serie, tempoAula, nivelTurma },
+      }),
+    }).catch(() => {});
+  }
+
+  function exportResult() {
+    if (!result) return;
+    trackTeacherTelemetry("export");
+    window.print();
+  }
+
+  const selectedOutput = TEACHER_OUTPUTS.find(item => item.id === outputType) ?? TEACHER_OUTPUTS[0];
+  const selectedDoc = docs.find(doc => doc.id === selectedDocId);
+
+  return (
+    <div className="space-y-6">
+      <AppMissionPanel
+        eyebrow="Notebook do Professor"
+        title="Prepare aula com IA a partir das suas fontes."
+        description="Use o RAG do Notebook para transformar PDFs, textos, roteiros ou materiais da escola em entregáveis profissionais para professor, turma, coordenação e famílias."
+        evidence={selectedDoc ? `Fonte selecionada: ${selectedDoc.title}` : "Selecione uma fonte do Notebook ou envie um texto novo para começar."}
+        status={<AppStatusBadge tone="violet" className="bg-white/15 text-white border-white/25">Modo professor</AppStatusBadge>}
+        action={
+          <button onClick={generateOutput} disabled={generating || !selectedDocId} className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-black text-violet-700 shadow-lg shadow-black/10 transition hover:scale-[1.01] disabled:opacity-60">
+            {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            {generating ? "Gerando..." : "Gerar material docente"}
+          </button>
+        }
+      />
+
+      <div className="grid gap-5 xl:grid-cols-[360px_1fr]">
+        <div className="space-y-5">
+          <AppSectionShell
+            eyebrow="Fonte RAG"
+            title="Material de referência"
+            description="A saída usa a fonte selecionada como base e inclui evidências/citações quando possível."
+          >
+            <div className="space-y-3">
+              <select
+                value={selectedDocId}
+                onChange={e => setSelectedDocId(e.target.value ? Number(e.target.value) : "")}
+                className="w-full rounded-2xl border border-violet-100 bg-white px-3 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-violet-400"
+              >
+                <option value="">{loadingDocs ? "Carregando fontes..." : "Selecione uma fonte"}</option>
+                {docs.map(doc => (
+                  <option key={doc.id} value={doc.id}>{doc.title}</option>
+                ))}
+              </select>
+              <button onClick={() => setUploadOpen(v => !v)} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm font-black text-violet-700 hover:bg-violet-100">
+                <Upload className="w-4 h-4" /> Enviar texto como fonte
+              </button>
+              {uploadOpen && (
+                <div className="space-y-2 rounded-2xl border border-violet-100 bg-white p-3">
+                  <input value={uploadTitle} onChange={e => setUploadTitle(e.target.value)} placeholder="Título da fonte" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-violet-400" />
+                  <textarea value={uploadText} onChange={e => setUploadText(e.target.value)} placeholder="Cole o texto, roteiro, ementa, PDF extraído ou material da escola..." rows={7} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-violet-400" />
+                  <button onClick={uploadSource} disabled={uploading || !uploadTitle.trim() || !uploadText.trim()} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-3 py-2 text-sm font-black text-white hover:bg-violet-700 disabled:opacity-60">
+                    {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    Salvar no Notebook
+                  </button>
+                </div>
+              )}
+            </div>
+          </AppSectionShell>
+
+          <AppSectionShell eyebrow="Preferências" title="Contexto pedagógico">
+            <div className="space-y-3">
+              <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Série/ano</label>
+              <input value={serie} onChange={e => setSerie(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-violet-400" />
+              <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Objetivo da aula</label>
+              <textarea value={objetivo} onChange={e => setObjetivo(e.target.value)} rows={3} placeholder="Ex.: preparar revisão para prova, introduzir conceito, trabalhar habilidade específica..." className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-violet-400" />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Tempo</label>
+                  <input value={tempoAula} onChange={e => setTempoAula(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-violet-400" />
+                </div>
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Saída</label>
+                  <input value={formatoSaida} onChange={e => setFormatoSaida(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-violet-400" />
+                </div>
+              </div>
+              <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Nível da turma</label>
+              <input value={nivelTurma} onChange={e => setNivelTurma(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-violet-400" />
+            </div>
+          </AppSectionShell>
+        </div>
+
+        <div className="space-y-5">
+          <AppSectionShell eyebrow="Formato de saída" title="Escolha o entregável profissional">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {TEACHER_OUTPUTS.map(item => {
+                const Icon = item.icon;
+                const active = item.id === outputType;
+                return (
+                  <button key={item.id} onClick={() => setOutputType(item.id)} className={`rounded-2xl border p-4 text-left transition-all ${active ? "border-violet-300 bg-violet-50 shadow-sm shadow-violet-100" : "border-slate-200 bg-white hover:border-violet-200 hover:bg-violet-50/40"}`}>
+                    <Icon className={`mb-3 h-5 w-5 ${active ? "text-violet-700" : "text-slate-400"}`} />
+                    <p className="text-sm font-black text-slate-950">{item.label}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-500">{item.desc}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </AppSectionShell>
+
+          {error && (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</div>
+          )}
+
+          {!result ? (
+            <AppEmptyState
+              icon={<BookOpen />}
+              title={`Pronto para gerar: ${selectedOutput.label}`}
+              description="O material aparecerá aqui com objetivos, habilidades, desenvolvimento, avaliação, adaptações, evidências da fonte e plano visual quando aplicável."
+              action={
+                <button onClick={generateOutput} disabled={generating || !selectedDocId} className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-black text-white hover:bg-violet-700 disabled:opacity-60">
+                  {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  Gerar agora
+                </button>
+              }
+            />
+          ) : (
+            <TeacherOutputPreview
+              output={result}
+              onExport={exportResult}
+              onFeedback={rating => trackTeacherTelemetry("feedback", { rating })}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TeacherOutputPreview({ output, onExport, onFeedback }: { output: TeacherNotebookOutput; onExport: () => void; onFeedback: (rating: "up" | "down") => void }) {
+  const objectives = normalizeTeacherList(output.objetivos);
+  const habilidades = normalizeTeacherList(output.habilidades);
+  const materiais = normalizeTeacherList(output.materiais);
+  const proximosPassos = normalizeTeacherList(output.proximosPassos);
+  const visualSlots = output.visualSlots ?? [];
+  const slides = output.slides ?? [];
+  const citations = output.citacoes ?? [];
+  const visualEnrichmentSlots = output.visualEnrichment?.slots ?? [];
+
+  return (
+    <div className="print:bg-white rounded-3xl border border-violet-100 bg-white p-5 shadow-sm">
+      <div className="mb-5 flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-violet-500">Saída profissional docente</p>
+          <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">{output.titulo ?? "Material docente"}</h2>
+          {output.resumoExecutivo && <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">{output.resumoExecutivo}</p>}
+        </div>
+        <div className="flex flex-wrap gap-2 print:hidden">
+          <button onClick={onExport} className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white hover:bg-slate-800">
+            <Download className="w-3.5 h-3.5" /> Exportar/Imprimir
+          </button>
+          <button onClick={() => onFeedback("up")} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">Aprovado</button>
+          <button onClick={() => onFeedback("down")} className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-black text-amber-700">Revisar</button>
+        </div>
+      </div>
+
+      {output.sourceValidation?.warning && (
+        <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">
+          {output.sourceValidation.warning}
+        </div>
+      )}
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <TeacherOutputCard title="Objetivos" items={objectives} />
+        <TeacherOutputCard title="Habilidades" items={habilidades} />
+        <TeacherOutputCard title="Materiais" items={materiais} />
+      </div>
+
+      {output.contextoProfessor && (
+        <TeacherOutputBlock title="Contexto para o professor">
+          <p>{output.contextoProfessor}</p>
+        </TeacherOutputBlock>
+      )}
+
+      {output.desenvolvimento?.length ? (
+        <TeacherOutputBlock title={`Desenvolvimento${output.tempoTotal ? ` · ${output.tempoTotal}` : ""}`}>
+          <div className="space-y-3">
+            {output.desenvolvimento.map((step, index) => (
+              <div key={index} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-violet-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-violet-700">{step.tempo ?? `Etapa ${index + 1}`}</span>
+                  <h4 className="font-black text-slate-900">{step.etapa ?? `Etapa ${index + 1}`}</h4>
+                </div>
+                {step.acaoProfessor && <p className="text-sm leading-relaxed text-slate-700"><strong>Professor:</strong> {step.acaoProfessor}</p>}
+                {step.acaoAlunos && <p className="mt-1 text-sm leading-relaxed text-slate-700"><strong>Alunos:</strong> {step.acaoAlunos}</p>}
+                {step.evidenciaFonte && <p className="mt-2 text-xs font-semibold text-violet-700">Evidência: {step.evidenciaFonte}</p>}
+              </div>
+            ))}
+          </div>
+        </TeacherOutputBlock>
+      ) : null}
+
+      {output.atividade && (
+        <TeacherOutputBlock title={output.atividade.titulo ?? "Atividade"}>
+          <TeacherOutputCard title="Instruções para o aluno" items={normalizeTeacherList(output.atividade.instrucoesAluno)} />
+          <TeacherOutputCard title="Critérios" items={normalizeTeacherList(output.atividade.criterios)} />
+          <TeacherOutputCard title="Gabarito comentado" items={normalizeTeacherList(output.atividade.gabaritoComentado)} />
+        </TeacherOutputBlock>
+      )}
+
+      {output.avaliacao && (
+        <TeacherOutputBlock title="Avaliação e rubrica">
+          {output.avaliacao.instrumento && <p className="mb-3 text-sm leading-relaxed text-slate-700">{output.avaliacao.instrumento}</p>}
+          <TeacherOutputCard title="Evidências esperadas" items={normalizeTeacherList(output.avaliacao.evidencias)} />
+          {output.avaliacao.rubrica?.length ? (
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full min-w-[640px] text-left text-sm">
+                <thead><tr className="border-b text-xs uppercase tracking-wider text-slate-500">{Object.keys(output.avaliacao.rubrica[0]).map(key => <th key={key} className="py-2 pr-3">{key}</th>)}</tr></thead>
+                <tbody>{output.avaliacao.rubrica.map((row, index) => <tr key={index} className="border-b border-slate-100">{Object.values(row).map((value, i) => <td key={i} className="py-2 pr-3 text-slate-700">{value}</td>)}</tr>)}</tbody>
+              </table>
+            </div>
+          ) : null}
+        </TeacherOutputBlock>
+      )}
+
+      {output.adaptacoes?.length ? (
+        <TeacherOutputBlock title="Adaptações pedagógicas">
+          <div className="grid gap-3 md:grid-cols-2">
+            {output.adaptacoes.map((item, index) => (
+              <div key={index} className="rounded-2xl border border-slate-200 p-3">
+                <p className="text-sm font-black text-slate-900">{item.perfil ?? "Perfil"}</p>
+                <p className="mt-1 text-sm leading-relaxed text-slate-600">{item.ajuste}</p>
+              </div>
+            ))}
+          </div>
+        </TeacherOutputBlock>
+      ) : null}
+
+      {(visualSlots.length || visualEnrichmentSlots.length) ? (
+        <TeacherOutputBlock title="Slots visuais e evidências">
+          <div className="grid gap-3 md:grid-cols-2">
+            {visualSlots.map((slot, index) => (
+              <div key={`slot-${index}`} className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-3">
+                <p className="font-black text-indigo-950">{slot.titulo}</p>
+                <p className="mt-1 text-sm text-indigo-900/80">{slot.descricao ?? slot.uso}</p>
+                {slot.notaProfessor && <p className="mt-2 text-xs font-semibold text-indigo-700">Nota: {slot.notaProfessor}</p>}
+              </div>
+            ))}
+            {visualEnrichmentSlots.map((slot, index) => (
+              <div key={`enrichment-${index}`} className="rounded-2xl border border-violet-100 bg-violet-50/50 p-3">
+                <p className="font-black text-violet-950">{slot.title}</p>
+                <p className="mt-1 text-sm text-violet-900/75">{slot.caption}</p>
+                <p className="mt-2 text-xs font-semibold text-violet-600">{slot.source} · {slot.status}</p>
+              </div>
+            ))}
+          </div>
+        </TeacherOutputBlock>
+      ) : null}
+
+      {slides.length ? (
+        <TeacherOutputBlock title="Slides com notas do professor">
+          <div className="grid gap-3 md:grid-cols-2">
+            {slides.map((slide, index) => (
+              <div key={index} className="rounded-2xl border border-slate-200 p-4">
+                <span className="text-[10px] font-black uppercase tracking-wider text-violet-500">Slide {index + 1}</span>
+                <h4 className="mt-1 font-black text-slate-950">{slide.titulo}</h4>
+                <TeacherOutputCard title={slide.objetivo ?? "Bullets"} items={normalizeTeacherList(slide.bullets)} />
+                {slide.notasProfessor && <p className="mt-2 text-sm leading-relaxed text-slate-600"><strong>Nota:</strong> {slide.notasProfessor}</p>}
+                {slide.visual && <p className="mt-2 text-xs font-semibold text-violet-700">Visual: {slide.visual}</p>}
+              </div>
+            ))}
+          </div>
+        </TeacherOutputBlock>
+      ) : null}
+
+      {output.comunicacao && (
+        <TeacherOutputBlock title="Comunicação institucional">
+          {output.comunicacao.paraFamilias && <p className="text-sm leading-relaxed text-slate-700"><strong>Famílias:</strong> {output.comunicacao.paraFamilias}</p>}
+          {output.comunicacao.paraCoordenacao && <p className="mt-2 text-sm leading-relaxed text-slate-700"><strong>Coordenação:</strong> {output.comunicacao.paraCoordenacao}</p>}
+        </TeacherOutputBlock>
+      )}
+
+      {citations.length ? (
+        <TeacherOutputBlock title="Evidências e citações">
+          <div className="space-y-2">
+            {citations.map((citation, index) => (
+              <blockquote key={index} className="rounded-2xl border-l-4 border-violet-400 bg-violet-50/60 p-3 text-sm text-slate-700">
+                “{citation.trecho}”
+                <footer className="mt-2 text-xs font-bold text-violet-700">{citation.fonte ?? `Fonte ${index + 1}`} {citation.usoPedagogico ? `· ${citation.usoPedagogico}` : ""}</footer>
+              </blockquote>
+            ))}
+          </div>
+        </TeacherOutputBlock>
+      ) : null}
+
+      <TeacherOutputCard title="Próximos passos do professor" items={proximosPassos} />
+    </div>
+  );
+}
+
+function TeacherOutputBlock({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="mt-5 rounded-3xl border border-slate-200 bg-white p-4">
+      <h3 className="mb-3 text-base font-black text-slate-950">{title}</h3>
+      <div className="text-sm leading-relaxed text-slate-700">{children}</div>
+    </section>
+  );
+}
+
+function TeacherOutputCard({ title, items }: { title: string; items: string[] }) {
+  if (!items.length) return null;
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+      <h4 className="mb-2 text-xs font-black uppercase tracking-wider text-slate-500">{title}</h4>
+      <ul className="space-y-1.5 text-sm text-slate-700">
+        {items.map((item, index) => <li key={index} className="flex gap-2"><Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-violet-600" /> <span>{item}</span></li>)}
+      </ul>
     </div>
   );
 }
@@ -487,6 +976,19 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
   };
 
   const fadeUp: any = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.4, ease: "easeOut" } };
+  const studentsAtRisk = data.students
+    .filter(s => s.performance < 60 || /baixo|risco|inativo/i.test(String(s.engagement)))
+    .sort((a, b) => a.performance - b.performance);
+  const weakSubjects = [...data.heatMap].sort((a, b) => a.score - b.score).slice(0, 4);
+  const pendingActivities = atividades.filter((a: any) => !a.is_published);
+  const recentActivity = atividades[0];
+  const nextLessonFocus = weakSubjects[0]?.materia ?? data.turmas[0]?.subject ?? "diagnóstico inicial";
+  const contentQualityFlags = [
+    data.totalTurmas === 0 ? "criar primeira turma antes de medir saúde pedagógica" : "",
+    data.totalStudents === 0 ? "convidar alunos para destravar indicadores reais" : "",
+    weakSubjects.length > 0 ? `revisar ${weakSubjects[0].materia} antes de avançar conteúdo` : "",
+    pendingActivities.length > 0 ? `${pendingActivities.length} atividade(s) ainda em rascunho` : "",
+  ].filter(Boolean);
 
   return (
     <div className="space-y-7">
@@ -532,6 +1034,64 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
         ))}
       </div>
 
+      <motion.div {...fadeUp}>
+        <AppSectionShell
+          eyebrow="Sala de comando Premium+"
+          title="Diagnóstico docente para decidir a próxima intervenção"
+          description="Painel baseado apenas nos sinais já disponíveis: saúde das turmas, risco, atividade recente, habilidades frágeis e pendências de revisão."
+        >
+          <div className="grid gap-4 lg:grid-cols-4">
+            <div className="rounded-2xl border border-rose-100 bg-rose-50/70 p-4">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-rose-600">Fila de intervenção</p>
+              <p className="mt-2 text-3xl font-black text-rose-900">{studentsAtRisk.length}</p>
+              <p className="text-xs font-semibold text-rose-700">aluno(s) com sinal de atenção</p>
+              <div className="mt-3 space-y-1.5">
+                {studentsAtRisk.slice(0, 3).map(student => (
+                  <div key={student.id} className="rounded-xl bg-white/75 px-3 py-2 text-xs font-semibold text-rose-900">
+                    {student.name} · {student.performance}%
+                  </div>
+                ))}
+                {studentsAtRisk.length === 0 && <p className="text-xs text-rose-700">Sem risco crítico nos dados atuais.</p>}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-amber-700">Habilidades fracas</p>
+              <p className="mt-2 text-sm font-bold text-amber-950">Prioridade: {nextLessonFocus}</p>
+              <div className="mt-3 space-y-2">
+                {weakSubjects.length ? weakSubjects.map(item => (
+                  <div key={item.materia} className="flex items-center justify-between rounded-xl bg-white/75 px-3 py-2 text-xs font-bold text-amber-900">
+                    <span>{item.materia}</span><span>{item.score}%</span>
+                  </div>
+                )) : <p className="text-xs text-amber-800">Ainda faltam dados por matéria.</p>}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-violet-100 bg-violet-50/70 p-4">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-violet-600">Preparar próxima aula</p>
+              <p className="mt-2 text-sm font-bold leading-relaxed text-violet-950">
+                Planeje uma revisão curta sobre {nextLessonFocus} com evidência, prática e ticket de saída.
+              </p>
+              <button onClick={() => onNavigate("notebook")} className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-violet-600 px-3 py-2 text-xs font-black text-white hover:bg-violet-700">
+                <BookOpen className="w-3.5 h-3.5" /> Preparar no Notebook
+              </button>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">Qualidade e pendências</p>
+              <p className="mt-2 text-xs font-semibold text-slate-600">
+                {recentActivity ? `Atividade recente: ${recentActivity.title}` : "Sem atividade recente publicada."}
+              </p>
+              <div className="mt-3 space-y-1.5">
+                {contentQualityFlags.length ? contentQualityFlags.slice(0, 4).map(flag => (
+                  <div key={flag} className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-slate-700">{flag}</div>
+                )) : <p className="text-xs text-slate-500">Sem flags de qualidade nos dados atuais.</p>}
+              </div>
+            </div>
+          </div>
+        </AppSectionShell>
+      </motion.div>
+
       {/* Atalhos com IA — premium colored cards */}
       <motion.div {...fadeUp} className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex items-center justify-between mb-5">
@@ -544,9 +1104,10 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
             <p className="text-gray-500 text-sm mt-0.5">Conteúdo premium, alinhado à BNCC e ENEM</p>
           </div>
         </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid sm:grid-cols-2 xl:grid-cols-5 gap-3">
           {[
             { label: "Plano de Aula", desc: "BNCC + objetivos + avaliação", icon: Wand2, s: "planoaula" as Section, gradient: "from-violet-500 to-violet-600", bg: "from-violet-50 to-violet-50", border: "border-violet-200/60", iconColor: "text-white" },
+            { label: "Notebook do Professor", desc: "Fontes + RAG + materiais docentes", icon: BookOpen, s: "notebook" as Section, gradient: "from-indigo-500 to-violet-600", bg: "from-indigo-50 to-violet-50", border: "border-indigo-200/60", iconColor: "text-white" },
             { label: "Prova / Quiz", desc: "MC, V/F, discursivas premium", icon: FileQuestion, s: "provas" as Section, gradient: "from-rose-500 to-pink-600", bg: "from-rose-50 to-pink-50", border: "border-rose-200/60", iconColor: "text-white" },
             { label: "Conteúdo + Slides", desc: "Resumo, mapa mental, questões", icon: Target, s: "conteudos" as Section, gradient: "from-emerald-500 to-teal-600", bg: "from-emerald-50 to-teal-50", border: "border-emerald-200/60", iconColor: "text-white" },
             { label: "Corrigir Redações", desc: "Matriz INEP, 5 competências", icon: CheckCircle2, s: "atividades" as Section, gradient: "from-amber-500 to-orange-600", bg: "from-amber-50 to-orange-50", border: "border-amber-200/60", iconColor: "text-white" },
@@ -1586,12 +2147,12 @@ function AssistenteSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const SUGGESTIONS = [
-    "Crie um plano de aula semanal de Trigonometria para o 3º ano",
-    "Gere 5 exercícios de interpretação de texto nível ENEM",
-    "Como usar PBL (aprendizagem baseada em projetos) na prática?",
-    "Adapte esse conteúdo para alunos com dificuldade de leitura",
-    "Crie um rubrica de avaliação para redação ENEM",
-    "Quais estratégias para engajar turmas com baixo desempenho?",
+    "Monte um plano de aula de Trigonometria com diagnóstico inicial e ticket de saída",
+    "Crie 5 exercícios ENEM com distratores comentados e critério de correção",
+    "Planeje uma sequência PBL viável para duas aulas de 50 minutos",
+    "Adapte este conteúdo para turma com defasagem de leitura sem infantilizar",
+    "Crie uma rubrica analítica para redação ENEM com devolutiva objetiva",
+    "Escreva uma mensagem de intervenção para família e coordenação",
   ];
 
   async function send() {
@@ -1619,9 +2180,9 @@ function AssistenteSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
     <div className="flex flex-col" style={{ height: "calc(100vh - 11rem)" }}>
       <div className="rounded-2xl border border-gray-200 bg-white p-5 mb-4">
         <h2 className="font-black text-gray-900 flex items-center gap-2 text-sm">
-          <Brain className="w-5 h-5 text-violet-600" /> Assistente do Professor
+          <Brain className="w-5 h-5 text-violet-600" /> Tiagão Professor
         </h2>
-        <p className="text-gray-400 text-xs mt-1">Copiloto pedagógico — cria aulas, provas, estratégias e análises</p>
+        <p className="text-gray-400 text-xs mt-1">Copiloto pedagógico em tom de colega: planejamento, diagnóstico de turma, avaliação, rubricas e comunicação profissional.</p>
       </div>
 
       {messages.length === 0 && (
@@ -1664,7 +2225,7 @@ function AssistenteSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
 
       <div className="flex gap-3">
         <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
-          placeholder="Pergunte ao assistente ou peça para criar algo..."
+          placeholder="Peça planejamento, diagnóstico, rubrica ou comunicação docente..."
           className="flex-1 bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500" />
         <button onClick={send} disabled={loading || !input.trim()}
           className="p-3 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-2xl transition-colors">

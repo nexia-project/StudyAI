@@ -33,6 +33,8 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - **App Shell Premium B2B:** segunda fatia em andamento alinha Professor, ProfessorTurma e Instituicao com cabecalho, missao, badges, secoes e estados compartilhados, mantendo Admin para lote posterior.
 - **App Shell Premium Admin:** fatia conservadora aplicada em IA & Custos e Hermes, com cabecalhos, badges de base/cobertura/status e estados de loading/vazio sem alterar endpoints, filtros, numeros ou calculos.
 - **QA visual/manual geral + menus:** passada premium final em andamento corrige responsividade de cabecalhos/cards/modais e reduz entradas duplicadas de navegacao por papel sem remover rotas legadas.
+- **Notebook do Professor RAG:** primeira fatia adiciona entrada docente no modo Professor, reusa fontes do Notebook, aceita upload de texto e gera entregaveis profissionais por formato (plano, roteiro, atividade, rubrica, lista, material da turma, resumo institucional e slides com notas) via `/api/notebook/teacher-output`, preservando `/notebook` do aluno.
+- **Area do Professor Premium+:** separacao visual reforcada entre aluno/professor, Tiagao generico oculto no portal docente, painel ganhou sala de comando com saude de turmas, fila de intervencao, habilidades frageis, pendencias e preparacao de aula, e Notebook do Professor ganhou rascunho de mensagem de intervencao.
 
 ## Tickets em execucao
 
@@ -138,7 +140,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 
 ### F2-02 B2B premium diagnostico professor/gestor
 
-**Status:** v2 implementado com diagnostico, CSV enriquecido e bloco imprimivel; pendente QA manual e rollout.
+**Status:** v3 em andamento com recorte Professor Premium+; diagnostico, CSV enriquecido, bloco imprimivel, sala de comando e separacao visual inicial implementados; pendente QA manual e rollout.
 
 **Objetivo:** acelerar percepcao premium no modulo B2B sem redesenhar rotas: professor ve risco/baixa atividade por turma e gestor ve adocao/cobertura institucional com proxima acao clara.
 
@@ -152,6 +154,9 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - Exportacao CSV usa os dados ja carregados no painel e mantem lacunas explicitas quando faltam linhas detalhadas.
 - Relatorio geral do professor adiciona sinais disponiveis, acao recomendada e lacunas por linha exportada.
 - Lacunas de dados ficam explicitas: tempo real por sessao, ultimo login bruto, entregas atrasadas e intervencoes registradas.
+- Portal do professor deixa de oferecer caminho primario para o app do aluno; app do aluno deixa de oferecer alternancia visivel para professor/escola.
+- Tiagao no contexto docente deve responder como colega/assessor pedagogico: planejamento, diagnostico, rubrica, comunicacao e intervencao, sem tom de aula para estudante.
+- Notebook do Professor gera tambem mensagem de intervencao para aluno/familia/coordenacao com linguagem profissional, sem exposicao indevida e sem promessa de resultado.
 
 **Criterios de aceite:**
 
@@ -162,6 +167,8 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - Gestor/professor baixa CSV institucional com sinais disponiveis, acao recomendada e lacunas sem inventar telemetria ausente.
 - Impressao/PDF mostra criterios de revisao humana e origem dos sinais.
 - Typecheck do app passa antes de commit/deploy.
+- O painel professor mostra proxima acao pedagógica baseada apenas nos dados existentes: turma, alunos em risco, materias fracas, atividades em rascunho e lacunas de instrumentacao.
+- Navegacao entre areas permanece separada por papel; rotas legadas podem existir, mas nao devem aparecer como entrada primaria fora do contexto correto.
 
 ### F2-03 Curadoria premium de materiais
 

@@ -47,6 +47,7 @@ Automatizado:
 - Valida, sem provider real, que mapa mental fallback gera ramos principais, topicos achatados e conexoes cruzadas.
 - `pnpm --filter @workspace/api-server run smoke:notebook-preview-export`
 - Valida serializacao JSON de apresentacao e mapa mental para reabertura/exportacao, incluindo layout, visual/caption, evidencia, notas do professor, exemplos/checkpoints, metadados achatados do mapa e conexoes cruzadas.
+- Notebook do Professor: `/professor?section=notebook` deve listar fontes do Notebook, aceitar upload de texto e chamar `/api/notebook/teacher-output` com contexto docente (`teacher_notebook_output_generated`).
 
 Manual pendente:
 
@@ -54,6 +55,7 @@ Manual pendente:
 - Gerar `Mapa Mental` a partir de fonte curta e confirmar aviso/indicador visual de fallback estruturado no navegador.
 - Gerar `Apresentação` a partir de fonte curta e confirmar renderizacao dos slides, navegacao, tela cheia e exportacao/impressao no navegador.
 - Confirmar que visual enrichment indisponivel nao quebra material nem PDF.
+- Professor: gerar ao menos `Plano de aula`, `Atividade avaliativa`, `Rubrica` e `Slides com notas` a partir de uma fonte real; conferir objetivos, habilidades, tempo, desenvolvimento, avaliacao, adaptacoes, evidencias/citacoes e slots visuais.
 - Confirmar que rate limit/401 continuam amigaveis para usuario anonimo ou sem sessao valida.
 
 Aceite minimo para liberar continuidade premium:
@@ -71,6 +73,8 @@ Passada estatica aplicada em 2026-05-18:
 - Cabecalhos compartilhados agora quebram acoes e subtitulos em telas estreitas, reduzindo compressao de botoes.
 - Caderno, Notebook, Simulado, ProfessorTurma, Instituicao, Meus Conteudos e Admin receberam ajustes conservadores de overflow, largura e CTA mobile.
 - Navegacao simplificada: modo instituicao deixou de repetir tres entradas para `/instituicao`; professor deixou de repetir `/professor` nos atalhos rapidos e removeu atalho interno duplicado para o Notebook.
+- Separacao de papeis Professor Premium+: shell do aluno nao exibe alternancia visivel para Professor/Escola; portal do professor nao oferece retorno primario para `/app`; Tiagao flutuante generico fica oculto em `/professor`, `/instituicao`, `/admin` e `/governo`.
+- Notebook do Professor deve validar tambem `Mensagem de intervencao`: rascunho profissional para aluno/familia/coordenacao, com motivo pedagogico, acao combinada, prazo de acompanhamento, revisao humana e sem promessa de resultado.
 
 Checklist manual pendente:
 

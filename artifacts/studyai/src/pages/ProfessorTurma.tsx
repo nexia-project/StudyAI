@@ -14,6 +14,15 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  AppEmptyState,
+  AppErrorState,
+  AppLoadingState,
+  AppMissionPanel,
+  AppSectionShell,
+  AppStatusBadge,
+  PageHeader,
+} from "@/components/Layout";
 
 interface Student {
   id: string; name: string; email: string | null; phone?: string | null;
@@ -411,21 +420,21 @@ export default function ProfessorTurmaPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50 flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="w-8 h-8 text-violet-500 animate-spin mx-auto mb-3" />
-          <p className="text-slate-500 text-sm">Carregando turma...</p>
-        </div>
+        <AppLoadingState title="Carregando turma" description="Buscando alunos, tarefas, ranking e diagnóstico da turma." />
       </div>
     );
   }
 
   if (!turma) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-slate-400 mb-4">Turma não encontrada</p>
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        <AppErrorState
+          title="Turma não encontrada"
+          description="A turma pode ter sido removida ou você não tem acesso a ela."
+          action={
           <Button onClick={() => navigate("/professor")} className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl">Voltar</Button>
-        </div>
+          }
+        />
       </div>
     );
   }
@@ -512,30 +521,34 @@ export default function ProfessorTurmaPage() {
         {selectedStudent && <StudentDetail student={selectedStudent} onClose={() => setSelectedStudent(null)} />}
       </AnimatePresence>
 
-      {/* ── Header ── */}
-      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-slate-100">
-        <div className="max-w-6xl mx-auto px-4 py-3">
-          <div className="flex items-center gap-3 mb-2">
+      <PageHeader
+        icon={<GraduationCap />}
+        title={turma.name}
+        subtitle="Portal do professor > Turmas > Diagnóstico e acompanhamento"
+        meta={
+          <>
+            {turma.serie && <AppStatusBadge tone="violet">{turma.serie}</AppStatusBadge>}
+            {turma.subject && <AppStatusBadge tone="slate">{turma.subject}</AppStatusBadge>}
+            <AppStatusBadge tone={atRiskStudents.length > 0 ? "rose" : "emerald"}>{atRiskStudents.length} em risco</AppStatusBadge>
+          </>
+        }
+        actions={
+          <>
             <button onClick={() => navigate("/professor")}
-              className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 font-semibold text-sm transition-colors">
-              <ArrowLeft className="w-4 h-4" /> Minhas Turmas
+              className="hidden sm:flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-600 hover:text-slate-900 font-semibold text-xs transition-colors">
+              <ArrowLeft className="w-4 h-4" /> Turmas
             </button>
-            <div className="h-4 w-px bg-slate-200" />
-            <h1 className="font-black text-slate-800 text-base truncate">{turma.name}</h1>
-            <div className="flex items-center gap-2 ml-auto">
-              {turma.serie && <span className="text-xs bg-violet-100 text-violet-700 font-bold px-2.5 py-0.5 rounded-full">{turma.serie}</span>}
-              {turma.subject && <span className="text-xs bg-slate-100 text-slate-600 font-bold px-2.5 py-0.5 rounded-full hidden sm:inline">{turma.subject}</span>}
-              {/* Invite code */}
-              <button onClick={copyCode}
-                className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 transition-colors rounded-xl px-3 py-1.5">
-                <span className="text-xs text-slate-500">Código:</span>
-                <span className="font-mono font-black text-violet-700 text-xs tracking-widest">{turma.inviteCode}</span>
-                {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
-              </button>
-            </div>
-          </div>
-
-          {/* Tabs */}
+            <button onClick={copyCode}
+              className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 transition-colors rounded-xl px-3 py-2">
+              <span className="hidden sm:inline text-xs text-slate-500">Código:</span>
+              <span className="font-mono font-black text-violet-700 text-xs tracking-widest">{turma.inviteCode}</span>
+              {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+            </button>
+          </>
+        }
+      />
+      <div className="sticky top-[73px] z-10 bg-white/80 backdrop-blur-xl border-b border-slate-100 md:top-[73px]">
+        <div className="max-w-6xl mx-auto px-4 py-2">
           <div className="flex gap-1">
             {tabs.map(tab => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
@@ -552,8 +565,8 @@ export default function ProfessorTurmaPage() {
                 )}
               </button>
             ))}
-          </div>
         </div>
+      </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 pt-6">
@@ -564,6 +577,33 @@ export default function ProfessorTurmaPage() {
           ══════════════════════════════════════════ */}
           {activeTab === "dashboard" && dashboard && (
             <motion.div key="dashboard" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+
+              <AppMissionPanel
+                eyebrow="Missão da turma"
+                title={premiumDiagnostic.recommendation}
+                description="Use os sinais disponíveis para escolher entre convite, contato, atividade diagnóstica ou revisão guiada."
+                evidence={`${students.length} aluno(s), ${premiumDiagnostic.noSimCount} sem simulado, ${premiumDiagnostic.lowActivityStudents.length} com sinal de atenção.`}
+                status={<AppStatusBadge tone={atRiskStudents.length > 0 ? "rose" : students.length === 0 ? "amber" : "emerald"} className="bg-white/15 text-white border-white/25">{students.length === 0 ? "setup inicial" : atRiskStudents.length > 0 ? "atenção" : "estável"}</AppStatusBadge>}
+                action={
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab(students.length === 0 ? "alunos" : "tarefas")}
+                      className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-violet-700 shadow-sm hover:bg-violet-50"
+                    >
+                      {students.length === 0 ? "Ver código da turma" : "Criar tarefa"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={exportClassDiagnosticCsv}
+                      disabled={students.length === 0}
+                      className="rounded-xl border border-white/25 bg-white/15 px-4 py-2 text-sm font-bold text-white hover:bg-white/25 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Exportar CSV
+                    </button>
+                  </div>
+                }
+              />
 
               {/* Alert: At Risk */}
               {atRiskStudents.length > 0 && (
@@ -613,15 +653,11 @@ export default function ProfessorTurmaPage() {
 
               {/* Diagnóstico premium B2B */}
               <div className="grid grid-cols-1 lg:grid-cols-[1.3fr,0.7fr] gap-4">
-                <div className="bg-white rounded-2xl border border-violet-100 shadow-sm p-5">
-                  <div className="flex items-start justify-between gap-3 mb-4">
-                    <div>
-                      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-violet-500">Diagnóstico premium da turma</p>
-                      <h3 className="font-black text-slate-900 text-lg mt-1">Risco e baixa atividade</h3>
-                      <p className="text-xs text-slate-500 mt-1">
-                        Baseado em status, XP, simulados, acerto médio e dias ativos disponíveis nesta turma.
-                      </p>
-                    </div>
+                <AppSectionShell
+                  eyebrow="Diagnóstico premium da turma"
+                  title="Risco e baixa atividade"
+                  description="Baseado em status, XP, simulados, acerto médio e dias ativos disponíveis nesta turma."
+                  actions={
                     <button
                       type="button"
                       onClick={exportClassDiagnosticCsv}
@@ -632,14 +668,15 @@ export default function ProfessorTurmaPage() {
                       <Download className="w-3.5 h-3.5" />
                       Exportar CSV
                     </button>
-                  </div>
+                  }
+                >
 
                   {students.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-5 text-center">
-                      <Users className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                      <p className="font-bold text-slate-700">Sem alunos para diagnosticar</p>
-                      <p className="text-xs text-slate-500 mt-1">Compartilhe o código da turma e publique uma atividade diagnóstica inicial.</p>
-                    </div>
+                    <AppEmptyState
+                      icon={<Users />}
+                      title="Sem alunos para diagnosticar"
+                      description="Compartilhe o código da turma e publique uma atividade diagnóstica inicial."
+                    />
                   ) : premiumDiagnostic.lowActivityStudents.length > 0 ? (
                     <div className="space-y-2">
                       {premiumDiagnostic.lowActivityStudents.slice(0, 5).map(({ student, signals }) => (
@@ -673,7 +710,7 @@ export default function ProfessorTurmaPage() {
                       <p className="text-xs text-emerald-700 mt-1">Continue monitorando após novas atividades e simulados.</p>
                     </div>
                   )}
-                </div>
+                </AppSectionShell>
 
                 <div className="space-y-3">
                   <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
@@ -1148,7 +1185,7 @@ export default function ProfessorTurmaPage() {
               {perfLoading ? (
                 <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-violet-400 animate-spin" /></div>
               ) : !perfData ? (
-                <div className="text-center py-20 text-slate-400 text-sm">Erro ao carregar dados de desempenho</div>
+                <AppErrorState description="Erro ao carregar dados de desempenho da turma." />
               ) : (
                 <>
                   {/* KPI summary */}

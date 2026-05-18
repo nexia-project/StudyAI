@@ -6,7 +6,7 @@ import {
   BarChart3, Search, Plus, Copy, Check, Trash2, ChevronRight, ChevronLeft,
   GraduationCap, RefreshCw, AlertTriangle, TrendingUp, TrendingDown,
   Sparkles, Send, Loader2, Eye, Menu, ArrowLeft, CheckCircle2, Activity,
-  Zap, Target, Bell, Globe, Layers, BookMarked, Map, Star, Shield,
+  Zap, Target, Bell, Globe, Layers, BookMarked, Map, Star,
   Wand2, FileText, LayoutTemplate, Network, Microscope, Download,
   Database, ClipboardList, Filter, Calendar, ChevronDown as ChevronDownIcon, X, Lock,
   History, Presentation, Image as ImageIcon,
@@ -14,6 +14,14 @@ import {
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
 import { EstudioIA } from "@/components/EstudioIA";
+import {
+  AppEmptyState,
+  AppErrorState,
+  AppLoadingState,
+  AppMissionPanel,
+  AppSectionShell,
+  AppStatusBadge,
+} from "@/components/Layout";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Section = "dashboard" | "turmas" | "planoaula" | "alunos" | "conteudos" | "estudio" | "pesquisa" | "caderno" | "provas" | "banco" | "atividades" | "assistente" | "relatorios" | "historico";
@@ -346,8 +354,8 @@ export default function ProfessorPage() {
   }, []);
 
   if (!authChecked) return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50/40 flex items-center justify-center">
-      <Loader2 className="w-8 h-8 text-violet-600 animate-spin" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50/40 flex items-center justify-center p-4">
+      <AppLoadingState title="Validando portal do professor" description="Conferindo seu acesso e preparando as turmas." />
     </div>
   );
   if (!hasAccess) return null;
@@ -407,10 +415,7 @@ export default function ProfessorPage() {
             <h1 className="text-gray-900 font-black text-base tracking-tight truncate">{currentNav?.label}</h1>
           </div>
           <div className="ml-auto flex items-center gap-3">
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-emerald-700 text-[10px] font-bold tracking-wider">CLAUDE AI ATIVO</span>
-            </div>
+            <AppStatusBadge tone="emerald" className="hidden md:inline-flex">Claude AI ativo</AppStatusBadge>
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center shadow-md shadow-violet-600/20">
               <span className="text-white text-xs font-black">{(user as any)?.firstName?.[0] ?? "P"}</span>
             </div>
@@ -485,32 +490,24 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
   return (
     <div className="space-y-7">
 
-      {/* HERO */}
-      <motion.div {...fadeUp} className="relative overflow-hidden rounded-3xl border border-violet-200/60 bg-gradient-to-br from-violet-600 via-violet-600 to-fuchsia-600 p-6 lg:p-8 text-white shadow-xl shadow-violet-600/20">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_50%)] pointer-events-none" />
-        <div className="absolute -bottom-12 -right-12 w-48 h-48 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-        <div className="relative flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur border border-white/20 mb-4">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span className="text-[11px] font-bold tracking-wider uppercase">Powered by Claude AI</span>
+      <motion.div {...fadeUp}>
+        <AppMissionPanel
+          eyebrow="Painel do professor"
+          title="Priorize a próxima ação pedagógica."
+          description="Acompanhe turmas, crie diagnósticos e transforme sinais de desempenho em tarefa, revisão ou contato com o aluno."
+          evidence={`${data.totalStudents} aluno(s), ${data.totalTurmas} turma(s), engajamento geral de ${data.engagementRate}%.`}
+          status={<AppStatusBadge tone={data.engagementRate >= 70 ? "emerald" : data.engagementRate >= 40 ? "amber" : "rose"} className="bg-white/15 text-white border-white/25">Engajamento {data.engagementRate}%</AppStatusBadge>}
+          action={
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => onNavigate("provas")} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-violet-700 font-bold text-sm shadow-lg shadow-black/10 hover:shadow-xl hover:scale-[1.02] transition-all">
+                <FileQuestion className="w-4 h-4" /> Nova Prova
+              </button>
+              <button onClick={() => onNavigate("planoaula")} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/15 backdrop-blur border border-white/25 text-white font-bold text-sm hover:bg-white/25 transition-all">
+                <Wand2 className="w-4 h-4" /> Plano de Aula
+              </button>
             </div>
-            <h2 className="text-2xl lg:text-4xl font-black tracking-tight leading-tight">
-              Bem-vindo de volta, professor!
-            </h2>
-            <p className="text-white/85 text-sm lg:text-base mt-2 leading-relaxed">
-              Crie provas, planos de aula, redações e simulados em segundos. Tudo com qualidade editorial premium.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button onClick={() => onNavigate("provas")} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-violet-700 font-bold text-sm shadow-lg shadow-black/10 hover:shadow-xl hover:scale-[1.02] transition-all">
-              <FileQuestion className="w-4 h-4" /> Nova Prova
-            </button>
-            <button onClick={() => onNavigate("planoaula")} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/15 backdrop-blur border border-white/25 text-white font-bold text-sm hover:bg-white/25 transition-all">
-              <Wand2 className="w-4 h-4" /> Plano de Aula
-            </button>
-          </div>
-        </div>
+          }
+        />
       </motion.div>
 
       {/* KPI Row — premium cards */}
@@ -589,13 +586,16 @@ function DashboardSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: 
             </button>
           </div>
           {data.turmas.length === 0 ? (
-            <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-2xl">
-              <GraduationCap className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-              <p className="text-gray-500 text-sm font-semibold">Nenhuma turma criada ainda</p>
-              <button onClick={() => onNavigate("turmas")} className="inline-flex items-center gap-1.5 text-violet-600 hover:text-violet-700 mt-3 text-sm font-bold transition-colors">
-                <Plus className="w-3.5 h-3.5" /> Criar primeira turma
-              </button>
-            </div>
+            <AppEmptyState
+              icon={<GraduationCap />}
+              title="Nenhuma turma criada ainda"
+              description="Crie uma turma piloto para gerar código de convite, aplicar uma atividade curta e começar o diagnóstico."
+              action={
+                <button onClick={() => onNavigate("turmas")} className="inline-flex items-center gap-1.5 text-violet-600 hover:text-violet-700 text-sm font-bold transition-colors">
+                  <Plus className="w-3.5 h-3.5" /> Criar primeira turma
+                </button>
+              }
+            />
           ) : (
             <div className="grid sm:grid-cols-2 gap-3">
               {data.turmas.slice(0, 4).map((t, i) => {
@@ -831,13 +831,16 @@ function TurmasSection({ apiFetch, onNavigate }: { apiFetch: (u: string, o?: Req
       </AnimatePresence>
 
       {turmas.length === 0 ? (
-        <div className="text-center py-20 border border-gray-200 rounded-2xl">
-          <GraduationCap className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-          <p className="text-gray-500 mb-4">Nenhuma turma ainda</p>
-          <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 bg-violet-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl">
-            <Plus className="w-4 h-4" /> Criar primeira turma
-          </button>
-        </div>
+        <AppEmptyState
+          icon={<GraduationCap />}
+          title="Nenhuma turma ainda"
+          description="Comece por uma turma piloto. Depois compartilhe o código de convite e publique uma atividade diagnóstica."
+          action={
+            <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 bg-violet-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl">
+              <Plus className="w-4 h-4" /> Criar primeira turma
+            </button>
+          }
+        />
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {turmas.map((t, i) => (
@@ -1729,8 +1732,8 @@ function RelatoriosSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
     window.print();
   }
 
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-violet-600 animate-spin" /></div>;
-  if (!data) return <div className="text-gray-500 text-center py-20">Erro ao carregar relatórios.</div>;
+  if (loading) return <AppLoadingState title="Carregando relatórios" description="Consolidando sinais de turmas, alunos e atividades." />;
+  if (!data) return <AppErrorState description="Não foi possível carregar os relatórios do professor." />;
 
   return (
     <div className="space-y-5">
@@ -1766,21 +1769,12 @@ function RelatoriosSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
         ))}
       </div>
 
-      <div className="rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-fuchsia-50 p-5">
-        <div className="flex items-start gap-3">
-          <Shield className="w-5 h-5 text-violet-600 mt-0.5" />
-          <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-violet-600">
-              Export premium v2
-            </p>
-            <h3 className="mt-1 text-sm font-black text-slate-900">
-              CSV e PDF com decisão pedagógica, não só tabela.
-            </h3>
-            <p className="mt-1 text-xs leading-relaxed text-slate-600">
-              O CSV adiciona sinais disponíveis, ação recomendada e lacunas de dados por aluno. O PDF/print preserva estes critérios para revisão humana antes de qualquer ação institucional.
-            </p>
-          </div>
-        </div>
+      <AppSectionShell
+        eyebrow="Export premium v2"
+        title="CSV e PDF com decisão pedagógica, não só tabela."
+        description="O CSV adiciona sinais disponíveis, ação recomendada e lacunas de dados por aluno. O PDF/print preserva estes critérios para revisão humana antes de qualquer ação institucional."
+        className="border-violet-200 bg-gradient-to-br from-violet-50 to-fuchsia-50"
+      >
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
           {[
             "Sem inventar último login, tempo real de sessão ou intervenção não registrada.",
@@ -1792,7 +1786,7 @@ function RelatoriosSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
             </div>
           ))}
         </div>
-      </div>
+      </AppSectionShell>
 
       {data.heatMap.length > 0 && (
         <div className="rounded-2xl border border-gray-200 bg-white p-5">

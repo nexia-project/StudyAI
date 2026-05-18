@@ -15,6 +15,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { useStudyAuth } from "@/hooks/useStudyAuth";
 import { EstudioIA } from "@/components/EstudioIA";
+import {
+  AppEmptyState,
+  AppErrorState,
+  AppLoadingState,
+  AppMissionPanel,
+  AppSectionShell,
+  AppStatusBadge,
+  PageHeader,
+} from "@/components/Layout";
 
 const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
 
@@ -282,22 +291,20 @@ function InstituicaoIATab({ institutionId, primaryColor }: { institutionId: stri
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <RefreshCw className="w-8 h-8 text-violet-400 animate-spin" />
-      </div>
+      <AppLoadingState title="Carregando inteligência IA" description="Consolidando uso de recursos, diagnósticos e conteúdo gerado." />
     );
   }
   if (error || !stats) {
-    return <div className="text-center py-12 text-red-300">{error ?? "Sem dados"}</div>;
+    return <AppErrorState description={error ?? "Sem dados de IA para a instituição."} />;
   }
 
   if (stats.scope.studentCount === 0) {
     return (
-      <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-12 text-center">
-        <Brain className="w-12 h-12 text-slate-500 mx-auto mb-3" />
-        <h3 className="text-white font-bold mb-1">Nenhum aluno matriculado ainda</h3>
-        <p className="text-slate-400 text-sm">Adicione alunos às turmas para ver o uso de IA da instituição.</p>
-      </div>
+      <AppEmptyState
+        icon={<Brain />}
+        title="Nenhum aluno matriculado ainda"
+        description="Adicione alunos às turmas para ver o uso de IA da instituição."
+      />
     );
   }
 
@@ -560,54 +567,61 @@ export default function InstituicaoPage() {
 
   // ── Loading ──
   if (loading || authLoading) return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900 flex items-center justify-center">
-      <RefreshCw className="w-8 h-8 text-violet-400 animate-spin" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900 flex items-center justify-center p-4">
+      <AppLoadingState title="Carregando portal institucional" description="Validando vínculo, permissões e dados agregados." />
     </div>
   );
 
   // ── Error states ──
   if (error === "nao_autenticado") return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900 flex items-center justify-center p-4">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-        className="bg-slate-800/60 border border-slate-700 rounded-2xl p-8 max-w-md text-center">
-        <Lock className="w-12 h-12 text-violet-400 mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-white mb-2">Acesso Restrito</h2>
-        <p className="text-slate-400 mb-6">Faça login para acessar o portal institucional.</p>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <AppErrorState
+          title="Acesso restrito"
+          description="Faça login para acessar o portal institucional."
+          action={
         <Button onClick={() => { sessionStorage.setItem("auth_return_to", "/instituicao"); navigate("/instituicao/login"); }}
           className="w-full bg-violet-600 hover:bg-violet-700 text-white rounded-xl">
           Entrar no Portal
         </Button>
+          }
+        />
       </motion.div>
     </div>
   );
 
   if (error === "aguardando_aprovacao") return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900 flex items-center justify-center p-4">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-        className="bg-slate-800/60 border border-slate-700 rounded-2xl p-8 max-w-md text-center">
-        <Clock className="w-14 h-14 text-amber-400 mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-white mb-2">Aguardando Aprovação</h2>
-        <p className="text-slate-400 mb-2">Sua conta foi criada com sucesso, mas o acesso ao portal institucional requer aprovação do administrador.</p>
-        <p className="text-slate-500 text-sm mb-6">Entre em contato com o administrador da sua instituição para liberar o acesso.</p>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <AppEmptyState
+          icon={<Clock />}
+          title="Aguardando aprovação"
+          description="Sua conta foi criada, mas o acesso ao portal institucional requer aprovação do administrador."
+          action={
         <Button onClick={() => navigate("/app")} variant="outline"
           className="border-slate-600 text-slate-300 hover:bg-slate-700 rounded-xl">
           Ir para o App
         </Button>
+          }
+        />
       </motion.div>
     </div>
   );
 
   if (error === "sem_instituicao") return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900 flex items-center justify-center p-4">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-        className="bg-slate-800/60 border border-slate-700 rounded-2xl p-8 max-w-md text-center">
-        <Building2 className="w-12 h-12 text-slate-500 mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-white mb-2">Sem Instituição Vinculada</h2>
-        <p className="text-slate-400 mb-6">Você ainda não está vinculado a nenhuma instituição. Peça o link de convite ao administrador.</p>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <AppEmptyState
+          icon={<Building2 />}
+          title="Sem instituição vinculada"
+          description="Você ainda não está vinculado a nenhuma instituição. Peça o link de convite ao administrador."
+          action={
         <Button onClick={() => navigate("/app")}
           className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl">
           Voltar ao Início
         </Button>
+          }
+        />
       </motion.div>
     </div>
   );
@@ -673,44 +687,60 @@ export default function InstituicaoPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900">
+      <PageHeader
+        icon={<Building2 />}
+        title={institution.name}
+        subtitle={`Portal institucional${(institution.city || institution.state) ? ` > ${[institution.city, institution.state].filter(Boolean).join(", ")}` : ""}`}
+        meta={
+          <>
+            {institution.planType && <AppStatusBadge tone="violet">{planLabels[institution.planType] ?? institution.planType}</AppStatusBadge>}
+            <AppStatusBadge tone={isAdmin ? "emerald" : "slate"}>{myRole}</AppStatusBadge>
+            <AppStatusBadge tone={pendingMembers.length > 0 ? "amber" : "emerald"}>{pendingMembers.length} aprovação</AppStatusBadge>
+          </>
+        }
+        actions={
+          <>
+            <button onClick={() => navigate("/app")}
+              className="hidden sm:flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-600 hover:text-slate-900 font-semibold text-xs transition-colors">
+              <ArrowLeft className="w-4 h-4" /> App
+            </button>
+            <button onClick={loadData} className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors">
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          </>
+        }
+      />
+
       <div className="max-w-5xl mx-auto px-4 py-8">
 
-        {/* Header */}
-        <div className="flex items-start gap-3 mb-6">
-          <button onClick={() => navigate("/app")}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors mt-1">
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-3 flex-1">
-            {institution.logoUrl ? (
-              <img src={institution.logoUrl} alt={institution.name}
-                className="w-12 h-12 rounded-xl object-cover border border-slate-700" />
-            ) : (
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-black text-xl"
-                style={{ background: primaryColor }}>
-                {institution.name.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <div>
-              <h1 className="text-2xl font-bold text-white">{institution.name}</h1>
-              <div className="flex items-center gap-2 flex-wrap">
-                {(institution.city || institution.state) && (
-                  <p className="text-slate-400 text-sm">{[institution.city, institution.state].filter(Boolean).join(", ")}</p>
-                )}
-                {institution.planType && (
-                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                    style={{ background: `${primaryColor}20`, color: primaryColor }}>
-                    {planLabels[institution.planType] ?? institution.planType}
-                  </span>
-                )}
-                <span className="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-300 capitalize">{myRole}</span>
-              </div>
+        <AppMissionPanel
+          eyebrow="Missão do gestor"
+          title={institutionRecommendation}
+          description="Acompanhe cobertura, tração e relatórios institucionais sem inventar métricas ausentes."
+          evidence={`${stats.studentCount} aluno(s), ${stats.teacherCount} professor(es), ${stats.turmaCount} turma(s), XP médio ${stats.avgXp.toLocaleString("pt-BR")}.`}
+          status={<AppStatusBadge tone={stats.studentCount === 0 ? "amber" : stats.avgXp >= 150 ? "emerald" : "amber"} className="bg-white/15 text-white border-white/25">{stats.studentCount === 0 ? "setup" : "diagnóstico"}</AppStatusBadge>}
+          action={
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => { setActiveTab("relatorios"); if (!report) loadReport(); }}
+                className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-violet-700 shadow-sm hover:bg-violet-50"
+              >
+                Ver relatório
+              </button>
+              {report && (
+                <button
+                  type="button"
+                  onClick={exportInstitutionReportCsv}
+                  className="rounded-xl border border-white/25 bg-white/15 px-4 py-2 text-sm font-bold text-white hover:bg-white/25"
+                >
+                  Exportar CSV
+                </button>
+              )}
             </div>
-          </div>
-          <button onClick={loadData} className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-xl transition-colors">
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        </div>
+          }
+          className="mb-6"
+        />
 
         {/* Tabs */}
         <div className="flex gap-1 bg-slate-800/60 p-1 rounded-2xl mb-6 overflow-x-auto">
@@ -1033,9 +1063,20 @@ export default function InstituicaoPage() {
         {activeTab === "relatorios" && (
           <div className="space-y-4">
             {loadingReport && !report && (
-              <div className="flex items-center justify-center py-16">
-                <RefreshCw className="w-8 h-8 text-violet-400 animate-spin" />
-              </div>
+              <AppLoadingState title="Carregando relatório institucional" description="Consolidando turmas, alunos e sinais disponíveis." />
+            )}
+            {!loadingReport && !report && (
+              <AppEmptyState
+                icon={<FileText />}
+                title="Relatório ainda não carregado"
+                description="Carregue o relatório para habilitar diagnóstico por turma e exportação CSV."
+                action={
+                  <button onClick={loadReport}
+                    className="flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white hover:bg-violet-500 transition-colors">
+                    <RefreshCw className="w-4 h-4" /> Carregar relatório
+                  </button>
+                }
+              />
             )}
             {report && (
               <>
@@ -1056,15 +1097,12 @@ export default function InstituicaoPage() {
                   ))}
                 </div>
 
-                <div className="bg-slate-800/60 border border-violet-500/30 rounded-2xl p-5">
-                  <div className="flex items-start justify-between gap-3 mb-4">
-                    <div>
-                      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-violet-300">Diagnóstico de relatório</p>
-                      <h3 className="text-white font-semibold">Turmas que precisam de atenção</h3>
-                      <p className="text-slate-400 text-xs mt-1">
-                        Sinal calculado com XP médio, volume de simulados e flashcards do relatório atual.
-                      </p>
-                    </div>
+                <AppSectionShell
+                  eyebrow="Diagnóstico de relatório"
+                  title="Turmas que precisam de atenção"
+                  description="Sinal calculado com XP médio, volume de simulados e flashcards do relatório atual."
+                  className="border-violet-500/30 bg-white/95"
+                  actions={
                     <button
                       type="button"
                       onClick={exportInstitutionReportCsv}
@@ -1074,7 +1112,8 @@ export default function InstituicaoPage() {
                       <Download className="w-3.5 h-3.5" />
                       Exportar CSV
                     </button>
-                  </div>
+                  }
+                >
 
                   {report.totalStudents === 0 ? (
                     <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/50 p-4 text-center">
@@ -1106,7 +1145,7 @@ export default function InstituicaoPage() {
                     <p className="text-[11px] font-black uppercase tracking-[0.16em] text-violet-300">Próxima ação do gestor</p>
                     <p className="text-sm text-slate-200 mt-1 leading-relaxed">{institutionRecommendation}</p>
                   </div>
-                </div>
+                </AppSectionShell>
 
                 {report.turmaBreakdown.length > 0 && (
                   <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-5">

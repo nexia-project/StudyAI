@@ -574,6 +574,51 @@ export default function SimuladoEnemPage() {
     const weakestSubject = subjects.find(subject => subject.erros > 0);
     const weakestSkill = skillPerformance.find(item => item.erros > 0);
     if (total > 0) {
+      const plannedSeconds = Math.round(qtd * 4 * 60);
+      const timeTaken = Math.max(0, plannedSeconds - tempoRestante);
+      fetch("/api/history/simulado", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          materia: `ENEM - ${diaInfo?.nome ?? "Simulado"}`,
+          titulo: `Simulado ENEM - Dia ${diaSelecionado}`,
+          score: total - erros.length,
+          total,
+          timeTaken,
+          nota: `${accuracy}%`,
+          answers: {
+            source: "simulado-enem",
+            dia: diaSelecionado,
+            accuracy,
+            answered: Object.keys(respostas).length,
+            questions: questoes.map((q) => ({
+              numero: q.numero,
+              materia: q.materia,
+              selectedAnswer: respostas[q.numero] ?? null,
+              correctAnswer: q.gabarito,
+              isCorrect: respostas[q.numero] === q.gabarito,
+              dificuldade: q.dificuldade,
+              area: getQuestionArea(q, diaInfo),
+              competencia: getQuestionCompetency(q),
+              habilidade: getQuestionSkill(q),
+              objetoConhecimento: normalizeOptional(q.objetoConhecimento),
+            })),
+            errorPatterns: errorPatterns.map((pattern) => ({
+              key: pattern.key,
+              count: pattern.count,
+              severity: pattern.severity,
+            })),
+            recoveryMission: {
+              title: recoveryMission.title,
+              estimatedTime: recoveryMission.estimatedTime,
+              check: recoveryMission.check,
+            },
+          },
+        }),
+      }).catch(() => {});
+    }
+    if (total > 0) {
       saveSimuladoRecoveryMission({
         title: recoveryMission.title,
         subject: weakestSkill?.label ?? weakestSubject?.materia ?? diaInfo?.nome ?? "ENEM",
@@ -620,7 +665,7 @@ export default function SimuladoEnemPage() {
       }),
     });
     setFase("resultado");
-  }, [diaSelecionado, questoes, respostas]);
+  }, [diaSelecionado, qtd, questoes, respostas, tempoRestante]);
 
   function responder(alt: string) {
     setRespostas(r => ({ ...r, [questoes[atual].numero]: alt }));

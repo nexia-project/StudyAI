@@ -21,6 +21,7 @@ Este documento marca o que ja foi entregue, o que esta em validacao e a ordem co
 | 8 | Content curation premium | Concluido/deployado | plano mestre | Checklist e status manual local sem inventar score pedagogico. |
 | 9 | Next-best-action engine | Concluido/deployado | plano mestre | Home combina Caderno, Simulado, Notebook, curadoria e plano recente em missao unica. |
 | 10 | Hermes quality loop + real-pain agents primeira leva | Concluido/deployado | plano mestre | `auditor_pedagogico`, `notebook_rag_quality`, `professor_success` no catalogo/status. |
+| 12 | Hermes Caderno de Erros Intelligence | Implementado/aguarda deploy | lote atual | `caderno_erros_intelligence` no `daily-learn`, catalogo/status e recomendacao estruturada com lacunas de instrumentacao. |
 | 11 | Comunicacao institutional WhatsApp foundation | Concluido/deployado | plano mestre | Fundacao institucional pronta, sem envio real indevido. |
 
 ## Em validacao manual
@@ -35,12 +36,10 @@ Este documento marca o que ja foi entregue, o que esta em validacao e a ordem co
 ## Proximas entregas por ordem
 
 1. **Student Success / `sucesso_aluno`**: consolidar sinais de aluno travado, acao segura e metrica no Hermes. Aceite: observa sem estudo, sem dias, erro repetido, simulado abandonado, chat sem pratica e falta de missao; gera recomendacao estruturada sem envio real.
-2. **Simulado Intelligence**: transformar resultado/abandono/recuperacao em diagnostico Hermes. Aceite: recomenda habilidade/materia fraca sem prometer nota e sem inventar metadado ausente.
-3. **Caderno de Erros Intelligence**: detectar recorrencia e fechamento do loop de revisao. Aceite: recomenda revisao/Tiagao corretor com evidencia de notas, missoes e historico local.
-4. **Custos IA Optimizer**: recomendar cache/roteamento/limite sem trocar provider automaticamente. Aceite: custo por entrega util, latencia e qualidade seguem auditaveis.
-5. **UX/Product Auditor**: priorizar friccao real por papel, mobile e CTA. Aceite: recomenda mudanca pequena com criterio de QA manual.
-6. **Content Gap/CQO avancado**: priorizar lacunas por demanda/risco/cobertura. Aceite: plano de curadoria/ingestao com revisao humana.
-7. **Institution Success / B2B ROI**: medir adocao, risco e valor institucional agregado. Aceite: sem ranking sensivel indevido e com revisao humana obrigatoria.
+2. **Custos IA Optimizer**: recomendar cache/roteamento/limite sem trocar provider automaticamente. Aceite: custo por entrega util, latencia e qualidade seguem auditaveis.
+3. **UX/Product Auditor**: priorizar friccao real por papel, mobile e CTA. Aceite: recomenda mudanca pequena com criterio de QA manual.
+4. **Content Gap/CQO avancado**: priorizar lacunas por demanda/risco/cobertura. Aceite: plano de curadoria/ingestao com revisao humana.
+5. **Institution Success / B2B ROI**: medir adocao, risco e valor institucional agregado. Aceite: sem ranking sensivel indevido e com revisao humana obrigatoria.
 
 ## Hermes agents roadmap
 
@@ -50,8 +49,8 @@ Este documento marca o que ja foi entregue, o que esta em validacao e a ordem co
 | 2 | `notebook_rag_quality` | Feito | Validar feedback/export real no Admin | Notebook RAG, material events |
 | 3 | `student_success` / `sucesso_aluno` | Em execucao neste lote | Enriquecer sinais estruturados, rota e payload Admin | `users`, `user_activity`, `simulado_results`, `activity_events`, `study_schedules` |
 | 4 | `professor_success` | Feito primeira leva | Validar turma/relatorio/Notebook Professor em dados reais | Relatorios B2B, `sucesso_aluno` |
-| 5 | `simulado_intelligence` | Proximo | Implementar recomendacao Hermes para abandono/recuperacao | Simulado premium, Caderno |
-| 6 | `caderno_erros_intelligence` | Proximo | Implementar recorrencia/revisao concluida | Caderno premium, Home NBA |
+| 5 | `simulado_intelligence` | Implementado/aguarda deploy | Validar daily-learn, descoberta/inbox e persistencia granular do resultado ENEM | Simulado premium, Caderno, `activity_events` |
+| 6 | `caderno_erros_intelligence` | Implementado/aguarda deploy | Validar descoberta/inbox no Admin e persistir missoes locais no backend em lote futuro | Caderno premium, Home NBA, `simulado_results` |
 | 7 | `custos_ia_optimizer` | Parcial/TODO | Recomendar custo sem trocar provider | Admin IA & Custos |
 | 8 | `ux_product_auditor` | Parcial | Consolidar auditoria de friccao mobile/CTA | QA sintetico, manual QA |
 | 9 | `content_gap_cqo_avancado` | Parcial | Priorizar lacunas por demanda | CQO, knowledge-index |

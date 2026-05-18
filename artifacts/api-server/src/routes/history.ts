@@ -7,6 +7,7 @@ import {
   usersTable,
 } from "@workspace/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
+import { trackEvent } from "../lib/trackEvent";
 
 async function awardXp(userId: string, amount: number) {
   if (amount <= 0) return;
@@ -91,6 +92,21 @@ router.post("/history/simulado", async (req, res) => {
   const accuracy = total > 0 ? score / total : 0;
   const xpAwarded = Math.round(50 + accuracy * 150);
   awardXp(req.userId!, xpAwarded).catch(() => {});
+  trackEvent({
+    userId: req.userId!,
+    eventType: "simulado_completed",
+    entityType: "simulado",
+    entityId: inserted.id,
+    metadata: {
+      materia,
+      titulo: titulo ?? null,
+      score,
+      total,
+      accuracy: Math.round(accuracy * 100),
+      timeTaken: timeTaken ?? null,
+      hasAnswersPayload: answers != null,
+    },
+  });
   res.json({ id: inserted.id, xpAwarded });
 });
 

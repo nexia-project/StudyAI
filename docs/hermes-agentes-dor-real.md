@@ -32,8 +32,8 @@ Toda saida de agente Hermes deve seguir o padrao em `artifacts/api-server/src/li
 | 2 | Notebook RAG Quality | Aluno/Professor | Implementado primeira leva | `qa_sintetico.notebook_rag_lousa`, CQO, smoke Notebook |
 | 3 | Student Success | Aluno | Em consolidacao | `sucesso_aluno` |
 | 4 | Professor Success | Professor | Implementado primeira leva | `qa_sintetico.professor_gestor_relatorios`, `sucesso_aluno` |
-| 5 | Simulado Intelligence | Aluno | Parcial/TODO | Simulado premium, Caderno |
-| 6 | Caderno de Erros Intelligence | Aluno | Parcial/TODO | Caderno premium, Home next-best-action |
+| 5 | Simulado Intelligence | Aluno | Implementado neste lote | Simulado premium, Caderno |
+| 6 | Caderno de Erros Intelligence | Aluno | Implementado neste lote | Caderno premium, Home next-best-action, Simulado |
 | 7 | Custos IA Optimizer | Admin | Parcial/TODO | Admin IA & Custos, `gestao`, `monitor` |
 | 8 | UX/Product Auditor | Admin | Existente/parcial | `ux_layout`, `qa_sintetico` |
 | 9 | Content Gap/CQO avancado | Admin | Existente/parcial | `cqo_conteudo`, `knowledge-index` |
@@ -89,25 +89,25 @@ O catalogo operacional fica em `artifacts/api-server/src/lib/hermes/jobs/dor-rea
 
 ### 5. Simulado Intelligence
 
-- **Responsabilidade:** transformar resultado de simulado em diagnostico, treino e revisao.
-- **Sinais observados:** simulados iniciados/concluidos; erro por area/habilidade; recuperacao pendente/concluida.
-- **Evidencias:** `simulado_results`, eventos locais do Simulado, Caderno de Erros.
-- **Metricas:** conclusao de simulado; erros enviados ao Caderno; recuperacao concluida.
-- **Acoes:** priorizar habilidade fraca; abrir revisao no Caderno; sugerir treino curto.
-- **Limites de seguranca:** nao promete nota/aprovacao; nao inventa habilidade quando metadado falta.
-- **Saida Admin:** TODO da proxima leva.
-- **Status:** parcial.
+- **Responsabilidade:** avaliar simulados ENEM/concursos por qualidade das questoes, valor de aprendizagem, metadados e conclusao da jornada.
+- **Sinais observados:** questoes/blocos com erro muito alto; suspeita de gabarito errado por padrao agregado; competencia/habilidade/classificacao ausente ou fraca; baixa discriminacao; erros por interpretacao versus conteudo; simulado iniciado e nao concluido; recuperacao enviada/concluida.
+- **Evidencias:** `simulado_results`, `simulado_results.answers`, `activity_events.simulado_started/completed`, Caderno de Erros, `qa_sintetico.simulado_premium`.
+- **Metricas:** taxa de conclusao; erro medio por materia/bloco; cobertura de answers/metadados por questao; desvio padrao de score por materia; erros enviados ao Caderno; recuperacao concluida.
+- **Acoes:** auditar questoes/gabarito suspeito; priorizar habilidade ou materia fraca; completar classificacao; abrir revisao no Caderno; pedir instrumentacao granular quando faltar sinal.
+- **Limites de seguranca:** nao promete nota/aprovacao; nao altera gabarito automaticamente; nao inventa competencia/habilidade sem metadado; nao classifica questao individual sem evidencia granular.
+- **Saida Admin:** descoberta/inbox Hermes com recomendacao estruturada contendo evidencia, impacto, acao, metrica, criterios de aceite, confianca e alvo/modulo.
+- **Status:** implementado como `simulado_intelligence` no `daily-learn`.
 
 ### 6. Caderno de Erros Intelligence
 
-- **Responsabilidade:** detectar recorrencia de erro e fechar loop de revisao.
-- **Sinais observados:** notas de revisao; missoes pendentes; erro recorrente; revisao concluida.
-- **Evidencias:** `caderno_notes`, `studyai:hermes-learning-signal`, historico local.
-- **Metricas:** revisoes concluidas; streak; reducao de erro recorrente.
-- **Acoes:** sugerir revisao; acionar Tiagao em modo corretor; abrir lacuna de persistencia backend quando necessario.
-- **Limites de seguranca:** nao cria progresso global falso; toda acao do aluno e explicita.
-- **Saida Admin:** TODO da proxima leva.
-- **Status:** parcial.
+- **Responsabilidade:** transformar erros salvos no Caderno em inteligencia de revisao, recorrencia, recuperacao e lacunas de instrumentacao.
+- **Sinais observados:** notas de revisao por materia/habilidade; causas provaveis recorrentes; revisao salva/processada no Caderno; simulado posterior na mesma materia; missoes locais ainda sem persistencia backend.
+- **Evidencias:** `caderno_notes`, `simulado_results`, `studyai:hermes-learning-signal`, rascunho/missao/historico local do `error-review`.
+- **Metricas:** revisoes salvas/processadas; recorrencia por materia/habilidade; tempo ate acerto posterior por materia; missoes pendentes sem backend.
+- **Acoes:** abrir missao de revisao; sugerir exercicio similar; alertar professor/admin para recorrencia; pedir instrumentacao quando nao houver sinal persistido.
+- **Limites de seguranca:** nao cria progresso global falso; nao afirma recuperacao por item quando so existe dado por materia; nao contata professor/aluno automaticamente; toda acao do aluno e explicita.
+- **Saida Admin:** descoberta/inbox Hermes com recomendacao estruturada para Caderno de Erros e payload com `structuredActions`.
+- **Status:** implementado como `caderno_erros_intelligence` no `daily-learn`.
 
 ### 7. Custos IA Optimizer
 
@@ -157,12 +157,12 @@ O catalogo operacional fica em `artifacts/api-server/src/lib/hermes/jobs/dor-rea
 
 1. **Primeira leva segura:** `auditor_pedagogico`, `notebook_rag_quality`, `professor_success`; todos registrados no `daily-learn`, expostos no catalogo e persistindo recomendacoes padronizadas.
 2. **Consolidar Student Success:** manter `sucesso_aluno` como implementacao atual, enriquecendo sinais estruturados antes de decidir alias publico `student_success`.
-3. **Proxima leva:** Simulado Intelligence e Caderno de Erros Intelligence, porque ja existem sinais locais e jornadas premium.
+3. **Proxima leva:** Simulado Intelligence deve fechar resultado/abandono/recuperacao com persistencia backend; Caderno de Erros Intelligence ja roda no `daily-learn`.
 4. **Depois:** Custos IA Optimizer, UX/Product Auditor, Content Gap/CQO avancado e Institution Success/B2B ROI.
 
 ## Criterios de aceite
 
-- `POST /internal/hermes/daily-learn` inclui os tres agentes da primeira leva no array `ran`.
+- `POST /internal/hermes/daily-learn` inclui os agentes de dor real implementados (`auditor_pedagogico`, `notebook_rag_quality`, `professor_success`, `caderno_erros_intelligence`) no array `ran`.
 - `GET /api/agents/hermes/status` expõe `dorRealAgents` com prioridades, status, sinais, metricas, limites e sobreposicoes.
 - Toda descoberta da primeira leva persiste `payload.recommendation` com evidencia, impacto, recomendacao, acao/metrica, criterios de aceite, confianca e target/modulo.
 - Lacuna de observabilidade vira recomendacao de instrumentacao, nao metrica inventada.

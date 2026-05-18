@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { openai, OR } from "../lib/aiClient";
 import { requireAuth } from "../middlewares/requireAuth";
 import { cacheGet, cacheSave } from "../lib/semanticCache";
+import { trackEvent } from "../lib/trackEvent";
 import {
   enemDiaToArea,
   enemQuestaoToSimuladoApi,
@@ -129,6 +130,18 @@ Responda só JSON: { "temaTitulo": string, "textoMotivador": string, "comando": 
     };
 
     cacheSave("simulado-enem", ckEnem, JSON.stringify(data), OR.fast).catch(() => {});
+    trackEvent({
+      userId: req.userId!,
+      eventType: "simulado_started",
+      entityType: "simulado_enem",
+      metadata: {
+        dia,
+        area,
+        quantidade: questoes.length,
+        fonte: src,
+        anos: Array.isArray(anos) && anos.length ? anos : "all",
+      },
+    });
 
     res.json({
       ...data,

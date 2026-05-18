@@ -10,8 +10,10 @@ import { cqoConteudoDailyLearn } from "./jobs/cqo-conteudo";
 import { qaSinteticoDailyLearn } from "./jobs/qa-sintetico";
 import {
   auditorPedagogicoDailyLearn,
+  cadernoErrosIntelligenceDailyLearn,
   notebookRagQualityDailyLearn,
   professorSuccessDailyLearn,
+  simuladoIntelligenceDailyLearn,
 } from "./jobs/dor-real-agents";
 
 let registered = false;
@@ -162,6 +164,32 @@ export function registerDefaultAgents(): void {
         "Agente de dor real registrado no catálogo Hermes; roda no daily-learn e persiste recomendações estruturadas.",
     }),
     dailyLearn: professorSuccessDailyLearn,
+  });
+
+  agentRegistry.register({
+    id: "simulado_intelligence",
+    description:
+      "Simulado Intelligence — qualidade de questões, gabarito, metadados, discriminação e abandono",
+    role: "system",
+    handler: async () => ({
+      ok: true,
+      message:
+        "Agente de dor real registrado no catálogo Hermes; roda no daily-learn e persiste recomendações estruturadas.",
+    }),
+    dailyLearn: simuladoIntelligenceDailyLearn,
+  });
+
+  agentRegistry.register({
+    id: "caderno_erros_intelligence",
+    description:
+      "Caderno de Erros Intelligence — recorrência, causas prováveis, revisão e recuperação por matéria/habilidade",
+    role: "system",
+    handler: async () => ({
+      ok: true,
+      message:
+        "Agente de dor real registrado no catálogo Hermes; roda no daily-learn e persiste recomendações estruturadas.",
+    }),
+    dailyLearn: cadernoErrosIntelligenceDailyLearn,
   });
 
   registered = true;

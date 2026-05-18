@@ -405,7 +405,7 @@ export default function MeusConteudosPage() {
                 const reviewStatus = reviewStatuses[reviewKey(item)] ?? "unreviewed";
                 const reviewMeta = REVIEW_STATUS_META[reviewStatus];
                 return (
-                  <motion.div key={item.id}
+                  <motion.div key={reviewKey(item)}
                     initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
                     className="rounded-2xl border border-gray-200 bg-white p-4 lg:p-5 hover:shadow-md transition-shadow flex flex-col lg:flex-row gap-4 lg:items-center">
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${meta.color} flex-shrink-0`}>
@@ -439,11 +439,11 @@ export default function MeusConteudosPage() {
                         </button>
                       </div>
                     </div>
-                    <div className="flex gap-2 lg:flex-shrink-0">
-                      <button onClick={() => open(item)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-colors">
+                    <div className="flex flex-wrap gap-2 lg:flex-shrink-0">
+                      <button onClick={() => open(item)} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-violet-600 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-violet-500 lg:flex-none">
                         <Eye className="w-3.5 h-3.5" /> Abrir
                       </button>
-                      <button onClick={() => del(item)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-50 hover:bg-red-50 text-gray-500 hover:text-red-600 text-xs font-bold transition-colors">
+                      <button onClick={() => del(item)} className="flex items-center justify-center gap-1.5 rounded-xl bg-gray-50 px-3 py-2 text-xs font-bold text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>

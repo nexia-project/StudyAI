@@ -61,3 +61,20 @@ Aceite minimo para liberar continuidade premium:
 - Gate raiz `pnpm run typecheck` verde.
 - Smoke fallback e preview/export verde.
 - Manual Notebook/RAG acima executado antes de marcar QA como completo.
+
+## QA visual/manual geral - App interno
+
+Status geral: em validacao.
+
+Passada estatica aplicada em 2026-05-18:
+
+- Cabecalhos compartilhados agora quebram acoes e subtitulos em telas estreitas, reduzindo compressao de botoes.
+- Caderno, Notebook, Simulado, ProfessorTurma, Instituicao, Meus Conteudos e Admin receberam ajustes conservadores de overflow, largura e CTA mobile.
+- Navegacao simplificada: modo instituicao deixou de repetir tres entradas para `/instituicao`; professor deixou de repetir `/professor` nos atalhos rapidos e removeu atalho interno duplicado para o Notebook.
+
+Checklist manual pendente:
+
+- Aluno: Home, Notebook RAG, Simulado ENEM, Caderno e Meus Conteudos em desktop e mobile.
+- Professor: painel, turma, criadores, relatorios e acesso ao Notebook/Conteudos pelo shell.
+- Instituicao: portal, abas internas, relatorios/exportacao e menu simplificado.
+- Admin: dashboard, busca, IA & Custos, Hermes, Conteudos/Base de Conhecimento e secoes operacionais sem scroll horizontal desnecessario em desktop.

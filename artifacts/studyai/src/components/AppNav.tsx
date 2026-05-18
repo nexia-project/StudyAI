@@ -84,9 +84,8 @@ const ESCOLA_NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Gestão",
     items: [
-      { Illustration: IllBuilding,    label: "Dashboard Institucional", path: "/instituicao" },
-      { Illustration: IllPeople,      label: "Professores e turmas",    path: "/instituicao" },
-      { Illustration: IllBarsSoft,    label: "Relatórios avançados",    path: "/instituicao" },
+      { Illustration: IllBuilding,    label: "Portal Institucional", path: "/instituicao" },
+      { Illustration: IllFolderStack, label: "Conteúdos da instituição", path: "/meus-conteudos" },
     ],
   },
   {
@@ -113,14 +112,13 @@ const QUICK_LINKS_MAP: Record<AppMode, NavItem[]> = {
   ],
   professor: [
     { Illustration: IllBarsSoft,     label: "Dashboard",  path: "/professor" },
-    { Illustration: IllPeople,       label: "Turmas",     path: "/professor" },
     { Illustration: IllNotebookStack, label: "Notebook",   path: "/notebook" },
+    { Illustration: IllFolderStack,   label: "Conteúdos",  path: "/meus-conteudos" },
     { Illustration: IllChatWave,     label: "Comunicar",  path: "/comunicacao" },
   ],
   escola: [
-    { Illustration: IllBuilding,   label: "Gestão",     path: "/instituicao" },
-    { Illustration: IllPeople,       label: "Turmas",     path: "/instituicao" },
-    { Illustration: IllBarsSoft,     label: "Relatórios", path: "/instituicao" },
+    { Illustration: IllBuilding,     label: "Portal",     path: "/instituicao" },
+    { Illustration: IllFolderStack,  label: "Conteúdos",  path: "/meus-conteudos" },
     { Illustration: IllChatWave,     label: "Comunicar",  path: "/comunicacao" },
   ],
 };

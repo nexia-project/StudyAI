@@ -6,7 +6,7 @@ import {
   Shield, Plus, Mail, TrendingUp, Target, Zap, FileText, Settings,
   CheckCircle, XCircle, Copy, Check, Palette, Link2, Clock, AlertTriangle,
   ChevronRight, Trash2, UserCheck, UserX, Send, Lock, Eye, EyeOff,
-  Brain, Sparkles, BookOpen, Mic, Wand2, Layers, Download,
+  Brain, Sparkles, BookOpen, Mic, Wand2, Layers, Download, MessageSquare,
 } from "lucide-react";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -50,6 +50,92 @@ interface Report {
   turmaBreakdown: { id: string; name: string; serie: string | null; subject: string | null; studentCount: number; avgXp: number; }[];
   generatedAt: string;
 }
+interface CommunicationStatus {
+  channels: {
+    whatsapp: { configured: boolean; provider: string; mode: "ready" | "dry_run"; missing: string[] };
+    email: { configured: boolean; provider: string };
+  };
+}
+type InstitutionTab = "overview" | "gestao" | "turmas" | "membros" | "ia" | "relatorios" | "configuracoes";
+type TimetableConstraintKey =
+  | "doubleOrSeparatedClasses"
+  | "dailyDisciplineLimit"
+  | "teacherAvailability"
+  | "teacherPreferredSchedules"
+  | "concentrateTeacherDays"
+  | "weeklyDistribution"
+  | "reduceTeacherWindows"
+  | "simultaneousClasses"
+  | "concentrateDisciplineDay"
+  | "mergeSharedClasses";
+
+const TIMETABLE_CONSTRAINTS: {
+  key: TimetableConstraintKey;
+  title: string;
+  description: string;
+  requiredFor: string;
+}[] = [
+  {
+    key: "doubleOrSeparatedClasses",
+    title: "Aulas duplas ou separadas",
+    description: "Define por disciplina se a grade deve privilegiar aulas geminadas ou distribuídas.",
+    requiredFor: "qualidade pedagógica",
+  },
+  {
+    key: "dailyDisciplineLimit",
+    title: "Limite diário por disciplina/grupo",
+    description: "Evita sobrecarregar alunos com muitas aulas da mesma área no mesmo dia.",
+    requiredFor: "sobrecarga discente",
+  },
+  {
+    key: "teacherAvailability",
+    title: "Disponibilidade do professor",
+    description: "Base mínima para não gerar horários incompatíveis com agenda docente.",
+    requiredFor: "grade viável",
+  },
+  {
+    key: "teacherPreferredSchedules",
+    title: "Preferências docentes",
+    description: "Registra horários preferidos além das indisponibilidades rígidas.",
+    requiredFor: "satisfação docente",
+  },
+  {
+    key: "concentrateTeacherDays",
+    title: "Concentrar aulas do professor",
+    description: "Permite reduzir deslocamentos e espalhamento de aulas quando a escola desejar.",
+    requiredFor: "eficiência operacional",
+  },
+  {
+    key: "weeklyDistribution",
+    title: "Distribuição semanal",
+    description: "Espalha disciplinas ao longo da semana para contato recorrente com o conteúdo.",
+    requiredFor: "cadência pedagógica",
+  },
+  {
+    key: "reduceTeacherWindows",
+    title: "Reduzir janelas do professor",
+    description: "Critério de qualidade para diminuir horários vagos entre aulas.",
+    requiredFor: "folha/ociosidade",
+  },
+  {
+    key: "simultaneousClasses",
+    title: "Aulas simultâneas",
+    description: "Planeja disciplinas que precisam ocorrer ao mesmo tempo em turmas diferentes.",
+    requiredFor: "sincronia curricular",
+  },
+  {
+    key: "concentrateDisciplineDay",
+    title: "Concentrar disciplina em um dia",
+    description: "Útil para ensino superior, técnico ou cursos por componente curricular.",
+    requiredFor: "modelo modular",
+  },
+  {
+    key: "mergeSharedClasses",
+    title: "União de turmas",
+    description: "Permite que turmas compartilhem professor, disciplina e local quando fizer sentido.",
+    requiredFor: "otimização de recursos",
+  },
+];
 
 function buildInstitutionRecommendation(args: {
   studentCount: number;
@@ -435,7 +521,7 @@ export default function InstituicaoPage() {
   const [error, setError] = useState<string | null>(null);
   const [myRole, setMyRole] = useState<string | null>(null);
   const [isApproved, setIsApproved] = useState<boolean | null>(null);
-  const [activeTab, setActiveTab] = useState<"overview" | "turmas" | "membros" | "relatorios" | "configuracoes">("overview");
+  const [activeTab, setActiveTab] = useState<InstitutionTab>("overview");
 
   // Invite
   const [inviteEmail, setInviteEmail] = useState("");
@@ -447,6 +533,20 @@ export default function InstituicaoPage() {
   // Report
   const [report, setReport] = useState<Report | null>(null);
   const [loadingReport, setLoadingReport] = useState(false);
+  const [communicationStatus, setCommunicationStatus] = useState<CommunicationStatus | null>(null);
+  const [loadingCommunicationStatus, setLoadingCommunicationStatus] = useState(false);
+  const [timetableConstraints, setTimetableConstraints] = useState<Record<TimetableConstraintKey, boolean>>({
+    doubleOrSeparatedClasses: true,
+    dailyDisciplineLimit: true,
+    teacherAvailability: false,
+    teacherPreferredSchedules: false,
+    concentrateTeacherDays: false,
+    weeklyDistribution: true,
+    reduceTeacherWindows: false,
+    simultaneousClasses: false,
+    concentrateDisciplineDay: false,
+    mergeSharedClasses: false,
+  });
 
   // Branding
   const [brandingForm, setBrandingForm] = useState({ name: "", logoUrl: "", primaryColor: "#6366f1", city: "", state: "", cnpj: "" });
@@ -482,6 +582,7 @@ export default function InstituicaoPage() {
       }
       const detail = await detailRes.json();
       setData(detail);
+      void loadCommunicationStatus();
       setBrandingForm({
         name: detail.institution.name,
         logoUrl: detail.institution.logoUrl ?? "",
@@ -494,6 +595,19 @@ export default function InstituicaoPage() {
       setError("Erro ao carregar dados");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadCommunicationStatus() {
+    setLoadingCommunicationStatus(true);
+    try {
+      const res = await fetch(`${BASE}/api/comunicacao/institution/status`, { credentials: "include" });
+      if (!res.ok) throw new Error("status indisponível");
+      setCommunicationStatus(await res.json());
+    } catch {
+      setCommunicationStatus(null);
+    } finally {
+      setLoadingCommunicationStatus(false);
     }
   }
 
@@ -633,14 +747,15 @@ export default function InstituicaoPage() {
   const approvedMembers = members.filter(m => m.isApproved);
   const pendingMembers = members.filter(m => !m.isApproved);
 
-  const tabs = [
+  const tabs: { id: InstitutionTab; label: string; icon: any; count?: number; badge?: number }[] = [
     { id: "overview", label: "Visão Geral", icon: BarChart2 },
+    { id: "gestao", label: "Gestão Escolar", icon: Building2 },
     { id: "turmas", label: "Turmas", icon: GraduationCap, count: turmas.length },
     { id: "membros", label: "Membros", icon: Users, count: members.length, badge: pendingMembers.length },
     { id: "ia", label: "Inteligência IA", icon: Brain },
     { id: "relatorios", label: "Relatórios", icon: FileText },
-    ...(isAdmin ? [{ id: "configuracoes", label: "Config.", icon: Settings }] : []),
-  ] as const;
+    ...(isAdmin ? [{ id: "configuracoes" as InstitutionTab, label: "Config.", icon: Settings }] : []),
+  ];
 
   const planLabels: Record<string, string> = { trial: "Trial", basic: "Básico", standard: "Standard", premium: "Premium", enterprise: "Enterprise" };
   const lowSignalTurmas = (report?.turmaBreakdown ?? [])
@@ -653,6 +768,104 @@ export default function InstituicaoPage() {
     avgXp: stats.avgXp,
     report,
   });
+  const whatsapp = communicationStatus?.channels.whatsapp;
+  const communicationReadiness = loadingCommunicationStatus
+    ? "Verificando configuração..."
+    : whatsapp
+      ? whatsapp.configured
+        ? `WhatsApp pronto via ${whatsapp.provider}`
+        : `WhatsApp em dry-run${whatsapp.missing.length ? `: faltam ${whatsapp.missing.join(", ")}` : ""}`
+      : "Status de comunicação indisponível";
+  const configuredTimetableConstraints = TIMETABLE_CONSTRAINTS.filter(item => timetableConstraints[item.key]);
+  const missingTimetableConstraints = TIMETABLE_CONSTRAINTS.filter(item => !timetableConstraints[item.key]);
+  const timetableReadinessScore = Math.round((configuredTimetableConstraints.length / TIMETABLE_CONSTRAINTS.length) * 100);
+  const timetableDiagnostic = configuredTimetableConstraints.length < 4
+    ? "Fundação insuficiente para simulação confiável."
+    : !timetableConstraints.teacherAvailability
+      ? "Antes de simular, colete disponibilidade docente."
+      : !timetableConstraints.reduceTeacherWindows
+        ? "Simulação possível, mas sem otimizar janelas/ociosidade docente."
+        : "Rascunho pronto para uma futura simulação com solver.";
+  const hermesOperationsRecommendations: string[] = [
+    ...(!timetableConstraints.teacherAvailability ? ["Hermes: solicitar coleta de disponibilidade dos professores antes da grade."] : []),
+    ...(!timetableConstraints.dailyDisciplineLimit ? ["Hermes: definir limites diários para reduzir risco de sobrecarga dos alunos."] : []),
+    ...(!timetableConstraints.reduceTeacherWindows ? ["Hermes: ativar critério de janelas para controlar ociosidade e impacto em folha."] : []),
+    "Hermes: financeiro, cobrança e folha ainda precisam de fontes de dados antes de gerar alertas reais.",
+  ];
+  const schoolManagementModules = [
+    {
+      title: "Alunos",
+      description: "Base discente, vínculo com turmas, responsáveis e sinais de engajamento.",
+      evidence: `${stats.studentCount} aluno(s) disponíveis no agregado institucional.`,
+      status: stats.studentCount > 0 ? "dados reais" : "sem alunos",
+      tone: stats.studentCount > 0 ? "emerald" : "amber",
+      action: "Ver turmas",
+      onClick: () => setActiveTab("turmas"),
+      icon: GraduationCap,
+    },
+    {
+      title: "Professores",
+      description: "Equipe docente, aprovações, convite e futura coleta de disponibilidade.",
+      evidence: `${stats.teacherCount} professor(es), ${pendingMembers.length} aprovação(ões) pendente(s).`,
+      status: stats.teacherCount > 0 ? "dados reais" : "sem docentes",
+      tone: stats.teacherCount > 0 ? "emerald" : "amber",
+      action: isAdmin ? "Gerenciar membros" : "Ver membros",
+      onClick: () => setActiveTab("membros"),
+      icon: Users,
+    },
+    {
+      title: "Financeiro / Cobranças",
+      description: "Cobrança, inadimplência e comunicação com responsáveis dependem de integração com fonte financeira.",
+      evidence: "Sem endpoint financeiro nesta fatia; não há valores, saldos ou inadimplência simulados.",
+      status: "planejado",
+      tone: "slate",
+      action: "Ver configuração",
+      onClick: () => setActiveTab(isAdmin ? "configuracoes" : "overview"),
+      icon: FileText,
+    },
+    {
+      title: "Folha de pagamento",
+      description: "Controle de carga docente, janelas e ociosidade deve nascer conectado ao planejador de grade.",
+      evidence: "Sem carga horária contratual/remuneração; o painel apenas sinaliza dependência operacional.",
+      status: "planejado",
+      tone: "slate",
+      action: "Configurar grade",
+      onClick: () => setActiveTab("gestao"),
+      icon: Clock,
+    },
+    {
+      title: "Grades de horários",
+      description: "Fundação inspirada em restrições pedagógicas e operacionais de geração de horário escolar.",
+      evidence: `${configuredTimetableConstraints.length}/${TIMETABLE_CONSTRAINTS.length} restrições marcadas no rascunho local.`,
+      status: "fundação",
+      tone: configuredTimetableConstraints.length >= 4 ? "emerald" : "amber",
+      action: "Planejar grade",
+      onClick: () => setActiveTab("gestao"),
+      icon: BarChart2,
+    },
+    {
+      title: "Comunicação WhatsApp",
+      description: "Canal institucional seguro para avisos, cobrança e acompanhamento com guardrails.",
+      evidence: communicationReadiness,
+      status: whatsapp?.configured ? "canal pronto" : "dry-run",
+      tone: whatsapp?.configured ? "emerald" : "amber",
+      action: "Abrir comunicação",
+      onClick: () => navigate("/comunicacao"),
+      icon: MessageSquare,
+    },
+    {
+      title: "Relatórios / Indicadores",
+      description: "Desempenho, adoção e diagnóstico por turma com exportação, sem substituir BI/ERP financeiro.",
+      evidence: report
+        ? `${report.totalTurmas} turma(s), ${report.simCompleted} simulado(s), ${report.flashcardsCompleted} flashcards no relatório atual.`
+        : "Carregue o relatório para comparar sinais por turma com dados reais.",
+      status: report ? "relatório carregado" : "carregar relatório",
+      tone: report ? "emerald" : "amber",
+      action: report ? "Ver relatórios" : "Carregar relatório",
+      onClick: () => { setActiveTab("relatorios"); if (!report) loadReport(); },
+      icon: TrendingUp,
+    },
+  ] as const;
 
   function exportInstitutionReportCsv() {
     if (!report) return;
@@ -746,7 +959,7 @@ export default function InstituicaoPage() {
         {/* Tabs */}
         <div className="flex gap-1 bg-slate-800/60 p-1 rounded-2xl mb-6 overflow-x-auto">
           {tabs.map(tab => (
-            <button key={tab.id} onClick={() => { setActiveTab(tab.id as any); if (tab.id === "relatorios" && !report) loadReport(); }}
+            <button key={tab.id} onClick={() => { const nextTab = tab.id as InstitutionTab; setActiveTab(nextTab); if (nextTab === "relatorios" && !report) loadReport(); }}
               className={`flex-shrink-0 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-sm font-medium transition-all
                 ${activeTab === tab.id ? "bg-violet-600 text-white shadow-lg" : "text-slate-400 hover:text-white hover:bg-slate-700"}`}>
               <tab.icon className="w-4 h-4" />
@@ -880,6 +1093,158 @@ export default function InstituicaoPage() {
                 <span className="text-slate-300">{new Date(institution.createdAt).toLocaleDateString("pt-BR")}</span>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ─── GESTÃO ESCOLAR ─── */}
+        {activeTab === "gestao" && (
+          <div className="space-y-5">
+            <div className="rounded-3xl border border-violet-500/30 bg-gradient-to-br from-slate-800/90 via-violet-950/80 to-slate-900/90 p-5 shadow-xl shadow-violet-950/30">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-violet-300">Centro interno de gestão escolar</p>
+                  <h2 className="mt-1 text-xl font-black text-white">Operação escolar, grade e indicadores</h2>
+                  <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-300">
+                    Esta fundação posiciona o portal institucional como centro de gestão escolar: alunos, professores,
+                    financeiro, folha, grade, comunicação e relatórios. O planejador de grade ainda não gera horários;
+                    ele registra restrições e mostra dependências para uma futura simulação real.
+                  </p>
+                </div>
+                <AppStatusBadge tone={timetableReadinessScore >= 60 ? "emerald" : "amber"} className="w-fit">
+                  {timetableReadinessScore}% grade configurada
+                </AppStatusBadge>
+              </div>
+
+              <div className="mt-5 grid gap-3 md:grid-cols-4">
+                <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+                  <p className="text-2xl font-black text-white">{stats.studentCount}</p>
+                  <p className="text-xs font-bold uppercase tracking-wide text-white/60">Alunos na base</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+                  <p className="text-2xl font-black text-white">{stats.teacherCount}</p>
+                  <p className="text-xs font-bold uppercase tracking-wide text-white/60">Professores aprovados</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+                  <p className="text-2xl font-black text-white">{configuredTimetableConstraints.length}/{TIMETABLE_CONSTRAINTS.length}</p>
+                  <p className="text-xs font-bold uppercase tracking-wide text-white/60">Restrições da grade</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+                  <p className="text-sm font-black text-white">{loadingCommunicationStatus ? "Verificando..." : whatsapp?.mode ?? "indisponível"}</p>
+                  <p className="mt-1 text-xs font-bold uppercase tracking-wide text-white/60">Comunicação externa</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              {schoolManagementModules.map((module) => {
+                const Icon = module.icon;
+                return (
+                  <div key={module.title} className="rounded-2xl border border-slate-700 bg-slate-800/60 p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-300">
+                          <Icon className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-white">{module.title}</h3>
+                          <p className="mt-1 text-sm leading-relaxed text-slate-400">{module.description}</p>
+                        </div>
+                      </div>
+                      <AppStatusBadge tone={module.tone} className="shrink-0">{module.status}</AppStatusBadge>
+                    </div>
+                    <div className="mt-4 rounded-xl border border-slate-700 bg-slate-900/50 p-3">
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Evidência / dependência</p>
+                      <p className="mt-1 text-xs leading-relaxed text-slate-300">{module.evidence}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={module.onClick}
+                      className="mt-4 inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white hover:bg-violet-500"
+                    >
+                      {module.action}
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <AppSectionShell
+              eyebrow="Planejador premium de grade"
+              title="Restrições pedagógicas e operacionais"
+              description="Marque as restrições já conhecidas. O resumo é determinístico e local; ele não gera grade nem promete otimização sem um solver/backend."
+              className="border-violet-500/30 bg-slate-800/60"
+              actions={
+                <button
+                  type="button"
+                  onClick={() => alert("Fundação criada: a simulação real depende de solver de grade, disponibilidade docente persistida, carga horária e locais de aula.")}
+                  className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white hover:bg-violet-500"
+                >
+                  Simular grade
+                </button>
+              }
+            >
+              <div className="grid gap-4 lg:grid-cols-[1.2fr,0.8fr]">
+                <div className="grid gap-3 md:grid-cols-2">
+                  {TIMETABLE_CONSTRAINTS.map(item => {
+                    const checked = timetableConstraints[item.key];
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => setTimetableConstraints(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
+                        className={`rounded-2xl border p-4 text-left transition-colors ${checked ? "border-emerald-500/40 bg-emerald-500/10" : "border-slate-700 bg-slate-900/50 hover:border-violet-500/40"}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          {checked ? <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" /> : <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />}
+                          <div>
+                            <p className="text-sm font-bold text-white">{item.title}</p>
+                            <p className="mt-1 text-xs leading-relaxed text-slate-400">{item.description}</p>
+                            <p className="mt-2 text-[10px] font-black uppercase tracking-wide text-violet-300">{item.requiredFor}</p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="space-y-3">
+                  <div className="rounded-2xl border border-slate-700 bg-slate-900/60 p-4">
+                    <p className="text-[11px] font-black uppercase tracking-[0.16em] text-violet-300">Diagnóstico da grade</p>
+                    <p className="mt-2 text-3xl font-black text-white">{timetableReadinessScore}%</p>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-300">{timetableDiagnostic}</p>
+                    <div className="mt-4 h-2 rounded-full bg-slate-700">
+                      <div className="h-2 rounded-full bg-violet-500" style={{ width: `${timetableReadinessScore}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+                    <p className="text-[11px] font-black uppercase tracking-[0.16em] text-amber-300">Hermes operacional</p>
+                    <div className="mt-3 space-y-2">
+                      {hermesOperationsRecommendations.map(item => (
+                        <div key={item} className="flex gap-2 rounded-xl bg-slate-900/50 p-3">
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+                          <p className="text-xs leading-relaxed text-amber-100">{item}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-700 bg-slate-900/60 p-4">
+                    <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">Ainda faltam para solver real</p>
+                    <p className="mt-2 text-xs leading-relaxed text-slate-300">
+                      Carga horária por disciplina, locais de aula, turnos, professores por turma, disponibilidade persistida,
+                      capacidade de salas, regras de folha e armazenamento de cenários/processamentos.
+                    </p>
+                    {missingTimetableConstraints.length > 0 && (
+                      <p className="mt-3 text-xs text-slate-400">
+                        Próximas restrições: {missingTimetableConstraints.slice(0, 3).map(item => item.title).join(", ")}.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </AppSectionShell>
           </div>
         )}
 
@@ -1050,7 +1415,7 @@ export default function InstituicaoPage() {
         )}
 
         {/* ─── INTELIGÊNCIA IA ─── */}
-        {(activeTab as string) === "ia" && (
+        {activeTab === "ia" && (
           <div className="space-y-6">
             <InstituicaoIATab institutionId={institution.id} primaryColor={primaryColor} />
             <div className="rounded-2xl border border-slate-700/50 bg-slate-800/40 p-5">

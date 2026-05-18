@@ -261,7 +261,7 @@ export function AppNav({ onHome }: AppNavProps) {
   const isVibrante = navTheme === "vibrante";
 
   const currentPath = location;
-  const effectiveMode: AppMode = currentPath.startsWith("/instituicao") ? "escola" : "aluno";
+  const effectiveMode: AppMode = currentPath.startsWith("/instituicao") || currentPath.startsWith("/comunicacao") ? "escola" : "aluno";
   const navGroups = getNavGroups(effectiveMode);
   const quickLinks = QUICK_LINKS_MAP[effectiveMode];
 

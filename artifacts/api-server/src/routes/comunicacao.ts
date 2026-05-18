@@ -16,6 +16,7 @@ import { Resend } from "resend";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { isAdminUserAsync as _isAdminUserAsync } from "../lib/adminCheck";
+import { hasInstitutionCommunicationRole, isInstitutionCommunicationPath } from "../lib/comunicacaoAccess";
 const isAdminUserAsync: any = _isAdminUserAsync;
 
 const router: IRouter = Router();
@@ -898,6 +899,11 @@ router.use("/comunicacao", async (req, res, next) => {
   }
   const isAdmin = await isAdminUserAsync(req.userId);
   if (!isAdmin) {
+    if (!isInstitutionCommunicationPath(req.originalUrl)) {
+      res.status(403).json({ error: "Acesso negado — apenas administradores" });
+      return;
+    }
+
     const roleRes = await db.execute(sql`SELECT role FROM users WHERE id = ${req.userId} LIMIT 1`);
     const role = getRows(roleRes)[0]?.role;
     const institutionRes = await db.execute(sql`
@@ -907,9 +913,7 @@ router.use("/comunicacao", async (req, res, next) => {
       LIMIT 1
     `);
     const institutionRole = getRows(institutionRes)[0];
-    const allowedInstitutionUser =
-      ["institution_admin", "teacher"].includes(role ?? "")
-      || (!!institutionRole?.is_approved && ["owner", "admin", "teacher"].includes(institutionRole.role));
+    const allowedInstitutionUser = hasInstitutionCommunicationRole(role, institutionRole?.role, institutionRole?.is_approved);
     if (!allowedInstitutionUser) {
       res.status(403).json({ error: "Acesso negado — comunicação institucional exige perfil administrativo/professor aprovado" });
       return;

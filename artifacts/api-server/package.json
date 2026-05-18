@@ -14,6 +14,7 @@
     "ingest:postulados": "tsx scripts/ingest-postulados.ts",
     "ingest:concursos": "tsx scripts/ingest-concursos.ts",
     "reclassify:concursos": "tsx scripts/reclassify-concursos-areas.ts",
+    "test:comunicacao-access": "tsx scripts/test-comunicacao-access.ts",
     "smoke:notebook-fallbacks": "node scripts/smoke-notebook-fallbacks.mjs",
     "smoke:notebook-preview-export": "node scripts/smoke-notebook-fallbacks.mjs"
   },

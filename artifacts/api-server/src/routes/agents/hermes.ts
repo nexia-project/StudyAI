@@ -10,6 +10,7 @@ import { requireAuth } from "../../middlewares/requireAuth";
 import { requireAdmin } from "../../lib/hermes/requireAdmin";
 import { getHermesCronHint } from "../../lib/hermes/cronState";
 import type { ContentIndexSummary } from "../../lib/hermes/jobs/knowledge-index";
+import { getHermesDorRealCatalog } from "../../lib/hermes/jobs/dor-real-agents";
 
 const router: IRouter = Router();
 
@@ -77,6 +78,7 @@ router.get("/status", requireAuth, requireAdmin, async (_req: Request, res: Resp
       pendingAcoesCount,
       lastCronHint: getHermesCronHint(),
       contentIndex,
+      dorRealAgents: getHermesDorRealCatalog(),
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

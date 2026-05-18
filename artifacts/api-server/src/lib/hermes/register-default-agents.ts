@@ -8,6 +8,11 @@ import { sucessoAlunoDailyLearn, sucessoAlunoProactive } from "./jobs/sucesso-al
 import { monitorProactive } from "./jobs/monitor";
 import { cqoConteudoDailyLearn } from "./jobs/cqo-conteudo";
 import { qaSinteticoDailyLearn } from "./jobs/qa-sintetico";
+import {
+  auditorPedagogicoDailyLearn,
+  notebookRagQualityDailyLearn,
+  professorSuccessDailyLearn,
+} from "./jobs/dor-real-agents";
 
 let registered = false;
 
@@ -118,6 +123,45 @@ export function registerDefaultAgents(): void {
       message: "Use GET /api/agents/qa_sintetico/catalogo ou POST /executar-auditoria.",
     }),
     dailyLearn: qaSinteticoDailyLearn,
+  });
+
+  agentRegistry.register({
+    id: "auditor_pedagogico",
+    description:
+      "Auditor Pedagógico — qualidade de materiais, fontes, exercícios e critérios premium",
+    role: "system",
+    handler: async () => ({
+      ok: true,
+      message:
+        "Agente de dor real registrado no catálogo Hermes; roda no daily-learn e persiste recomendações estruturadas.",
+    }),
+    dailyLearn: auditorPedagogicoDailyLearn,
+  });
+
+  agentRegistry.register({
+    id: "notebook_rag_quality",
+    description:
+      "Notebook RAG Quality — visual, exportação, fallback, feedback e qualidade de fonte",
+    role: "system",
+    handler: async () => ({
+      ok: true,
+      message:
+        "Agente de dor real registrado no catálogo Hermes; roda no daily-learn e persiste recomendações estruturadas.",
+    }),
+    dailyLearn: notebookRagQualityDailyLearn,
+  });
+
+  agentRegistry.register({
+    id: "professor_success",
+    description:
+      "Professor Success — ativação docente, turma, relatórios, Notebook do Professor e intervenções",
+    role: "system",
+    handler: async () => ({
+      ok: true,
+      message:
+        "Agente de dor real registrado no catálogo Hermes; roda no daily-learn e persiste recomendações estruturadas.",
+    }),
+    dailyLearn: professorSuccessDailyLearn,
   });
 
   registered = true;

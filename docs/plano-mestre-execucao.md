@@ -35,6 +35,7 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - **QA visual/manual geral + menus:** passada premium final em andamento corrige responsividade de cabecalhos/cards/modais e reduz entradas duplicadas de navegacao por papel sem remover rotas legadas.
 - **Notebook do Professor RAG:** primeira fatia adiciona entrada docente no modo Professor, reusa fontes do Notebook, aceita upload de texto e gera entregaveis profissionais por formato (plano, roteiro, atividade, rubrica, lista, material da turma, resumo institucional e slides com notas) via `/api/notebook/teacher-output`, preservando `/notebook` do aluno.
 - **Area do Professor Premium+:** separacao visual reforcada entre aluno/professor, Tiagao generico oculto no portal docente, painel ganhou sala de comando com saude de turmas, fila de intervencao, habilidades frageis, pendencias e preparacao de aula, e Notebook do Professor ganhou rascunho de mensagem de intervencao.
+- **Hermes sistema nervoso / agentes de dor real:** doutrina canonica adicionada em `docs/hermes-agentes-dor-real.md`; primeira leva segura registra `auditor_pedagogico`, `notebook_rag_quality` e `professor_success` no `daily-learn`, expondo catalogo `dorRealAgents` no status Hermes.
 
 ## Tickets em execucao
 
@@ -244,6 +245,30 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - Modulos sem telemetria suficiente viram lacuna de observabilidade, nao metrica inventada.
 - Checklist manual cobre jornada ponta a ponta: Landing -> Home -> Notebook RAG -> Simulado -> Caderno -> Tiagao, mais exports B2B.
 
+### F0-05 Hermes sistema nervoso / agentes de dor real
+
+**Status:** primeira leva segura implementada; pendente execucao em ambiente com cron/admin e validacao de producao.
+
+**Objetivo:** transformar Hermes no sistema nervoso operacional do StudyAI: observar, auditar qualidade, priorizar problemas, abrir recomendacoes claras e medir melhora, sempre separado por papel.
+
+**Superficies previstas:** `artifacts/api-server/src/lib/hermes/jobs/dor-real-agents.ts`, `artifacts/api-server/src/lib/hermes/register-default-agents.ts`, `artifacts/api-server/src/routes/agents/hermes.ts`, docs Hermes.
+
+**Resultado esperado:**
+
+- Doutrina por papel fica explicita: aluno aprende/pratica/revisa; professor planeja/diagnostica/intervem/avalia; instituicao acompanha qualidade/risco/adocao/resultados; admin opera/audita/custos/qualidade/conteudo/crescimento.
+- Catalogo Hermes lista os 10 agentes em ordem de prioridade, com responsabilidade, sinais, evidencias, metricas, acoes, limites e saida Admin.
+- Primeira leva roda como agentes explicitos: `auditor_pedagogico`, `notebook_rag_quality`, `professor_success`.
+- Saidas persistidas seguem o padrao Hermes de evidencia, impacto, recomendacao, acao, metrica, aceite, confianca e target/modulo.
+- Agentes reaproveitam `qa_sintetico`, `cqo_conteudo`, `knowledge-index` e `sucesso_aluno` sem duplicar logica.
+
+**Criterios de aceite:**
+
+- `GET /api/agents/hermes/status` expõe `dorRealAgents` com prioridades e status.
+- `POST /internal/hermes/daily-learn` registra os tres agentes novos no array `ran`.
+- Lacunas de observabilidade viram recomendacoes, nao metricas inventadas.
+- Nenhum agente aplica autofix, envia mensagem real, altera conteudo, muda dados de aluno/turma ou aprova material sem revisao humana.
+- Proxima ordem apos a primeira leva: consolidar Student Success/`sucesso_aluno`, depois Simulado Intelligence, Caderno de Erros Intelligence, Custos IA Optimizer, UX/Product Auditor, Content Gap/CQO avancado e Institution Success/B2B ROI.
+
 ## Checklist de validacao
 
 ### Auditoria de bloqueadores - 2026-05-17 17:10
@@ -328,7 +353,10 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [x] Padrao de recomendacao Hermes inclui `module` para recomendacoes premium.
 - [x] Padrao de recomendacao Hermes reconhece `Relatorios B2B` como modulo premium monitorado.
 - [x] Admin exibe modulo junto com superficie, evidencia, problema, mudanca, metrica e aceite.
+- [x] Catalogo de agentes de dor real documentado e exposto em `dorRealAgents`.
+- [x] Primeira leva segura registrada: `auditor_pedagogico`, `notebook_rag_quality`, `professor_success`.
 - [ ] Executar `POST /api/agents/qa_sintetico/executar-auditoria` em ambiente autenticado de admin.
+- [ ] Executar `POST /internal/hermes/daily-learn` e confirmar `ran` com a primeira leva de dor real.
 - [ ] Conferir que achados persistidos aparecem em Descobertas/Inbox Hermes sem tarefa destrutiva.
 - [ ] Rodar checklist manual semanal/pre-release abaixo.
 
@@ -464,7 +492,10 @@ A Fase 1 deve deixar o StudyAI mais premium e mais compreensivel sem adicionar c
 - [x] Incluir Relatorios B2B no loop Hermes premium e no padrao de recomendacao.
 - [x] Implementar primeira fatia de App Shell Premium + Design System Interno nas telas internas de maior impacto.
 - [x] Aplicar fatia conservadora do App Shell Premium no Admin para IA & Custos e Hermes sem alterar backend/regra de negocio.
+- [x] Criar doutrina Hermes sistema nervoso e primeira leva de agentes de dor real.
 - [ ] Validar, publicar e auditar producao da segunda fatia App Shell Premium B2B.
+- [ ] Executar e auditar daily-learn Hermes com `auditor_pedagogico`, `notebook_rag_quality` e `professor_success`.
+- [ ] Proxima leva Hermes: consolidar Student Success/`sucesso_aluno`, depois implementar Simulado Intelligence e Caderno de Erros Intelligence.
 - [ ] Proximo lote de Caderno de Erros: persistir historico estruturado no backend quando houver schema/API definido.
 - [ ] Proxima fatia de layout interno: Admin restante com usuarios, financeiro, integracoes e seguranca em lotes pequenos.
 - [ ] Landing QA final: validar conversao, clareza, mobile e ausencia de promessa garantida apos o shell interno.

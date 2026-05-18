@@ -9,6 +9,7 @@ import {
   SYNTHETIC_QA_PERSONAS,
   runSyntheticQaAudit,
 } from "../../lib/hermes/jobs/qa-sintetico";
+import { getHermesDorRealCatalog } from "../../lib/hermes/jobs/dor-real-agents";
 import { PREMIUM_MATERIAL_STANDARD_SUMMARY } from "../../lib/pedagogy/premium-material-standard";
 
 const router: IRouter = Router();
@@ -30,6 +31,7 @@ router.get("/catalogo", requireAuth, requireAdmin, async (_req: Request, res: Re
         weekly: "auditoria manual ponta a ponta antes de release premium.",
       },
     },
+    dorRealAgents: getHermesDorRealCatalog(),
     pedagogicalMaterialStandard: PREMIUM_MATERIAL_STANDARD_SUMMARY,
     guardrails: [
       "Não altera dados ou conteúdo de produção automaticamente.",

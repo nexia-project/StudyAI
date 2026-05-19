@@ -64,6 +64,42 @@ curl -fsS -X POST "$BASE_URL/internal/hermes/process-tasks" \
 - **Instituição (`/instituicao`)**: APIs usam `credentials: "include"`; login em `/instituicao/login` ou `/sign-in` com `auth_return_to=/instituicao`; menu **Modo Escola** e link **Portal Institucional** no UserMenu.
 - **Clerk**: papéis `teacher` / `institution_admin` no metadata ou membro aprovado via convite institucional.
 
+## Fluxo texto → voz (2026-05-19)
+
+Enter/enviar = resposta escrita; **Encaminhar para o Tiagão** só depois (mic/avatar = voz direta).
+
+| Superfície | Texto primeiro | Encaminhar |
+|------------|----------------|------------|
+| Home (`/app`) | `/api/inline-search`, análise de arquivo | Sim |
+| Professor | pesquisa + copilot | Sim |
+| Notebook | chat RAG + pesquisa rápida | Sim |
+| Concursos | briefing simulado via inline-search | Sim |
+| Simulado ENEM | resultado + missão de recuperação | Sim |
+| Mapa mental | “Perguntar ao Tiagão” → Home com busca escrita | Sim (no Home) |
+| Caderno | processar nota com IA (painel insights) | Sim |
+| Instituição / Comunicação / Meus conteúdos | sem input de IA conversacional | N/A |
+
+## Ingestão postulados CQO (lacunas 2026-05-16)
+
+Pasta: `docs/postulados-cqo/` (3 `.md` premium). Comando (raiz do monorepo, `DATABASE_URL` + admin em `users`):
+
+```bash
+pnpm --filter @workspace/api-server run ingest:postulados -- "./docs/postulados-cqo" --uploaded-by=<UUID_ADMIN> --skip-existing
+```
+
+Resolver UUID: `SELECT id, email FROM users WHERE role = 'admin' LIMIT 5;` ou `GET /api/pedagogy/ingestion-status` (campo `resolveAdminUuid`).
+
+Validação SQL:
+
+```sql
+SELECT COUNT(*) FROM knowledge_documents WHERE metadata->>'source' = 'postulado';
+SELECT metadata->>'materia' AS materia, COUNT(*) FROM knowledge_documents WHERE metadata->>'source' = 'postulado' GROUP BY 1;
+```
+
+Esperado: +3 documentos; matérias `Artigo, Pronome e Numeral`, `Português - Texto Científico e Fotossíntese`, `Subtração com Recursos e Compensação`; `metadata.quality` e `metadata.premium_metadata` preenchidos em `.md`.
+
+**Railway (produção):** shell do serviço `StudyAI` com `DATABASE_URL` já configurado; mesmo comando a partir de `/app` ou raiz do deploy; não commitar UUID em repo.
+
 ## Aceite esperado
 
 - `daily-learn` retorna `{ ok, ran, errors }`; `ran` deve incluir os agentes de dor real com `dailyLearn`.

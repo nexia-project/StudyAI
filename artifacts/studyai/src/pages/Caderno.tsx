@@ -19,6 +19,8 @@ import {
   type ErrorReviewMission,
 } from "@/lib/error-review";
 import { clearSimuladoRecoveryMission, completeSimuladoRecoveryMission, readSimuladoRecoveryMission } from "@/lib/next-best-action";
+import { EncaminharParaTiagaoButton } from "@/components/EncaminharParaTiagaoButton";
+import { buildForwardPromptFromExchange, forwardToTiagao } from "@/lib/tiagao-forward";
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -335,6 +337,24 @@ export default function Caderno() {
       setAiLoading(false);
     }
   }, [selectedId]);
+
+  const forwardProcessedToTiagao = useCallback(() => {
+    const p = selectedNote?.processedContent;
+    if (!p) return;
+    const summary = [
+      p.resumo,
+      ...(p.keyPoints ?? []).map((pt: string) => `• ${pt}`),
+    ]
+      .filter(Boolean)
+      .join("\n");
+    forwardToTiagao(
+      buildForwardPromptFromExchange({
+        userQuery: editTitle.trim() || "Minha nota do caderno",
+        assistantReply: summary,
+        label: "insights do Caderno Digital",
+      }),
+    );
+  }, [editTitle, selectedNote?.processedContent]);
 
   // Filtered notes
   const filteredNotes = notes.filter(n => {
@@ -693,9 +713,12 @@ export default function Caderno() {
                   animate={{ opacity: 1, x: 0 }}
                   className="w-80 flex-shrink-0 bg-white rounded-2xl shadow-sm border border-violet-100 overflow-hidden flex flex-col hidden lg:flex"
                 >
-                  <div className="px-4 py-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white flex items-center gap-2">
-                    <Brain className="w-4 h-4" />
-                    <span className="font-bold text-sm">Tiagão IA — Insights</span>
+                  <div className="px-4 py-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-bold text-sm flex items-center gap-2">
+                      <Brain className="w-4 h-4" />
+                      Tiagão IA — Insights
+                    </span>
+                    <EncaminharParaTiagaoButton onClick={forwardProcessedToTiagao} tone="onDark" variant="short" />
                   </div>
 
                   {/* Tabs */}

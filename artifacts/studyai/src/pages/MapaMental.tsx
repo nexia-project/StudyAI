@@ -500,7 +500,13 @@ function MindMapSVG({
 
   function handleStudy() {
     const query = selectedNode ? `Explica o tópico "${selectedNode.label}" de ${subject}` : "";
-    navigate(`/app?q=${encodeURIComponent(query)}`);
+    if (!query.trim()) return;
+    try {
+      sessionStorage.setItem("studyai_home_prefill_query", query);
+    } catch {
+      /* ignore */
+    }
+    navigate("/app");
   }
 
   // For drawer compat
@@ -827,7 +833,12 @@ function NodeDrawer({ node, onClose }: { node: MindNode | null; onClose: () => v
   function handleStudy() {
     if (!node) return;
     const query = `Explica ${node.level === 1 ? "a matéria" : "o tópico"} "${node.label}"`;
-    navigate(`/app?q=${encodeURIComponent(query)}`);
+    try {
+      sessionStorage.setItem("studyai_home_prefill_query", query);
+    } catch {
+      /* ignore */
+    }
+    navigate("/app");
   }
 
   function handleOpenPlan() {

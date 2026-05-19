@@ -17,6 +17,8 @@ import {
   type ErrorReviewDraft,
 } from "@/lib/error-review";
 import { completeSimuladoRecoveryMission, saveSimuladoRecoveryMission, type SimuladoRecoveryMission } from "@/lib/next-best-action";
+import { EncaminharParaTiagaoButton } from "@/components/EncaminharParaTiagaoButton";
+import { buildForwardPromptFromExchange, forwardToTiagao } from "@/lib/tiagao-forward";
 
 const DIAS_INFO = [
   { dia: 1, nome: "Linguagens", areaOficial: "Linguagens, Códigos e suas Tecnologias", cor: "from-violet-500 to-violet-600", bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-200", emoji: "📝", materias: "Língua Portuguesa, Literatura, Inglês, Arte, Educação Física" },
@@ -1093,6 +1095,21 @@ export default function SimuladoEnemPage() {
     };
     const tri = estimatePedagogicalTri(pct, questoes, erros);
     const actionPlan = buildActionPlan(erros, subjects);
+
+    const forwardRecoveryToTiagao = () => {
+      forwardToTiagao(
+        buildForwardPromptFromExchange({
+          userQuery: currentRecoverySignal.tiagaoPrompt,
+          assistantReply: [
+            recoveryMission.objective,
+            ...recoveryMission.steps.map((step) => `• ${step}`),
+            `Critério de conclusão: ${recoveryMission.check}`,
+          ].join("\n"),
+          label: "resultado do simulado ENEM",
+        }),
+        { pedagogicalMode: "treinador" },
+      );
+    };
     const nivel = pct >= 80 ? { label: "Excelente! 🏆", cor: "text-emerald-700", bg: "bg-emerald-50" }
       : pct >= 60 ? { label: "Bom! 📈", cor: "text-violet-700", bg: "bg-violet-50" }
       : pct >= 40 ? { label: "Regular ✏️", cor: "text-amber-700", bg: "bg-amber-50" }
@@ -1275,6 +1292,10 @@ export default function SimuladoEnemPage() {
               <div className="rounded-xl bg-white/10 border border-white/15 p-3">
                 <p className="text-xs font-black uppercase tracking-wide text-white/70 mb-1">Critério de conclusão</p>
                 <p className="text-sm text-white/90 leading-relaxed">{recoveryMission.check}</p>
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <EncaminharParaTiagaoButton onClick={forwardRecoveryToTiagao} tone="onDark" />
+                <p className="text-[11px] text-white/70">Leia o plano em texto; depois continue por voz.</p>
               </div>
               <button
                 type="button"

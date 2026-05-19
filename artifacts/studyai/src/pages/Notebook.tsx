@@ -20,6 +20,8 @@ import {
   MoreVertical, Check, ChevronsUpDown,
 } from "lucide-react";
 import { TiagaoCharacter } from "@/components/TiagaoCharacter";
+import { EncaminharParaTiagaoButton } from "@/components/EncaminharParaTiagaoButton";
+import { buildForwardPromptFromExchange, forwardToTiagao } from "@/lib/tiagao-forward";
 import { AppNav } from "@/components/AppNav";
 import { AppMissionPanel, AppStatusBadge, PageHeader } from "@/components/Layout";
 
@@ -2926,6 +2928,33 @@ export default function Notebook() {
     } finally { setChatLoading(false); }
   }, [inputMsg, chatLoading, selectedDocIds, restrictToSelected, activeCaderno, chatMode, materialPreferences]);
 
+  const forwardLastChatToTiagao = useCallback(() => {
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+    if (!lastUser?.text?.trim()) return;
+    forwardToTiagao(
+      buildForwardPromptFromExchange({
+        userQuery: lastUser.text,
+        assistantReply: lastAssistant?.text ?? "",
+        label: "conversa do Notebook",
+      }),
+    );
+  }, [messages]);
+
+  const forwardFastResearchToTiagao = useCallback(() => {
+    if (!fastResearchTopic.trim() || fastResearchResults.length === 0) return;
+    const summary = fastResearchResults
+      .map((r) => `• ${r.titulo}: ${r.snippet}`)
+      .join("\n");
+    forwardToTiagao(
+      buildForwardPromptFromExchange({
+        userQuery: fastResearchTopic,
+        assistantReply: summary,
+        label: "pesquisa rápida do Notebook",
+      }),
+    );
+  }, [fastResearchTopic, fastResearchResults]);
+
   const runTool = useCallback(async (tool: Tool, docId?: number) => {
     const targetDocId = docId ?? selectedDocIds[0];
     if (!targetDocId) return;
@@ -3437,6 +3466,12 @@ export default function Notebook() {
                     {fastResearchLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
                   </button>
                 </div>
+                {fastResearchResults.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <EncaminharParaTiagaoButton onClick={forwardFastResearchToTiagao} />
+                    <p className="text-[10px] text-slate-500">Leia os links; depois continue por voz.</p>
+                  </div>
+                )}
                 {fastResearchResults.map((item, i) => (
                   <div key={i} className="bg-slate-50 rounded-xl p-2 space-y-1">
                     <p className="text-[11px] font-bold text-slate-800 line-clamp-1">{item.titulo}</p>
@@ -3799,6 +3834,11 @@ export default function Notebook() {
             </button>
           ))}
         </div>
+        {messages.some((m) => m.role === "assistant" && m.text.trim()) && (
+          <div className="px-3 pb-2">
+            <EncaminharParaTiagaoButton onClick={forwardLastChatToTiagao} disabled={chatLoading} />
+          </div>
+        )}
         <div className="flex gap-2 px-3 pb-3">
           <input value={inputMsg} onChange={e => setInputMsg(e.target.value)}
             onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendMessage()}

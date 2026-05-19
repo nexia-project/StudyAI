@@ -650,8 +650,8 @@ export default function Home() {
   // ── Handlers ────────────────────────────────────────────────────────────────
   // Send / Enter → BUSCA INLINE. Não abre Tiagão. O aluno pode encaminhar
   // depois com botão "Levar pro Tiagão" no painel de resultado.
-  const submitDraft = useCallback(async () => {
-    const text = draft.trim();
+  const submitDraft = useCallback(async (overrideText?: string) => {
+    const text = (overrideText ?? draft).trim();
     if (!text || searchLoading) return;
 
     searchAbortRef.current?.abort();
@@ -728,6 +728,21 @@ export default function Home() {
       if (!ctrl.signal.aborted) setSearchLoading(false);
     }
   }, [draft, searchLoading]);
+
+  // Mapa Mental / deep-link: busca escrita no hero (não abre voz).
+  const prefillSearchRanRef = useRef(false);
+  useEffect(() => {
+    if (prefillSearchRanRef.current) return;
+    try {
+      const q = sessionStorage.getItem("studyai_home_prefill_query");
+      if (!q?.trim()) return;
+      sessionStorage.removeItem("studyai_home_prefill_query");
+      prefillSearchRanRef.current = true;
+      void submitDraft(q);
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }, [submitDraft]);
 
   const onHeroKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {

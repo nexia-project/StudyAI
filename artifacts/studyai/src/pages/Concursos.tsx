@@ -6,7 +6,7 @@
  *   - Hero com busca livre + filtros (banca, área, ano).
  *   - Lista de questões em cards expansíveis com alternativas + gabarito +
  *     explicação.
- *   - "Pedir simulado pro Tiagão" → dispara intent + abre painel de voz.
+ *   - "Pedir simulado" → briefing em texto (`/api/inline-search`) + Encaminhar para voz.
  *   - Filtros colapsam em drawer em mobile.
  *
  * Backend: `/api/concursos/questoes` + `/api/concursos/stats` (rotas em
@@ -31,7 +31,9 @@ import {
   Trophy,
   Info,
 } from "lucide-react";
+import { EncaminharParaTiagaoButton } from "@/components/EncaminharParaTiagaoButton";
 import { triggerProfessorAction } from "@/lib/professor-events";
+import { buildForwardPromptFromExchange, forwardToTiagao } from "@/lib/tiagao-forward";
 
 type Banca = "" | "CEBRASPE" | "FGV" | "VUNESP" | "FCC" | "OAB" | "OUTRO";
 // Mantemos sincronizado com `ConcursoArea` em
@@ -133,16 +135,6 @@ const AREAS: { value: Area; label: string }[] = [
   { value: "OUTROS", label: "Outros" },
 ];
 
-function openTiagao() {
-  if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent("studyai:open-voice"));
-}
-
-function askTiagao(text: string) {
-  if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent("studyai:ask-tiagao", { detail: { text } }));
-}
-
 function bancaBadgeClasses(banca?: string): string {
   switch (banca) {
     case "OAB":
@@ -200,6 +192,8 @@ export default function ConcursosPage() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [didSearch, setDidSearch] = useState(false);
+  const [simuladoBrief, setSimuladoBrief] = useState<{ query: string; answer: string } | null>(null);
+  const [simuladoLoading, setSimuladoLoading] = useState(false);
 
   // Carrega stats no mount pra preencher anos disponíveis + total.
   useEffect(() => {
@@ -272,7 +266,7 @@ export default function ConcursosPage() {
     setAno("");
   }
 
-  function pedirSimulado() {
+  async function pedirSimulado() {
     const filtros: string[] = [];
     if (banca) filtros.push(`banca ${banca}`);
     if (area) filtros.push(`área ${areaLabel(area)}`);
@@ -282,8 +276,34 @@ export default function ConcursosPage() {
       ? `Monta pra mim um mini-simulado de concurso (${filtros.join(", ")}). Tira 10 questões com gabarito comentado.`
       : "Monta pra mim um mini-simulado de concurso público com 10 questões variadas e gabarito comentado.";
     triggerProfessorAction("simulado_concurso", JSON.stringify({ banca, area, ano, query: query.trim() }));
-    askTiagao(pedido);
-    openTiagao();
+    setSimuladoLoading(true);
+    setSimuladoBrief(null);
+    try {
+      const r = await fetch("/api/inline-search", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: pedido }),
+      });
+      const data = (await r.json().catch(() => ({}))) as { answer?: string; erro?: string };
+      if (!r.ok) throw new Error(data.erro || `Erro HTTP ${r.status}`);
+      setSimuladoBrief({ query: pedido, answer: data.answer ?? "" });
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Não foi possível gerar o briefing em texto.");
+    } finally {
+      setSimuladoLoading(false);
+    }
+  }
+
+  function forwardSimuladoToTiagao() {
+    if (!simuladoBrief) return;
+    forwardToTiagao(
+      buildForwardPromptFromExchange({
+        userQuery: simuladoBrief.query,
+        assistantReply: simuladoBrief.answer,
+        label: "briefing de simulado de concurso",
+      }),
+    );
   }
 
   return (
@@ -371,11 +391,12 @@ export default function ConcursosPage() {
                 <div className="flex flex-wrap items-center justify-center gap-2 pt-2 lg:justify-start">
                   <button
                     type="button"
-                    onClick={pedirSimulado}
-                    className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-600 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-violet-500/40 transition hover:scale-[1.02]"
+                    onClick={() => void pedirSimulado()}
+                    disabled={simuladoLoading}
+                    className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-600 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-violet-500/40 transition hover:scale-[1.02] disabled:opacity-60"
                   >
-                    <Sparkles className="h-4 w-4" />
-                    Pedir simulado pro Tiagão
+                    {simuladoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                    {simuladoLoading ? "Gerando briefing…" : "Pedir simulado (texto)"}
                   </button>
                   {stats && (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-200/70 bg-white/70 px-3 py-1.5 text-xs font-semibold text-slate-600">
@@ -407,6 +428,27 @@ export default function ConcursosPage() {
             </div>
           </motion.div>
         </section>
+
+        {simuladoBrief && (
+          <section className="rounded-2xl border border-violet-200/70 bg-white/80 p-5 shadow-md shadow-violet-200/40">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-violet-600 mb-2">
+              Briefing do simulado (texto)
+            </p>
+            <div className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800 mb-4 max-h-[40vh] overflow-y-auto rounded-xl border border-violet-100 bg-violet-50/40 p-4">
+              {simuladoBrief.answer || "Sem resposta — tente de novo."}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <EncaminharParaTiagaoButton onClick={forwardSimuladoToTiagao} />
+              <button
+                type="button"
+                onClick={() => setSimuladoBrief(null)}
+                className="text-xs font-bold text-slate-500 hover:text-slate-700"
+              >
+                Limpar
+              </button>
+            </div>
+          </section>
+        )}
 
         {/* ── Resultados / estado ───────────────────────────────────────── */}
         <section>

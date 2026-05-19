@@ -27,6 +27,7 @@ export function isUsableExtractedDocumentText(text: string): boolean {
   const words = normalized.match(/[A-Za-zÀ-ÿ]{2,}/g) ?? [];
   const meaningfulWords = words.filter((word) => !PDF_EXTRACTION_NOISE_WORDS.has(word.toLowerCase()));
   if (meaningfulWords.length < 8) return false;
+  if (new Set(meaningfulWords.map((word) => word.toLowerCase())).size < 8) return false;
 
   const letters = normalized.match(/[A-Za-zÀ-ÿ]/g)?.length ?? 0;
   const nonWhitespace = normalized.replace(/\s/g, "").length;

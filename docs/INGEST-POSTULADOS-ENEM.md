@@ -11,8 +11,20 @@ pnpm --filter @workspace/api-server run ingest:postulados -- "<CAMINHO_DA_PASTA>
 ```
 
 - `--uploaded-by` é **obrigatório** (id interno em `users`, não o Clerk).
-- `--dry-run` — só lista arquivos e tamanho do texto extraído.
+- `--dry-run` — só lista arquivos e tamanho do texto extraído (pode usar UUID fictício só neste modo).
 - `--skip-existing` — evita duplicar por `source_file` + `uploaded_by`.
+
+### Resolver UUID do admin
+
+Com `DATABASE_URL` configurado:
+
+```sql
+SELECT id, email, role FROM users WHERE role = 'admin' ORDER BY created_at LIMIT 5;
+```
+
+Ou, autenticado como admin na API: `GET /api/pedagogy/ingestion-status` (campo `resolveAdminUuid`).
+
+**Não** use placeholder em INSERT real — a FK `uploaded_by` exige linha em `users`.
 
 ### Payload CQO — lacunas críticas de 2026-05-16
 
@@ -25,6 +37,8 @@ Foram adicionados payloads Markdown curados em `docs/postulados-cqo/` para cobri
 Cada arquivo segue o padrão premium (`objective`, público/série, habilidade, pré-requisitos, explicações em níveis, erros comuns, exemplos, exercícios e observações de fonte/status) no próprio corpo do material. Para o Hermes/CQO reconhecer a cobertura, ingira a pasta sem sobrescrever a matéria por flag; o nome dos arquivos usa o formato `Materia_Autor_Titulo.md`, e o script preserva hífens dentro da matéria quando há separação por `_`.
 
 O script também copia frontmatter simples de Markdown para `metadata` (por exemplo `topic`, `material_standard_version`, `quality_status` e `human_reviewed`), mantendo `source: postulado`, `materia`, `autor` e `path` controlados pela ingestão.
+
+Para arquivos `.md` no padrão CQO/premium (`docs/postulados-cqo/`), o script extrai seções pedagógicas e grava `metadata.quality` (score + status) e `metadata.premium_metadata` via `extract-premium-from-markdown.ts`.
 
 ```bash
 pnpm --filter @workspace/api-server run ingest:postulados -- "./docs/postulados-cqo" --uploaded-by=<UUID_ADMIN> --skip-existing

@@ -1,7 +1,7 @@
 # Cronograma premium StudyAI
 
 **Status:** cronograma vivo de execucao premium  
-**Atualizado em:** 2026-05-18  
+**Atualizado em:** 2026-05-19  
 **Base de producao conhecida:** `81196e8` com `/api/healthz` OK e Railway `SUCCESS`  
 **Fonte operacional:** `docs/plano-mestre-execucao.md`
 
@@ -37,11 +37,23 @@ Este documento marca o que ja foi entregue, o que esta em validacao e a ordem co
 - Admin Hermes: validar loading, falha de status, inbox vazia, descoberta com recomendacao e botoes lida/dispensar.
 - Mobile/desktop: revisar sticky headers, bottom nav, cards, modais e ausencia de sobreposicao nas rotas premium.
 
+## Workstream ativo: pedagogia e conteudos
+
+**Roadmap:** `docs/pedagogia-conteudos-roadmap.md`
+
+| Item | Status | Proxima acao |
+| --- | --- | --- |
+| Score premium na ingest postulados (.md CQO) | Implementado no repo | Rodar ingest em prod com UUID admin |
+| API catalogo pedagogico (`/api/pedagogy/*`) | Implementado no repo | Validar com admin autenticado |
+| Seeds CQO (3 postulados) | Arquivos prontos | `ingest:postulados` + conferir `ingestion-status` |
+| Geradores (aula/lista/slides) com score premium | Pendente | Fase C do roadmap pedagogia |
+
 ## Proximas entregas por ordem
 
-1. **Validacao Hermes real-pain em ambiente com segredo**: executar `daily-learn`, `hourly-proactive`, `process-tasks` e status admin seguindo `docs/operational-validation-checklist.md`.
-2. **Config externa de producao**: fechar WhatsApp/Meta, billing de provedores, cron secret/scheduler e roles admin seguindo `docs/external-config-checklist.md`.
-3. **ERP/solver deep evolution**: iniciar Marco 1 do `docs/erp-solver-roadmap.md` com modelo operacional persistido antes de solver real.
+1. **Pedagogia/conteudos Fase A**: ingest CQO em producao, validar `GET /api/pedagogy/ingestion-status` e reducao de `contentGaps`.
+2. **Validacao Hermes real-pain em ambiente com segredo**: executar `daily-learn`, `hourly-proactive`, `process-tasks` e status admin seguindo `docs/operational-validation-checklist.md`.
+3. **Config externa de producao**: fechar WhatsApp/Meta, billing de provedores, cron secret/scheduler e roles admin seguindo `docs/external-config-checklist.md`.
+4. **ERP/solver deep evolution**: iniciar Marco 1 do `docs/erp-solver-roadmap.md` com modelo operacional persistido antes de solver real.
 
 ## Hermes agents roadmap
 

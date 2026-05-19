@@ -31,6 +31,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
+import { extractPremiumMetadataFromPostuladoMarkdown } from "../src/lib/pedagogy/extract-premium-from-markdown";
 
 const _require = createRequire(import.meta.url);
 
@@ -348,12 +349,28 @@ async function main(): Promise<void> {
         continue;
       }
 
-      const metadata = {
-        ...parseSimpleFrontmatter(text),
+      const frontmatter = parseSimpleFrontmatter(text);
+      const { metadata: premiumMeta, quality } =
+        ext.toLowerCase() === ".md"
+          ? extractPremiumMetadataFromPostuladoMarkdown(text, frontmatter)
+          : { metadata: {}, quality: undefined };
+
+      const metadata: Record<string, unknown> = {
+        ...frontmatter,
         source: "postulado",
-        materia: meta.materia,
+        materia: meta.materia ?? premiumMeta.subject ?? frontmatter.subject,
         autor: meta.autor,
         path: rel,
+        topic:
+          (typeof frontmatter.topic === "string" ? frontmatter.topic : null) ??
+          premiumMeta.objective ??
+          meta.title,
+        material_standard_version: "2026-05-16",
+        quality_status: quality?.status ?? frontmatter.quality_status ?? "rascunho",
+        quality_score_total: quality?.total,
+        quality,
+        premium_metadata: premiumMeta,
+        human_reviewed: frontmatter.human_reviewed === true || premiumMeta.humanReviewed === true,
       };
       const tags = ["postulado", ...(meta.materia ? [meta.materia] : [])];
 

@@ -252,6 +252,17 @@ B2B:
 - Intervencoes criadas e concluidas.
 - Alunos em risco recuperados apos acao.
 
+## 12.1 Workstream ativo (2026-05-19): pedagogia e conteudos
+
+O proximo ciclo de execucao prioriza **dados pedagogicos internos + conectores externos + geracao premium**, documentado em `docs/pedagogia-conteudos-roadmap.md`:
+
+- **Fase A:** ingest postulados com score premium, seeds CQO, API `/api/pedagogy/*`.
+- **Fase B:** consolidar RAG/ENEM/BNCC implementados; planejar BNCC API oficial.
+- **Fase C:** impor `PremiumMaterialMetadata` em todos os geradores.
+- **Fase D:** loop Hermes (`auditor_pedagogico`, `content_gap_cqo_avancado`) com evidencia no Admin.
+
+Ticket 6 (padrao pedagogico) esta operacionalizado em codigo; o foco agora e **cobertura, ingestao e QA**, nao redefinir a rubrica.
+
 ## 13. Primeiros 10 tickets de execucao
 
 1. **Criar checklist de release premium:** documento curto para avaliar landing, home, materiais, Tiagao, Hermes e acessibilidade antes de deploy.

@@ -52,6 +52,7 @@ import mathRouter from "./math";
 import inlineSearchRouter from "./inline-search";
 import videosRouter from "./videos";
 import agentsRouter from "./agents";
+import pedagogyRouter from "./pedagogy";
 
 const router: IRouter = Router();
 
@@ -113,5 +114,6 @@ router.use(mathRouter);
 router.use(inlineSearchRouter);
 router.use(videosRouter);
 router.use(agentsRouter);
+router.use("/pedagogy", pedagogyRouter);
 
 export default router;

@@ -18,6 +18,7 @@ const PDF_EXTRACTION_NOISE_WORDS = new Set([
   "obj", "endobj", "stream", "endstream", "xref", "trailer", "startxref", "catalog", "pages",
   "page", "type", "length", "filter", "flatedecode", "decodeparms", "mediabox", "resources",
   "xobject", "image", "font", "procset", "contents", "metadata", "creator", "producer",
+  "pdf", "count", "kids", "root", "size", "subtype", "bytes", "scanner", "app", "im",
 ]);
 
 export function isUsableExtractedDocumentText(text: string): boolean {

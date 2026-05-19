@@ -52,13 +52,15 @@ import { clearStudyaiAccountLocalCaches, STUDYAI_ACCOUNT_CHANGED } from "@/lib/a
 // Hide the floating Tiagão on full-immersive lesson pages so two voices never overlap.
 function VoiceProfessorGate() {
   const [location] = useLocation();
-  // Routes where the lesson itself uses TTS — suppress floating professor.
-  const HIDE_ON = ["/aula-ia", "/notebook", "/lousa-imersiva", "/professor", "/instituicao", "/comunicacao", "/admin", "/governo"];
+  // Routes where another TTS/voice UI is primary — suppress floating Tiagão.
+  const HIDE_ON = ["/aula-ia", "/notebook", "/lousa-imersiva", "/instituicao", "/comunicacao", "/admin", "/governo"];
   if (HIDE_ON.some(p => location.startsWith(p))) return null;
   // Wouter path is relative to `base`; marketing home is `/` only (not sign-in/up).
   const path = (location || "/").replace(/\/+$/, "") || "/";
   const isLanding = path === "/";
-  return <VoiceProfessor variant={isLanding ? "landing" : "app"} />;
+  const isProfessorPortal = location.startsWith("/professor");
+  const variant = isLanding ? "landing" : isProfessorPortal ? "professor" : "app";
+  return <VoiceProfessor variant={variant} />;
 }
 import { useStudyAuth } from "@/hooks/useStudyAuth";
 

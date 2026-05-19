@@ -58,6 +58,12 @@ curl -fsS -X POST "$BASE_URL/internal/hermes/process-tasks" \
   -d '{ "limit": 10 }'
 ```
 
+## Portais Professor e Instituição (2026-05-19)
+
+- **Professor (`/professor`)**: Tiagão flutuante ativo com `X-Tiagao-Context: professor` e modo pedagógico colega; assistente e pesquisa respondem em texto; botão **Encaminhar para o Tiagão** abre voz com contexto.
+- **Instituição (`/instituicao`)**: APIs usam `credentials: "include"`; login em `/instituicao/login` ou `/sign-in` com `auth_return_to=/instituicao`; menu **Modo Escola** e link **Portal Institucional** no UserMenu.
+- **Clerk**: papéis `teacher` / `institution_admin` no metadata ou membro aprovado via convite institucional.
+
 ## Aceite esperado
 
 - `daily-learn` retorna `{ ok, ran, errors }`; `ran` deve incluir os agentes de dor real com `dailyLearn`.

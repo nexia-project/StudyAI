@@ -419,6 +419,15 @@ function renderVoiceContentWithMath(text: string): ReactNode[] {
 }
 
 // ─── Quick commands by context ────────────────────────────────────────────────
+const PROFESSOR_QUICK_COMMANDS = [
+  { label: "📋 Plano de aula", text: "Monte um plano de aula com diagnóstico inicial e ticket de saída para o tema que eu indicar." },
+  { label: "📝 Prova ENEM", text: "Crie 5 questões estilo ENEM com distratores comentados e critério de correção." },
+  { label: "📊 Diagnóstico turma", text: "Como estruturar um diagnóstico rápido de turma e intervenção na próxima semana?" },
+  { label: "✍️ Rubrica redação", text: "Monte uma rubrica analítica para redação ENEM com devolutiva objetiva." },
+  { label: "💬 Comunicação", text: "Rascunhe mensagem profissional para família e coordenação sobre um aluno em atenção." },
+  { label: "🧠 PBL / sequência", text: "Planeje uma sequência PBL viável para duas aulas de 50 minutos." },
+];
+
 const QUICK_COMMANDS = [
   { label: "📅 Meu plano hoje",      text: "Qual é meu plano de estudos para hoje?" },
   { label: "⚡ Simulado rápido",      text: "Quero fazer um simulado rápido agora." },
@@ -502,10 +511,10 @@ function detectArtifactIntent(action: any): ArtifactIntent {
   return null;
 }
 
-export type VoiceProfessorVariant = "app" | "landing";
+export type VoiceProfessorVariant = "app" | "landing" | "professor";
 
 export type VoiceProfessorProps = {
-  /** `landing`: marketing `/` only — no navegação nem ações no app; `app`: comportamento atual. */
+  /** `landing`: marketing `/`; `professor`: portal docente; `app`: aluno. */
   variant?: VoiceProfessorVariant;
 };
 
@@ -549,8 +558,15 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
   const [pedagogicalMode, setPedagogicalMode] = useState<TiagaoPedagogicalMode>(() => {
     if (typeof window === "undefined") return "auto";
     const saved = localStorage.getItem("tiagao_pedagogical_mode");
-    return PEDAGOGICAL_MODES.some((m) => m.key === saved) ? (saved as TiagaoPedagogicalMode) : "auto";
+    if (PEDAGOGICAL_MODES.some((m) => m.key === saved)) return saved as TiagaoPedagogicalMode;
+    return "auto";
   });
+
+  useEffect(() => {
+    if (variant === "professor" && pedagogicalMode === "auto") {
+      setPedagogicalMode("professor");
+    }
+  }, [variant]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     try { localStorage.setItem("tiagao_pedagogical_mode", pedagogicalMode); } catch { /* ignore */ }
@@ -1112,12 +1128,14 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
     try {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (variant === "landing") headers["X-Tiagao-Context"] = "landing";
+      else if (variant === "professor") headers["X-Tiagao-Context"] = "professor";
       const res = await fetch(`${BASE_URL}/api/voice-chat`, {
         method: "POST",
         headers,
         body: JSON.stringify({
           messages: historyRef.current.slice(-20),
           context: collectStudentContext(),
+          variant: variant === "landing" || variant === "professor" ? variant : undefined,
           pedagogicalMode: pedagogicalMode === "auto" ? undefined : pedagogicalMode,
         }),
         credentials: "include",
@@ -1379,11 +1397,12 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
 
   // ── Boas-vindas na entrada do app (1× por sessão) — conteúdo longo só na 1ª visita com login (localStorage)
   useEffect(() => {
-    if (variant === "landing") return;
+    if (variant === "landing" || variant === "professor") return;
     if (authLoading || !isAuthenticated) return;
     if (!clerkUserId) return;
     const path = location || "/";
     if (/^\/($|sign-in|sign-up)/.test(path)) return;
+    if (path.startsWith("/professor")) return;
 
     const KEY = "studyai_tiagao_app_entry_greet_v1";
     let cancelled = false;
@@ -1590,7 +1609,12 @@ export function VoiceProfessor({ variant = "app" }: VoiceProfessorProps) {
     history.length > 0 &&
     history[history.length - 1]?.role === "assistant";
 
-  const quickCommands = variant === "landing" ? LANDING_QUICK_COMMANDS : QUICK_COMMANDS;
+  const quickCommands =
+    variant === "landing"
+      ? LANDING_QUICK_COMMANDS
+      : variant === "professor"
+        ? PROFESSOR_QUICK_COMMANDS
+        : QUICK_COMMANDS;
   const voiceHintRows =
     variant === "landing"
       ? [

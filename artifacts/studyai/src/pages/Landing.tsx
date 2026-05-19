@@ -1437,10 +1437,16 @@ export default function Landing() {
                   </li>
                 ))}
               </ul>
-              <button onClick={() => { document.getElementById("institucional")?.scrollIntoView({ behavior: "smooth" }); }}
-                className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition-all text-sm shadow-lg shadow-emerald-500/30">
-                Falar com nossa equipe <ArrowRight className="w-4 h-4" />
-              </button>
+              <motion.div className="flex flex-wrap gap-3">
+                <button onClick={() => navigate("/instituicao/login")}
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition-all text-sm shadow-lg shadow-emerald-500/30">
+                  Acessar portal institucional <ArrowRight className="w-4 h-4" />
+                </button>
+                <button onClick={() => { document.getElementById("institucional")?.scrollIntoView({ behavior: "smooth" }); }}
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-emerald-700 bg-white border border-emerald-200 hover:bg-emerald-50 transition-all text-sm">
+                  Falar com nossa equipe
+                </button>
+              </motion.div>
             </motion.div>
 
             <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}

@@ -185,6 +185,7 @@ export function InstituicaoConvitePage() {
     const res = await fetch(`${BASE}/api/institution/accept-invite`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({ token: params.token }),
     });
     const d = await res.json();
@@ -516,6 +517,10 @@ function InstituicaoIATab({ institutionId, primaryColor }: { institutionId: stri
 export default function InstituicaoPage() {
   const [, navigate] = useLocation();
   const { isAuthenticated, isLoading: authLoading, user } = useStudyAuth();
+
+  async function apiFetch(url: string, opts: RequestInit = {}) {
+    return fetch(url, { ...opts, credentials: "include" });
+  }
   const [data, setData] = useState<InstitutionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -564,7 +569,7 @@ export default function InstituicaoPage() {
     setLoading(true);
     setError(null);
     try {
-      const meRes = await fetch(`${BASE}/api/institution/me`);
+      const meRes = await apiFetch(`${BASE}/api/institution/me`);
       const meData = await meRes.json();
 
       if (!meData.institution) { setError("sem_instituicao"); return; }
@@ -574,7 +579,7 @@ export default function InstituicaoPage() {
 
       if (!meData.isApproved) { setError("aguardando_aprovacao"); return; }
 
-      const detailRes = await fetch(`${BASE}/api/institution/${meData.institution.id}`);
+      const detailRes = await apiFetch(`${BASE}/api/institution/${meData.institution.id}`);
       if (!detailRes.ok) {
         const d = await detailRes.json();
         setError(d.error || "acesso_negado");
@@ -614,7 +619,7 @@ export default function InstituicaoPage() {
   async function loadReport() {
     if (!data?.institution || loadingReport) return;
     setLoadingReport(true);
-    const res = await fetch(`${BASE}/api/institution/${data.institution.id}/report`);
+    const res = await apiFetch(`${BASE}/api/institution/${data.institution.id}/report`);
     if (res.ok) setReport((await res.json()).report);
     setLoadingReport(false);
   }
@@ -624,7 +629,7 @@ export default function InstituicaoPage() {
     if (!data?.institution) return;
     setInviting(true);
     setInviteResult(null);
-    const res = await fetch(`${BASE}/api/institution/${data.institution.id}/invite`, {
+    const res = await apiFetch(`${BASE}/api/institution/${data.institution.id}/invite`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
@@ -639,7 +644,7 @@ export default function InstituicaoPage() {
 
   async function approveMember(memberId: string, approved: boolean) {
     if (!data?.institution) return;
-    await fetch(`${BASE}/api/institution/${data.institution.id}/members/${memberId}/approve`, {
+    await apiFetch(`${BASE}/api/institution/${data.institution.id}/members/${memberId}/approve`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ approved }),
     });
@@ -648,7 +653,7 @@ export default function InstituicaoPage() {
 
   async function removeMember(memberId: string) {
     if (!data?.institution || !confirm("Remover membro da instituição?")) return;
-    await fetch(`${BASE}/api/institution/${data.institution.id}/members/${memberId}`, { method: "DELETE" });
+    await apiFetch(`${BASE}/api/institution/${data.institution.id}/members/${memberId}`, { method: "DELETE" });
     await loadData();
   }
 
@@ -657,7 +662,7 @@ export default function InstituicaoPage() {
     if (!data?.institution) return;
     setSavingBranding(true);
     setBrandingMsg(null);
-    const res = await fetch(`${BASE}/api/institution/${data.institution.id}/branding`, {
+    const res = await apiFetch(`${BASE}/api/institution/${data.institution.id}/branding`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(brandingForm),
     });
@@ -694,7 +699,7 @@ export default function InstituicaoPage() {
           title="Acesso restrito"
           description="Faça login para acessar o portal institucional."
           action={
-        <Button onClick={() => { sessionStorage.setItem("auth_return_to", "/instituicao"); navigate("/instituicao/login"); }}
+        <Button onClick={() => { sessionStorage.setItem("auth_return_to", "/instituicao"); navigate("/sign-in"); }}
           className="w-full bg-violet-600 hover:bg-violet-700 text-white rounded-xl">
           Entrar no Portal
         </Button>
@@ -728,12 +733,18 @@ export default function InstituicaoPage() {
         <AppEmptyState
           icon={<Building2 />}
           title="Sem instituição vinculada"
-          description="Você ainda não está vinculado a nenhuma instituição. Peça o link de convite ao administrador."
+          description="Use a conta convidada pela escola ou peça um link de convite ao administrador. Papéis esperados no Clerk: institution_admin ou membro aprovado na instituição."
           action={
-        <Button onClick={() => navigate("/app")}
-          className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl">
-          Voltar ao Início
-        </Button>
+        <motion.div className="flex flex-col gap-2 w-full">
+          <Button onClick={() => { sessionStorage.setItem("auth_return_to", "/instituicao"); navigate("/sign-in"); }}
+            className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl w-full">
+            Entrar com outra conta
+          </Button>
+          <Button onClick={() => navigate("/app")} variant="outline"
+            className="border-slate-600 text-slate-300 hover:bg-slate-700 rounded-xl w-full">
+            Voltar ao app do aluno
+          </Button>
+        </motion.div>
           }
         />
       </motion.div>

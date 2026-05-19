@@ -260,10 +260,22 @@ export function AppNav({ onHome }: AppNavProps) {
   });
   const isVibrante = navTheme === "vibrante";
 
+  const { mode, setMode } = useMode();
   const currentPath = location;
-  const effectiveMode: AppMode = currentPath.startsWith("/instituicao") || currentPath.startsWith("/comunicacao") ? "escola" : "aluno";
+  const effectiveMode: AppMode = currentPath.startsWith("/instituicao") || currentPath.startsWith("/comunicacao")
+    ? "escola"
+    : currentPath.startsWith("/professor")
+      ? "professor"
+      : mode;
   const navGroups = getNavGroups(effectiveMode);
   const quickLinks = QUICK_LINKS_MAP[effectiveMode];
+
+  useEffect(() => {
+    if (currentPath.startsWith("/professor") && mode !== "professor") setMode("professor");
+    else if ((currentPath.startsWith("/instituicao") || currentPath.startsWith("/comunicacao")) && mode !== "escola") {
+      setMode("escola");
+    }
+  }, [currentPath, mode, setMode]);
 
   useEffect(() => {
     const g = getNavGroups(effectiveMode);

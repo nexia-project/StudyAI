@@ -9,7 +9,7 @@ import {
   Zap, Target, Bell, Globe, Layers, BookMarked, Map, Star,
   Wand2, FileText, LayoutTemplate, Network, Microscope, Download,
   Database, ClipboardList, Filter, Calendar, ChevronDown as ChevronDownIcon, X, Lock,
-  History, Presentation, Image as ImageIcon, Upload,
+  History, Presentation, Image as ImageIcon, Upload, Mic,
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { useStudyAuth as useAuth } from "@/hooks/useStudyAuth";
@@ -22,6 +22,7 @@ import {
   AppSectionShell,
   AppStatusBadge,
 } from "@/components/Layout";
+import { buildForwardPromptFromExchange, forwardToTiagao } from "@/lib/tiagao-forward";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Section = "dashboard" | "turmas" | "planoaula" | "notebook" | "alunos" | "conteudos" | "estudio" | "pesquisa" | "provas" | "banco" | "atividades" | "assistente" | "relatorios" | "historico";
@@ -1654,6 +1655,7 @@ function PesquisaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ContentPackage | null>(null);
   const [fromKb, setFromKb] = useState(false);
+  const [lastQuery, setLastQuery] = useState("");
 
   const SUGGESTIONS = [
     "Revolução Francesa", "Funções do 1º Grau", "Segunda Guerra Mundial",
@@ -1665,6 +1667,7 @@ function PesquisaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) 
     const searchQuery = q ?? query;
     if (!searchQuery.trim()) return;
     setQuery(searchQuery);
+    setLastQuery(searchQuery);
     setLoading(true); setResult(null);
     try {
       const r = await apiFetch("/api/teacher/research", {
@@ -1674,6 +1677,19 @@ function PesquisaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) 
       const d = await r.json();
       if (d.ok) { setResult(d.content); setFromKb(d.fromKb ?? false); }
     } finally { setLoading(false); }
+  }
+
+  function forwardResearchToTiagao() {
+    if (!result || !lastQuery.trim()) return;
+    const summary = [result.resumo, ...(result.keyPoints ?? []).map(p => `• ${p}`)].filter(Boolean).join("\n");
+    forwardToTiagao(
+      buildForwardPromptFromExchange({
+        userQuery: lastQuery,
+        assistantReply: summary,
+        label: "pesquisa docente",
+      }),
+      { pedagogicalMode: "professor" },
+    );
   }
 
   return (
@@ -1728,7 +1744,22 @@ function PesquisaSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit) 
         </div>
       )}
 
-      {result && <ContentPackageView content={result} fromKb={fromKb} />}
+      {result && (
+        <>
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <button
+              type="button"
+              onClick={forwardResearchToTiagao}
+              className="inline-flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2 text-xs font-bold text-violet-700 hover:bg-violet-100"
+            >
+              <Mic className="w-3.5 h-3.5" />
+              Encaminhar para o Tiagão (voz)
+            </button>
+            <p className="text-[11px] text-gray-500">Leia o pacote em texto; use o botão para continuar por voz.</p>
+          </div>
+          <ContentPackageView content={result} fromKb={fromKb} />
+        </>
+      )}
     </div>
   );
 }
@@ -2155,6 +2186,20 @@ function AssistenteSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
     "Escreva uma mensagem de intervenção para família e coordenação",
   ];
 
+  function forwardLastExchange() {
+    const lastUser = [...messages].reverse().find(m => m.role === "user");
+    const lastAssistant = [...messages].reverse().find(m => m.role === "assistant");
+    if (!lastUser) return;
+    forwardToTiagao(
+      buildForwardPromptFromExchange({
+        userQuery: lastUser.content,
+        assistantReply: lastAssistant?.content ?? "",
+        label: "conversa do assistente docente",
+      }),
+      { pedagogicalMode: "professor" },
+    );
+  }
+
   async function send() {
     if (!input.trim() || loading) return;
     const userMsg = { role: "user" as const, content: input };
@@ -2182,7 +2227,9 @@ function AssistenteSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
         <h2 className="font-black text-gray-900 flex items-center gap-2 text-sm">
           <Brain className="w-5 h-5 text-violet-600" /> Tiagão Professor
         </h2>
-        <p className="text-gray-400 text-xs mt-1">Copiloto pedagógico em tom de colega: planejamento, diagnóstico de turma, avaliação, rubricas e comunicação profissional.</p>
+        <p className="text-gray-400 text-xs mt-1">
+          Escreva aqui e receba resposta em texto. Depois use &quot;Encaminhar para o Tiagão&quot; ou o avatar flutuante para continuar por voz (tom de colega docente).
+        </p>
       </div>
 
       {messages.length === 0 && (
@@ -2223,14 +2270,27 @@ function AssistenteSection({ apiFetch }: { apiFetch: (u: string, o?: RequestInit
         <div ref={bottomRef} />
       </div>
 
-      <div className="flex gap-3">
-        <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
-          placeholder="Peça planejamento, diagnóstico, rubrica ou comunicação docente..."
-          className="flex-1 bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500" />
-        <button onClick={send} disabled={loading || !input.trim()}
-          className="p-3 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-2xl transition-colors">
-          <Send className="w-5 h-5" />
-        </button>
+      <div className="space-y-2">
+        {messages.some(m => m.role === "assistant") && (
+          <button
+            type="button"
+            onClick={forwardLastExchange}
+            className="inline-flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2 text-xs font-bold text-violet-700 hover:bg-violet-100 transition-colors"
+          >
+            <Mic className="w-3.5 h-3.5" />
+            Encaminhar para o Tiagão (voz)
+          </button>
+        )}
+        <motion.div className="flex gap-3">
+          <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
+            placeholder="Peça planejamento, diagnóstico, rubrica ou comunicação docente..."
+            className="flex-1 bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500" />
+          <button onClick={send} disabled={loading || !input.trim()}
+            className="p-3 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-2xl transition-colors"
+            title="Enviar e receber resposta escrita">
+            <Send className="w-5 h-5" />
+          </button>
+        </motion.div>
       </div>
     </div>
   );

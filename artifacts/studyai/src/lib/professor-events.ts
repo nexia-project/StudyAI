@@ -78,6 +78,8 @@ function detectCurrentPage(): string {
   if (path.includes("/pomodoro")) return "Pomodoro";
   if (path.includes("/pricing")) return "Planos e Preços";
   if (path.includes("/historico")) return "Histórico de Planos";
+  if (path.includes("/professor")) return "Portal do Professor";
+  if (path.includes("/instituicao")) return "Portal Institucional";
   if (path.includes("/app")) return "Home / Gerador de Plano";
   return "StudyAI";
 }

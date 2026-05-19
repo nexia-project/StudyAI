@@ -258,15 +258,17 @@ export function UserMenu({ openAccountMenuUpward = false }: UserMenuProps) {
                   Módulo Professor
                 </button>
               )}
-              {["institution_admin", "admin"].includes(userRole) && (
-                <button
-                  onClick={() => { setOpen(false); navigate("/instituicao"); }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-foreground hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
-                >
-                  <Building2 className="w-4 h-4 text-emerald-600" />
-                  Módulo Instituição
-                </button>
-              )}
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  sessionStorage.setItem("auth_return_to", "/instituicao");
+                  navigate("/instituicao");
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-foreground hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+              >
+                <Building2 className="w-4 h-4 text-emerald-600" />
+                Portal Institucional
+              </button>
               {["government", "admin"].includes(userRole) && (
                 <button
                   onClick={() => { setOpen(false); navigate("/governo"); }}

@@ -1807,10 +1807,10 @@ function SearchResultCard({
               type="button"
               onClick={onForward}
               className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50/70 px-3 py-1.5 text-[12px] font-bold text-violet-700 transition hover:bg-violet-100 hover:border-violet-300"
-              title="Encaminhar essa pergunta pro Tiagão"
+              title="Só depois de ler a resposta escrita — o Tiagão continua por voz"
             >
               <Send className="h-3.5 w-3.5" />
-              Levar pro Tiagão
+              Encaminhar para o Tiagão
             </button>
             <button
               type="button"
@@ -1940,7 +1940,7 @@ function FileAnalysisCard({
               title="Pedir uma análise mais profunda do Tiagão"
             >
               <Send className="h-3.5 w-3.5" />
-              Pedir análise pro Tiagão
+              Encaminhar para o Tiagão
             </button>
             <button
               type="button"

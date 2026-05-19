@@ -33,6 +33,7 @@ import {
 import { loadMethodState, saveMethodState } from "../lib/tiagao-method-state";
 import { isMathQuestion } from "../lib/math-detection";
 import { TIAGAO_LANDING_SYSTEM_PROMPT } from "../lib/tiagao-landing-prompt";
+import { TIAGAO_PROFESSOR_COLLEAGUE_PROMPT } from "../lib/tiagao-professor-colleague-prompt";
 import { humanizeMathForTTS } from "../lib/math-narration";
 import { estimateTokensFromMessages, estimateTokensFromText, logAiUsage as logAiTelemetry, logTextUsage } from "../lib/aiUsageTelemetry";
 import {
@@ -754,8 +755,11 @@ router.post("/voice-chat", async (req, res) => {
     // VoiceProfessor já envia `X-Tiagao-Context: landing` quando variant=landing
     // no frontend. Também aceitamos `variant: "landing"` no body. Por fim,
     // fallback para ausência de auth (visitante anônimo).
-    const headerLanding = (req.headers["x-tiagao-context"] ?? "").toString().toLowerCase() === "landing";
-    const isLanding = variant === "landing" || headerLanding || !req.userId;
+    const headerContext = (req.headers["x-tiagao-context"] ?? "").toString().toLowerCase();
+    const headerLanding = headerContext === "landing";
+    const headerProfessor = headerContext === "professor";
+    const isLanding = variant === "landing" || headerLanding || (!req.userId && !headerProfessor);
+    const isProfessorPortal = headerProfessor || variant === "professor";
 
     // ── OTIMIZAÇÃO VOICE: histórico curto (voz não precisa de 20 msgs) ────────
     // O tamanho por mensagem é 1000 chars (voz é curto). EXCEÇÃO: a ÚLTIMA mensagem
@@ -846,7 +850,10 @@ router.post("/voice-chat", async (req, res) => {
     }
 
     const rolePersona = isLanding ? "" : buildRolePersona(userProfile);
-    const studentCtx = !isLanding && userProfile.role === "student" ? buildRichContext(context, dbData) : "";
+    const studentCtx =
+      !isLanding && !isProfessorPortal && userProfile.role === "student"
+        ? buildRichContext(context, dbData)
+        : "";
     const agentInstructions = `
 
 INSTRUÇÕES DE AGENTE — LEIA ANTES DE QUALQUER RESPOSTA:
@@ -905,6 +912,7 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.
         + TIAGAO_CREATIVITY_BLOCK
         + personalizationBlock
         + rolePersona
+        + (isProfessorPortal ? `\n\n${TIAGAO_PROFESSOR_COLLEAGUE_PROMPT}` : "")
         + studentCtx
         + kbContext
         + bnccContext
@@ -914,7 +922,7 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.
     // ── PR-2 — método pedagógico automático + percepção de sentimento ────────
     // Aluno NÃO escolhe método. Tiagão decide invisivelmente.
     // Aplicado apenas para alunos LOGADOS. Landing e demais perfis pulam.
-    const isStudent = !isLanding && userProfile.role === "student";
+    const isStudent = !isLanding && !isProfessorPortal && userProfile.role === "student";
     const userOverride = isStudent ? detectUserOverride(lastUserMsg) : null;
     const pickedMethod = isStudent
       ? pickTeachingMethod({
@@ -950,12 +958,15 @@ NUNCA prometa uma ação futura — ou faz agora ou não fala que vai fazer.
     const hermesTopic = requestedPedagogicalMode
       ? `${lastUserMsg}\nModo pedagógico premium: ${getTiagaoPedagogicalModeLabel(requestedPedagogicalMode)}`
       : lastUserMsg;
+    const hermesAudience = isProfessorPortal
+      ? "professor"
+      : roleToHermesAudience(userProfile.role);
     const systemContent = isLanding
       ? modeAwarePrompt
       : await appendHermesToSystemPrompt(modeAwarePrompt, {
           kind: "chat",
           topic: hermesTopic,
-          audience: roleToHermesAudience(userProfile.role),
+          audience: hermesAudience,
         });
     const finalMethod = composed.method;
 

@@ -8,7 +8,7 @@ import { usersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { validateFileUpload } from "../middlewares/security";
 import { enrichTopicFromWikipedia } from "./wikipedia";
-import { buildUnreadableDocumentMindMap, normalizeMindMap } from "../lib/notebook-fallbacks";
+import { buildUnreadableDocumentMindMap, isUsableExtractedDocumentText, normalizeMindMap } from "../lib/notebook-fallbacks";
 
 // createRequire allows safe CJS import from ESM — avoids pdf-parse@1.1.1 module-level ENOENT bug
 const _require = createRequire(import.meta.url);
@@ -57,12 +57,14 @@ async function extractTextFromFile(file: Express.Multer.File): Promise<string> {
     try {
       const mammoth = await import("mammoth");
       const result = await mammoth.extractRawText({ buffer: file.buffer });
-      if (result.value.length > 30) return sanitizeText(result.value);
+      const extracted = sanitizeText(result.value);
+      if (isUsableExtractedDocumentText(extracted)) return extracted;
     } catch {
       // fall through
     }
     const rawText = file.buffer.toString("latin1");
-    return sanitizeText(rawText.replace(/[^\x20-\x7E\n\r\t\xA0-\xFF]/g, " ").replace(/\s{3,}/g, "\n").trim());
+    const extracted = sanitizeText(rawText.replace(/[^\x20-\x7E\n\r\t\xA0-\xFF]/g, " ").replace(/\s{3,}/g, "\n").trim());
+    return isUsableExtractedDocumentText(extracted) ? extracted : "";
   }
 
   if (mime === "application/pdf") {
@@ -71,13 +73,15 @@ async function extractTextFromFile(file: Express.Multer.File): Promise<string> {
       const pdfParser = _require("pdf-parse/lib/pdf-parse");
       const parsed = await pdfParser(file.buffer);
       const extracted = sanitizeText(parsed.text);
-      if (extracted.trim().length > 20) return extracted;
+      if (isUsableExtractedDocumentText(extracted)) return extracted;
       // Fallback for scanned PDFs: use Latin-1 raw text extraction
       const rawText = file.buffer.toString("latin1");
-      return sanitizeText(rawText.replace(/[^\x20-\x7E\n\r\t\xA0-\xFF]/g, " ").replace(/\s{3,}/g, "\n").trim());
+      const rawExtracted = sanitizeText(rawText.replace(/[^\x20-\x7E\n\r\t\xA0-\xFF]/g, " ").replace(/\s{3,}/g, "\n").trim());
+      return isUsableExtractedDocumentText(rawExtracted) ? rawExtracted : "";
     } catch {
       const rawText = file.buffer.toString("latin1");
-      return sanitizeText(rawText.replace(/[^\x20-\x7E\n\r\t\xA0-\xFF]/g, " ").replace(/\s{3,}/g, "\n").trim());
+      const rawExtracted = sanitizeText(rawText.replace(/[^\x20-\x7E\n\r\t\xA0-\xFF]/g, " ").replace(/\s{3,}/g, "\n").trim());
+      return isUsableExtractedDocumentText(rawExtracted) ? rawExtracted : "";
     }
   }
 
@@ -582,13 +586,13 @@ router.post("/mapa-mental/from-doc", uploadSingleFile, validateFileUpload, async
     if (req.file) {
       contentText = await extractTextFromFile(req.file);
     } else if (req.body.contentText) {
-      contentText = req.body.contentText;
+      contentText = sanitizeText(req.body.contentText);
     } else {
       res.status(400).json({ ok: false, code: "MISSING_DOCUMENT", erro: "Envie um arquivo ou cole um texto para gerar o mapa mental." });
       return;
     }
 
-    const mindMapBase = !contentText || contentText.trim().length < 30
+    const mindMapBase = !isUsableExtractedDocumentText(contentText)
       ? (usedFallback = true, createUnreadableDocumentMindMap(docTitle, req.file, title))
       : await generateMindMapFromText(contentText, docTitle);
 
@@ -645,13 +649,13 @@ router.post("/mapa-mental/professor/from-doc", uploadSingleFile, validateFileUpl
     if (req.file) {
       contentText = await extractTextFromFile(req.file);
     } else if (req.body.contentText) {
-      contentText = req.body.contentText;
+      contentText = sanitizeText(req.body.contentText);
     } else {
       res.status(400).json({ ok: false, code: "MISSING_DOCUMENT", erro: "Envie um arquivo ou cole um texto para gerar o mapa mental." });
       return;
     }
 
-    const generatedMap = !contentText || contentText.trim().length < 30
+    const generatedMap = !isUsableExtractedDocumentText(contentText)
       ? (usedFallback = true, createUnreadableDocumentMindMap(docTitle, req.file, title))
       : await generateMindMapFromText(contentText, docTitle);
     const finalSubject = subject?.trim() || generatedMap.subject || docTitle;

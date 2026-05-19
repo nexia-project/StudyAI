@@ -27,7 +27,12 @@ const sandbox = { exports: {}, module: { exports: {} } };
 sandbox.exports = sandbox.module.exports;
 vm.runInNewContext(compiled, sandbox, { filename: helperPath });
 
-const { buildUnreadableDocumentMindMap, normalizeMindMap, normalizeSlides } = sandbox.module.exports;
+const {
+  buildUnreadableDocumentMindMap,
+  isUsableExtractedDocumentText,
+  normalizeMindMap,
+  normalizeSlides,
+} = sandbox.module.exports;
 
 const title = "Função quadrática no ENEM";
 const content = `
@@ -37,6 +42,16 @@ As raízes representam os pontos em que a parábola cruza o eixo x e podem ser c
 O vértice indica o ponto máximo ou mínimo da função, sendo essencial para problemas de otimização.
 No ENEM, esse conteúdo aparece em situações de lançamento, lucro máximo, área máxima e leitura de gráficos.
 O estudante deve relacionar coeficientes, raízes, vértice e interpretação contextual, sempre justificando a resposta com evidências do enunciado.
+`;
+const pdfContainerNoise = `
+%PDF-1.7
+1 0 obj << /Type /Catalog /Pages 2 0 R /Metadata 7 0 R >> endobj
+2 0 obj << /Type /Pages /Count 1 /Kids [3 0 R] >> endobj
+3 0 obj << /Type /Page /MediaBox [0 0 612 792] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >> endobj
+4 0 obj << /Type /XObject /Subtype /Image /Filter /FlateDecode /Length 47321 >> stream
+qwerty zzzz qqqq stream image bytes image bytes image bytes
+endstream endobj
+xref trailer << /Root 1 0 R /Size 8 /Producer (Scanner App) >> startxref
 `;
 
 function assert(condition, message) {
@@ -100,6 +115,8 @@ function assertMindMapPreviewContract(map) {
 }
 
 const deck = normalizeSlides({}, title, content);
+assert(isUsableExtractedDocumentText(content), "real extracted study text should be considered usable");
+assert(!isUsableExtractedDocumentText(pdfContainerNoise), "PDF container noise should not bypass unreadable-document fallback");
 assert(deck.generatedByFallback === true, "slides should mark weak input as fallback");
 assert(deck.slides.length >= 8, "fallback deck should include at least 8 slides");
 assert(deck.slides.some((slide) => slide.visual), "fallback deck should include visual plans");

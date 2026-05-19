@@ -14,6 +14,25 @@ function splitStudySentences(content: string): string[] {
     .slice(0, 120);
 }
 
+const PDF_EXTRACTION_NOISE_WORDS = new Set([
+  "obj", "endobj", "stream", "endstream", "xref", "trailer", "startxref", "catalog", "pages",
+  "page", "type", "length", "filter", "flatedecode", "decodeparms", "mediabox", "resources",
+  "xobject", "image", "font", "procset", "contents", "metadata", "creator", "producer",
+]);
+
+export function isUsableExtractedDocumentText(text: string): boolean {
+  const normalized = String(text ?? "").replace(/\s+/g, " ").trim();
+  if (normalized.length < 30) return false;
+
+  const words = normalized.match(/[A-Za-zÀ-ÿ]{2,}/g) ?? [];
+  const meaningfulWords = words.filter((word) => !PDF_EXTRACTION_NOISE_WORDS.has(word.toLowerCase()));
+  if (meaningfulWords.length < 8) return false;
+
+  const letters = normalized.match(/[A-Za-zÀ-ÿ]/g)?.length ?? 0;
+  const nonWhitespace = normalized.replace(/\s/g, "").length;
+  return nonWhitespace > 0 && letters / nonWhitespace >= 0.35;
+}
+
 function titleWords(title: string): string[] {
   return title
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
